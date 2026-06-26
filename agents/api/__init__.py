@@ -1,0 +1,59 @@
+"""Agents domain public API.
+
+Other modules import from `agents.api` only — never from internal
+subpackages (perception/planning/action/memory/tools). This achieves
+decoupling: internals may change without breaking dependents.
+"""
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+from protocol import (
+    Message, Event, Task, Plan, Schedule, MemoryPacket,
+    ToolCall, ToolResult, Agent, Graph, Route, Heartbeat,
+)
+
+
+class AgentRegistryAPI(Protocol):
+    def register(self, agent: Agent) -> None: ...
+    def invoke(self, agent_id: str, task: Task) -> Any: ...
+    def list_agents(self) -> list[Agent]: ...
+
+
+class MemoryAPI(Protocol):
+    def read(self, query: dict) -> MemoryPacket: ...
+    def write(self, packet: MemoryPacket) -> bool: ...
+    def retrieve(self, query: dict) -> list: ...
+
+
+class PlanningAPI(Protocol):
+    def plan(self, goal: str) -> Plan: ...
+    def route(self, task: Task) -> Route: ...
+    def schedule(self, task: Task) -> Schedule: ...
+
+
+class ExecutionAPI(Protocol):
+    def execute(self, call: ToolCall) -> ToolResult: ...
+    def register_tool(self, name: str, spec: dict) -> None: ...
+
+
+class PerceptionAPI(Protocol):
+    def reason(self, task: Task) -> Any: ...
+    def reflect(self, result: Any) -> Any: ...
+    def open_context(self, session_id: str) -> Any: ...
+
+
+class EventBusAPI(Protocol):
+    def publish(self, event: Event) -> None: ...
+    def subscribe(self, topic: str, handler) -> None: ...
+
+
+class RuntimeAPI(Protocol):
+    def run(self, agent_id: str, task: Task) -> Any: ...
+    def heartbeat(self, agent_id: str) -> Heartbeat: ...
+
+
+__all__ = [
+    "AgentRegistryAPI", "MemoryAPI", "PlanningAPI", "ExecutionAPI",
+    "PerceptionAPI", "EventBusAPI", "RuntimeAPI",
+]

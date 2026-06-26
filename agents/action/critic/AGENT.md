@@ -1,0 +1,59 @@
+# Agent: Critic — AGENT.md
+
+> 本文件是 `agents/action/critic/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/ARCHITECTURE.md` 相关章节。
+
+## 职责
+代码评审/批判 Agent：审查代码质量、安全、规范，产出修改建议。
+
+## 读取目录（允许读）
+- protocol/
+- agents/tools/prompts/roles/critic/
+- tooling/configs/agents/critic.yaml
+- developer/CODING_RULES.md
+
+## 禁止修改目录
+- frontend/
+- agents/planning/engine/
+- protocol/ 类型定义
+
+## 输出
+- Review 报告
+- Feedback 反馈
+
+## 依赖
+- agents/perception/reasoning/ trace
+- agents/memory/ reflection
+- protocol/ Event
+
+## 接口
+receive(code) -> reflect() -> Review
+
+## 测试方式
+`pytest tests/agents/action/critic/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+
+## 日志位置
+`logs/agents/action/critic/`（结构化 JSON 日志，按 session/task 切分）。
+
+## Prompt 位置
+`agents/tools/prompts/roles/critic/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+
+## 配置位置
+`tooling/configs/agents/critic.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
+
+## 开发约定
+- 遵循 `developer/CODING_RULES.md` 与 `developer/PYTHON_STYLE.md`。
+- 所有对外数据结构必须复用 `protocol/` 定义的类型，禁止自造并行结构。
+- 对外通信一律走 `protocol/message.py` 的 Message 信封，禁止裸 JSON。
+- 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
+- 新增接口需同步更新 `developer/API_SPEC.md` 与 `developer/EVENT_SPEC.md`。
+- 修改前确认本模块在分层中的位置（见 `developer/DIRECTORY_GUIDE.md`），不得越界。
+
+## Agent 统一生命周期
+Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reasoning -> Memory Read -> Tool Call -> Reflection -> Return Result -> Log -> Heartbeat -> Finish
+
+## Agent 统一接口
+- `receive(task)` 接收任务并校验
+- `think()` 推理与计划
+- `tool()` 调用工具执行
+- `reflect()` 反思与自评
+- `respond()` 返回结构化结果
