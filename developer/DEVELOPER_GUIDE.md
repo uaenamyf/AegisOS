@@ -17,6 +17,7 @@ Developer Agent
   -> 生成代码
   -> 运行 tests/{module}/
   -> 生成/更新 docs 与 CHANGELOG
+  -> 若目录结构/api 变动：运行 `python3 tooling/scripts/gen_readme.py` 刷新 README
   -> commit
 ```
 

@@ -3,7 +3,7 @@
 > 本文件是 `tooling/scripts/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `tooling/AGENT.md` 与 `developer/ARCHITECTURE.md` 相关章节。
 
 ## 职责
-构建/测试/部署自动化脚本：环境初始化、一键构建、测试运行、部署。隶属 tooling/ 工程支撑层。
+构建/测试/部署自动化脚本：环境初始化、一键构建、测试运行、部署，以及文档动态维护脚本（如 gen_readme.py）。隶属 tooling/ 工程支撑层。
 
 ## 读取目录（允许读）
 - tooling/configs/
@@ -14,10 +14,17 @@
 - frontend/
 
 ## 输出
-- tooling/scripts/setup/
-- tooling/scripts/build/
-- tooling/scripts/test/
-- tooling/scripts/deploy/
+- tooling/scripts/setup/ 环境初始化
+- tooling/scripts/build/ 构建
+- tooling/scripts/test/ 测试运行
+- tooling/scripts/deploy/ 部署
+- tooling/scripts/gen_readme.py README.md 动态生成脚本（扫描仓库实际结构 + api 接口，产出根 README.md）
+
+## 动态维护 README
+`gen_readme.py` 扫描仓库实际目录、AGENT.md 数量、api 公共接口、文件统计，自动生成/刷新根 `README.md`。
+- **何时运行**：目录结构变动、新增 api 接口、新增 AGENT.md 后，运行 `python3 tooling/scripts/gen_readme.py` 刷新。
+- 产出的「实际目录结构」与「仓库统计」段为自动生成，勿手改；其余介绍段为模板。
+- 详见 `developer/DEVELOPER_GUIDE.md` 维护流程。
 
 ## 依赖
 - tooling/configs/

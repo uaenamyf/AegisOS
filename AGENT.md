@@ -67,3 +67,6 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 
 ## 目录导航
 详见 `developer/DIRECTORY_GUIDE.md`。每个目录/子模块均有独立 `AGENT.md` 规定职责、读取目录、禁止修改目录、输出、依赖、接口、测试方式、日志/Prompt/配置位置。
+
+## README 动态维护
+根 `README.md` 由 `tooling/scripts/gen_readme.py` 扫描仓库实际结构自动生成（目录树、AGENT.md 计数、api 接口表、文件统计）。目录结构或 api 变动后运行 `python3 tooling/scripts/gen_readme.py` 刷新，勿手改自动生成段。

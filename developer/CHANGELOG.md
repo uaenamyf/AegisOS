@@ -89,3 +89,9 @@
 - 更新全部 7 个域根 AGENT.md 下辖子模块加入 api/ 层。
 - 更新根 AGENT.md 全局铁律、ARCHITECTURE 设计原则、DIRECTORY_GUIDE 顶层表格、API_SPEC 模块间解耦章节。
 - 全部 7 个 api 包可导入，共暴露 29 个公共接口。
+
+## [P0] 2026-06-26 动态 README
+- 新增 `tooling/scripts/gen_readme.py`：扫描仓库实际目录树、AGENT.md 计数、api 公共接口（解析各域 `api/__init__.py` 的 `__all__`）、文件统计，自动生成根 `README.md`。
+- README 含：项目介绍、核心特性、架构总览、顶层目录表、agents/backend/frontend 内部分层、模块间 API 解耦表、数据流、通信协议、开发流程、快速开始、自动生成的目录树与仓库统计、关键文档索引。
+- 「实际目录结构」与「仓库统计」段为自动生成，勿手改；结构/api 变动后运行 `python3 tooling/scripts/gen_readme.py` 刷新。
+- 更新 tooling/scripts/AGENT.md（登记 gen_readme.py + 动态维护说明）、根 AGENT.md（README 动态维护段）、DEVELOPER_GUIDE（流程加入 README 刷新步骤）。
