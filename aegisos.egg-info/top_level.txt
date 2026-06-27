@@ -1,0 +1,8 @@
+agents
+backend
+data
+frontend
+infrastructure
+observability
+protocol
+tooling

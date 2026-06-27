@@ -1,0 +1,16 @@
+# @aegis-gen
+# date: 2026-06-27
+# dev: Claude Code (glm-5.2)
+# change: 新建 backend.yaml 后端配置
+
+backend:
+  host: "0.0.0.0"
+  port: 8000
+  cors:
+    enabled: true
+    origins:
+      - "http://localhost:5173"
+      - "http://127.0.0.1:5173"
+  database:
+    url: "sqlite+aiosqlite:///./data/aegisos.db"
+    echo: false
