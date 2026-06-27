@@ -1,0 +1,255 @@
+# 11_AI_CODING_SPEC.md — AI 编码规范
+
+> 上游：`00_PROJECT_SPEC.md`。本文件**不是给人看的，而是专门给 Claude Code / Cursor / Codex / GPT 等 AI Coding Agent 的**。
+> 任何 AI Agent 在本仓库动手前，**第一步必须阅读本文件 + `AGENT.md`（根）+ `developer/specs/00_PROJECT_SPEC.md`**。
+> 违反本规范的 AI 改动一律视为无效，须回滚重做。
+
+---
+
+## 1. AI 修改代码前必须读取的文件（Mandatory Pre-Read）
+
+按顺序，缺一不可：
+
+| 顺序 | 文件 | 作用 |
+|------|------|------|
+| 1 | `AGENT.md`（根） | 仓库总规范、必读顺序、全局铁律 |
+| 2 | `developer/specs/00_PROJECT_SPEC.md` | 项目 SSOT、目标/边界/生命周期/commit/review |
+| 3 | `developer/specs/03_IMPORT_SPEC.md` | 依赖矩阵、禁止 import（**AI 最易犯错**） |
+| 4 | `developer/specs/11_AI_CODING_SPEC.md` | 本文件 |
+| 5 | 目标模块的 `AGENT.md` | 职责/读取目录/**禁止修改目录**/接口/测试方式 |
+| 6 | `developer/roadmap/README.md` | 定位当前阶段（P0..P7），不做超阶段的事 |
+| 7 | `protocol/` 相关契约 + `developer/specs/04_PROTOCOL_SPEC.md` | 数据类型 |
+| 8 | `developer/specs/05_API_SPEC.md` + 目标域 `api/__init__.py` | 接口签名 |
+| 9 | `tooling/configs/` 相关配置 | 运行配置 |
+
+> **铁律**：AI 永不扫描整个项目；按模块边界精准读写。修改前未读对应 `AGENT.md` 的「禁止修改目录」 = 越界违规。
+
+---
+
+## 2. AI 单次允许修改范围（Scope Limit）
+
+| 限制 | 规则 |
+|------|------|
+| 单次最多修改模块数 | **≤ 1 个域**（如仅 `agents/` 或仅 `backend/`）；跨域改动须拆多次并分别 Review |
+| 单次最多修改文件数 | 建议 ≤ 8 个文件；超出须说明必要性 |
+| 单次最多新增代码行 | 建议 ≤ 500 行；超出须拆分 |
+| 禁止一次性大重构 | 重构须分步、保持行为不变、每步可测 |
+
+> 例外：`protocol/` 契约变更属破坏性，须单独 PR + major bump + 通知依赖方，不与其他改动混在一起。
+
+---
+
+## 3. AI 是否允许创建新文件（File Creation）
+
+| 场景 | 允许？ | 条件 |
+|------|--------|------|
+| 在目标模块「读取目录」内创建实现文件 | ✅ | 须补对应测试 |
+| 新增 Agent 角色 | ✅ | 须补 `AGENT.md` + 在 `agents.api` 注册 + 配置 |
+| 新增工具 | ✅ | 须注册 `ToolSpec` + `AGENT.md` |
+| 新增测试文件 | ✅（鼓励） | 放 `tests/{unit,integration,e2e,benchmarks}/` 镜像结构 |
+| 新增配置 | ✅ | 放 `tooling/configs/`，密钥走环境 |
+| 在「禁止修改目录」内创建 | ❌ | 越界 |
+| 在 `developer/specs/` 之外造新规范 | ❌ | 规范集中于 `developer/specs/` |
+| 在 `protocol/` 之外造并行数据契约 | ❌ | 破坏唯一契约 |
+| 创建无关文档/README | ❌ | 根 README 由脚本生成，勿手改自动段 |
+
+---
+
+## 4. AI 是否允许修改协议（Protocol Mutation）
+
+| 对象 | 允许？ | 条件 |
+|------|--------|------|
+| `protocol/*.py` 现有字段语义/类型 | ❌（破坏性） | 须架构师确认 + major bump + CHANGELOG + 通知依赖方 |
+| 新增可选字段（带默认值） | ⚠️ 须谨慎 | 须同步 `04_PROTOCOL_SPEC.md` + `06_SCHEMA_SPEC.md` + 测试 |
+| 新增 `EventType` | ⚠️ 须谨慎 | 须双登记（`protocol/event.py` + `07_EVENT_SPEC.md`）+ CHANGELOG |
+| 新增契约类型 | ⚠️ 须谨慎 | 须同步 `04`/`06` + `protocol/__init__.py` 导出 + 测试 |
+| 字段废弃 | ⚠️ | 先 deprecated 一个 minor，不可直接删 |
+
+> AI 默认**不得擅自修改协议**；如确需修改，须在 PR 中显式声明「破坏性变更」并走 §7 流程。
+
+---
+
+## 5. AI 是否允许修改 API（API Mutation）
+
+| 对象 | 允许？ | 条件 |
+|------|--------|------|
+| 域 `api/__init__.py` 既有方法签名 | ❌（破坏性） | 须 major bump + CHANGELOG + 通知依赖方 |
+| 新增 `api/` 方法（可选/新接口） | ⚠️ 须谨慎 | 须同步 `05_API_SPEC.md` + `10_INTERFACE_BOUNDARY_SPEC.md` + 测试 |
+| 内部实现重构（api 签名不变） | ✅ | 须保持 api 行为契约 + 测试通过 |
+| 跨域内部子包 import | ❌ | 须只经 `api/`（见 `03_IMPORT_SPEC.md`） |
+
+> AI 默认**不得擅自修改 API 签名**；新增方法须评估对既有实现的影响。
+
+---
+
+## 6. AI 如何生成测试（Test Generation）
+
+- **每个公共接口必有测试**；bug 修复附**回归测试**。
+- 测试位置：`tests/{unit,integration,e2e,benchmarks}/` 镜像源码结构。
+- 协议/Schema：往返序列化测试（`to_dict`↔`from_dict` / `model_dump`↔`model_validate`）+ 边界值。
+- API 契约：mock 实现 `api/` Protocol，验证签名与返回类型为 `protocol/` 类型。
+- Agent：mock LLM/工具，验证 `receive→think→tool→reflect→respond` 生命周期 + 事件发布。
+- 覆盖率：整体 ≥ 80%，关键路径 ≥ 90%。
+- 命名：`test_<被测对象>_<场景>.py`；用 `pytest` + `pytest-asyncio`。
+- 禁止：跳过失败测试（`pytest.skip`）掩盖问题；禁止删除他人回归测试。
+
+---
+
+## 7. AI 如何更新文档（Doc Sync）
+
+| 改动类型 | 必须同步的文档 |
+|----------|----------------|
+| 协议变更 | `04_PROTOCOL_SPEC.md` + `06_SCHEMA_SPEC.md` |
+| API 变更/新增 | `05_API_SPEC.md` + `10_INTERFACE_BOUNDARY_SPEC.md` |
+| 事件变更/新增 | `07_EVENT_SPEC.md` + `protocol/event.py` |
+| Agent 变更 | `08_AGENT_SPEC.md` + 对应 `AGENT.md` |
+| 目录/api 结构变更 | 运行 `python3 tooling/scripts/gen_readme.py` 刷新根 `README.md` |
+| 任何变更 | `developer/CHANGELOG.md` |
+| 阶段完成 | `developer/roadmap/README.md` 勾选进度 |
+
+- 文档与代码**同一 PR**提交；文档滞后 = 未完成。
+- 不手改根 `README.md` 自动生成段。
+- 不添加无关注释（解释 what 而非 why 的冗余注释）；但 **AI 生成/修改的代码必须按 §10 加注释头**（日期/开发人员/改动内容）。意图由测试与命名表达。
+
+---
+
+## 8. AI 如何处理冲突（Conflict Handling）
+
+| 冲突类型 | 处理 |
+|----------|------|
+| 与他域 `api/` 契约冲突 | **契约优先**：以 `05_API_SPEC.md`/`04_PROTOCOL_SPEC.md` 为准；AI 不得单方改契约 |
+| 与他域实现冲突 | 经 `api/` 解耦，不改他域内部；必要时提 issue 协调 |
+| Import 冲突（循环/跨域内部） | 按 `03_IMPORT_SPEC.md` 用接口/事件打破；不改依赖方向 |
+| Git merge 冲突 | AI 须保留双方有效改动，不得静默删除他方代码；冲突解决后跑质量门禁 |
+| 规范间冲突 | 优先级：`00` > `04`≈`05`≈`06` > 其余编号规范 > `developer/` 根旧文档 > 模块 `AGENT.md` |
+| 测试与实现冲突 | 以测试反映的契约为准；若实现正确则修正测试，须说明理由 |
+
+---
+
+## 9. AI 禁止事项（Hard Don'ts）
+
+1. ❌ 扫描整个项目后大范围改动（须按模块边界精准读写）。
+2. ❌ 越界修改目标 `AGENT.md` 的「禁止修改目录」。
+3. ❌ 在 `protocol/` 之外造并行数据结构。
+4. ❌ 跨模块裸 JSON / `dict` 传递（须走 `Message` 信封 + `protocol` 类型）。
+5. ❌ 跨域 import 内部子包（须经 `api/`）。
+6. ❌ 引入循环依赖。
+7. ❌ 全广播通信（须低熵链式路由）。
+8. ❌ 提交密钥/凭据；日志记录敏感载荷。
+9. ❌ 擅自修改 `api/` 签名或 `protocol/` 字段语义（破坏性须声明 + 走流程）。
+10. ❌ 跳过质量门禁（`ruff format && ruff check --fix && mypy && pytest`）。
+11. ❌ 删除/跳过他人回归测试。
+12. ❌ 手改根 `README.md` 自动生成段。
+13. ❌ 添加未在 `tooling/configs` 登记的三方依赖。
+14. ❌ 做超阶段（roadmap）的开发。
+15. ❌ AI 生成/修改代码却不加注释头（日期/开发人员/改动内容，见 §10）。
+
+---
+
+## 10. AI 代码注释规范（Code Annotation，强制）
+
+> **凡 AI 生成或修改的代码，必须加注释头，标注日期、开发人员、改动内容。** 这是可追溯与协作开发的基本要求，缺失注释头的 AI 改动一律视为未完成，须补全方可提交。
+
+### 10.1 注释头格式
+
+统一标记 `@aegis-gen`，后跟三行字段：
+
+**Python**：
+```python
+# @aegis-gen
+# date: 2026-06-27
+# dev: Claude Code (glm-5.2)
+# change: 实现 MemoryAPI.read 向量检索与 rerank 逻辑
+```
+
+**TypeScript / 前端**：
+```typescript
+// @aegis-gen
+// date: 2026-06-27
+// dev: Cursor (claude-3.5)
+// change: 新增 GraphView 动态图渲染组件
+```
+
+| 字段 | 必填 | 格式 | 说明 |
+|------|:----:|------|------|
+| `@aegis-gen` | ✅ | 固定标记 | 标识本段为 AI 生成/修改 |
+| `date` | ✅ | `YYYY-MM-DD`（ISO 8601） | 改动日期 |
+| `dev` | ✅ | `AI 工具名 (模型)` 或人类名 | 开发人员；如 `Claude Code (glm-5.2)`、`Cursor (gpt-4o)`、`张三` |
+| `change` | ✅ | 一句话祈使/陈述 | 改动内容简述（做了什么） |
+
+> 多人/AI 接续修改同一段时，**追加**新注释头于上方，**不删除**既有注释头，形成改动历史栈（最新在上）。
+
+### 10.2 放置规则
+
+| 场景 | 放置位置 | 示例 |
+|------|----------|------|
+| AI **新建文件** | 文件顶部（模块 docstring/`from __future__` 之后、import 之前或之后均可，保持域内一致） | 文件头注释头 |
+| AI **新增函数/类**（已有文件） | 该函数/类定义正上方 | `def read(...):` 上方 |
+| AI **修改既有函数/类/块** | 被修改块的正上方 | 修改的函数上方 |
+| AI **新增方法/分支** | 对应方法/块上方 | — |
+| 纯格式化/空白调整 | **可省略**（非实质性改动） | — |
+
+### 10.3 示例（新建文件）
+
+```python
+"""agents/memory/retrieval.py — 检索子模块。"""
+from __future__ import annotations
+
+# @aegis-gen
+# date: 2026-06-27
+# dev: Claude Code (glm-5.2)
+# change: 新建 retrieval 模块，实现向量+关键词+图混合检索
+
+from protocol import MemoryPacket
+
+
+# @aegis-gen
+# date: 2026-06-27
+# dev: Claude Code (glm-5.2)
+# change: 实现 retrieve 主入口，含 rerank
+def retrieve(query: dict) -> list:
+    ...
+```
+
+### 10.4 示例（修改既有代码，追加注释头）
+
+```python
+# @aegis-gen
+# date: 2026-06-28
+# dev: Cursor (gpt-4o)
+# change: 修复 retrieve 在空 query 下的空指针异常
+# @aegis-gen
+# date: 2026-06-27
+# dev: Claude Code (glm-5.2)
+# change: 实现 retrieve 主入口，含 rerank
+def retrieve(query: dict) -> list:
+    ...
+```
+
+### 10.5 约束
+
+- 注释头字段必须真实，`date` 用改动当日，`dev` 用实际开发方，`change` 如实描述。
+- 注释头**不替代** commit message；commit 仍须遵循 `00` §13 格式。
+- 注释头**不替代**文档；API/事件/协议变更仍须同步对应规范。
+- 人类开发者手写代码不强制加 `@aegis-gen`，但鼓励记录改动作者。
+- 注释头不计入「无关注释」禁令；它是元数据，非冗余解释。
+
+---
+
+## 11. AI 标准作业流程（SOP）
+
+```
+1. 读必读文件（§1）
+2. 定位当前 roadmap 阶段，确认任务不超阶段
+3. 确认目标模块 AGENT.md 的「读取目录/禁止修改目录/接口/测试」
+4. 确认依赖契约（protocol/ + api/ + configs/）
+5. 实现（单次 ≤1 域，遵循 Spec→Contract→API→Implementation→Test→Document）
+   — 对所有生成/修改的代码加注释头（@aegis-gen/date/dev/change，见 §10）
+6. 生成/更新测试（§6）— 测试代码同样加注释头
+7. 运行质量门禁至全绿
+8. 同步文档与 CHANGELOG（§7）
+9. 目录/api 变动 → 刷新根 README
+10. git add <仅相关文件> → commit（§00 §13 格式）
+```
+
+> AI 每次提交须能在 PR 描述中回答：「我读了哪些规范？我改了哪个域？是否触及协议/API？是否同步了文档与 CHANGELOG？」
