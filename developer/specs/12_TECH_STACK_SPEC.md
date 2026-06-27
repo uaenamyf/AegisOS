@@ -11,8 +11,8 @@
 |----|----|------------|----------|------|
 | 契约层 | `protocol/` | Python 3.11+ | Pydantic v2（目标）；现 dataclass 基线 | 迁移中（P1） |
 | 智能体域 | `agents/` | Python 3.11+ | asyncio、Pydantic | 待实现 |
-| 应用层 | `backend/` | Python 3.11+ | asyncio、Pydantic | 待实现 |
-| 表现层 | `frontend/` | TypeScript 5+ | React 18、Vite 5 | 待实现 |
+| 应用层 | `backend/` | Python 3.11+ | asyncio、Pydantic、**FastAPI**、**Uvicorn**、**SQLAlchemy** | 待实现 |
+| 表现层 | `frontend/` | TypeScript 5+ | React 18、Vite 5、**Zustand**、**Vitest**、**Playwright** | 待实现 |
 | 基础设施 | `infrastructure/` | Python 3.11+ | asyncio | 待实现 |
 | 可观测 | `observability/` | Python 3.11+ | asyncio | 待实现 |
 | 数据/工具 | `data/`·`tooling/` | Python 3.11+ | — | 待实现 |
@@ -42,6 +42,11 @@
 | `uuid` / `time` / `json` / `dataclasses` / `enum` / `typing` | 标准库 | 契约基线（现有 dataclass 实现） | `protocol/` |
 | gRPC | `grpcio` + `grpcio-tools` | 内部高性能 RPC | `aegis.protocol.v1`（Scheduler/Router/Memory/Tool Service） |
 | protobuf | 随 grpcio-tools | `.proto` 生成 | 由 `protocol/` 类型生成 |
+| **FastAPI** | **>=0.110** | REST/WebSocket/SSE Web 框架 + Pydantic 原生 + OpenAPI | `backend/gateway/`·`backend/controllers/` |
+| **Uvicorn** | **>=0.29** | ASGI server | 后端运行时 |
+| **httpx** | **>=0.27** | 异步 HTTP 客户端（测试 + 外部调用） | `tests/`·`backend/services/` |
+| **SQLAlchemy** | **>=2.0** | ORM（异步引擎） | `backend/mappers/entities/`·`repositories/` |
+| **aiosqlite** | **>=0.20** | 异步 SQLite 驱动（dev；生产可换 asyncpg/PostgreSQL） | `backend/mappers/` |
 
 > 现状：`protocol/` 用 `@dataclass` + `typing.Protocol`（v1 基线）。P1 目标：迁移到 Pydantic v2 `BaseModel`（见 `06_SCHEMA_SPEC.md` §12），保持字段名/语义/导出不变，序列化改 `model_dump`/`model_validate`。
 
@@ -54,9 +59,11 @@
 | React | **>=18** | UI 框架 | `frontend/views/` |
 | TypeScript | **>=5.0** | 类型系统 | 全前端 |
 | Vite | **>=5.0** | 构建/开发服务器 | 前端工程 |
-| 状态管理 | 轻量 store（Zustand 或自研） | 全局状态 | `frontend/mappers/store/` |
+| 状态管理 | Zustand **>=4.5** | 轻量全局状态 | `frontend/mappers/store/` |
 | 图渲染 | WebGL / Canvas | 动态图可视化 | `frontend/views/graph/`、`canvas/` |
 | 实时通信 | 原生 WebSocket + EventSource(SSE) | Agent 状态/事件流 | `frontend/services/realtime/` |
+| **Vitest** | **>=1.6** | 前端单元测试 | `tests/frontend/` |
+| **Playwright** | **>=1.40** | 前端 E2E 测试 | `tests/e2e/` |
 
 > 前端不引入重型框架（如 Next.js SSR）；纯 SPA，经 `backend.gateway` 通信。前端契约 = `backend.api` 对外接口 + `protocol` 类型（生成 TS 类型）。
 
@@ -87,6 +94,7 @@
 | 依赖管理 | `pyproject.toml`（PEP 621） | Python 依赖声明（P4 建立） |
 | 前端构建 | Vite + `tsc` | `npm run build` / `tsc --noEmit` |
 | 前端 lint | ESLint + Prettier（建议） | 前端质量门禁 |
+| **`gen_ts_types.py`** | Pydantic → TypeScript 类型生成 | `python3 tooling/scripts/gen_ts_types.py`（或 `npm run gen:types`）；CI 强制产物与提交一致 |
 
 **质量门禁（DoD，提交前必绿）**：
 ```bash

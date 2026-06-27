@@ -90,7 +90,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 02 | `02_DIRECTORY_SPEC.md` | 目录规范：每目录职责/边界/可改性 |
 | 03 | `03_IMPORT_SPEC.md` | Import 规范：依赖矩阵/禁循环（AI 最重要） |
 | 04 | `04_PROTOCOL_SPEC.md` | 通信协议：Message/Event/Task/Graph/... |
-| 05 | `05_API_SPEC.md` | API 契约：29 接口 × Request/Response/Error/Timeout/Retry/Version |
+| 05 | `05_API_SPEC.md` | API 契约：27 接口 × Request/Response/Error/Timeout/Retry/Version |
 | 06 | `06_SCHEMA_SPEC.md` | 数据 Schema（Pydantic v2，含迁移计划） |
 | 07 | `07_EVENT_SPEC.md` | 事件总线：8 事件/生命周期/可靠性/追踪 |
 | 08 | `08_AGENT_SPEC.md` | Agent Runtime：生命周期/API/Prompt/Memory/Tool/... |
@@ -98,6 +98,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 10 | `10_INTERFACE_BOUNDARY_SPEC.md` | 接口边界：并行开发核心（谁调谁/异步/网关/EventBus） |
 | 11 | `11_AI_CODING_SPEC.md` | AI 编码规范：给 AI Agent 的必读/范围/禁改/测试/冲突 |
 | 12 | `12_TECH_STACK_SPEC.md` | 技术栈：语言/运行时/框架/库/工具链/版本约束 |
+| 13 | `plans/13_FRONTEND_BACKEND_PLAN.md` | 前后端开发全流程计划（含后端↔智能体双向调用/DI 端口） |
 
 > 冲突优先级：`00_PROJECT_SPEC` > `04_PROTOCOL_SPEC` ≈ `05_API_SPEC` ≈ `06_SCHEMA_SPEC` > 其余编号规范 > `developer/` 根旧文档 > 各模块 `AGENT.md`。
 

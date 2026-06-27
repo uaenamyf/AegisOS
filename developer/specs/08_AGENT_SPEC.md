@@ -45,14 +45,14 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 | `reflect` | `reflect() -> dict` | 反思与自评 |
 | `respond` | `respond() -> dict` | 返回结构化结果 |
 
-公共 API（`agents.api`）：
-- `AgentRegistryAPI`：list/register/get
-- `PlanningAPI`：plan/route/schedule
-- `ExecutionAPI`：run
-- `PerceptionAPI`：observe
+公共 API（`agents.api`，仅暴露外部域需要调用的 5 个接口）：
+- `AgentRegistryAPI`：register/get/list_agents（**不含 invoke**，执行统一走 RuntimeAPI）
+- `RuntimeAPI`：run/stop/heartbeat（**核心入口**：后端调 run 触发执行）
 - `MemoryAPI`：read/write/retrieve
-- `RuntimeAPI`：start/stop/heartbeat/suspend/resume
-- `EventBusAPI`：publish/subscribe/unsubscribe
+- `ExecutionAPI`：execute（直接工具调用）
+- `EventBusAPI`：publish/subscribe
+
+> **规划与感知已内聚**：`PlanningAPI`（plan/route/schedule）和 `PerceptionAPI`（reason/reflect）是 agents 域内部能力，不对外暴露。后端只调 `RuntimeAPI.run(task)`，agents 域内部自行编排 plan→route→schedule→execute→reflect。
 
 ---
 

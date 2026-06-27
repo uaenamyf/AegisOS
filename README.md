@@ -62,7 +62,7 @@
 
 | 域 | api 包 | 公共接口数 | 接口 |
 |----|--------|-----------|------|
-| agents/ | `agents.api` | 7 | AgentRegistryAPI · MemoryAPI · PlanningAPI · ExecutionAPI · PerceptionAPI · EventBusAPI · RuntimeAPI |
+| agents/ | `agents.api` | 5 | AgentRegistryAPI · MemoryAPI · ExecutionAPI · EventBusAPI · RuntimeAPI |
 | backend/ | `backend.api` | 5 | SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI |
 | frontend/ | `frontend.api` | 3 | ViewAPI · InteractionAPI · ThemeAPI |
 | infrastructure/ | `infrastructure.api` | 4 | CommunicationAPI · NodeRegistryAPI · SyncAPI · DeploymentAPI |
@@ -70,7 +70,7 @@
 | data/ | `data.api` | 2 | DatasetAPI · ModelSchemaAPI |
 | tooling/ | `tooling.api` | 2 | ConfigAPI · ScriptAPI |
 
-> 共 **29** 个公共接口。接口参数/返回值一律使用 `protocol/` 契约类型。`api/` 签名变更属破坏性变更。
+> 共 **27** 个公共接口。接口参数/返回值一律使用 `protocol/` 契约类型。`api/` 签名变更属破坏性变更。
 
 ## 数据流
 ```
@@ -177,14 +177,39 @@ developer/
     P5/
     P6/
     P7/
+  specs/
+    plans/
 docs/
   examples/
 frontend/
   api/
   controllers/
+    events/
+    interaction/
+    routes/
   mappers/
+    apimappers/
+    components/
+    store/
+    styles/
+    utils/
+    viewmodels/
+  public/
   services/
+    api/
+    graph/
+    realtime/
+    session/
+  src/
+    protocol/
   views/
+    agents/
+    canvas/
+    dashboard/
+    graph/
+    layout/
+    monitor/
+    replay/
 infrastructure/
   api/
   delivery/
@@ -212,16 +237,16 @@ tooling/
   scripts/
 ```
 
-## 仓库统计（自动生成，2026-06-26）
+## 仓库统计（自动生成，2026-06-27）
 | 指标 | 数量 |
 |------|------|
 | 顶层域 | 11 |
-| 总目录 | 98 |
-| 总文件 | 139 |
+| 总目录 | 123 |
+| 总文件 | 156 |
 | AGENT.md | 78 |
-| Python 文件 | 18 |
-| Markdown 文件 | 121 |
-| 公共 API 接口 | 29 |
+| Python 文件 | 19 |
+| Markdown 文件 | 136 |
+| 公共 API 接口 | 27 |
 | protocol 契约类型 | 26 |
 
 ## 关键文档

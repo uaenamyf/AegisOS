@@ -86,7 +86,7 @@
 | 契约层 | `protocol/` | 唯一数据契约（26 类型） | 本身即全局契约 |
 | 表现层 | `frontend/` | Controller-Service-Mapper + Views | `frontend/api/`（3 接口） |
 | 应用层 | `backend/` | Controller-Service-Mapper + Gateway | `backend/api/`（5 接口） |
-| 智能体域 | `agents/` | 认知架构五层：感知-规划-行动-记忆-工具 | `agents/api/`（7 接口） |
+| 智能体域 | `agents/` | 认知架构五层：感知-规划-行动-记忆-工具 | `agents/api/`（5 接口；规划/感知内聚不暴露） |
 | 基础设施层 | `infrastructure/` | 传输-节点-交付 | `infrastructure/api/`（4 接口） |
 | 可观测层 | `observability/` | 观测-度量-呈现 | `observability/api/`（6 接口） |
 | 数据层 | `data/` | 数据集 + 模型 | `data/api/`（2 接口） |
@@ -94,7 +94,7 @@
 | 文档资产层 | `docs/` | 文档与示例 | — |
 | 测试层 | `tests/` | 单元/集成/E2E/基准 | — |
 
-> 共 **11 个顶层域**，**29 个公共 API 接口**（见 `05_API_SPEC.md`）。
+> 共 **11 个顶层域**，**27 个公共 API 接口**（见 `05_API_SPEC.md`）。
 
 ---
 
@@ -128,7 +128,7 @@ P1 Contract       （契约：protocol/ 26 类型可序列化往返）
    ↓
 P2 Protocol       （协议：Message 信封 + Event + 动态路由协议）
    ↓
-P3 API            （接口：29 个 api/ Protocol 接口签名冻结）
+P3 API            （接口：27 个 api/ Protocol 接口签名冻结）
    ↓
 P4 Skeleton       （骨架：各域空实现 + DI 注入 + 配置 + Makefile）
    ↓
@@ -287,5 +287,6 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 | 10 | `10_INTERFACE_BOUNDARY_SPEC.md` | 接口边界规范（并行开发核心） |
 | 11 | `11_AI_CODING_SPEC.md` | AI 编码规范（给 AI Agent；含 `@aegis-gen` 代码注释头） |
 | 12 | `12_TECH_STACK_SPEC.md` | 技术栈规范（语言/运行时/框架/库/工具链/版本约束） |
+| 13 | `plans/13_FRONTEND_BACKEND_PLAN.md` | 前后端开发全流程计划（含后端↔智能体双向调用架构） |
 
 > 规范冲突时的优先级：`00_PROJECT_SPEC` > `04_PROTOCOL_SPEC` ≈ `05_API_SPEC` ≈ `06_SCHEMA_SPEC` > 其余编号规范 > `developer/` 根旧文档 > 各模块 `AGENT.md`。

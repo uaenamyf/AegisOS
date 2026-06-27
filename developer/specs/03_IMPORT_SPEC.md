@@ -82,6 +82,7 @@ from {domain}.api import XxxAPI   # ✅ 只导入 Protocol 接口
 - **禁止**：`from {domain}.internal_pkg import something`。
 - 实现由各域内部通过 DI 注入到接口；调用方只持有接口，便于 mock。
 - `api/` 签名变更 = 破坏性变更（major bump + CHANGELOG + 通知依赖方）。
+- **DI 端口（DIP 例外，不算逆向）**：`agents/api/ports.py` 定义的反向端口（`PersistencePort`/`SessionPort`/`TaskUpdatePort`）由 agents 域消费（`from agents.api.ports import ...`，同域 ✅），由 backend 实现（`from agents.api.ports import PersistencePort`，正向 ✅）。这是依赖反转（DIP），**不构成** `agents → backend` 逆向依赖。组合根 `backend/composition.py` 负责注入。详见 `plans/13_FRONTEND_BACKEND_PLAN.md` §3.2、`10_INTERFACE_BOUNDARY_SPEC.md` §5。
 
 ---
 
@@ -115,7 +116,7 @@ from {domain}.api import XxxAPI   # ✅ 只导入 Protocol 接口
 ```python
 # ✅ 跨域绝对
 from protocol import Message, Task, Plan
-from agents.api import MemoryAPI, PlanningAPI
+from agents.api import MemoryAPI, RuntimeAPI
 
 # ✅ 域内绝对
 from agents.memory.retrieval import Retriever

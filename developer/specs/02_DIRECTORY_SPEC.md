@@ -108,7 +108,7 @@
 | 职责 | 认知架构五层：感知-规划-行动-记忆-工具 |
 | 输入 | Task/Plan、`protocol` 类型、`infrastructure.api`/`data.api` |
 | 输出 | 执行结果、Event、MemoryPacket、GraphUpdate、Route、Schedule |
-| API | `agents/api/`：AgentRegistryAPI · MemoryAPI · PlanningAPI · ExecutionAPI · PerceptionAPI · EventBusAPI · RuntimeAPI |
+| API | `agents/api/`：AgentRegistryAPI · RuntimeAPI · MemoryAPI · ExecutionAPI · EventBusAPI（规划/感知内聚不暴露） |
 | 被引用 | 仅 `agents/api/` |
 | 跨域调用 | 调 `protocol`/`infrastructure.api`/`data.api` |
 | 谁可改 | Agent 团队 / Agent AI |

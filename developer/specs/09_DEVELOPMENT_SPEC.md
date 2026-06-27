@@ -15,7 +15,7 @@ P1 Contract       （契约：protocol/ 类型可序列化往返）
    ↓
 P2 Protocol       （协议：Message 信封 + Event + 动态路由）
    ↓
-P3 API            （接口：29 个 api/ Protocol 签名冻结）
+P3 API            （接口：27 个 api/ Protocol 签名冻结）
    ↓
 P4 Skeleton       （骨架：各域空实现 + DI 注入 + 配置 + Makefile）
    ↓
