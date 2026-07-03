@@ -20,6 +20,7 @@ class GraphNode:
     trust_score: float = 1.0
     success_rate: float = 1.0
     latency: float = 0.0
+    status: str = "active"   # active | idle | degraded
 
 
 @dataclass
