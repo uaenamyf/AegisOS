@@ -59,5 +59,5 @@ async def invoke_agent(
             status_code=404,
             detail={"code": "AGENT_NOT_FOUND", "message": f"agent {agent_id} not found"},
         )
-    result = await service.invoke(agent_id, body.goal)
+    result = await service.invoke(agent_id, body.goal, body.session_id)
     return {"agent_id": agent_id, "result": result}

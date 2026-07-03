@@ -47,7 +47,7 @@ export class SseManager {
   }
 
   private open(): void {
-    const url = `${sseUrl()}?stream=${encodeURIComponent(this.stream)}`;
+    const url = `${sseUrl()}?stream=${encodeURIComponent(this.stream)}&api_key=aegis-dev-key`;
     this.setStatus("connecting");
     const source = new EventSource(url);
     this.source = source;

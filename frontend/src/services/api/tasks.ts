@@ -23,7 +23,7 @@ export const taskApi = {
     apiClient.post<Task>("/tasks", body),
 
   list: (sessionId?: string): Promise<Task[]> => {
-    const qs = sessionId ? `?session=${encodeURIComponent(sessionId)}` : "";
+    const qs = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
     return apiClient
       .get<ListTasksResponse>(`/tasks${qs}`)
       .then((r) => r.tasks ?? []);

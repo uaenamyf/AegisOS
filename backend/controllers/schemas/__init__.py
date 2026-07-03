@@ -20,6 +20,7 @@ class CreateTaskRequest(BaseModel):
 
 class InvokeAgentRequest(BaseModel):
     goal: str = Field("", description="Goal to hand to the agent")
+    session_id: str = Field("", description="Owning session id for context")
     payload: dict[str, Any] = Field(default_factory=dict, description="Extra invocation payload")
 
 

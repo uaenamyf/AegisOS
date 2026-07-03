@@ -8,11 +8,11 @@ import type { MemoryPacket } from "@/protocol/types";
 
 export const memoryApi = {
   read: (session: string): Promise<MemoryPacket> =>
-    apiClient.get<MemoryPacket>(`/agents/memory/${encodeURIComponent(session)}`),
+    apiClient.get<MemoryPacket>(`/memory/${encodeURIComponent(session)}`),
 
   write: (session: string, packet: MemoryPacket): Promise<MemoryPacket> =>
     apiClient.post<MemoryPacket>(
-      `/agents/memory/${encodeURIComponent(session)}`,
+      `/memory/${encodeURIComponent(session)}`,
       packet,
     ),
 };

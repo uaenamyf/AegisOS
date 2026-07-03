@@ -11,15 +11,15 @@ import { apiClient } from "@/mappers/apimappers/client";
 import type { Session } from "@/protocol/frontend-types";
 
 export interface CreateSessionRequest {
-  trace_id?: string;
+  user_id: string;
 }
 
 export const sessionApi = {
-  create: (body: CreateSessionRequest = {}): Promise<Session> =>
+  create: (body: CreateSessionRequest = { user_id: "anonymous" }): Promise<Session> =>
     apiClient.post<Session>("/sessions", body),
 
   get: (id: string): Promise<Session> => apiClient.get<Session>(`/sessions/${id}`),
 
   close: (id: string): Promise<void> =>
-    apiClient.post<void>(`/sessions/${id}/close`),
+    apiClient.del<void>(`/sessions/${id}`),
 };

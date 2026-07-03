@@ -26,6 +26,6 @@ class AgentService:
         except KeyError:
             return None
 
-    async def invoke(self, agent_id: str, goal: str) -> Any:
+    async def invoke(self, agent_id: str, goal: str, session_id: str = "") -> Any:
         task = Task(goal=goal)
         return self._runtime.run(agent_id, task)

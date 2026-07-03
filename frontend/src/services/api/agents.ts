@@ -13,6 +13,7 @@ import type { Agent, ToolResult } from "@/protocol/types";
 export interface InvokeAgentRequest {
   goal: string;
   session_id: string;
+  payload?: Record<string, unknown>;
 }
 
 export interface InvokeAgentResponse {

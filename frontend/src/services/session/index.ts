@@ -15,8 +15,8 @@ import type { Session } from "@/protocol/frontend-types";
 import type { Task } from "@/protocol/types";
 
 export const sessionService = {
-  async createSession(traceId?: string): Promise<Session> {
-    const session = await sessionApi.create({ trace_id: traceId });
+  async createSession(userId: string = "anonymous"): Promise<Session> {
+    const session = await sessionApi.create({ user_id: userId });
     useAppStore.getState().setSession(session);
     try {
       localStorage.setItem("aegis.session_id", session.id);
