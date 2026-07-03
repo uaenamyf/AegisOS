@@ -60,3 +60,9 @@
 - `frontend/views/graph/` 动态图可视化（大规模图渲染）
 - `frontend/views/monitor/` Agent 状态监控（实时面板）
 - `frontend/views/replay/` 回放时间线（确定性回放）
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/05_API_SPEC.md + 12_TECH_STACK_SPEC.md
+- **API 边界**：frontend/api/ — from frontend.api import ...
+- **数据契约**：protocol/ 类型（经 gen_ts_types 生成 frontend/src/protocol/types.ts）
+- **相关计划**：developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（G 攻防视图）

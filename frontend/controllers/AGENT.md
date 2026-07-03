@@ -50,3 +50,9 @@
 - 控制器不写业务逻辑，只做交互/事件处理 + 调 service + 分发到 views。
 - 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
 - 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/05_API_SPEC.md + 12_TECH_STACK_SPEC.md
+- **API 边界**：frontend/api/ — from frontend.api import ...
+- **数据契约**：protocol/ 类型（经 gen_ts_types 生成 frontend/src/protocol/types.ts）
+- **相关计划**：developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（G 攻防视图）

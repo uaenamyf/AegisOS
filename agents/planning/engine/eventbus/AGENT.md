@@ -44,3 +44,9 @@ publish(event)/subscribe(topic)；详见 developer/specs/07_EVENT_SPEC.md。
 - 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
 - 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
+- **API 边界**：agents/api/ — from agents.api import ...
+- **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
+- **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

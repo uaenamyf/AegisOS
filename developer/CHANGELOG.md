@@ -108,3 +108,26 @@
 - **仓库卫生**：扩充根 `.gitignore`（`__pycache__`/`*.pyc`/`.venv`/`*.db`/`.DS_Store`/各 cache/frontend 构建产物）；`git rm --cached` 取消跟踪 `.DS_Store`、`data/aegisos.db`、`.venv/`（**7532 文件，macOS venv 误提交**）、`aegisos.egg-info/`。tracked 文件 7861→329。
 - 所有 AI 改动加 `@aegis-gen` 注释头（§10）。
 - **未执行**：Python 侧质量门禁（ruff/mypy）与 `gen_readme.py`/`gen_ts_types.py` 实际运行——本机无 Python 解释器（仓库原在 macOS 开发，`.venv` 为 macOS 专用；Windows 仅有 node）。realign 经等价 perl 完成（结果已校验：0 残留）；README/types 经手动同步；frontend 经 `tsc`+`build` 验证。待 Python 环境就绪后运行 `python3 tooling/scripts/gen_readme.py` 与 `npm run gen:types` 可刷新自动生成段（`types.ts` 中现已无引用的前端类型导出会在下次 `gen:types` 时自动清除）。
+
+## [P0] 2026-07-03 赛事作品方案固化（XH-202631 荣耀·超长程群体智能）
+
+> 赛事作品「面向超长程网络攻击防御的动态异构群体智能协同推理引擎」以 AegisOS 为底座。本步固化总体方案与可执行任务清单（Spec First）。
+
+- 新增 `developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md`：定位与赛事对齐（5 能力维度 / 评分完整性40+应用创新25+技术创新20+性能15 / 截止 2026-09-15）、复用 8 域分层架构、红蓝紫 Agent 角色清单（recon/vuln_correlator/exploit_planner/lateral_move · detector/triage/threat_hunt/ir_planner/forensics · planner/orchestrator/router/critic/reviewer）、攻防协议类型设计（`protocol/cyber.py`：Asset/AttackStep/AttackChain/Alert/DefenseAction/ResponsePlan/ThreatIntel）、动态异构拓扑 + 低熵稀疏路由伪代码（Top-K 非全广播 + 异构选举）、超长程记忆压缩/唤醒伪代码（12 子模块映射 ATT&CK/CVE/向量/情景）、神经-符号协同推理闭环、端边云调度策略、后端/前端/基建扩展、生产级技术栈表、3 场景演示脚本（防御/软工/投研）、roadmap P0-P7 对齐、评分对齐表、风险与里程碑验收。
+- 新增 `developer/specs/plans/15_CYBERDEFENSE_TASKS.md`：writing-plans 格式实施任务清单，按 Phase A-H（对应 P1-P7 + 攻防基建）拆解；核心算法任务（B 记忆压缩、C 拓扑/路由）含完整 TDD 测试 + 实现代码；其余任务含确切文件路径 + 接口契约 + 验收命令；含 Self-Review 与 Execution Handoff。
+- `developer/specs/README.md` 索引追加 14、15。
+- `developer/roadmap/README.md` 追加「赛事作品对齐」段（各阶段→攻防扩展映射 + 截止）。
+- 决策记录：场景=攻防对抗仿真靶场；LLM=云+端混合多模型兼容层；技术栈=升级为生产级；演示=3 场景跨领域。
+- 约束：攻防工具仅 Docker 沙箱靶场内运行、永不触真实网络；router 禁低熵全广播；AI 代码须 `@aegis-gen` 头。
+- **下一步**：按 Phase A→B→C 顺序执行（契约 + 核心算法优先），可选 subagent-driven-development 并行推进。
+
+## [P0] 2026-07-03 AGENT.md 交叉引用改造 + CLAUDE.md 工程总览
+
+> 对齐用户需求：全仓 AGENT.md 复核（职责边界 + 交叉引用，让 agent 快速定位去哪里）+ 生成 `.claude/CLAUDE.md`（渐进式披露工程总览）。
+
+- **根 `AGENT.md`**：规范表补 `plans/14`、`plans/15` 行；「00–12」→「00–15」（2 处 + 表格），与 `specs/README.md` 索引一致。
+- **77 个模块 AGENT.md**：新增 `tooling/scripts/add_agent_crossrefs.pl`（带 `@aegis-gen` 头，UTF-8 安全，幂等：已存在则跳过），为每个模块 AGENT.md 追加标准化 `## 交叉引用（去哪里找）` 段——本模块规范（域派生 + 子路径微调：router/topology 补 `04 §16` 低熵、action/execution 补 `11` 沙箱、memory 补 `B1-B3` 压缩/唤醒）、API 边界（有 api/ 的 7 域）、数据契约、相关计划（backend/frontend→13+15；agents/protocol/infra/observability/data/tooling→14+15）。域根插入在「下辖子模块」前，叶模块追加末尾。验收：77/77 覆盖（grep 校验）、抽查 router/backend/protocol UTF-8 与插入位置正确。
+- **单一职责**：经跨域抽样（根/agents/protocol/backend/agents/memory + router/frontend-views 等 8 份）核验，各 AGENT.md 仅描述本模块事务、无越界；脚本仅追加未删改原文。
+- **`.claude/CLAUDE.md`**：渐进式披露工程总览——L0 30 秒上手（定位+铁律+在哪找）、L1 项目与 8 域分层+工作流+铁律、L2 模块地图（域→职责→规范→计划→api）、L3 深指针（specs 00–15 索引、roadmap P0–P7、22 skills 分组、plans 13–15）+ 本机环境约束（无 Python / protocol dataclass 现状）。
+- **注意**：`.claude/` 已被 `.gitignore`（第 2 行）→ `.claude/CLAUDE.md` 不提交、不自动加载；根 `CLAUDE.md` 未被忽略且为 Claude Code 默认自动加载位置——是否复制到根待用户确认。
+- **子代理说明**：原计划 7 组并行子代理审计，但本 token 对子代理执行模型 `deepseek-v4-flash` 无访问权（403，model 覆盖无效），子代理整条路不通；改用 perl 脚本一次性完成，结果已校验。

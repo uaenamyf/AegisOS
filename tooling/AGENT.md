@@ -46,6 +46,12 @@
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
 - 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
 
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/09_DEVELOPMENT_SPEC.md
+- **API 边界**：tooling/api/ — from tooling.api import ...
+- **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（靶场编排/评测脚本）
+
 ## 下辖子模块
 - **tooling/api/** 公共接口层：其他模块通过 `from tooling.api import ...` 调用本域能力，不直接访问内部子包，实现解耦。
 - `tooling/configs/` 配置：环境覆盖、模块配置、Agent/模型/Prompt 配置（单一配置源）

@@ -50,3 +50,9 @@ DatasetAPI(加载/列出/预处理) · ModelSchemaAPI(注册/校验/获取/迁�
 - 接口签名变更属于**破坏性变更**，需在 `developer/CHANGELOG.md` 标注并通知所有依赖方。
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md`。
 - 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/06_SCHEMA_SPEC.md
+- **API 边界**：data/api/ — from data.api import ...
+- **数据契约**：protocol/memory.py（MemoryPacket）/ protocol/graph.py
+- **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（H2 Neo4j/Qdrant）

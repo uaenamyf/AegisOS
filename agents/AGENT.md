@@ -63,6 +63,13 @@ register/invoke(agent) -> Result；详见各子模块 AGENT.md。
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
 - 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
 
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
+- **API 边界**：agents/api/ — from agents.api import ...
+- **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
+- **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
+
 ## 下辖子模块（按感知-规划-行动-记忆-工具分类 + 公共 API）
 - **agents/api/** 公共接口层：其他模块通过 `from agents.api import ...` 调用本域能力，不直接访问内部子包，实现解耦。
 - **感知 agents/perception/**：`context/`（上下文管理）、`reasoning/`（推理）、`reflection/`（反思评估）

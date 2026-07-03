@@ -57,3 +57,9 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 - `tool()` 调用工具执行
 - `reflect()` 反思与自评
 - `respond()` 返回结构化结果
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
+- **API 边界**：agents/api/ — from agents.api import ...
+- **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
+- **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

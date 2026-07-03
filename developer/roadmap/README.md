@@ -48,4 +48,20 @@ P0 项目初始化
 - [ ] P6 Frontend 实现
 - [ ] P7 Deployment 实现
 
+## 赛事作品对齐（XH-202631 荣耀·超长程群体智能）
+
+> 赛事作品以 AegisOS 为底座，落地「面向超长程网络攻击防御的动态异构群体智能协同推理引擎」。总体方案见 `developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md`，可执行任务清单见 `plans/15_CYBERDEFENSE_TASKS.md`。各阶段映射：
+
+| roadmap | 赛事作品扩展 |
+|---------|------------|
+| P1 Protocol | 新增 `protocol/cyber.py` 攻防类型（Asset/AttackChain/Alert/DefenseAction/...） |
+| P2 Memory | 12 子模块 + 超长程压缩/唤醒（ATT&CK/CVE/向量/情景） |
+| P3 Router | 低熵稀疏路由（Top-K，非全广播）+ 动态异构选举 |
+| P4 Scheduler | 调度 + 端边云卸载（云大模型/端小模型） |
+| P5 Planner+Agents | 红蓝紫 Agent 角色 + 神经-符号协同推理闭环 |
+| P6 Frontend | 5 视图（攻击链 DAG/防御看板/时序回放）+ 后端攻防端点 |
+| P7 Deployment | Docker 沙箱靶场 + Neo4j/Qdrant + 3 场景演示 + 5 维度评测 |
+
+- 截止：2026-09-15 提交；增量交付，每阶段可演示；优先跑通场景 1（网络防御）。
+
 > 维护规则：每完成一阶段在 `developer/CHANGELOG.md` 记录，并勾选此处。

@@ -49,3 +49,10 @@ SessionAPI(创建/查询/关闭会话) · TaskAPI(创建/查询/取消任务) ·
 - 接口签名变更属于**破坏性变更**，需在 `developer/CHANGELOG.md` 标注并通知所有依赖方。
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md`。
 - 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/05_API_SPEC.md + 10_INTERFACE_BOUNDARY_SPEC.md
+- **下游·本模块调谁**：agents/api（RuntimeAPI 编排）+ DI 端口（plans/13 §3）
+- **API 边界**：backend/api/ — from backend.api import ...
+- **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
+- **相关计划**：developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（F 攻防端点）

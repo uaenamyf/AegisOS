@@ -52,6 +52,13 @@ plan(goal) -> Plan(DAG)；route(task) -> Route；schedule(task) -> execution。
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
 - 修改前确认本分类在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
 
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
+- **API 边界**：agents/api/ — from agents.api import ...
+- **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
+- **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
+
 ## 下辖子模块
 - agents/planning/planner/ — 规划角色 Agent：将目标分解为 DAG 计划
 - agents/planning/orchestrator/ — 编排角色 Agent：协调多 Agent 协作流程

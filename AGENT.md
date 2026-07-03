@@ -2,7 +2,7 @@
 
 > 这是整个 AegisOS 仓库的**最高开发规范**。任何 Agent（人或 AI）在开发本仓库前，**第一步必须阅读本文件**，再按需阅读 `developer/specs/` 下相应编号规范，而不是扫描整个项目。
 >
-> **规范真相源**：`developer/specs/`（编号规范 `00`–`12`）是本项目唯一权威规范。`developer/` 根下旧版散落文档（`API_SPEC.md`/`MESSAGE_PROTOCOL.md`/`EVENT_SPEC.md`/`ARCHITECTURE.md`/`CODING_RULES.md`/`DIRECTORY_GUIDE.md` 等）已删除，统一以 `developer/specs/` 为准。
+> **规范真相源**：`developer/specs/`（编号规范 `00`–`15`）是本项目唯一权威规范。`developer/` 根下旧版散落文档（`API_SPEC.md`/`MESSAGE_PROTOCOL.md`/`EVENT_SPEC.md`/`ARCHITECTURE.md`/`CODING_RULES.md`/`DIRECTORY_GUIDE.md` 等）已删除，统一以 `developer/specs/` 为准。
 
 ## 项目定位
 AegisOS 是面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」的 **Agent Operating System (AOS) + AI Native IDE**，方向为**面向超长程网络攻击防御的动态异构群体智能协同推理引擎**, 不仅包含 Agent，而是让整个项目可由 Agent 自主开发。核心特性：动态异构群体智能、长期记忆、低熵通信、端边云协同、可运行系统。
@@ -28,7 +28,7 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 **铁律**：P0 规范（`developer/specs/`）未完成前，任何人/AI 不得编写业务代码。开发遵循 `Specification → Contract → API → Implementation → Test → Document`。
 
 ## 仓库分层（同域聚合 + 域内分类，目录导航详见 developer/specs/02_DIRECTORY_SPEC.md）
-1. **developer/** — 规范层（项目大脑）。含 `developer/specs/`（编号规范 SSOT，`00`–`12`）+ `developer/roadmap/`（P0..P7）。
+1. **developer/** — 规范层（项目大脑）。含 `developer/specs/`（编号规范 SSOT，`00`–`15`）+ `developer/roadmap/`（P0..P7）。
 2. **protocol/** — 契约层，唯一数据契约。
 3. **frontend/** — 表现层。Controller-Service-Mapper + Views：`controllers/`(交互/事件) · `services/`(API/实时/状态) · `mappers/`(数据转换/全局状态/共享) · `views/`(canvas·graph·monitor·replay)。
 4. **backend/** — 应用层。Controller-Service-Mapper + Gateway：`gateway/`(入口) · `controllers/`(控制器) · `services/`(业务逻辑) · `mappers/`(数据转换/持久化)。
@@ -99,6 +99,8 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 11 | `11_AI_CODING_SPEC.md` | AI 编码规范：给 AI Agent 的必读/范围/禁改/测试/冲突 |
 | 12 | `12_TECH_STACK_SPEC.md` | 技术栈：语言/运行时/框架/库/工具链/版本约束 |
 | 13 | `plans/13_FRONTEND_BACKEND_PLAN.md` | 前后端开发全流程计划（含后端↔智能体双向调用/DI 端口） |
+| 14 | `plans/14_CYBERDEFENSE_SOLUTION_PLAN.md` | 赛事作品总体方案（超长程攻防/动态异构拓扑/低熵路由/记忆压缩/端边云/3 场景） |
+| 15 | `plans/15_CYBERDEFENSE_TASKS.md` | 赛事作品实施任务清单（P1-P7 增量交付，含核心算法 TDD） |
 
 > 冲突优先级：`00_PROJECT_SPEC` > `04_PROTOCOL_SPEC` ≈ `05_API_SPEC` ≈ `06_SCHEMA_SPEC` > 其余编号规范 > 各模块 `AGENT.md`。
 

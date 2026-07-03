@@ -46,6 +46,10 @@ read(spec) -> Guideline；所有 Agent 开发前第一步读取本目录。
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
 - 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
 
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/09_DEVELOPMENT_SPEC.md（本目录即 SSOT）
+
 ## 下辖子模块
 - `developer/specs/` 编号规范 SSOT（`00`–`13`）
 - `developer/roadmap/` 系统级开发计划：`README.md`（总览）+ `P0..P7/`（各阶段目标/输入/输出/接口/测试/风险/完成标准）

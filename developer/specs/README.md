@@ -25,6 +25,8 @@
 | 11 | [11_AI_CODING_SPEC.md](11_AI_CODING_SPEC.md) | AI 编码规范（给 AI Agent：必读/范围/禁改协议 API/测试/冲突/**代码注释头 @aegis-gen**） | AI Coding Agent |
 | 12 | [12_TECH_STACK_SPEC.md](12_TECH_STACK_SPEC.md) | 技术栈规范（语言/运行时/框架/库/工具链/版本约束） | 全员 |
 | 13 | [plans/13_FRONTEND_BACKEND_PLAN.md](plans/13_FRONTEND_BACKEND_PLAN.md) | 前后端开发全流程计划（含后端↔智能体双向调用/DI 端口/FastAPI） | 前后端 + Agent |
+| 14 | [plans/14_CYBERDEFENSE_SOLUTION_PLAN.md](plans/14_CYBERDEFENSE_SOLUTION_PLAN.md) | 赛事作品总体方案（超长程攻防/动态异构拓扑/低熵路由/记忆压缩唤醒/端边云/3 场景） | 全员 + 赛事 |
+| 15 | [plans/15_CYBERDEFENSE_TASKS.md](plans/15_CYBERDEFENSE_TASKS.md) | 赛事作品实施任务清单（P1-P7 增量交付，含核心算法 TDD） | 执行方 |
 
 ## 开发阶段（P0..P7）
 

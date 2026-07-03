@@ -65,6 +65,13 @@ REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
   -> frontend/views/（UI 渲染：canvas/graph/monitor/replay）
 ```
 
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/05_API_SPEC.md + 12_TECH_STACK_SPEC.md
+- **API 边界**：frontend/api/ — from frontend.api import ...
+- **数据契约**：protocol/ 类型（经 gen_ts_types 生成 frontend/src/protocol/types.ts）
+- **相关计划**：developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（G 攻防视图）
+
 ## 下辖子模块
 - **frontend/api/** 公共接口层：其他模块通过 `from frontend.api import ...` 调用本域能力（视图渲染、交互钩子、主题），不直接访问内部子包，实现解耦。
 - **frontend/controllers/** — 控制器：接收用户交互与后端推送事件，参数校验，调用 service，分发到 views。不含业务逻辑。

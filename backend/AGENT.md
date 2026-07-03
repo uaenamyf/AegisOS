@@ -69,6 +69,13 @@ REST/WebSocket/SSE；统一经 backend/gateway/ 入口；详见 developer/specs/
   -> agents/（智能体域）/ protocol/（契约）
 ```
 
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/05_API_SPEC.md + 10_INTERFACE_BOUNDARY_SPEC.md
+- **API 边界**：backend/api/ — from backend.api import ...
+- **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
+- **相关计划**：developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（F 攻防端点）
+
 ## 下辖子模块
 - **backend/api/** 公共接口层：其他模块通过 `from backend.api import ...` 调用本域能力，不直接访问内部子包，实现解耦。
 - **backend/controllers/** — 控制器：接收 HTTP/WS/SSE 请求，参数校验，调用 service，封装响应。不含业务逻辑。

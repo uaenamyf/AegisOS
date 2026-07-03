@@ -50,6 +50,13 @@
 - 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
 - 修改前确认本分类在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
 
+
+## 交叉引用（去哪里找）
+- **本模块规范**：developer/specs/01_ARCHITECTURE_SPEC.md + 12_TECH_STACK_SPEC.md
+- **API 边界**：infrastructure/api/ — from infrastructure.api import ...
+- **数据契约**：protocol/message.py / protocol/sync.py
+- **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（H1 沙箱靶场/端边云）
+
 ## 下辖子模块
 - infrastructure/nodes/edge/ — 端侧节点（本地推理、资源受限调度、断连续传）
 - infrastructure/nodes/cloud/ — 云侧节点（全局编排、模型服务、注册发现）
