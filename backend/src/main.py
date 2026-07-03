@@ -1,4 +1,4 @@
-﻿# @aegis-gen
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建 FastAPI 应用入口——CORS/Trace 中间件/网关路由/WS/统一错误格式/lifespan DB 初始化

@@ -107,12 +107,12 @@
 - 赛事执行推荐：`subagent-driven-development`（按 Phase 派发）+ `writing-plans`（已用于 `plans/15`）。
 
 ### 计划（`developer/specs/plans/`）
-`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。执行顺序 **A→B→C 优先**（protocol 契约 + 记忆压缩 + 拓扑/路由核心算法）。
+`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E 已完成（55 测试通过）；下一步：B3 runtime 集成 + 编排器 + E13 e2e + F/G 攻防端点视图。
 
 ---
 
 ## 本机环境约束
-- **无 Python**：此 Windows 仅有 node + perl；`.venv/` 为 macOS 专用（误提交已 `git rm --cached` 取消跟踪）。Python 域代码须在类 Unix/容器内开发；本机可跑 `node`/`tsc`/`vite build` 验证前端。详见 memory `aegisos-windows-no-python`。
+- **Python 环境**：macOS 上有 `.venv/`（Python 3.12.13 + greenlet 3.5.3），可运行 `pytest`/`ruff`/`mypy`/`uvicorn` 全链路。Windows 环境仅有 node + perl（Python 域代码须在 macOS/容器内开发）。详见 memory `aegisos-windows-no-python`。
 - **赛事**：XH-202631，截止 2026-09-15；详见 memory `aegisos-cyberdefense-competition` 与 `plans/14` · `15`。
 - **protocol 现状**：`protocol/*.py` 为 `@dataclass`（非 Pydantic，`06 §12` 列迁移待办）；id 字段约定 `*_id`；`Graph.nodes` 为 dict；`NodeKind.Agent` 驼峰。
 

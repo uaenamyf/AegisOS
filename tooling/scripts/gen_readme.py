@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # @aegis-gen
 # date: 2026-07-03
 # dev: Claude Code (glm-5.2)
@@ -9,6 +8,7 @@
 Run:  python3 tooling/scripts/gen_readme.py
 Re-run whenever the structure changes to keep README.md in sync.
 """
+
 from __future__ import annotations
 
 import os
@@ -18,9 +18,18 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 # Directories that must never be counted as project content (venv, local tooling,
 # caches, build artifacts). Applied to every walk below so stats stay truthful.
-_EXCLUDE_DIRS = (".git", ".venv", "venv", ".claude", "node_modules",
-                 "__pycache__", "aegisos.egg-info", ".ruff_cache",
-                 ".mypy_cache", ".pytest_cache")
+_EXCLUDE_DIRS = (
+    ".git",
+    ".venv",
+    "venv",
+    ".claude",
+    "node_modules",
+    "__pycache__",
+    "aegisos.egg-info",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".pytest_cache",
+)
 
 
 def _excluded(dp: str) -> bool:
@@ -83,6 +92,7 @@ def api_summary() -> list[tuple[str, str, list[str]]]:
                 block = src[bracket:end]
                 # extract all quoted tokens containing API
                 import re
+
                 names = [
                     m.strip('"').strip("'")
                     for m in re.findall(r'["\']([\w]+)["\']', block)
@@ -95,20 +105,27 @@ def api_summary() -> list[tuple[str, str, list[str]]]:
 def tree_block() -> str:
     lines = ["```"]
     top = sorted(
-        d for d in os.listdir(ROOT)
+        d
+        for d in os.listdir(ROOT)
         if os.path.isdir(os.path.join(ROOT, d)) and not d.startswith(".")
     )
     for d in top:
         lines.append(f"{d}/")
         sub = sorted(
-            s for s in os.listdir(os.path.join(ROOT, d))
-            if os.path.isdir(os.path.join(ROOT, d, s)) and not s.startswith(".") and s != "__pycache__"
+            s
+            for s in os.listdir(os.path.join(ROOT, d))
+            if os.path.isdir(os.path.join(ROOT, d, s))
+            and not s.startswith(".")
+            and s != "__pycache__"
         )
         for s in sub:
             lines.append(f"  {s}/")
             ssub = sorted(
-                x for x in os.listdir(os.path.join(ROOT, d, s))
-                if os.path.isdir(os.path.join(ROOT, d, s, x)) and not x.startswith(".") and x != "__pycache__"
+                x
+                for x in os.listdir(os.path.join(ROOT, d, s))
+                if os.path.isdir(os.path.join(ROOT, d, s, x))
+                and not x.startswith(".")
+                and x != "__pycache__"
             )
             for x in ssub:
                 lines.append(f"    {x}/")
@@ -119,14 +136,10 @@ def tree_block() -> str:
 def main() -> None:
     agent_md = count(".", "AGENT.md")
     py_files = sum(
-        1 for dp, _, fs in os.walk(ROOT)
-        if not _excluded(dp)
-        for f in fs if f.endswith(".py")
+        1 for dp, _, fs in os.walk(ROOT) if not _excluded(dp) for f in fs if f.endswith(".py")
     )
     md_files = sum(
-        1 for dp, _, fs in os.walk(ROOT)
-        if not _excluded(dp)
-        for f in fs if f.endswith(".md")
+        1 for dp, _, fs in os.walk(ROOT) if not _excluded(dp) for f in fs if f.endswith(".md")
     )
     total_dirs = sum(1 for dp, _, _ in os.walk(ROOT) if not _excluded(dp)) - 1
     total_files = sum(len(fs) for dp, _, fs in os.walk(ROOT) if not _excluded(dp))
@@ -254,7 +267,7 @@ make deploy ENV=dev
 ## 仓库统计（自动生成，{date.today()}）
 | 指标 | 数量 |
 |------|------|
-| 顶层域 | {len([d for d in os.listdir(ROOT) if os.path.isdir(os.path.join(ROOT,d)) and not d.startswith('.') and d not in _EXCLUDE_DIRS])} |
+| 顶层域 | {len([d for d in os.listdir(ROOT) if os.path.isdir(os.path.join(ROOT, d)) and not d.startswith(".") and d not in _EXCLUDE_DIRS])} |
 | 总目录 | {total_dirs} |
 | 总文件 | {total_files} |
 | AGENT.md | {agent_md} |

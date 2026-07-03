@@ -3,6 +3,7 @@
 Other modules import from `observability.api` only — never from internal
 inspect/measure/present. This achieves decoupling.
 """
+
 from __future__ import annotations
 
 from typing import Any, Protocol
@@ -41,6 +42,10 @@ class VisualizationAPI(Protocol):
 
 
 __all__ = [
-    "MonitorAPI", "TraceAPI", "ReplayAPI",
-    "BenchmarkAPI", "EvaluationAPI", "VisualizationAPI",
+    "MonitorAPI",
+    "TraceAPI",
+    "ReplayAPI",
+    "BenchmarkAPI",
+    "EvaluationAPI",
+    "VisualizationAPI",
 ]

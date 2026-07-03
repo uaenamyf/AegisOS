@@ -130,17 +130,19 @@
 ## 5. Memory（记忆）
 
 ### MemoryPacket
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `working` | dict | 工作记忆 |
-| `semantic` | dict | 语义记忆（知识库） |
-| `episodic` | dict | 情景记忆 |
-| `archive` | dict | 归档 |
-| `embedding` | list | 向量嵌入 |
-| `summary` | str | 摘要 |
-| `compression` | dict | 压缩信息 |
-| `session_id` | str | 会话 ID |
-| `task_id` | str | 任务 ID |
+| 字段 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| `working` | dict | {} | 工作记忆 |
+| `semantic` | dict | {} | 语义记忆（知识库） |
+| `episodic` | dict | {} | 情景记忆 |
+| `archive` | dict | {} | 归档 |
+| `embedding` | list | [] | 向量嵌入 |
+| `summary` | str | "" | 摘要 |
+| `compression` | dict | {} | 压缩信息 |
+| `session_id` | str | "" | 会话 ID |
+| `task_id` | str | "" | 任务 ID |
+| `kind` | str | "normal" | 记忆类型：normal \| decision \| digest（B1 扩展） |
+| `recent` | bool | False | 是否最近步（压缩时保留）（B1 扩展） |
 
 接口：`read(query)→MemoryPacket`、`write(packet)→bool`、`retrieve(query)→list`。幂等写入（packet id 去重）。
 
@@ -186,15 +188,16 @@
 `Agent` · `Task` · `Memory` · `Tool`
 
 ### GraphNode
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `node_id` | str | 节点 ID |
-| `kind` | `NodeKind` | 节点类型 |
-| `name` | str | 显示名 |
-| `capabilities` | list | 能力 |
-| `trust_score` | float | 信任度（0–1，默认 1.0） |
-| `success_rate` | float | 成功率（默认 1.0） |
-| `latency` | float | 延迟 |
+| 字段 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| `node_id` | str | — | 节点 ID |
+| `kind` | `NodeKind` | — | 节点类型 |
+| `name` | str | "" | 显示名 |
+| `capabilities` | list | [] | 能力 |
+| `trust_score` | float | 1.0 | 信任度（0–1） |
+| `success_rate` | float | 1.0 | 成功率 |
+| `latency` | float | 0.0 | 延迟 |
+| `status` | str | "active" | 节点状态：active \| idle \| degraded（C1 扩展） |
 
 ### GraphEdge
 | 字段 | 类型 | 说明 |
@@ -316,6 +319,8 @@ Task → Semantic Graph → Agent Graph → Dynamic Routing
 
 - Router 维护 `GraphNode`/`GraphEdge`（含 entropy/latency/trust_score/success_rate）。
 - 动态计算稀疏链路（非全广播）：`Agent → Planner → Memory → Coder → Reviewer → Executor`。
+- **低熵稀疏路由**（C2）：`route(message, topology, required_capability) → list[NodeRef]`，Top-K=3，按 `success_rate - latency` 排序，禁全广播。
+- **异构选举**（C3）：`elect(task_features, instances, capability_vectors) → NodeRef`，任务特征向量与能力向量点积最大者当选。
 - 拓扑变化经 `GraphDiff` → `GraphUpdate` 事件自适应更新。
 - 对齐赛题：Dynamic Heterogeneous Topology + Low Entropy Communication。
 
@@ -339,9 +344,31 @@ Task → Semantic Graph → Agent Graph → Dynamic Routing
 
 离线优先；`Conflict` 状态触发冲突解决策略。
 
+### 端边云调度（D1）
+`schedule(task, models, required_capability) → Model`：`task.privacy=local` 或低 `latency_budget` 选 edge 模型，否则选 cloud 模型。
+
 ---
 
-## 18. 序列化与兼容
+## 18. 攻防协议类型（protocol/cyber.py，A1）
+
+> 赛事核心数据类型，定义在 `protocol/cyber.py`，全部为 `@dataclass`。
+
+| 类型 | id 字段 | 关键字段 | 说明 |
+|------|---------|---------|------|
+| `Asset` | `asset_id` | ip/host/os/services | 网络资产 |
+| `VulnFinding` | `finding_id` | cve_id/asset_id/cvss/attack_surface | 漏洞发现 |
+| `AttackStep` | `step_id` | technique/from_asset/to_asset/success | 攻击步骤（ATT&CK technique） |
+| `AttackChain` | `chain_id` | target/steps/status | 攻击链（含 `to_dict`/`from_dict`） |
+| `Alert` | `alert_id` | severity/src/dst/technique/raw | 告警 |
+| `DefenseAction` | `action_id` | kind/target/rationale | 防御动作 |
+| `ResponsePlan` | `plan_id` | actions/rollback/strategy | 响应计划 |
+| `ThreatIntel` | `intel_id` | source/iocs/techniques | 威胁情报 |
+
+id 字段统一 `*_id` 约定（匹配 `node_id`/`message_id`）。`Alert.raw: dict = field(default_factory=dict)`。
+
+---
+
+## 19. 序列化与兼容
 
 - 默认 JSON + schema 校验；可选 MessagePack/protobuf 用于高性能通道。
 - 所有数据类定义在 `protocol/*.py`，禁止业务层自造并行结构。

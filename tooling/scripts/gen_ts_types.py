@@ -16,12 +16,11 @@ fields and enum values, and writes a `.ts` file to
 Usage:
     python3 tooling/scripts/gen_ts_types.py
 """
+
 from __future__ import annotations
 
 import dataclasses
 import enum
-import importlib
-import inspect
 import sys
 from pathlib import Path
 
@@ -110,7 +109,9 @@ def _generate_interface(ts_name: str, cls: type) -> list[str]:
     lines = [f"export interface {ts_name} {{"]
     for f in dataclasses.fields(cls):
         ts_type = _py_type_to_ts(f.type)
-        has_default = f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING
+        has_default = (
+            f.default is not dataclasses.MISSING or f.default_factory is not dataclasses.MISSING
+        )
         optional = "?" if has_default else ""
         lines.append(f"  {f.name}{optional}: {ts_type};")
     lines.append("}")
@@ -167,8 +168,12 @@ def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(content, encoding="utf-8")
     print(f"TypeScript types generated: {OUTPUT}")
-    print(f"  enums: {sum(1 for n in protocol.__all__ if isinstance(getattr(protocol, n), type) and issubclass(getattr(protocol, n), enum.Enum))}")
-    print(f"  interfaces: {sum(1 for n in protocol.__all__ if dataclasses.is_dataclass(getattr(protocol, n)))}")
+    print(
+        f"  enums: {sum(1 for n in protocol.__all__ if isinstance(getattr(protocol, n), type) and issubclass(getattr(protocol, n), enum.Enum))}"
+    )
+    print(
+        f"  interfaces: {sum(1 for n in protocol.__all__ if dataclasses.is_dataclass(getattr(protocol, n)))}"
+    )
 
 
 if __name__ == "__main__":

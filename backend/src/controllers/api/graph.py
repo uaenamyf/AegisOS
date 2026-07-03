@@ -1,4 +1,4 @@
-﻿# @aegis-gen
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建 graph 控制器 GET /graph

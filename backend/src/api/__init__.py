@@ -7,11 +7,12 @@
 Other modules import from `backend.src.api` only — never from internal
 controllers/services/mappers/gateway. This achieves decoupling.
 """
+
 from __future__ import annotations
 
 from typing import Any, Protocol
 
-from protocol import Message, Event, Task, MemoryPacket, Graph
+from protocol import Event, Graph, MemoryPacket, Message, Task
 
 
 class SessionAPI(Protocol):
@@ -41,6 +42,9 @@ class EventStreamAPI(Protocol):
 
 
 __all__ = [
-    "SessionAPI", "TaskAPI", "MemoryGatewayAPI",
-    "GraphAPI", "EventStreamAPI",
+    "SessionAPI",
+    "TaskAPI",
+    "MemoryGatewayAPI",
+    "GraphAPI",
+    "EventStreamAPI",
 ]

@@ -2,6 +2,33 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P6] 2026-07-04 前后端打通：Agent 注册 + Chat 联调 + 文档同步
+
+### 后端（composition.py）
+- 新增 11 个攻防 Agent 注册（recon/detector/vuln_correlator/exploit_planner/lateral_move/triage/threat_hunt/ir_planner/forensics/critic/reviewer），总计 14 个 Agent（3 通用 + 11 攻防）。
+- `MockRuntime` 接入真实调用：`_cyber_dispatch_map()` 分发 11 个 handler，各 handler 解析 payload/goal 并调用对应 Agent。
+- `_CyberMockProvider` 封装 MockProvider，支持前缀匹配（exact match 优先，fallback prefix）。
+- `_build_cyber_mock_responses()` 预置攻防场景 JSON 响应。
+- 修复：`_handle_recon` 添加 CIDR/IP 检测，避免 prompt 前缀不匹配导致空资产。
+
+### 前端
+- `App.tsx`：启动时拉取 Agent 列表（`agentApi.list()` → `setAgents`）。
+- `services/api/agents.ts`：`list()` 兼容后端裸数组返回（`Array.isArray(r) ? r : (r.agents ?? [])`）。
+- `views/chat/ChatView.tsx`：修复 output 对象渲染崩溃（`typeof output === "string" ? output : JSON.stringify(...)`）。
+
+### 文档同步
+- `developer/roadmap/README.md`：更新进度勾选（P1-P5 已完成，P6 部分完成）。
+- `CLAUDE.md`（根 + `.claude/`）：更新本机环境约束（macOS .venv Python 3.12.13）+ plans 段当前状态。
+- `README.md`：更新 agents/action 角色列表（红蓝紫 11 Agent）+ 快速开始命令 + 当前进度段。
+- `agents/action/AGENT.md`：更新输出段为红蓝紫角色列表。
+- `developer/specs/04_PROTOCOL_SPEC.md`：登记 MemoryPacket.kind/recent（B1）+ GraphNode.status（C1）+ §18 Cyber 攻防类型 + §16 低熵路由/异构选举/端边云调度。
+- `developer/specs/06_SCHEMA_SPEC.md`：登记 MemoryPacketSchema.kind/recent + GraphNodeSchema.status + §14 CyberSchema 类型表 + §12 映射表更新。
+
+### 验证
+- `pytest tests/ -v`：55 passed。
+- GET /agents 返回 14 个 Agent；POST /agents/recon/invoke 返回 2 资产；POST /agents/detector/invoke 返回 1 告警。
+- 前端 Chat 下拉框显示 14 个 Agent；Swagger UI 可访问。
+
 ## [P1-P5] 2026-07-04 Phase A-E：攻防核心引擎 TDD 实现
 
 > 按 `docs/superpowers/plans/2026-07-04-agents-phase-ae.md` 计划，以 TDD 方式实现攻防群体智能核心引擎（12 任务，55 测试全通过）。

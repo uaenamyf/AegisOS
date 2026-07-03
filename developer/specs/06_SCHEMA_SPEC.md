@@ -187,6 +187,8 @@ class MemoryPacketSchema(BaseModel):
     compression: dict = Field(default_factory=dict)
     session_id: str = ""
     task_id: str = ""
+    kind: str = "normal"       # B1: normal | decision | digest
+    recent: bool = False        # B1: 是否最近步
 ```
 
 ---
@@ -240,6 +242,7 @@ class GraphNodeSchema(BaseModel):
     trust_score: float = 1.0
     success_rate: float = 1.0
     latency: float = 0.0
+    status: str = "active"   # C1: active | idle | degraded
 
 class GraphEdgeSchema(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -370,13 +373,33 @@ class SyncPacketSchema(BaseModel):
 | AgentSchema | Agent/AgentStatus | 待迁移 |
 | MemorySchema | MemoryPacket | 待迁移 |
 | ToolSchema | ToolCall/ToolResult/ToolSpec | 待迁移 |
-| GraphSchema | Graph/GraphNode/GraphEdge/Route/GraphDiff/NodeKind | 待迁移 |
+| GraphSchema | Graph/GraphNode/GraphEdge/Route/GraphDiff/NodeKind | 待迁移（GraphNode 已扩 status） |
 | StateSchema | （新增） | 新增（P2 检查点阶段） |
 | ContextSchema | （新增） | 新增（P5 感知阶段） |
 | HeartbeatSchema | Heartbeat | 待迁移 |
 | SyncSchema | SyncPacket/SyncStatus | 待迁移 |
+| CyberSchema（§14） | Asset/VulnFinding/AttackStep/AttackChain/Alert/DefenseAction/ResponsePlan/ThreatIntel | dataclass（A1 新增） |
 
 > 迁移原则：字段名/语义/默认值不变；序列化方法由 `to_dict`/`from_dict` 改为 `model_dump()`/`model_validate()`；`__all__` 导出不变；下游 `from {domain}.api import` 不受影响。
+
+---
+
+## 14. CyberSchema（攻防类型，A1）
+
+> 对应 `protocol/cyber.py`，当前为 `@dataclass`（非 Pydantic）。
+
+| Schema | id 字段 | 关键字段 | 说明 |
+|--------|---------|---------|------|
+| AssetSchema | asset_id | ip/host/os/services | 网络资产 |
+| VulnFindingSchema | finding_id | cve_id/asset_id/cvss/attack_surface | 漏洞发现 |
+| AttackStepSchema | step_id | technique/from_asset/to_asset/success | 攻击步骤 |
+| AttackChainSchema | chain_id | target/steps/status | 攻击链（含 to_dict/from_dict） |
+| AlertSchema | alert_id | severity/src/dst/technique/raw | 告警 |
+| DefenseActionSchema | action_id | kind/target/rationale | 防御动作 |
+| ResponsePlanSchema | plan_id | actions/rollback/strategy | 响应计划 |
+| ThreatIntelSchema | intel_id | source/iocs/techniques | 威胁情报 |
+
+id 字段统一 `*_id` 约定。迁移时统一转为 Pydantic（同 §12 原则）。
 
 ---
 

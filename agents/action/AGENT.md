@@ -21,7 +21,9 @@
 - agents/planning/ 编排逻辑
 
 ## 输出
-- agents/action/{coder,tester,debugger,docwriter,critic,reviewer,researcher,executor}/ 角色 Agent
+- agents/action/{recon,vuln_correlator,exploit_planner,lateral_move}/ 红队 Agent
+- agents/action/{detector,triage,threat_hunt,ir_planner,forensics}/ 蓝队 Agent
+- agents/action/{critic,reviewer}/ 紫队 Agent
 - agents/action/execution/ 执行能力
 
 ## 依赖

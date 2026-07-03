@@ -1,4 +1,4 @@
-﻿# @aegis-gen
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建 WebSocket 流端点 /ws/v1/stream（双向实时，Message 信封）

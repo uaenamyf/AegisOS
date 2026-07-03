@@ -73,7 +73,11 @@ export function ChatView() {
           goal,
           session_id: sessionId,
         });
-        resultText = res.result?.output ?? JSON.stringify(res.result);
+        const output = res.result?.output;
+        resultText =
+          typeof output === "string"
+            ? output
+            : JSON.stringify(output ?? res.result, null, 2);
       } else {
         // 提交任务（由 agents 域内部路由决定用哪个 Agent）
         const task = await taskApi.create({ goal, session_id: sessionId });

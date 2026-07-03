@@ -3,6 +3,7 @@
 Other modules import from `infrastructure.api` only — never from internal
 transport/nodes/delivery. This achieves decoupling.
 """
+
 from __future__ import annotations
 
 from typing import Any, Protocol
@@ -34,6 +35,8 @@ class DeploymentAPI(Protocol):
 
 
 __all__ = [
-    "CommunicationAPI", "NodeRegistryAPI",
-    "SyncAPI", "DeploymentAPI",
+    "CommunicationAPI",
+    "NodeRegistryAPI",
+    "SyncAPI",
+    "DeploymentAPI",
 ]

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # @aegis-gen
 # date: 2026-07-03
 # dev: Claude Code (glm-5.2)
@@ -15,6 +14,7 @@ spec path, so the docs stop pointing at deleted files.
 Run:  python3 tooling/scripts/realign_agent_docs.py
 Scope: all `**/AGENT.md` EXCEPT the repo-root `AGENT.md` (handled manually).
 """
+
 from __future__ import annotations
 
 import os

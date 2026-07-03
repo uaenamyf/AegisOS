@@ -1,4 +1,4 @@
-﻿# @aegis-gen
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建仓储类——SessionRepository / TaskRepository（CRUD，SQLAlchemy AsyncSession）

@@ -3,6 +3,7 @@
 Other modules import from `data.api` only — never from internal
 datasets/models. This achieves decoupling.
 """
+
 from __future__ import annotations
 
 from typing import Any, Protocol

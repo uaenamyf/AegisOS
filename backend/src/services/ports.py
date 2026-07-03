@@ -1,4 +1,4 @@
-﻿# @aegis-gen
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建 DI 端口实现——PersistencePortImpl / SessionPortImpl / TaskUpdatePortImpl，委托仓储
@@ -7,8 +7,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from backend.src.mappers.repositories import SessionRepository, TaskRepository
 from backend.src.mappers.converters import entity_to_session_dict
+from backend.src.mappers.repositories import SessionRepository, TaskRepository
 from protocol import TaskStatus
 
 

@@ -38,8 +38,8 @@ export interface ListAgentsResponse {
 export const agentApi = {
   list: (): Promise<Agent[]> =>
     apiClient
-      .get<ListAgentsResponse>("/agents")
-      .then((r) => r.agents ?? []),
+      .get<ListAgentsResponse | Agent[]>("/agents")
+      .then((r) => (Array.isArray(r) ? r : (r.agents ?? []))),
 
   get: (id: string): Promise<Agent> => apiClient.get<Agent>(`/agents/${id}`),
 

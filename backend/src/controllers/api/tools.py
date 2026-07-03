@@ -1,4 +1,4 @@
-﻿# @aegis-gen
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建 tools 控制器 POST /tools/{name}/invoke（直调工具，不经 Agent 编排）

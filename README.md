@@ -47,7 +47,7 @@
 |------|------|
 | `agents/perception/` 感知 | context(上下文) · reasoning(推理) · reflection(反思评估) |
 | `agents/planning/` 规划 | planner(角色) · orchestrator(角色) · engine/(planner·scheduler·router·workflow·eventbus·topology) |
-| `agents/action/` 行动 | coder·executor·tester·debugger·critic·reviewer·researcher·docwriter(角色) + execution/(executor沙箱·tools) |
+| `agents/action/` 行动 | 红队(recon·vuln_correlator·exploit_planner·lateral_move) + 蓝队(detector·triage·threat_hunt·ir_planner·forensics) + 紫队(critic·reviewer) + execution/(executor沙箱·tools) |
 | `agents/memory/` 记忆 | 12 子模块（含 semantic 知识库） |
 | `agents/tools/` 工具 | llms(模型调用) · prompts(提示词) · runtime(运行时) |
 
@@ -112,11 +112,23 @@ Agent 永不扫描整个项目；按模块边界精准读写。
 
 ## 快速开始
 ```bash
-make setup        # 初始化环境
-make test         # 运行测试
-make build        # 构建产物/镜像
-make deploy ENV=dev
+# 后端
+.venv/bin/python -m uvicorn backend.src.main:app --reload --host 0.0.0.0 --port 8000
+
+# 前端
+cd frontend && npm install && npm run dev
+
+# 测试
+.venv/bin/python -m pytest tests/ -v
+
+# 质量门禁
+.venv/bin/ruff format && .venv/bin/ruff check --fix && .venv/bin/mypy protocol agents backend --ignore-missing-imports
 ```
+
+## 当前进度（2026-07-04）
+- ✅ Phase A-E：protocol 攻防类型 + 记忆压缩/唤醒 + 拓扑/路由/选举 + 端边云调度 + 11 红蓝紫 Agent + 神经符号闭环（55 测试通过）
+- ✅ 前后端打通：14 Agent 注册 + Chat 联调 + Swagger UI
+- 🔲 下一步：B3 runtime 集成 + 编排器 + E13 e2e + F/G 攻防端点视图 + H 基建
 
 ## 实际目录结构（自动生成）
 ```

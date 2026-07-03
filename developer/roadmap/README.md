@@ -40,12 +40,12 @@ P0 项目初始化
 
 ## 当前进度
 - [x] P0 目录结构（同域聚合分层）与 AGENT.md 体系
-- [ ] P1 Protocol 实现
-- [ ] P2 Memory 实现
-- [ ] P3 Router 实现
-- [ ] P4 Scheduler 实现
-- [ ] P5 Planner + Agents 实现
-- [ ] P6 Frontend 实现
+- [x] P1 Protocol 实现（cyber.py 8 类型 + memory/graph/scheduler 字段扩展，6 测试）
+- [x] P2 Memory 实现（compression/compactor.py + recall/recaller.py，7 测试；其余 10 子模块待补）
+- [x] P3 Router 实现（topology 活跃子图 + router Top-K 稀疏路由 + election 异构选举，10 测试）
+- [x] P4 Scheduler 实现（端边云调度 + 多模型兼容层 model_router，9 测试）
+- [~] P5 Planner + Agents 实现（11 红蓝紫 Agent + 神经符号闭环已完成 23 测试；planner/orchestrator/workflow/eventbus 编排器待补；B3 runtime 集成待补；E13 e2e 测试待补）
+- [~] P6 Frontend 实现（5 视图占位 + Chat 联调已完成；攻防视图 G1-G3 + 后端攻防端点 F 待补）
 - [ ] P7 Deployment 实现
 
 ## 赛事作品对齐（XH-202631 荣耀·超长程群体智能）
