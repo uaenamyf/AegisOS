@@ -18,6 +18,10 @@ from .memory import MemoryPacket
 from .agent import Agent, AgentStatus
 from .graph import Graph, GraphNode, GraphEdge, Route, GraphDiff, NodeKind
 from .sync import SyncPacket, SyncStatus
+from .cyber import (
+    Asset, VulnFinding, AttackStep, AttackChain,
+    Alert, DefenseAction, ResponsePlan, ThreatIntel,
+)
 
 __all__ = [
     "Message", "NodeRef", "Header",
@@ -29,4 +33,6 @@ __all__ = [
     "Agent", "AgentStatus",
     "Graph", "GraphNode", "GraphEdge", "Route", "GraphDiff", "NodeKind",
     "SyncPacket", "SyncStatus",
+    "Asset", "VulnFinding", "AttackStep", "AttackChain",
+    "Alert", "DefenseAction", "ResponsePlan", "ThreatIntel",
 ]
