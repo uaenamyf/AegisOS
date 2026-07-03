@@ -49,7 +49,8 @@ class ModelRouter:
             provider = self._providers.get(self._default)
         if provider is None:
             return LLMResponse(
-                text="", ok=False,
+                text="",
+                ok=False,
                 error=f"No provider available for model '{request.model_id}'",
             )
         return provider.complete(request)
@@ -57,13 +58,14 @@ class ModelRouter:
     def complete_with_model(
         self,
         request: LLMRequest,
-        model: "Model",
+        model: Model,
     ) -> LLMResponse:
         provider_name = self.TIER_PROVIDER_MAP.get(model.tier, self._default)
         provider = self._providers.get(provider_name, self._providers.get(self._default))
         if provider is None:
             return LLMResponse(
-                text="", ok=False,
+                text="",
+                ok=False,
                 error=f"No provider for tier '{model.tier}'",
             )
         req = LLMRequest(

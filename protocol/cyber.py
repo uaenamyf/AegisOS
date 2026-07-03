@@ -4,7 +4,7 @@
 # change: 新建攻防协议类型
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 
 
 @dataclass
@@ -45,7 +45,7 @@ class AttackChain:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "AttackChain":
+    def from_dict(cls, data: dict) -> AttackChain:
         steps_data = data.pop("steps", [])
         steps = [AttackStep(**s) for s in steps_data]
         return cls(steps=steps, **data)

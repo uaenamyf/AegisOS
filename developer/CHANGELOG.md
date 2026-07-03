@@ -2,6 +2,66 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P1-P5] 2026-07-04 Phase A-E：攻防核心引擎 TDD 实现
+
+> 按 `docs/superpowers/plans/2026-07-04-agents-phase-ae.md` 计划，以 TDD 方式实现攻防群体智能核心引擎（12 任务，55 测试全通过）。
+
+### Phase A — protocol 攻防类型 (A1)
+- 新增 `protocol/cyber.py`：8 个 `@dataclass`（Asset / VulnFinding / AttackStep / AttackChain(含 to_dict/from_dict) / Alert / DefenseAction / ResponsePlan / ThreatIntel）。
+- 扩展 `protocol/__init__.py`：导入 cyber 模块并登记 `__all__`。
+- 测试：6 个（`tests/protocol/test_cyber.py`）。
+
+### Phase B — 超长程记忆压缩 + 唤醒 (B1+B2)
+- 扩展 `protocol/memory.py`：`MemoryPacket` 新增 `kind: str = "normal"` 和 `recent: bool = False`。
+- 新增 `agents/memory/compression/compactor.py`：`compress(context, budget)` 按 budget 压缩（decision 保留、recent 保留、其余折叠为 digest）。
+- 新增 `agents/memory/recall/recaller.py`：`recall(trigger, episodic, vector)` 按相关性 + kind 优先级唤醒 TOP_K=5 条记忆。
+- 测试：7 个（4 compactor + 3 recaller）。
+
+### Phase C — 拓扑 + 低熵路由 + 异构选举 (C1+C2+C3)
+- 扩展 `protocol/graph.py`：`GraphNode` 新增 `status: str = "active"`（active | idle | degraded）。
+- 新增 `agents/planning/engine/topology/topology.py`：`active_subgraph(graph, required_capability)` 过滤活跃+能力匹配节点。
+- 新增 `agents/planning/engine/router/router.py`：`route(message, topology, required_capability) -> list[NodeRef]`，Top-K=3 稀疏路由（非全广播），按 success_rate - latency 排序。
+- 新增 `agents/planning/engine/router/election.py`：`elect(task_features, instances, capability_vectors) -> NodeRef`，任务特征向量与能力向量点积最大者当选。
+- 测试：10 个（3 topology + 4 router + 3 election）。
+
+### Phase D — 端边云调度 + 多模型兼容层 (D1+D2)
+- 扩展 `protocol/scheduler.py`：`Task` 新增 `privacy: str = "standard"` 和 `latency_budget: float = 10.0`。
+- 新增 `agents/planning/engine/scheduler/scheduler.py`：`schedule(task, models, required_capability) -> Model`，privacy=local 或低延迟预算选 edge、否则选 cloud。
+- 新增 `agents/tools/llms/` 多模型兼容层：
+  - `base.py`：`ModelProvider` Protocol + `LLMRequest` / `LLMResponse` dataclass。
+  - `mock_provider.py`：确定性 Mock（测试/离线开发用）。
+  - `openai_provider.py`：OpenAI API 兼容（httpx）。
+  - `anthropic_provider.py`：Anthropic Claude API（httpx）。
+  - `local_provider.py`：Ollama / vLLM / LM Studio 本地模型。
+  - `model_router.py`：`ModelRouter` 按模型前缀 / tier 路由到对应 provider。
+  - `scheduler_adapter.py`：薄适配层，避免 tools 直接依赖 planning。
+- 测试：9 个（4 scheduler + 5 model_router）。
+
+### Phase E — 红蓝紫 Agent 角色 + 神经符号闭环 (E1-E12)
+- **红队 (E1-E4)**：
+  - `agents/action/recon/`：`ReconAgent.scan(target_range) -> list[Asset]`
+  - `agents/action/vuln_correlator/`：`VulnCorrelatorAgent.correlate(assets) -> list[VulnFinding]`
+  - `agents/action/exploit_planner/`：`ExploitPlannerAgent.plan(findings) -> AttackChain`
+  - `agents/action/lateral_move/`：`LateralMoveAgent.plan_moves(chain, topology) -> list[AttackStep]`
+- **蓝队 (E5-E9)**：
+  - `agents/action/detector/`：`DetectorAgent.detect(event_stream) -> list[Alert]`
+  - `agents/action/triage/`：`TriageAgent.triage(alerts) -> list[Alert]`（去噪 + 严重度排序）
+  - `agents/action/threat_hunt/`：`ThreatHuntAgent.hunt(alerts) -> list[dict]`（狩猎假设）
+  - `agents/action/ir_planner/`：`IRPlannerAgent.plan_response(hypotheses) -> ResponsePlan`
+  - `agents/action/forensics/`：`ForensicsAgent.investigate(plan) -> dict`（取证报告）
+- **紫队 (E10-E11)**：
+  - `agents/action/critic/`：`CriticAgent.critique(target, side) -> dict`（对抗性校验）
+  - `agents/action/reviewer/`：`ReviewerAgent.review(artifacts) -> dict`（一致性审查）
+- **神经符号闭环 (E12)**：
+  - `agents/perception/reasoning/neuro_symbolic.py`：`validate_chain(chain, rules)` 符号校验 + `NeuroSymbolicLoop.validate_and_fix(chain, rules, max_iterations)` LLM 生成→符号校验→反馈→修正循环。
+- 测试：23 个（6 red + 8 blue + 4 purple + 4 neuro-symbolic + 1 forensics）。
+
+### 质量门禁
+- `ruff format`：43 文件已格式化。
+- `ruff check --fix`：51 个问题自动修复，剩余 8 个为既有代码（StrEnum 建议 + 已有模块类型注解）。
+- `pytest tests/ -v`：**55 passed in 0.04s**。
+- 所有 AI 生成代码含 `@aegis-gen` 注释头（date/dev/change）。
+
 ## [P0] 2026-06-26
 - 初始化 AegisOS 仓库骨架（37 顶层模块 + memory 12 子模块 + agents 10 子模块）。
 - 建立 AI 开发规范层 `developer/`（架构/路线图/协议/各指南）。
@@ -154,4 +214,4 @@
   - `README.md`（API 解耦表：`backend.api`→`backend.src.api`、`frontend.api`→无）
 - **后端代码 docstring 更新**（5 个文件）：`backend/src/api/__init__.py` + `services/graph.py` + `memory.py` + `session.py` + `task.py` 中 `backend.api` 引用 → `backend.src.api`（`@aegis-gen` 注释头不动）。
 - **CLAUDE.md 更新**：根 `CLAUDE.md` + `.claude/CLAUDE.md` 同步（backend api 列→`backend/src/api/`、前端无 api）。
-- **验收待执行**：`tsc --noEmit` + `vite build`（前端）；`uvicorn backend.src.main:app`（后端）。
+- **验收待执行**：`tsc --noEmit` + `vite build`（前端）；`uvicorn backend.src.main:app`（后端）

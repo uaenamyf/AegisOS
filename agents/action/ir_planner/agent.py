@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import ResponsePlan
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import ResponsePlan
 
 SYSTEM_PROMPT = (
     "You are an incident response planner. Given threat hypotheses, "
@@ -22,12 +22,14 @@ class IRPlannerAgent:
         self._provider = provider
 
     def plan_response(self, hypotheses: list[dict]) -> ResponsePlan:
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Plan response for: {json.dumps(hypotheses)}",
-            model_id="ir-planner",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.3,
-        ))
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Plan response for: {json.dumps(hypotheses)}",
+                model_id="ir-planner",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.3,
+            )
+        )
         if not resp.ok:
             return ResponsePlan(plan_id="", confidence=0.0)
         try:

@@ -1,5 +1,5 @@
-from protocol.memory import MemoryPacket
 from agents.memory.recall.recaller import recall
+from protocol.memory import MemoryPacket
 
 
 def test_recall_returns_decision_packets_matching_trigger():
@@ -12,7 +12,7 @@ def test_recall_returns_decision_packets_matching_trigger():
     ]
     result = recall("isolate", episodic, vector)
     ids = [m.task_id for m in result]
-    assert "e1" in ids   # episodic decision matching trigger
+    assert "e1" in ids  # episodic decision matching trigger
     assert "v1" in ids  # vector top_k matching trigger
 
 
@@ -23,7 +23,6 @@ def test_recall_prioritizes_decision_kind():
     ]
     result = recall("isolate", episodic, [])
     decision_results = [m for m in result if m.kind == "decision"]
-    normal_results = [m for m in result if m.kind == "normal"]
     assert len(decision_results) >= 1
     # decisions come first
     assert result[0].kind == "decision"

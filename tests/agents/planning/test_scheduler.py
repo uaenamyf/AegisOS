@@ -1,6 +1,5 @@
-import pytest
+from agents.planning.engine.scheduler.scheduler import EDGE_THRESHOLD, Model, schedule
 from protocol.scheduler import Task
-from agents.planning.engine.scheduler.scheduler import schedule, Model, EDGE_THRESHOLD
 
 
 def test_privacy_local_picks_edge_model():

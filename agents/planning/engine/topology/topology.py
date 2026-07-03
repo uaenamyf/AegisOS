@@ -4,7 +4,7 @@
 # change: 活跃子图计算
 from __future__ import annotations
 
-from protocol.graph import Graph, GraphNode
+from protocol.graph import Graph
 
 _ACTIVE_STATES = {"active", "degraded"}
 

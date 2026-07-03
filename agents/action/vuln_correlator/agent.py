@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import Asset, VulnFinding
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import Asset, VulnFinding
 
 SYSTEM_PROMPT = (
     "You are a vulnerability correlation agent. Given a list of assets, "
@@ -21,16 +21,20 @@ class VulnCorrelatorAgent:
         self._provider = provider
 
     def correlate(self, assets: list[Asset]) -> list[VulnFinding]:
-        asset_desc = json.dumps([
-            {"asset_id": a.asset_id, "host": a.host, "services": a.services, "os": a.os}
-            for a in assets
-        ])
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Correlate vulnerabilities for these assets: {asset_desc}",
-            model_id="vuln-correlator",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.2,
-        ))
+        asset_desc = json.dumps(
+            [
+                {"asset_id": a.asset_id, "host": a.host, "services": a.services, "os": a.os}
+                for a in assets
+            ]
+        )
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Correlate vulnerabilities for these assets: {asset_desc}",
+                model_id="vuln-correlator",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.2,
+            )
+        )
         if not resp.ok:
             return []
         try:

@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import AttackChain, AttackStep
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import AttackChain, AttackStep
 
 SYSTEM_PROMPT = (
     "You are an attack chain generator. Given a previous chain with "
@@ -53,21 +53,29 @@ class NeuroSymbolicLoop:
         issues: list[str],
         rules: dict,
     ) -> AttackChain:
-        chain_desc = json.dumps({
-            "chain_id": chain.chain_id,
-            "steps": [
-                {"step_id": s.step_id, "technique": s.technique,
-                 "from_asset": s.from_asset, "to_asset": s.to_asset}
-                for s in chain.steps
-            ],
-        })
+        chain_desc = json.dumps(
+            {
+                "chain_id": chain.chain_id,
+                "steps": [
+                    {
+                        "step_id": s.step_id,
+                        "technique": s.technique,
+                        "from_asset": s.from_asset,
+                        "to_asset": s.to_asset,
+                    }
+                    for s in chain.steps
+                ],
+            }
+        )
         feedback = f"Issues: {issues}. Allowed techniques: {rules.get('allowed_techniques', [])}. Fix the chain."
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Previous chain: {chain_desc}. {feedback}",
-            model_id="neuro-symbolic",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.3,
-        ))
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Previous chain: {chain_desc}. {feedback}",
+                model_id="neuro-symbolic",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.3,
+            )
+        )
         if not resp.ok:
             return chain
         try:

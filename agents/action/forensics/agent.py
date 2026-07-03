@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import ResponsePlan
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import ResponsePlan
 
 SYSTEM_PROMPT = (
     "You are a digital forensics agent. Given a response plan, return JSON "
@@ -21,17 +21,21 @@ class ForensicsAgent:
         self._provider = provider
 
     def investigate(self, plan: ResponsePlan) -> dict:
-        plan_desc = json.dumps({
-            "plan_id": plan.plan_id,
-            "actions": plan.actions,
-            "confidence": plan.confidence,
-        })
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Investigate: {plan_desc}",
-            model_id="forensics",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.3,
-        ))
+        plan_desc = json.dumps(
+            {
+                "plan_id": plan.plan_id,
+                "actions": plan.actions,
+                "confidence": plan.confidence,
+            }
+        )
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Investigate: {plan_desc}",
+                model_id="forensics",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.3,
+            )
+        )
         if not resp.ok:
             return {"report_id": "", "root_cause": "unknown", "timeline": [], "recommendations": []}
         try:

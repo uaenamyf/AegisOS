@@ -1,5 +1,5 @@
-from protocol.memory import MemoryPacket
 from agents.memory.compression.compactor import compress
+from protocol.memory import MemoryPacket
 
 
 def test_compress_keeps_decision_and_recent_makes_digest():

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
 
 
 class TaskStatus(str, Enum):
@@ -36,8 +36,8 @@ class Task:
     rollback: RollbackPlan = field(default_factory=RollbackPlan)
     dependency: list = field(default_factory=list)
     priority: int = 0
-    privacy: str = "standard"       # local | standard | unrestricted
-    latency_budget: float = 10.0   # 秒
+    privacy: str = "standard"  # local | standard | unrestricted
+    latency_budget: float = 10.0  # 秒
 
 
 @dataclass

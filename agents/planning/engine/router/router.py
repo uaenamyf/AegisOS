@@ -4,9 +4,9 @@
 # change: 低熵稀疏路由 Top-K
 from __future__ import annotations
 
-from protocol.message import Message, NodeRef
-from protocol.graph import Graph
 from agents.planning.engine.topology.topology import active_subgraph
+from protocol.graph import Graph
+from protocol.message import Message, NodeRef
 
 TOP_K = 3
 
@@ -27,10 +27,7 @@ def route(
         reverse=True,
     )
     k = min(TOP_K, len(scored))
-    return [
-        NodeRef(node_id=n.node_id, node_type=n.kind.value)
-        for n in scored[:k]
-    ]
+    return [NodeRef(node_id=n.node_id, node_type=n.kind.value) for n in scored[:k]]
 
 
 def _affinity(message: Message, n) -> float:

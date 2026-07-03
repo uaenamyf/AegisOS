@@ -14,8 +14,8 @@ EDGE_THRESHOLD = 5.0  # 秒
 @dataclass
 class Model:
     model_id: str
-    tier: str = "cloud"       # edge | cloud
-    size: str = "medium"      # small | medium | large
+    tier: str = "cloud"  # edge | cloud
+    size: str = "medium"  # small | medium | large
     capabilities: list = field(default_factory=list)
 
 
@@ -34,10 +34,7 @@ def schedule(
     """
     candidates = models
     if required_capability:
-        candidates = [
-            m for m in models
-            if required_capability in m.capabilities
-        ]
+        candidates = [m for m in models if required_capability in m.capabilities]
     if not candidates:
         raise ValueError(f"No model with capability '{required_capability}'")
 

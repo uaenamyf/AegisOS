@@ -12,6 +12,7 @@ from agents. See developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md §3.2.
 
 Wiring happens in backend/composition.py (composition root).
 """
+
 from __future__ import annotations
 
 from typing import Protocol

@@ -21,12 +21,14 @@ class ReviewerAgent:
         self._provider = provider
 
     def review(self, artifacts: dict) -> dict:
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Review consistency: {json.dumps(artifacts, default=str)}",
-            model_id="reviewer",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.2,
-        ))
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Review consistency: {json.dumps(artifacts, default=str)}",
+                model_id="reviewer",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.2,
+            )
+        )
         if not resp.ok:
             return {"consistent": False, "findings": ["LLM error"], "overall_assessment": "error"}
         try:

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import Any
 import time
 import uuid
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -40,7 +40,7 @@ class Message:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Message":
+    def from_dict(cls, data: dict) -> Message:
         sender = NodeRef(**data.pop("sender", {"node_id": "", "node_type": ""}))
         receiver = NodeRef(**data.pop("receiver", {"node_id": "", "node_type": ""}))
         header = Header(**data.pop("header", {}))

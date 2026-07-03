@@ -1,12 +1,14 @@
-from protocol.cyber import ResponsePlan
 from agents.action.forensics.agent import ForensicsAgent
 from agents.tools.llms.mock_provider import MockProvider
+from protocol.cyber import ResponsePlan
 
 
 def test_investigate_returns_report():
-    mock = MockProvider(responses={
-        "default": '{"report_id": "f1", "root_cause": "unpatched ssh", "timeline": [{"ts": "t1", "event": "brute force"}], "recommendations": ["patch ssh"]}'
-    })
+    mock = MockProvider(
+        responses={
+            "default": '{"report_id": "f1", "root_cause": "unpatched ssh", "timeline": [{"ts": "t1", "event": "brute force"}], "recommendations": ["patch ssh"]}'
+        }
+    )
     agent = ForensicsAgent(provider=mock)
     plan = ResponsePlan(plan_id="rp1", confidence=0.9)
     report = agent.investigate(plan)

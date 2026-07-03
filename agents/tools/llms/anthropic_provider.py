@@ -19,7 +19,8 @@ class AnthropicProvider:
     def complete(self, request: LLMRequest) -> LLMResponse:
         if not self._api_key:
             return LLMResponse(
-                text="", ok=False,
+                text="",
+                ok=False,
                 error="ANTHROPIC_API_KEY not set; use MockProvider for testing",
             )
         try:

@@ -1,10 +1,7 @@
-import pytest
-from agents.tools.llms.base import ModelProvider, LLMRequest, LLMResponse
+from agents.planning.engine.scheduler.scheduler import Model
+from agents.tools.llms.base import LLMRequest
 from agents.tools.llms.mock_provider import MockProvider
 from agents.tools.llms.model_router import ModelRouter
-from agents.tools.llms.scheduler_adapter import schedule_for_llm
-from protocol.scheduler import Task
-from agents.planning.engine.scheduler.scheduler import Model
 
 
 def test_mock_provider_returns_response():

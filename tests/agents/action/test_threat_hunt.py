@@ -1,12 +1,14 @@
-from protocol.cyber import Alert
 from agents.action.threat_hunt.agent import ThreatHuntAgent
 from agents.tools.llms.mock_provider import MockProvider
+from protocol.cyber import Alert
 
 
 def test_hunt_returns_hypotheses():
-    mock = MockProvider(responses={
-        "default": '{"hypotheses": [{"hypothesis": "lateral movement via SMB", "confidence": 0.8, "technique": "T1021"}]}'
-    })
+    mock = MockProvider(
+        responses={
+            "default": '{"hypotheses": [{"hypothesis": "lateral movement via SMB", "confidence": 0.8, "technique": "T1021"}]}'
+        }
+    )
     agent = ThreatHuntAgent(provider=mock)
     result = agent.hunt([Alert(alert_id="a1", severity="high", technique="T1110")])
     assert len(result) == 1

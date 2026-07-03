@@ -17,13 +17,19 @@ developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md §3.1.
 Exposed (5): AgentRegistryAPI · RuntimeAPI · MemoryAPI · EventBusAPI · ExecutionAPI
 Internal (not here): PlanningAPI (agents/planning/engine/) · PerceptionAPI (agents/perception/)
 """
+
 from __future__ import annotations
 
 from typing import Any, Protocol
 
 from protocol import (
-    Event, Task, MemoryPacket,
-    ToolCall, ToolResult, Agent, Heartbeat,
+    Agent,
+    Event,
+    Heartbeat,
+    MemoryPacket,
+    Task,
+    ToolCall,
+    ToolResult,
 )
 
 from .ports import PersistencePort, SessionPort, TaskUpdatePort
@@ -58,7 +64,12 @@ class RuntimeAPI(Protocol):
 
 
 __all__ = [
-    "AgentRegistryAPI", "MemoryAPI", "ExecutionAPI",
-    "EventBusAPI", "RuntimeAPI",
-    "PersistencePort", "SessionPort", "TaskUpdatePort",
+    "AgentRegistryAPI",
+    "MemoryAPI",
+    "ExecutionAPI",
+    "EventBusAPI",
+    "RuntimeAPI",
+    "PersistencePort",
+    "SessionPort",
+    "TaskUpdatePort",
 ]

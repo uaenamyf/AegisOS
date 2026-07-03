@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import Alert
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import Alert
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
@@ -23,16 +23,20 @@ class TriageAgent:
         self._provider = provider
 
     def triage(self, alerts: list[Alert]) -> list[Alert]:
-        alerts_desc = json.dumps([
-            {"alert_id": a.alert_id, "severity": a.severity, "src": a.src, "dst": a.dst}
-            for a in alerts
-        ])
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Triage these alerts: {alerts_desc}",
-            model_id="triage",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.1,
-        ))
+        alerts_desc = json.dumps(
+            [
+                {"alert_id": a.alert_id, "severity": a.severity, "src": a.src, "dst": a.dst}
+                for a in alerts
+            ]
+        )
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Triage these alerts: {alerts_desc}",
+                model_id="triage",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.1,
+            )
+        )
         if not resp.ok:
             return alerts  # fallback: return original
         try:

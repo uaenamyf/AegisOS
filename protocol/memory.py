@@ -14,5 +14,5 @@ class MemoryPacket:
     compression: dict = field(default_factory=dict)
     session_id: str = ""
     task_id: str = ""
-    kind: str = "normal"        # normal | decision | digest
-    recent: bool = False        # 是否最近步（压缩时保留）
+    kind: str = "normal"  # normal | decision | digest
+    recent: bool = False  # 是否最近步（压缩时保留）

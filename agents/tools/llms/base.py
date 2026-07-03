@@ -29,4 +29,5 @@ class LLMResponse:
 
 class ModelProvider(Protocol):
     """Unified interface for all LLM providers."""
+
     def complete(self, request: LLMRequest) -> LLMResponse: ...

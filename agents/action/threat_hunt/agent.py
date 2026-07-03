@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import Alert
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import Alert
 
 SYSTEM_PROMPT = (
     "You are a threat hunting agent. Given prioritized alerts, generate "
@@ -21,16 +21,20 @@ class ThreatHuntAgent:
         self._provider = provider
 
     def hunt(self, alerts: list[Alert]) -> list[dict]:
-        alerts_desc = json.dumps([
-            {"alert_id": a.alert_id, "severity": a.severity, "technique": a.technique}
-            for a in alerts
-        ])
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Generate hunting hypotheses for: {alerts_desc}",
-            model_id="threat-hunt",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.5,
-        ))
+        alerts_desc = json.dumps(
+            [
+                {"alert_id": a.alert_id, "severity": a.severity, "technique": a.technique}
+                for a in alerts
+            ]
+        )
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Generate hunting hypotheses for: {alerts_desc}",
+                model_id="threat-hunt",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.5,
+            )
+        )
         if not resp.ok:
             return []
         try:

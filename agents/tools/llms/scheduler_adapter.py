@@ -4,8 +4,8 @@
 # change: Scheduler adapter for LLM routing
 from __future__ import annotations
 
-from protocol.scheduler import Task
 from agents.planning.engine.scheduler.scheduler import Model, schedule
+from protocol.scheduler import Task
 
 
 def schedule_for_llm(

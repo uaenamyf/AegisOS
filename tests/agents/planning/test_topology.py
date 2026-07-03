@@ -1,5 +1,5 @@
-from protocol.graph import Graph, GraphNode, NodeKind
 from agents.planning.engine.topology.topology import active_subgraph
+from protocol.graph import Graph, GraphNode, NodeKind
 
 
 def test_active_subgraph_filters_capability_and_status():

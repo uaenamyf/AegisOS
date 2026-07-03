@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import json
 
+from agents.tools.llms.base import LLMRequest, ModelProvider
 from protocol.cyber import AttackChain, AttackStep
 from protocol.graph import Graph
-from agents.tools.llms.base import LLMRequest, ModelProvider
 
 SYSTEM_PROMPT = (
     "You are a lateral movement planner. Given an attack chain and network "
@@ -22,24 +22,24 @@ class LateralMoveAgent:
         self._provider = provider
 
     def plan_moves(self, chain: AttackChain, topology: Graph) -> list[AttackStep]:
-        chain_desc = json.dumps({
-            "chain_id": chain.chain_id,
-            "target": chain.target,
-            "current_steps": [
-                {"step_id": s.step_id, "to_asset": s.to_asset}
-                for s in chain.steps
-            ],
-        })
-        topo_nodes = [
-            {"node_id": n.node_id, "name": n.name}
-            for n in topology.nodes.values()
-        ]
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Plan lateral moves. Chain: {chain_desc}. Topology: {json.dumps(topo_nodes)}",
-            model_id="lateral-move",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.4,
-        ))
+        chain_desc = json.dumps(
+            {
+                "chain_id": chain.chain_id,
+                "target": chain.target,
+                "current_steps": [
+                    {"step_id": s.step_id, "to_asset": s.to_asset} for s in chain.steps
+                ],
+            }
+        )
+        topo_nodes = [{"node_id": n.node_id, "name": n.name} for n in topology.nodes.values()]
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Plan lateral moves. Chain: {chain_desc}. Topology: {json.dumps(topo_nodes)}",
+                model_id="lateral-move",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.4,
+            )
+        )
         if not resp.ok:
             return []
         try:

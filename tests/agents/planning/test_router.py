@@ -1,15 +1,19 @@
-from protocol.message import Message, NodeRef
+from agents.planning.engine.router.router import TOP_K, route
 from protocol.graph import Graph, GraphNode, NodeKind
-from agents.planning.engine.router.router import route, TOP_K
+from protocol.message import Message, NodeRef
 
 
 def test_route_is_sparse_not_broadcast():
     g = Graph()
     for i in range(10):
-        g.add_node(GraphNode(
-            node_id=f"n{i}", kind=NodeKind.Agent,
-            capabilities=["recon"], status="active",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=f"n{i}",
+                kind=NodeKind.Agent,
+                capabilities=["recon"],
+                status="active",
+            )
+        )
     msg = Message()
     targets = route(msg, g, required_capability="recon")
     assert 0 < len(targets) <= TOP_K
@@ -26,8 +30,24 @@ def test_route_skips_idle_and_wrong_capability():
 
 def test_route_prefers_higher_success_rate():
     g = Graph()
-    g.add_node(GraphNode(node_id="low", kind=NodeKind.Agent, capabilities=["recon"], success_rate=0.3, status="active"))
-    g.add_node(GraphNode(node_id="high", kind=NodeKind.Agent, capabilities=["recon"], success_rate=0.9, status="active"))
+    g.add_node(
+        GraphNode(
+            node_id="low",
+            kind=NodeKind.Agent,
+            capabilities=["recon"],
+            success_rate=0.3,
+            status="active",
+        )
+    )
+    g.add_node(
+        GraphNode(
+            node_id="high",
+            kind=NodeKind.Agent,
+            capabilities=["recon"],
+            success_rate=0.9,
+            status="active",
+        )
+    )
     targets = route(Message(), g, required_capability="recon")
     assert targets[0].node_id == "high"
 

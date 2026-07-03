@@ -26,12 +26,14 @@ class CriticAgent:
 
     def critique(self, target: dict, side: str = "red") -> dict:
         sys_prompt = SYSTEM_PROMPT_RED if side == "red" else SYSTEM_PROMPT_BLUE
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Critique: {json.dumps(target)}",
-            model_id="critic",
-            system_prompt=sys_prompt,
-            temperature=0.3,
-        ))
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Critique: {json.dumps(target)}",
+                model_id="critic",
+                system_prompt=sys_prompt,
+                temperature=0.3,
+            )
+        )
         if not resp.ok:
             return {"valid": False, "issues": ["LLM error"], "severity": "high", "suggestion": ""}
         try:

@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import Asset
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import Asset
 
 SYSTEM_PROMPT = (
     "You are a network reconnaissance agent. Given a target range, "
@@ -22,12 +22,14 @@ class ReconAgent:
 
     def scan(self, target_range: str) -> list[Asset]:
         prompt = f"Scan target range: {target_range}"
-        resp = self._provider.complete(LLMRequest(
-            prompt=prompt,
-            model_id="recon-agent",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.3,
-        ))
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=prompt,
+                model_id="recon-agent",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.3,
+            )
+        )
         if not resp.ok:
             return []
         try:

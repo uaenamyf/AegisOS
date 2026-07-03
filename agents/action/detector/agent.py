@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 
-from protocol.cyber import Alert
 from agents.tools.llms.base import LLMRequest, ModelProvider
+from protocol.cyber import Alert
 
 SYSTEM_PROMPT = (
     "You are an intrusion detection agent. Given an event stream, "
@@ -21,12 +21,14 @@ class DetectorAgent:
         self._provider = provider
 
     def detect(self, event_stream: list[dict]) -> list[Alert]:
-        resp = self._provider.complete(LLMRequest(
-            prompt=f"Detect anomalies in: {json.dumps(event_stream)}",
-            model_id="detector",
-            system_prompt=SYSTEM_PROMPT,
-            temperature=0.2,
-        ))
+        resp = self._provider.complete(
+            LLMRequest(
+                prompt=f"Detect anomalies in: {json.dumps(event_stream)}",
+                model_id="detector",
+                system_prompt=SYSTEM_PROMPT,
+                temperature=0.2,
+            )
+        )
         if not resp.ok:
             return []
         try:
