@@ -131,3 +131,27 @@
 - **`.claude/CLAUDE.md`**：渐进式披露工程总览——L0 30 秒上手（定位+铁律+在哪找）、L1 项目与 8 域分层+工作流+铁律、L2 模块地图（域→职责→规范→计划→api）、L3 深指针（specs 00–15 索引、roadmap P0–P7、22 skills 分组、plans 13–15）+ 本机环境约束（无 Python / protocol dataclass 现状）。
 - **注意**：`.claude/` 已被 `.gitignore`（第 2 行）→ `.claude/CLAUDE.md` 不提交、不自动加载；根 `CLAUDE.md` 未被忽略且为 Claude Code 默认自动加载位置——是否复制到根待用户确认。
 - **子代理说明**：原计划 7 组并行子代理审计，但本 token 对子代理执行模型 `deepseek-v4-flash` 无访问权（403，model 覆盖无效），子代理整条路不通；改用 perl 脚本一次性完成，结果已校验。
+
+## [P0] 2026-07-04 目录重构：backend 代码移入 src/ + 前端清理废弃顶层目录
+
+> 触发：前端 service/mapper/controller 等代码全部在 `frontend/src/` 下，顶层 `frontend/api/`、`frontend/controllers/`、`frontend/services/`、`frontend/mappers/`、`frontend/views/` 为旧结构残留且无实际引用；后端需与前端对齐，代码移入 `backend/src/`。
+
+- **前端清理**：删除 5 个废弃顶层目录（`frontend/api/`、`frontend/controllers/`、`frontend/services/`、`frontend/mappers/`、`frontend/views/`）；所有前端代码统一在 `frontend/src/` 下。
+- **后端重构**：将 `backend/` 下原顶层代码全部移入 `backend/src/`：`main.py`、`composition.py`、`api/`、`controllers/`、`gateway/`、`mappers/`、`services/`；新增 `backend/__init__.py` 作为包标记。
+- **批量 import 更新**：20 个后端 `.py` 文件的 `from backend.X` → `from backend.src.X`（42 处匹配）。
+- **配置更新**：`pyproject.toml` 加 `where = ["."]`；`Makefile`/`start.sh` 中 `uvicorn backend.main:app` → `uvicorn backend.src.main:app`；`tooling/scripts/gen_readme.py` 适配后端 `src/api` 子路径、前端无 Python API。
+- **AGENT.md 更新**（7 个）：`backend/AGENT.md` + `backend/src/api/AGENT.md` + `controllers/AGENT.md` + `services/AGENT.md` + `mappers/AGENT.md` + `gateway/AGENT.md` + `frontend/AGENT.md`。
+- **规范文档更新**（10 个文件）：
+  - `00_PROJECT_SPEC.md`（入站边界 + 分层表）
+  - `01_ARCHITECTURE_SPEC.md`（前端边界 + 插件路径）
+  - `02_DIRECTORY_SPEC.md`（frontend 域表格全面重写 + 依赖矩阵行）
+  - `03_IMPORT_SPEC.md`（依赖矩阵去 `frontend.api` 列 + `backend.api`→`backend.src.api`）
+  - `05_API_SPEC.md`（§2.1 前端无 Python API 重写 + §2.2 `backend.src.api`）
+  - `09_DEVELOPMENT_SPEC.md`（前端开发流程引用路径）
+  - `10_INTERFACE_BOUNDARY_SPEC.md`（接口矩阵表 + 禁止行 + 前端依赖行）
+  - `12_TECH_STACK_SPEC.md`（技术栈路径引用 5 处）
+  - `plans/13_FRONTEND_BACKEND_PLAN.md`（前端分层表路径 + B0 里程碑 `uvicorn backend.src.main:app`）
+  - `README.md`（API 解耦表：`backend.api`→`backend.src.api`、`frontend.api`→无）
+- **后端代码 docstring 更新**（5 个文件）：`backend/src/api/__init__.py` + `services/graph.py` + `memory.py` + `session.py` + `task.py` 中 `backend.api` 引用 → `backend.src.api`（`@aegis-gen` 注释头不动）。
+- **CLAUDE.md 更新**：根 `CLAUDE.md` + `.claude/CLAUDE.md` 同步（backend api 列→`backend/src/api/`、前端无 api）。
+- **验收待执行**：`tsc --noEmit` + `vite build`（前端）；`uvicorn backend.src.main:app`（后端）。

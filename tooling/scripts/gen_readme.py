@@ -57,17 +57,20 @@ def list_dir(rel: str, depth: int = 1) -> list[str]:
 
 def api_summary() -> list[tuple[str, str, list[str]]]:
     domains = [
-        ("agents", "agents.api"),
-        ("backend", "backend.api"),
-        ("frontend", "frontend.api"),
-        ("infrastructure", "infrastructure.api"),
-        ("observability", "observability.api"),
-        ("data", "data.api"),
-        ("tooling", "tooling.api"),
+        ("agents", "agents.api", "api"),
+        ("backend", "backend.src.api", "src/api"),
+        ("frontend", None, None),  # frontend has no Python API (deleted)
+        ("infrastructure", "infrastructure.api", "api"),
+        ("observability", "observability.api", "api"),
+        ("data", "data.api", "api"),
+        ("tooling", "tooling.api", "api"),
     ]
     out = []
-    for folder, mod in domains:
-        api_dir = os.path.join(ROOT, folder, "api", "__init__.py")
+    for folder, mod, api_sub in domains:
+        if api_sub is None:
+            out.append((folder, mod or "", []))
+            continue
+        api_dir = os.path.join(ROOT, folder, *api_sub.split("/"), "__init__.py")
         names: list[str] = []
         if os.path.isfile(api_dir):
             with open(api_dir, encoding="utf-8") as f:

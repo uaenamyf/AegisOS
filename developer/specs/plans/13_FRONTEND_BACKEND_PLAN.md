@@ -167,10 +167,10 @@ Plan(DAG) 通过 Task.plan 字段 + GraphUpdate 事件回传后端展示
 
 | 层 | 目录 | 职责 |
 |----|------|------|
-| Controllers | `frontend/controllers/` | 交互/事件处理 + 调 service + 分发 views，不含业务逻辑 |
-| Services | `frontend/services/` | API 调用（经 gateway）、WS/SSE 管理、状态编排 |
-| Mappers | `frontend/mappers/` | protocol→VM 转换、REST 客户端、全局 store、工具/样式/资产 |
-| Views | `frontend/views/` | canvas/graph/monitor/replay UI 渲染，不含业务逻辑 |
+| Controllers | `frontend/src/controllers/` | 交互/事件处理 + 调 service + 分发 views，不含业务逻辑 |
+| Services | `frontend/src/services/` | API 调用（经 gateway）、WS/SSE 管理、状态编排 |
+| Mappers | `frontend/src/mappers/` | protocol→VM 转换、REST 客户端、全局 store、工具/样式/资产 |
+| Views | `frontend/src/views/` | canvas/graph/monitor/replay UI 渲染，不含业务逻辑 |
 
 ### 6.1 TS 类型生成（`gen_ts_types.py`）
 
@@ -228,7 +228,7 @@ agents P5（planner+agents）─→ B5 后端智能体集成
 
 | 里程碑 | 验收标准 |
 |--------|----------|
-| B0 | `make setup && uvicorn backend.main:app` 可启动，`/api/v1/health` 返回 200 |
+| B0 | `make setup && uvicorn backend.src.main:app` 可启动，`/api/v1/health` 返回 200 |
 | B4 | 全部 REST/WS/SSE 端点可调用（agents 用 mock），返回 `protocol` 类型 |
 | B5 | 真实 agents 接入，`POST /tasks` 完成端到端 goal→plan→execute→result |
 | B6 | 覆盖率≥80%，关键路径≥90%，E2E 通过 |

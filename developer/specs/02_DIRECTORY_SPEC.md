@@ -25,7 +25,7 @@
 |------|------|--------------|----------|--------|----------|
 | `developer/` | 规范层 | 否（运行时不依赖） | 否 | 架构师 / spec 维护者 | 业务实现者不得以代码依赖它 |
 | `protocol/` | 契约层 | **是（唯一全局被依赖）** | 否（零反向依赖） | 架构师（破坏性需 major bump） | 任何域不得在 protocol/ 之外造并行结构 |
-| `frontend/` | 表现层 | 仅经 `frontend/api/` | 只调 `backend.api` | 前端团队/AI | 后端/Agent 团队不得改前端内部 |
+| `frontend/` | 表现层 | 纯 SPA，无 Python API | 只调 `backend.src.api` | 前端团队/AI | 后端/Agent 团队不得改前端内部 |
 | `backend/` | 应用层 | 仅经 `backend/api/` | 调 `agents.api`/`infrastructure.api`/`observability.api`/`data.api`/`protocol` | 后端团队/AI | 前端/Agent 不得改后端内部 |
 | `agents/` | 智能体域 | 仅经 `agents/api/` | 调 `protocol`/`infrastructure.api`/`data.api` | Agent 团队/AI | 前端不得直连 agents 内部 |
 | `infrastructure/` | 基础设施 | 仅经 `infrastructure/api/` | 调 `protocol` | 基础设施团队/AI | 业务域不得改其内部 |
@@ -74,14 +74,14 @@
 | 项 | 值 |
 |----|-----|
 | 职责 | React+TS+Vite；Controller-Service-Mapper + Views；canvas/graph/monitor/replay 可视化 |
-| 输入 | 用户交互、`backend.api` 实时数据（WS/SSE） |
+| 输入 | 用户交互、`backend.src.api` 实时数据（WS/SSE） |
 | 输出 | UI 视图、交互事件 |
-| API | `frontend/api/`：ViewAPI · InteractionAPI · ThemeAPI |
-| 被引用 | 仅 `frontend/api/` 可被他域引用（实际主要被 backend 注入/前端自用） |
-| 跨域调用 | **只调 `backend.api`**；禁止直连 `agents`/`infrastructure` |
+| API | 无 Python API（纯 SPA）；内部架构 Controller-Service-Mapper + Views |
+| 被引用 | 前端为纯 SPA，不被他域 import；仅通过 REST/WS/SSE 调用后端 |
+| 跨域调用 | **只调 `backend.src.api`**；禁止直连 `agents`/`infrastructure` |
 | 谁可改 | 前端团队 / 前端 AI |
 | 谁不可改 | 后端/Agent 团队不得改前端内部 |
-| 子目录 | `controllers/`(interaction·events·routes) · `services/`(api·realtime·session·graph) · `mappers/`(viewmodels·apimappers·store·utils·styles·assets) · `views/`(canvas·graph·monitor·replay) · `src/` · `public/` |
+| 子目录 | `src/`（含 `controllers/`(interaction·events·routes) · `services/`(api·realtime·session·graph) · `mappers/`(viewmodels·apimappers·store·utils·styles·assets) · `views/`(canvas·graph·monitor·replay)） · `public/` |
 
 ---
 

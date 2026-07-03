@@ -23,7 +23,7 @@ export PATH="/opt/homebrew/bin:$PATH"
 start_backend() {
     echo "[backend] Starting FastAPI on :$BACKEND_PORT ..."
     cd "$PROJECT_ROOT"
-    $PYTHON -m uvicorn backend.main:app --reload --host 0.0.0.0 --port $BACKEND_PORT &
+    $PYTHON -m uvicorn backend.src.main:app --reload --host 0.0.0.0 --port $BACKEND_PORT &
     echo "$! backend" >> "$PID_FILE"
     sleep 2
     # Health check

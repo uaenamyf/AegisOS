@@ -56,16 +56,16 @@
 
 | 依赖 | 版本约束 | 用途 | 落点 |
 |------|----------|------|------|
-| React | **>=18** | UI 框架 | `frontend/views/` |
+| React | **>=18** | UI 框架 | `frontend/src/views/` |
 | TypeScript | **>=5.0** | 类型系统 | 全前端 |
 | Vite | **>=5.0** | 构建/开发服务器 | 前端工程 |
-| 状态管理 | Zustand **>=4.5** | 轻量全局状态 | `frontend/mappers/store/` |
-| 图渲染 | WebGL / Canvas | 动态图可视化 | `frontend/views/graph/`、`canvas/` |
-| 实时通信 | 原生 WebSocket + EventSource(SSE) | Agent 状态/事件流 | `frontend/services/realtime/` |
+| 状态管理 | Zustand **>=4.5** | 轻量全局状态 | `frontend/src/mappers/store/` |
+| 图渲染 | WebGL / Canvas | 动态图可视化 | `frontend/src/views/graph/`、`canvas/` |
+| 实时通信 | 原生 WebSocket + EventSource(SSE) | Agent 状态/事件流 | `frontend/src/services/realtime/` |
 | **Vitest** | **>=1.6** | 前端单元测试 | `tests/frontend/` |
 | **Playwright** | **>=1.40** | 前端 E2E 测试 | `tests/e2e/` |
 
-> 前端不引入重型框架（如 Next.js SSR）；纯 SPA，经 `backend.gateway` 通信。前端契约 = `backend.api` 对外接口 + `protocol` 类型（生成 TS 类型）。
+> 前端不引入重型框架（如 Next.js SSR）；纯 SPA，经 `backend.src.gateway` 通信。前端契约 = `backend.src.api` 对外接口 + `protocol` 类型（生成 TS 类型）。
 
 ---
 
@@ -134,7 +134,7 @@ ruff format && ruff check --fix && mypy && pytest
 | 事件流 | 监控/回放/评估的数据源 | EventBus → `observability/inspect/` |
 | 指标 | 延迟/Token/熵/覆盖率 | `observability/measure/` |
 | 回放 | 确定性回放 | `observability/inspect/replay/` |
-| 可视化 | 图表/图谱/面板 | `observability/present/visualization/`、`frontend/views/` |
+| 可视化 | 图表/图谱/面板 | `observability/present/visualization/`、`frontend/src/views/` |
 | 日志 | 脱敏日志 + trace_id | 各模块日志位置（见 `AGENT.md`） |
 
 > 不预设具体 APM 厂商；可观测以自研事件流 + 指标 API 为准，外部 exporter 后续按需接入并在本文件登记。

@@ -17,7 +17,7 @@ frontend-setup:
 	@echo "Frontend dependencies installed."
 
 dev:
-	uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+	uvicorn backend.src.main:app --reload --host 0.0.0.0 --port 8000
 
 frontend-dev:
 	cd frontend && npm run dev

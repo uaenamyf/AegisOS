@@ -33,8 +33,8 @@
 | `developer/` | 规范层（项目大脑）：specs SSOT + roadmap | `developer/AGENT.md` | — |
 | `protocol/` | 契约层，唯一数据契约 | `protocol/AGENT.md` | — |
 | `agents/` | 智能体域：感知-规划-行动-记忆-工具五层 | `agents/AGENT.md` | `agents/api/` |
-| `backend/` | 应用层：Controller-Service-Mapper + Gateway | `backend/AGENT.md` | `backend/api/` |
-| `frontend/` | 表现层：Controller-Service-Mapper + Views | `frontend/AGENT.md` | `frontend/api/` |
+| `backend/` | 应用层：Controller-Service-Mapper + Gateway | `backend/AGENT.md` | `backend/src/api/` |
+| `frontend/` | 表现层：Controller-Service-Mapper + Views | `frontend/AGENT.md` | — |
 | `infrastructure/` | 基建：transport / nodes(端·云) / delivery | `infrastructure/AGENT.md` | `infrastructure/api/` |
 | `observability/` | 可观测：inspect / measure / present | `observability/AGENT.md` | `observability/api/` |
 | `data/` | 数据：datasets / models（Neo4j · Qdrant 接入） | `data/AGENT.md` | `data/api/` |
@@ -64,8 +64,8 @@
 | `agents/tools` | llms(多模型兼容) · prompts · runtime | 12·08 | 14/15(D2 多模型) | `agents/api` |
 | `agents/api` | 公共接口层：RuntimeAPI / AgentRegistry / Memory / Planning / Execution / Perception / EventBus | 05·10 | 13(双向调用/DI 端口) | — |
 | `protocol` | message/event/scheduler/tool/memory/agent/graph/heartbeat/sync（+`cyber.py` 待建） | 04·06 | 14/15(A1 cyber 类型) | — |
-| `backend` | gateway / controllers / services / mappers | 05·10·12 | 13·14/15(F 攻防端点) | `backend/api` |
-| `frontend` | controllers / services / mappers / views(chat·canvas·graph·monitor·replay) | 13·05·12 | 13·14/15(G 攻防视图) | `frontend/api` |
+| `backend` | src/(gateway / controllers / services / mappers) | 05·10·12 | 13·14/15(F 攻防端点) | `backend/src/api` |
+| `frontend` | src/(controllers / services / mappers / views(chat·canvas·graph·monitor·replay)) | 13·05·12 | 13·14/15(G 攻防视图) | — |
 | `infrastructure` | transport / nodes(edge·cloud) / delivery(deployment) | 01·12 | 14/15(H1 沙箱靶场·端边云) | `infrastructure/api` |
 | `observability` | inspect(monitor·replay) / measure(benchmark·evaluation) / present(visualization) | 01·07 | 14/15(H5 评测·回放) | `observability/api` |
 | `data` | datasets / models（Neo4j 拓扑+ATT&CK 图 · Qdrant 向量） | 06 | 14/15(H2) | `data/api` |

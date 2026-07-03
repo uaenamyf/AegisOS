@@ -28,17 +28,11 @@
 
 ## 2. 模块 API 契约（每模块：API / Request / Response / Error / Timeout / Retry / Version）
 
-### 2.1 Frontend（`frontend.api`：ViewAPI · InteractionAPI · ThemeAPI）
+### 2.1 Frontend
 
-| API | Request | Response | Error | Timeout | Retry | Version |
-|-----|---------|----------|-------|---------|-------|---------|
-| ViewAPI.render(view) | view: str | view 状态 | code:VIEW_NOT_FOUND | 5s | 不重试（UI） | v1 |
-| InteractionAPI.dispatch(event) | event: dict | ack: bool | code:INVALID_EVENT | 3s | 不重试 | v1 |
-| ThemeAPI.apply(theme) | theme: str | ack: bool | code:UNKNOWN_THEME | 3s | 不重试 | v1 |
+> 前端为纯 SPA（React + TypeScript），不对外暴露 Python API。前端经 `backend.src.api` REST/WS/SSE 接口与后端通信。前端内部架构（Controller-Service-Mapper + Views）位于 `frontend/src/`。
 
-> 前端不直接对外暴露 REST；经 backend 代理。前端只调 `backend.api`。
-
-### 2.2 Backend（`backend.api`：SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI）
+### 2.2 Backend（`backend.src.api`：SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI）
 
 | API | Request | Response | Error | Timeout | Retry | Version |
 |-----|---------|----------|-------|---------|-------|---------|

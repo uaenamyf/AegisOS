@@ -58,4 +58,5 @@ asyncio_mode = "auto"
 addopts = "-ra --tb=short"
 
 [tool.setuptools.packages.find]
+where = ["."]
 include = ["protocol*", "agents*", "backend*", "frontend*", "infrastructure*", "observability*", "data*", "tooling*"]

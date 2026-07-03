@@ -32,8 +32,8 @@
 |------|------|----------|----------|
 | `developer/` | 规范层（项目大脑） | `*.md` + `roadmap/`(P0..P7) | — |
 | `protocol/` | 契约层 | 数据类（Message/Event/Task/...） | 本身即全局契约 |
-| `frontend/` | 表现层 | controllers · services · mappers · views | `frontend/api/` |
-| `backend/` | 应用层 | controllers · services · mappers · gateway | `backend/api/` |
+| `frontend/` | 表现层 | src/(controllers · services · mappers · views · protocol) | — |
+| `backend/` | 应用层 | src/(controllers · services · mappers · gateway) | `backend/src/api/` |
 | `agents/` | 智能体域 | perception · planning · action · memory · tools | `agents/api/` |
 | `infrastructure/` | 基础设施层 | transport · nodes · delivery | `infrastructure/api/` |
 | `observability/` | 可观测与评估层 | inspect · measure · present | `observability/api/` |
@@ -63,8 +63,8 @@
 | 域 | api 包 | 公共接口数 | 接口 |
 |----|--------|-----------|------|
 | agents/ | `agents.api` | 5 | AgentRegistryAPI · MemoryAPI · ExecutionAPI · EventBusAPI · RuntimeAPI |
-| backend/ | `backend.api` | 5 | SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI |
-| frontend/ | `frontend.api` | 3 | ViewAPI · InteractionAPI · ThemeAPI |
+| backend/ | `backend.src.api` | 5 | SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI |
+| frontend/ | — (纯 SPA) | — | 纯前端应用，不暴露 Python API |
 | infrastructure/ | `infrastructure.api` | 4 | CommunicationAPI · NodeRegistryAPI · SyncAPI · DeploymentAPI |
 | observability/ | `observability.api` | 6 | MonitorAPI · TraceAPI · ReplayAPI · BenchmarkAPI · EvaluationAPI · VisualizationAPI |
 | data/ | `data.api` | 2 | DatasetAPI · ModelSchemaAPI |

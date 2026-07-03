@@ -54,7 +54,7 @@
 └────────────────────────────────────────────────────┘
 ```
 
-- **入站边界**：一切外部请求经 `backend/gateway/`；前端只调 `backend.api` 暴露的 REST/WS/SSE。
+- **入站边界**：一切外部请求经 `backend/src/gateway/`；前端只调 `backend.src.api` 暴露的 REST/WS/SSE。
 - **出站边界**：对外 LLM 调用集中在 `agents/tools/llms/`；对外部署集中在 `infrastructure/delivery/`。
 - **数据边界**：跨模块数据结构 = `protocol/` 的 26 个契约类型；禁止裸 JSON 跨模块。
 - **开发边界**：`developer/` 纵切所有层，是规范大脑，不参与运行时。
@@ -84,8 +84,8 @@
 |----|------|------|----------|
 | 规范层 | `developer/`（含 `specs/`、`roadmap/`） | 项目大脑，纵切所有层，不参与运行时 | — |
 | 契约层 | `protocol/` | 唯一数据契约（26 类型） | 本身即全局契约 |
-| 表现层 | `frontend/` | Controller-Service-Mapper + Views | `frontend/api/`（3 接口） |
-| 应用层 | `backend/` | Controller-Service-Mapper + Gateway | `backend/api/`（5 接口） |
+| 表现层 | `frontend/` | Controller-Service-Mapper + Views | `frontend/src/`（纯 SPA，无 Python API） |
+| 应用层 | `backend/` | Controller-Service-Mapper + Gateway | `backend/src/api/`（5 接口） |
 | 智能体域 | `agents/` | 认知架构五层：感知-规划-行动-记忆-工具 | `agents/api/`（5 接口；规划/感知内聚不暴露） |
 | 基础设施层 | `infrastructure/` | 传输-节点-交付 | `infrastructure/api/`（4 接口） |
 | 可观测层 | `observability/` | 观测-度量-呈现 | `observability/api/`（6 接口） |

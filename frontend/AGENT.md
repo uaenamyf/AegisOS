@@ -1,6 +1,8 @@
 # Frontend 前端表现层（域根） — AGENT.md
 
 > 本文件是 `frontend/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+>
+> **目录结构**：所有源码位于 `frontend/src/` 下（与后端 `backend/src/` 结构对齐）。`frontend/` 根仅含配置文件 + `src/`。
 
 ## 职责
 AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Controller-Service-Mapper** 三层架构 + Views 视图层。
@@ -8,10 +10,10 @@ AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Con
 ## 内部分层（Controller-Service-Mapper + Views）
 | 分类 | 角色 | 说明 |
 |------|------|------|
-| frontend/controllers/ | 控制器 | 接收用户交互与后端事件，参数校验，调用 service，分发到 views |
-| frontend/services/ | 服务 | 前端业务逻辑：API 调用、WebSocket/SSE 管理、状态编排 |
-| frontend/mappers/ | 映射器 | 数据转换：protocol/ <-> 视图模型 <-> API 请求/响应，共享工具与状态 |
-| frontend/views/ | 视图 | 按功能特性的 UI 组件：canvas/graph/monitor/replay |
+| frontend/src/controllers/ | 控制器 | 接收用户交互与后端事件，参数校验，调用 service，分发到 views |
+| frontend/src/services/ | 服务 | 前端业务逻辑：API 调用、WebSocket/SSE 管理、状态编排 |
+| frontend/src/mappers/ | 映射器 | 数据转换：protocol/ <-> 视图模型 <-> API 请求/响应，共享工具与状态 |
+| frontend/src/views/ | 视图 | 按功能特性的 UI 组件：chat/canvas/graph/monitor/replay |
 
 ## 读取目录（允许读）
 - backend/
@@ -25,10 +27,10 @@ AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Con
 - agents/
 
 ## 输出
-- frontend/controllers/ 控制器（交互/事件处理）
-- frontend/services/ 服务（API 调用、WS/SSE 管理、状态编排）
-- frontend/mappers/ 映射器（数据转换、共享工具、全局状态）
-- frontend/views/ 视图（canvas/graph/monitor/replay）
+- frontend/src/controllers/ 控制器（交互/事件处理）
+- frontend/src/services/ 服务（API 调用、WS/SSE 管理、状态编排）
+- frontend/src/mappers/ 映射器（数据转换、共享工具、全局状态）
+- frontend/src/views/ 视图（chat/canvas/graph/monitor/replay）
 
 ## 依赖
 - backend/ API
@@ -38,7 +40,7 @@ AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Con
 REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
 
 ## 测试方式
-`pytest tests/frontend/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`npm test`（Vitest 单元测试）+ `npm run test:e2e`（Playwright 端到端测试），覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
 `logs/frontend/`（结构化 JSON 日志，按 session/task 切分）。
@@ -59,22 +61,21 @@ REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
 
 ## 调用链路
 ```
-用户交互/后端事件 -> frontend/controllers/（交互处理/事件分发）
-  -> frontend/services/（API 调用/WS·SSE 管理/状态编排）
-  -> frontend/mappers/（数据转换/视图模型构建/全局状态）
-  -> frontend/views/（UI 渲染：canvas/graph/monitor/replay）
+用户交互/后端事件 -> frontend/src/controllers/（交互处理/事件分发）
+  -> frontend/src/services/（API 调用/WS·SSE 管理/状态编排）
+  -> frontend/src/mappers/（数据转换/视图模型构建/全局状态）
+  -> frontend/src/views/（UI 渲染：chat/canvas/graph/monitor/replay）
 ```
 
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/05_API_SPEC.md + 12_TECH_STACK_SPEC.md
-- **API 边界**：frontend/api/ — from frontend.api import ...
 - **数据契约**：protocol/ 类型（经 gen_ts_types 生成 frontend/src/protocol/types.ts）
 - **相关计划**：developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（G 攻防视图）
 
 ## 下辖子模块
-- **frontend/api/** 公共接口层：其他模块通过 `from frontend.api import ...` 调用本域能力（视图渲染、交互钩子、主题），不直接访问内部子包，实现解耦。
-- **frontend/controllers/** — 控制器：接收用户交互与后端推送事件，参数校验，调用 service，分发到 views。不含业务逻辑。
-- **frontend/services/** — 服务：前端业务逻辑核心。API 调用（经 backend/gateway）、WebSocket/SSE 连接管理、状态编排。
-- **frontend/mappers/** — 映射器：数据转换（protocol <-> 视图模型 <-> API 请求/响应）、共享工具函数、全局状态管理、主题样式与静态资产。
-- **frontend/views/** — 视图：按功能特性的 UI 组件。`canvas/`(任务画布)、`graph/`(动态图可视化)、`monitor/`(Agent 监控)、`replay/`(回放时间线)。
+- **frontend/src/controllers/** — 控制器：接收用户交互与后端推送事件，参数校验，调用 service，分发到 views。不含业务逻辑。
+- **frontend/src/services/** — 服务：前端业务逻辑核心。API 调用（经 backend/gateway）、WebSocket/SSE 连接管理、状态编排。
+- **frontend/src/mappers/** — 映射器：数据转换（protocol <-> 视图模型 <-> API 请求/响应）、共享工具函数、全局状态管理、主题样式与静态资产。
+- **frontend/src/views/** — 视图：按功能特性的 UI 组件。`chat/`(Agent 对话)、`canvas/`(任务画布)、`graph/`(动态图可视化)、`monitor/`(Agent 监控)、`replay/`(回放时间线)。
+- **frontend/src/protocol/** — 类型定义：`types.ts`(自动生成) + `frontend-types.ts`(手维护前端本地类型)。

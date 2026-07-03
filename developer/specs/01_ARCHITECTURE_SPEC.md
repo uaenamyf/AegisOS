@@ -40,7 +40,7 @@ AegisOS 以「微内核 + 插件」组织稳定核心与可变扩展：
 | 类别 | 内容 | 稳定性 |
 |------|------|--------|
 | **内核（稳定）** | `protocol/` 契约 + 各域 `api/` 接口签名 + `agents/planning/engine/`（planner·scheduler·router·workflow·eventbus·topology）核心编排 | 冻结 |
-| **插件（可变）** | Agent 角色（`agents/action/*`）、工具（`agents/action/execution/tools/`）、LLM 适配（`agents/tools/llms/`）、记忆后端（`agents/memory/*`）、节点（`infrastructure/nodes/*`）、可视化视图（`frontend/views/*`） | 可替换/可新增 |
+| **插件（可变）** | Agent 角色（`agents/action/*`）、工具（`agents/action/execution/tools/`）、LLM 适配（`agents/tools/llms/`）、记忆后端（`agents/memory/*`）、节点（`infrastructure/nodes/*`）、可视化视图（`frontend/src/views/*`） | 可替换/可新增 |
 
 - 内核定义扩展点（接口/注册表）；插件实现接口并通过注册表接入。
 - 新增插件不改内核；内核升级须保证插件接口兼容（向后兼容）。
@@ -143,7 +143,7 @@ AegisOS 以「微内核 + 插件」组织稳定核心与可变扩展：
 - 技术栈：React + TypeScript + Vite；轻量 store；WebGL/Canvas 图渲染。
 - 结构：`controllers`（interaction/events/routes）→ `services`（api/realtime/session/graph）→ `mappers`（viewmodels/apimappers/store/utils/styles/assets）→ `views`（canvas/graph/monitor/replay）。
 - 实时：WebSocket（双向）+ SSE（单向事件流）。
-- 边界：只调 `backend.api` 暴露的 REST/WS/SSE，不直连 `agents`/`infrastructure`。
+- 边界：只调 `backend.src.api` 暴露的 REST/WS/SSE，不直连 `agents`/`infrastructure`。
 
 ---
 

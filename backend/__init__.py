@@ -1,4 +1,4 @@
 # @aegis-gen
-# date: 2026-06-27
+# date: 2026-07-03
 # dev: Claude Code (glm-5.2)
-# change: 新建 backend 包初始化，使其成为正规包（修复 mypy/uvicorn 模块解析）
+# change: 重构目录结构，代码移入 src/，此文件作为 backend 包标记
