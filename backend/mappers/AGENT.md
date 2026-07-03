@@ -1,6 +1,6 @@
 # Backend/Mappers 映射器层 — AGENT.md
 
-> 本文件是 `backend/mappers/` 的开发规范，隶属 `backend/` 域。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/ARCHITECTURE.md` 相关章节。
+> 本文件是 `backend/mappers/` 的开发规范，隶属 `backend/` 域。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 映射器层：数据转换与持久化访问。负责 protocol/ 类型 <-> DB 模型 <-> DTO 之间的转换，以及仓储/DAO 实现。是数据进出后端的关口。
@@ -9,7 +9,7 @@
 - protocol/
 - backend/services/
 - tooling/configs/
-- developer/BACKEND_GUIDE.md
+- developer/specs/10_INTERFACE_BOUNDARY_SPEC.md
 
 ## 禁止修改目录
 - backend/controllers/ 路由
@@ -44,10 +44,10 @@
 `tooling/configs/mappers.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
 
 ## 开发约定
-- 遵循 `developer/CODING_RULES.md` 与 `developer/PYTHON_STYLE.md`。
+- 遵循 `developer/specs/11_AI_CODING_SPEC.md` 与 `developer/specs/12_TECH_STACK_SPEC.md`。
 - 所有对外数据结构必须复用 `protocol/` 定义的类型，禁止自造并行结构。
 - 对外通信一律走 `protocol/message.py` 的 Message 信封，禁止裸 JSON。
 - 映射器只做数据转换与持久化，不含业务逻辑。
 - 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
-- 新增接口需同步更新 `developer/API_SPEC.md` 与 `developer/EVENT_SPEC.md`。
-- 修改前确认本模块在分层中的位置（见 `developer/DIRECTORY_GUIDE.md`），不得越界。
+- 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
+- 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。

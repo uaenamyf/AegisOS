@@ -2,10 +2,10 @@
 
 > 这是整个 AegisOS 仓库的**最高开发规范**。任何 Agent（人或 AI）在开发本仓库前，**第一步必须阅读本文件**，再按需阅读 `developer/specs/` 下相应编号规范，而不是扫描整个项目。
 >
-> **规范真相源**：`developer/specs/`（编号规范 `00`–`12`）是本项目唯一权威规范，**取代** `developer/` 根下旧版散落文档（`API_SPEC.md`/`MESSAGE_PROTOCOL.md`/`EVENT_SPEC.md`/`ARCHITECTURE.md`/`CODING_RULES.md`/`DIRECTORY_GUIDE.md` 等）；旧文档保留作历史参考，冲突时以 `developer/specs/` 为准。
+> **规范真相源**：`developer/specs/`（编号规范 `00`–`12`）是本项目唯一权威规范。`developer/` 根下旧版散落文档（`API_SPEC.md`/`MESSAGE_PROTOCOL.md`/`EVENT_SPEC.md`/`ARCHITECTURE.md`/`CODING_RULES.md`/`DIRECTORY_GUIDE.md` 等）已删除，统一以 `developer/specs/` 为准。
 
 ## 项目定位
-AegisOS 是面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」的 **Agent Operating System (AOS) + AI Native IDE**。不仅包含 Agent，而是让整个项目可由 Agent 自主开发。核心特性：动态异构群体智能、长期记忆、低熵通信、端边云协同、可运行系统。
+AegisOS 是面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」的 **Agent Operating System (AOS) + AI Native IDE**，方向为**面向超长程网络攻击防御的动态异构群体智能协同推理引擎**, 不仅包含 Agent，而是让整个项目可由 Agent 自主开发。核心特性：动态异构群体智能、长期记忆、低熵通信、端边云协同、可运行系统。
 
 ## AI 开发流程（Developer Workflow）
 ```
@@ -100,7 +100,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 12 | `12_TECH_STACK_SPEC.md` | 技术栈：语言/运行时/框架/库/工具链/版本约束 |
 | 13 | `plans/13_FRONTEND_BACKEND_PLAN.md` | 前后端开发全流程计划（含后端↔智能体双向调用/DI 端口） |
 
-> 冲突优先级：`00_PROJECT_SPEC` > `04_PROTOCOL_SPEC` ≈ `05_API_SPEC` ≈ `06_SCHEMA_SPEC` > 其余编号规范 > `developer/` 根旧文档 > 各模块 `AGENT.md`。
+> 冲突优先级：`00_PROJECT_SPEC` > `04_PROTOCOL_SPEC` ≈ `05_API_SPEC` ≈ `06_SCHEMA_SPEC` > 其余编号规范 > 各模块 `AGENT.md`。
 
 ## 目录导航
 详见 `developer/specs/02_DIRECTORY_SPEC.md`。每个目录/子模块均有独立 `AGENT.md` 规定职责、读取目录、禁止修改目录、输出、依赖、接口、测试方式、日志/Prompt/配置位置。

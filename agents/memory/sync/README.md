@@ -1,6 +1,6 @@
 # agents/memory/sync — 同步
 
-> 记忆子系统的 `同步` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `同步` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 端边云记忆同步：断连续传与一致性协商。

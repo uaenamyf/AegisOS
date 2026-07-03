@@ -1,4 +1,8 @@
 // @aegis-gen
+// date: 2026-07-03
+// dev: Claude Code (glm-5.2)
+// change: 导入源拆分——前端本地类型 ViewName 改从 @/protocol/frontend-types 引入（protocol 生成器剥离前端类型）
+// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
 // change: 新建 controllers/interaction.ts，用户交互控制器：任务创建/Agent 调用/视图切换
@@ -8,7 +12,7 @@ import type { CreateTaskRequest } from "@/services/api/tasks";
 import { agentApi } from "@/services/api/agents";
 import { sessionService } from "@/services/session";
 import { useAppStore } from "@/mappers/store";
-import type { ViewName } from "@/protocol/types";
+import type { ViewName } from "@/protocol/frontend-types";
 
 export const interactionController = {
   async createTask(request: CreateTaskRequest) {

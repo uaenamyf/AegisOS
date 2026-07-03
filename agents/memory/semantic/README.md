@@ -1,6 +1,6 @@
 # agents/memory/semantic — 语义记忆
 
-> 记忆子系统的 `语义记忆` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `语义记忆` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 长期知识与概念存储：结构化事实、概念图谱，跨会话持久。即知识库。

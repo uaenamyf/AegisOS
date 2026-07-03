@@ -1,6 +1,6 @@
 # agents/memory/reflection — 反思记忆
 
-> 记忆子系统的 `反思记忆` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `反思记忆` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 经验教训与自我评估：沉淀失败/成功模式供后续决策。

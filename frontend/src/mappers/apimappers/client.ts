@@ -1,9 +1,13 @@
 // @aegis-gen
+// date: 2026-07-03
+// dev: Claude Code (glm-5.2)
+// change: 导入源拆分——前端本地类型 ApiError 改从 @/protocol/frontend-types 引入（protocol 生成器剥离前端类型）
+// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
 // change: 新建 apimappers/client.ts，REST fetch 封装：base URL、鉴权头、错误处理
 
-import type { ApiError } from "@/protocol/types";
+import type { ApiError } from "@/protocol/frontend-types";
 
 const DEFAULT_BASE_URL = "http://localhost:8000/api/v1";
 

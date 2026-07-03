@@ -1,10 +1,15 @@
 // @aegis-gen
+// date: 2026-07-03
+// dev: Claude Code (glm-5.2)
+// change: 导入源拆分——ConnectionStatus 改从 @/protocol/frontend-types 引入，Message 仍从 @/protocol/types
+// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
 // change: 新建 services/realtime/ws.ts，WebSocket 管理器：连接 /ws/v1/stream 并自动重连
 
 import { useAppStore } from "@/mappers/store";
-import type { ConnectionStatus, Message } from "@/protocol/types";
+import type { ConnectionStatus } from "@/protocol/frontend-types";
+import type { Message } from "@/protocol/types";
 
 const DEFAULT_WS_URL = "ws://localhost:8000/ws/v1/stream";
 

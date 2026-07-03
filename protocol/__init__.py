@@ -1,8 +1,13 @@
 """AegisOS protocol layer — the single source of truth for data contracts.
 
 All cross-module communication must use the types defined here. See
-developer/MESSAGE_PROTOCOL.md for the specification.
+developer/specs/04_PROTOCOL_SPEC.md for the specification.
 """
+
+# @aegis-gen
+# date: 2026-07-03
+# dev: Claude Code (glm-5.2)
+# change: docstring 引用从 developer/MESSAGE_PROTOCOL.md 改指 developer/specs/04_PROTOCOL_SPEC.md（SSOT 对齐）
 
 from .message import Message, NodeRef, Header
 from .event import Event, EventType

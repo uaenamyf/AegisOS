@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# @aegis-gen
+# date: 2026-07-03
+# dev: Claude Code (glm-5.2)
+# change: 修正生成器引用——关键文档/通信协议/开发流程段从旧 developer/*.md 改指 developer/specs/ SSOT
 """Dynamically generate the root README.md from the actual repo structure.
 
 Run:  python3 tooling/scripts/gen_readme.py
@@ -12,11 +16,22 @@ from datetime import date
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Directories that must never be counted as project content (venv, local tooling,
+# caches, build artifacts). Applied to every walk below so stats stay truthful.
+_EXCLUDE_DIRS = (".git", ".venv", "venv", ".claude", "node_modules",
+                 "__pycache__", "aegisos.egg-info", ".ruff_cache",
+                 ".mypy_cache", ".pytest_cache")
+
+
+def _excluded(dp: str) -> bool:
+    parts = dp.replace("\\", "/").split("/")
+    return any(seg in _EXCLUDE_DIRS for seg in parts)
+
 
 def count(pattern_dir: str, name: str) -> int:
     n = 0
     for dp, _, files in os.walk(os.path.join(ROOT, pattern_dir)):
-        if ".git" in dp:
+        if _excluded(dp):
             continue
         n += files.count(name)
     return n
@@ -102,16 +117,16 @@ def main() -> None:
     agent_md = count(".", "AGENT.md")
     py_files = sum(
         1 for dp, _, fs in os.walk(ROOT)
-        if ".git" not in dp
+        if not _excluded(dp)
         for f in fs if f.endswith(".py")
     )
     md_files = sum(
         1 for dp, _, fs in os.walk(ROOT)
-        if ".git" not in dp
+        if not _excluded(dp)
         for f in fs if f.endswith(".md")
     )
-    total_dirs = sum(1 for dp, _, _ in os.walk(ROOT) if ".git" not in dp) - 1
-    total_files = sum(len(fs) for dp, _, fs in os.walk(ROOT) if ".git" not in dp)
+    total_dirs = sum(1 for dp, _, _ in os.walk(ROOT) if not _excluded(dp)) - 1
+    total_files = sum(len(fs) for dp, _, fs in os.walk(ROOT) if not _excluded(dp))
     apis = api_summary()
     total_apis = sum(len(n) for _, _, n in apis)
 
@@ -210,12 +225,12 @@ User Goal
 - Event: AgentStart/AgentFinish/ToolCall/ToolFinish/Retry/Rollback/MemoryUpdate/GraphUpdate
 - 动态路由: Task -> Semantic Graph -> Agent Graph -> Dynamic Routing -> Sparse Communication -> Adaptive Graph -> Graph Update
 
-详见 `developer/MESSAGE_PROTOCOL.md`。
+详见 `developer/specs/04_PROTOCOL_SPEC.md`。
 
 ## 开发流程（AI 自主开发）
 ```
 Developer Agent
-  -> 读取 developer/ 规范 + ROADMAP 定位阶段
+  -> 读取 developer/specs/（00_PROJECT_SPEC 等）+ roadmap/ 定位阶段
   -> 读取目标模块 AGENT.md（职责/边界/接口）
   -> 读取 protocol/ 契约 + tooling/configs/ 配置
   -> 生成代码 -> 运行 tests/ -> 更新文档与 CHANGELOG -> commit
@@ -236,7 +251,7 @@ make deploy ENV=dev
 ## 仓库统计（自动生成，{date.today()}）
 | 指标 | 数量 |
 |------|------|
-| 顶层域 | {len([d for d in os.listdir(ROOT) if os.path.isdir(os.path.join(ROOT,d)) and not d.startswith('.')])} |
+| 顶层域 | {len([d for d in os.listdir(ROOT) if os.path.isdir(os.path.join(ROOT,d)) and not d.startswith('.') and d not in _EXCLUDE_DIRS])} |
 | 总目录 | {total_dirs} |
 | 总文件 | {total_files} |
 | AGENT.md | {agent_md} |
@@ -247,12 +262,14 @@ make deploy ENV=dev
 
 ## 关键文档
 - `AGENT.md` — 仓库总规范（最高优先级）
-- `developer/ARCHITECTURE.md` — 系统总体架构
+- `developer/specs/README.md` — 规范体系索引（SSOT）
+- `developer/specs/00_PROJECT_SPEC.md` — 项目 SSOT（目标/边界/生命周期）
+- `developer/specs/01_ARCHITECTURE_SPEC.md` — 系统总体架构
+- `developer/specs/04_PROTOCOL_SPEC.md` — 通信协议规范
+- `developer/specs/02_DIRECTORY_SPEC.md` — 仓库目录导航
+- `developer/specs/05_API_SPEC.md` — API 接口规范
+- `developer/specs/11_AI_CODING_SPEC.md` — AI 编码规范
 - `developer/roadmap/README.md` — 系统级开发计划 P0..P7
-- `developer/MESSAGE_PROTOCOL.md` — 通信协议规范
-- `developer/DIRECTORY_GUIDE.md` — 仓库目录导航
-- `developer/API_SPEC.md` — API 接口规范
-- `developer/CODING_RULES.md` — 编码规则
 - 各目录 `AGENT.md` — 模块边界与开发规范
 
 ## 许可

@@ -6,7 +6,7 @@
 定义全系统通信协议
 
 ## 输入
-协议设计（developer/MESSAGE_PROTOCOL.md）
+协议设计（developer/specs/04_PROTOCOL_SPEC.md）
 
 ## 输出
 protocol/*.py 数据类 + 序列化

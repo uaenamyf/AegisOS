@@ -1,7 +1,7 @@
 # developer/specs/ — AegisOS 规范体系（Single Source of Truth）
 
 > 本目录是 AegisOS 的**唯一规范真相源**。采用 **Spec First Development**：在规范（P0）未完成前，任何人/AI 不得编写业务代码。
-> 本目录编号规范**取代** `developer/` 根下旧版散落文档（`API_SPEC.md`/`MESSAGE_PROTOCOL.md`/`EVENT_SPEC.md`/`ARCHITECTURE.md`/`CODING_RULES.md`/`DIRECTORY_GUIDE.md` 等）作为权威；旧文档保留作历史参考，冲突时以本目录为准。
+> 本目录编号规范是 `developer/` 根下旧版散落文档（`API_SPEC.md`/`MESSAGE_PROTOCOL.md`/`EVENT_SPEC.md`/`ARCHITECTURE.md`/`CODING_RULES.md`/`DIRECTORY_GUIDE.md` 等）的权威来源；旧文档已删除，统一以本目录为准。
 
 ## 必读顺序
 
@@ -38,7 +38,7 @@ P5 Implementation → P6 Testing → P7 Deployment
 
 ## 冲突优先级
 
-`00_PROJECT_SPEC` > `04_PROTOCOL_SPEC` ≈ `05_API_SPEC` ≈ `06_SCHEMA_SPEC` > 其余编号规范 > `developer/` 根旧文档 > 各模块 `AGENT.md`
+`00_PROJECT_SPEC` > `04_PROTOCOL_SPEC` ≈ `05_API_SPEC` ≈ `06_SCHEMA_SPEC` > 其余编号规范 > 各模块 `AGENT.md`
 
 ## 与现有体系的关系
 

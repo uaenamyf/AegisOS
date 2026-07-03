@@ -1,6 +1,6 @@
 # agents/memory/snapshot — 快照
 
-> 记忆子系统的 `快照` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `快照` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 系统状态快照：用于回放与一致性校验。

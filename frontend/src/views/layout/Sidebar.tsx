@@ -1,11 +1,15 @@
 // @aegis-gen
+// date: 2026-07-03
+// dev: Claude Code (glm-5.2)
+// change: 导入源拆分——前端本地类型 ViewName 改从 @/protocol/frontend-types 引入（protocol 生成器剥离前端类型）
+// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
 // change: 新建 views/layout/Sidebar.tsx，侧边导航 Canvas/Graph/Monitor/Replay
 
 import { useAppStore } from "@/mappers/store";
 import { ROUTES, routeController } from "@/controllers/routes";
-import type { ViewName } from "@/protocol/types";
+import type { ViewName } from "@/protocol/frontend-types";
 
 export function Sidebar() {
   const activeView = useAppStore((s) => s.activeView);

@@ -1,6 +1,6 @@
 # Frontend/Services 服务层 — AGENT.md
 
-> 本文件是 `frontend/services/` 的开发规范，隶属 `frontend/` 域。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/ARCHITECTURE.md` 相关章节。
+> 本文件是 `frontend/services/` 的开发规范，隶属 `frontend/` 域。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 服务层：前端业务逻辑核心。API 调用（经 backend/gateway）、WebSocket/SSE 连接管理与消息处理、状态编排。控制器与映射器之间的业务中枢。
@@ -11,7 +11,7 @@
 - frontend/mappers/
 - backend/
 - tooling/configs/
-- developer/FRONTEND_GUIDE.md
+- developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md
 
 ## 禁止修改目录
 - frontend/controllers/ 交互处理
@@ -48,9 +48,9 @@
 `tooling/configs/services.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
 
 ## 开发约定
-- 遵循 `developer/CODING_RULES.md` 与 `developer/FRONTEND_GUIDE.md`。
+- 遵循 `developer/specs/11_AI_CODING_SPEC.md` 与 `developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md`。
 - 所有数据结构使用 `protocol/` 类型生成的 TS 类型，禁止手写并行类型。
 - 服务层专注业务逻辑；数据转换走 mappers/，交互分发走 controllers/。
 - API 调用统一经 backend/gateway。
 - 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
-- 修改前确认本模块在分层中的位置（见 `developer/DIRECTORY_GUIDE.md`），不得越界。
+- 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。

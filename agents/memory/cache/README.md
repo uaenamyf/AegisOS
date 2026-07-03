@@ -1,6 +1,6 @@
 # agents/memory/cache — 缓存
 
-> 记忆子系统的 `缓存` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `缓存` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 高频访问记忆缓存：降低检索延迟。

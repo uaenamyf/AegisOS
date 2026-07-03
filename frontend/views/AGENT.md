@@ -1,6 +1,6 @@
 # Frontend/Views 视图层 — AGENT.md
 
-> 本文件是 `frontend/views/` 的开发规范，隶属 `frontend/` 域。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/ARCHITECTURE.md` 相关章节。
+> 本文件是 `frontend/views/` 的开发规范，隶属 `frontend/` 域。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 视图层：按功能特性的 UI 组件渲染。消费 mappers/ 产出的视图模型，接收 controllers/ 分发的交互/事件，不含业务逻辑与数据转换。
@@ -10,7 +10,7 @@
 - frontend/mappers/
 - frontend/controllers/
 - tooling/configs/
-- developer/FRONTEND_GUIDE.md
+- developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md
 
 ## 禁止修改目录
 - frontend/controllers/ 交互处理
@@ -47,13 +47,13 @@
 `tooling/configs/views.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
 
 ## 开发约定
-- 遵循 `developer/CODING_RULES.md` 与 `developer/FRONTEND_GUIDE.md`。
+- 遵循 `developer/specs/11_AI_CODING_SPEC.md` 与 `developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md`。
 - 所有数据结构使用 `protocol/` 类型生成的 TS 类型，禁止手写并行类型。
 - 视图只做渲染与交互上报，业务逻辑走 services/，数据转换走 mappers/。
 - 大图渲染：增量渲染 + 视口剔除 + LOD，避免高频重渲染（节流/批量更新）。
 - 支持暗色主题；关键操作有键盘可达路径。
 - 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
-- 修改前确认本模块在分层中的位置（见 `developer/DIRECTORY_GUIDE.md`），不得越界。
+- 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
 
 ## 下辖功能特性
 - `frontend/views/canvas/` 任务编排画布（DAG 编辑/运行）

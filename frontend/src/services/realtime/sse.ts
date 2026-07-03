@@ -1,10 +1,15 @@
 // @aegis-gen
+// date: 2026-07-03
+// dev: Claude Code (glm-5.2)
+// change: 导入源拆分——ConnectionStatus 改从 @/protocol/frontend-types 引入，Event 仍从 @/protocol/types
+// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
 // change: 新建 services/realtime/sse.ts，SSE 管理器：连接 /api/v1/events 并分发事件到 store
 
 import { useAppStore } from "@/mappers/store";
-import type { ConnectionStatus, Event } from "@/protocol/types";
+import type { ConnectionStatus } from "@/protocol/frontend-types";
+import type { Event } from "@/protocol/types";
 
 const DEFAULT_SSE_URL = "http://localhost:8000/api/v1/events";
 

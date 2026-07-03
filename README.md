@@ -1,6 +1,6 @@
 # AegisOS
 
-> **Agent Operating System (AOS) + AI Native IDE** — 面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」的可由 Agent 自主开发与运行的群体智能系统。
+> **Agent Operating System (AOS) + AI Native IDE** — 面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」，方向为**面向超长程网络攻击防御的动态异构群体智能协同推理引擎**，的可由 Agent 自主开发与运行的群体智能系统。
 
 ## 核心特性
 - **动态异构群体智能**（Dynamic Heterogeneous Topology）
@@ -98,12 +98,12 @@ User Goal
 - Event: AgentStart/AgentFinish/ToolCall/ToolFinish/Retry/Rollback/MemoryUpdate/GraphUpdate
 - 动态路由: Task -> Semantic Graph -> Agent Graph -> Dynamic Routing -> Sparse Communication -> Adaptive Graph -> Graph Update
 
-详见 `developer/MESSAGE_PROTOCOL.md`。
+详见 `developer/specs/04_PROTOCOL_SPEC.md`。
 
 ## 开发流程（AI 自主开发）
 ```
 Developer Agent
-  -> 读取 developer/ 规范 + ROADMAP 定位阶段
+  -> 读取 developer/specs/（00_PROJECT_SPEC 等）+ roadmap/ 定位阶段
   -> 读取目标模块 AGENT.md（职责/边界/接口）
   -> 读取 protocol/ 契约 + tooling/configs/ 配置
   -> 生成代码 -> 运行 tests/ -> 更新文档与 CHANGELOG -> commit
@@ -237,26 +237,28 @@ tooling/
   scripts/
 ```
 
-## 仓库统计（自动生成，2026-06-27）
+## 仓库统计（自动生成，2026-07-03）
 | 指标 | 数量 |
 |------|------|
 | 顶层域 | 11 |
 | 总目录 | 123 |
-| 总文件 | 156 |
+| 总文件 | 232 |
 | AGENT.md | 78 |
-| Python 文件 | 19 |
-| Markdown 文件 | 136 |
+| Python 文件 | 56 |
+| Markdown 文件 | 116 |
 | 公共 API 接口 | 27 |
 | protocol 契约类型 | 26 |
 
 ## 关键文档
 - `AGENT.md` — 仓库总规范（最高优先级）
-- `developer/ARCHITECTURE.md` — 系统总体架构
+- `developer/specs/README.md` — 规范体系索引（SSOT）
+- `developer/specs/00_PROJECT_SPEC.md` — 项目 SSOT（目标/边界/生命周期）
+- `developer/specs/01_ARCHITECTURE_SPEC.md` — 系统总体架构
+- `developer/specs/04_PROTOCOL_SPEC.md` — 通信协议规范
+- `developer/specs/02_DIRECTORY_SPEC.md` — 仓库目录导航
+- `developer/specs/05_API_SPEC.md` — API 接口规范
+- `developer/specs/11_AI_CODING_SPEC.md` — AI 编码规范
 - `developer/roadmap/README.md` — 系统级开发计划 P0..P7
-- `developer/MESSAGE_PROTOCOL.md` — 通信协议规范
-- `developer/DIRECTORY_GUIDE.md` — 仓库目录导航
-- `developer/API_SPEC.md` — API 接口规范
-- `developer/CODING_RULES.md` — 编码规则
 - 各目录 `AGENT.md` — 模块边界与开发规范
 
 ## 许可

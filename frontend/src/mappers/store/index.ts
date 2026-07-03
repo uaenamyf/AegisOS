@@ -1,4 +1,8 @@
 // @aegis-gen
+// date: 2026-07-03
+// dev: Claude Code (glm-5.2)
+// change: 导入源拆分——ConnectionStatus/Session/ViewName 改从 @/protocol/frontend-types，Agent/Event/Graph/Task 仍从 @/protocol/types
+// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
 // change: 新建 store/index.ts，Zustand 全局状态：session/tasks/agents/graph/events/activeView/connectionStatus
@@ -10,13 +14,15 @@
 import { create } from "zustand";
 import type {
   Agent,
-  ConnectionStatus,
   Event,
   Graph,
-  Session,
   Task,
-  ViewName,
 } from "@/protocol/types";
+import type {
+  ConnectionStatus,
+  Session,
+  ViewName,
+} from "@/protocol/frontend-types";
 
 export interface ChatMessage {
   id: string;

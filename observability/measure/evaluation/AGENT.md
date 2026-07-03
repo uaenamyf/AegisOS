@@ -1,6 +1,6 @@
 # Obs/Evaluation 评估 — AGENT.md
 
-> 本文件是 `observability/measure/evaluation/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/ARCHITECTURE.md` 相关章节。
+> 本文件是 `observability/measure/evaluation/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 评估指标、评分与报告：任务成功率、通信熵、记忆质量、群体智能指标。
@@ -43,9 +43,9 @@ evaluate(run) -> Report；对齐赛题评分维度。
 `tooling/configs/evaluation.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
 
 ## 开发约定
-- 遵循 `developer/CODING_RULES.md` 与 `developer/PYTHON_STYLE.md`。
+- 遵循 `developer/specs/11_AI_CODING_SPEC.md` 与 `developer/specs/12_TECH_STACK_SPEC.md`。
 - 所有对外数据结构必须复用 `protocol/` 定义的类型，禁止自造并行结构。
 - 对外通信一律走 `protocol/message.py` 的 Message 信封，禁止裸 JSON。
 - 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
-- 新增接口需同步更新 `developer/API_SPEC.md` 与 `developer/EVENT_SPEC.md`。
-- 修改前确认本模块在分层中的位置（见 `developer/DIRECTORY_GUIDE.md`），不得越界。
+- 新增接口需同步更新 `developer/specs/05_API_SPEC.md` 与 `developer/specs/07_EVENT_SPEC.md`。
+- 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。

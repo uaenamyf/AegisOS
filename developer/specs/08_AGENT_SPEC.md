@@ -61,7 +61,7 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 - 位置：`agents/tools/prompts/`（模板库 + 版本管理 + `roles/` 各角色模板）。
 - 版本化：每个 prompt 有版本号；变更走 `tooling/configs/prompts/` 登记。
 - 注入：由 Runtime 在 `Load Prompt` 阶段注入 `ContextSchema`（含 history/skills/tools）。
-- 规范详见 `developer/PROMPT_GUIDE.md`。
+- 规范详见本文件 §3（原 `PROMPT_GUIDE.md` 已并入）。
 - 禁止在 prompt 中硬编码密钥或敏感数据。
 
 ---
@@ -82,7 +82,7 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 - 声明：工具以 `ToolSpec`（args_schema/output_schema/permission/resource_limit）注册于 `agents/action/execution/tools/`。
 - 权限：每角色 Agent 有工具白名单；危险操作须显式 `permission`；资源受 `resource_limit` 约束。
 - 事件：每次调用发 `ToolCall`/`ToolFinish` 事件。
-- 详见 `developer/TOOL_SPEC.md`。
+- 详见本文件 §5（原 `TOOL_SPEC.md` 已并入）。
 
 ---
 

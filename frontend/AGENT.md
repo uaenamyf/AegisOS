@@ -1,6 +1,6 @@
 # Frontend 前端表现层（域根） — AGENT.md
 
-> 本文件是 `frontend/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/ARCHITECTURE.md` 相关章节。
+> 本文件是 `frontend/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Controller-Service-Mapper** 三层架构 + Views 视图层。
@@ -17,7 +17,7 @@ AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Con
 - backend/
 - protocol/
 - tooling/configs/
-- developer/FRONTEND_GUIDE.md
+- developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md
 
 ## 禁止修改目录
 - backend/
@@ -35,7 +35,7 @@ AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Con
 - protocol/ 消息类型
 
 ## 接口
-REST + WebSocket + SSE；详见 developer/API_SPEC.md。
+REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
 
 ## 测试方式
 `pytest tests/frontend/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
@@ -50,12 +50,12 @@ REST + WebSocket + SSE；详见 developer/API_SPEC.md。
 `tooling/configs/frontend.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
 
 ## 开发约定
-- 遵循 `developer/CODING_RULES.md` 与 `developer/FRONTEND_GUIDE.md`。
+- 遵循 `developer/specs/11_AI_CODING_SPEC.md` 与 `developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md`。
 - 所有数据结构使用 `protocol/` 类型生成的 TS 类型，禁止手写并行类型。
-- API 调用统一经 backend/gateway，类型由 `developer/API_SPEC.md` 生成。
+- API 调用统一经 backend/gateway，类型由 `developer/specs/05_API_SPEC.md` 生成。
 - 控制器不写业务逻辑，只做交互/事件处理 + 调 service + 分发到 views。
 - 提交前运行本模块测试并更新 `developer/CHANGELOG.md`。
-- 修改前确认本模块在分层中的位置（见 `developer/DIRECTORY_GUIDE.md`），不得越界。
+- 修改前确认本模块在分层中的位置（见 `developer/specs/02_DIRECTORY_SPEC.md`），不得越界。
 
 ## 调用链路
 ```

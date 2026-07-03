@@ -1,6 +1,6 @@
 # agents/memory/retrieval — 检索
 
-> 记忆子系统的 `检索` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `检索` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 多路召回与重排序：融合向量/关键词/图检索。

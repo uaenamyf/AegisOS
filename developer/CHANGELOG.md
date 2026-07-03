@@ -95,3 +95,16 @@
 - README 含：项目介绍、核心特性、架构总览、顶层目录表、agents/backend/frontend 内部分层、模块间 API 解耦表、数据流、通信协议、开发流程、快速开始、自动生成的目录树与仓库统计、关键文档索引。
 - 「实际目录结构」与「仓库统计」段为自动生成，勿手改；结构/api 变动后运行 `python3 tooling/scripts/gen_readme.py` 刷新。
 - 更新 tooling/scripts/AGENT.md（登记 gen_readme.py + 动态维护说明）、根 AGENT.md（README 动态维护段）、DEVELOPER_GUIDE（流程加入 README 刷新步骤）。
+
+## [P0] 2026-07-03 规范整体改造：全仓对齐 SSOT + 仓库卫生 + frontend 结构重构
+
+> 触发：根 `AGENT.md` 与 `developer/specs/README.md` 声明 `developer/specs/`（00–13）为唯一真相源（SSOT）并"取代" `developer/` 根旧指南，但 77/78 个模块 `AGENT.md` 与 `README` 仍引用旧文档——本次把全仓对齐到 SSOT。
+
+- **删除旧指南**：删除 `developer/` 根下 20 个被 `developer/specs/` 取代的旧指南（`AGENT_GUIDE`/`API_SPEC`/`ARCHITECTURE`/`BACKEND_GUIDE`/`CODING_RULES`/`DEPLOY_GUIDE`/`DESIGN`/`DEVELOPER_GUIDE`/`DEVELOPMENT_PLAN`/`DIRECTORY_GUIDE`/`EVENT_SPEC`/`FRONTEND_GUIDE`/`MEMORY_GUIDE`/`MESSAGE_PROTOCOL`/`PROJECT_BOOTSTRAP`/`PROMPT_GUIDE`/`PYTHON_STYLE`/`ROUTER_GUIDE`/`TEST_GUIDE`/`TOOL_SPEC`）；保留 `developer/AGENT.md`、`CHANGELOG.md`、`roadmap/`、`specs/`。
+- **全量 AGENT.md 引用重定向**：新增 `tooling/scripts/realign_agent_docs.py`（带 `@aegis-gen` 头），把 77 个模块 `AGENT.md` 中 346 处旧文档引用按映射重定向到 `developer/specs/`（ARCHITECTURE→01、DIRECTORY_GUIDE→02、MESSAGE_PROTOCOL→04、API_SPEC→05、EVENT_SPEC→07、CODING_RULES→11、PYTHON_STYLE→12、ROUTER_GUIDE→04 等）；同步修正 12 个 `agents/memory/*/README.md`、`roadmap/P1`、`specs/08`（PROMPT_GUIDE/TOOL_SPEC 并入本文件）、`protocol/__init__.py` 的残留引用。
+- **根规范更新**：根 `AGENT.md`、`developer/specs/README.md`、`developer/AGENT.md`（删除无效 `补充.md`/`开发.md` 引用、下辖子模块改指 specs/）的"取代/历史参考"表述改为"已删除"。
+- **README 重生成**：修正 `gen_readme.py`（关键文档/通信协议/开发流程段改指 specs/、计数排除 `.venv`/`.claude`/`node_modules`/`__pycache__`/`*.egg-info` 等噪声、顶层域排除 egg-info）；手动同步 `README.md`（doc-ref 段 + 统计刷新：78 AGENT.md / 56 py / 116 md / 232 文件 / 123 目录）。
+- **frontend 代码结构重构**：删除重复编译配置 `vite.config.js`/`playwright.config.js`（保留 `.ts`）；重构 `gen_ts_types.py` 剥离硬编码前端类型块（生成器只产出 protocol 契约类型，职责分离）；重建 `frontend/src/protocol/frontend-types.ts` 为前端本地类型唯一手维护来源（修正 `ViewName` 缺 `'chat'` 的分叉、统一 `Record<string, unknown>`）；10 处导入重定向（前端本地类型→`@/protocol/frontend-types`，protocol 类型→`@/protocol/types`）。验收：`tsc -b` 与 `vite build` 均通过（69 模块）。
+- **仓库卫生**：扩充根 `.gitignore`（`__pycache__`/`*.pyc`/`.venv`/`*.db`/`.DS_Store`/各 cache/frontend 构建产物）；`git rm --cached` 取消跟踪 `.DS_Store`、`data/aegisos.db`、`.venv/`（**7532 文件，macOS venv 误提交**）、`aegisos.egg-info/`。tracked 文件 7861→329。
+- 所有 AI 改动加 `@aegis-gen` 注释头（§10）。
+- **未执行**：Python 侧质量门禁（ruff/mypy）与 `gen_readme.py`/`gen_ts_types.py` 实际运行——本机无 Python 解释器（仓库原在 macOS 开发，`.venv` 为 macOS 专用；Windows 仅有 node）。realign 经等价 perl 完成（结果已校验：0 残留）；README/types 经手动同步；frontend 经 `tsc`+`build` 验证。待 Python 环境就绪后运行 `python3 tooling/scripts/gen_readme.py` 与 `npm run gen:types` 可刷新自动生成段（`types.ts` 中现已无引用的前端类型导出会在下次 `gen:types` 时自动清除）。

@@ -1,6 +1,6 @@
 # agents/memory/archive — 归档
 
-> 记忆子系统的 `归档` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `归档` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 冷数据与历史快照：低频访问，按策略淘汰。

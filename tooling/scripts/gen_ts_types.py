@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # @aegis-gen
+# date: 2026-07-03
+# dev: Claude Code (glm-5.2)
+# change: 剥离硬编码的前端本地类型块——生成器只产出 protocol 契约类型；前端本地类型改由 frontend/src/protocol/frontend-types.ts 手维护
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建 gen_ts_types.py，由 protocol/ dataclass 类型生成 TypeScript 类型定义到 frontend/src/protocol/types.ts
@@ -150,68 +154,10 @@ def generate() -> str:
     for ts_name, cls in dataclasses_list:
         body.extend(_generate_interface(ts_name, cls))
 
-    # --- Frontend-specific types (not from protocol, appended for convenience) ---
-    body.append("// === Frontend-specific types (not from protocol/) ===")
-    body.append("")
-    body.append("export type ViewName = 'chat' | 'canvas' | 'graph' | 'monitor' | 'replay';")
-    body.append("")
-    body.append("export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error';")
-    body.append("")
-    body.append("export interface ApiError {")
-    body.append("  code: string;")
-    body.append("  message: string;")
-    body.append("  trace_id: string;")
-    body.append("}")
-    body.append("")
-    body.append("export interface Session {")
-    body.append("  id: string;")
-    body.append("  user_id: string;")
-    body.append("  status: 'active' | 'closed';")
-    body.append("  context: Record<string, any>;")
-    body.append("  created_at?: string;")
-    body.append("}")
-    body.append("")
-    body.append("export interface CreateSessionRequest {")
-    body.append("  user_id: string;")
-    body.append("}")
-    body.append("")
-    body.append("export interface CreateTaskRequest {")
-    body.append("  goal: string;")
-    body.append("  session_id: string;")
-    body.append("}")
-    body.append("")
-    body.append("export interface InvokeAgentRequest {")
-    body.append("  goal: string;")
-    body.append("  session_id: string;")
-    body.append("}")
-    body.append("")
-    body.append("export interface InvokeToolRequest {")
-    body.append("  name: string;")
-    body.append("  args: Record<string, any>;")
-    body.append("}")
-    body.append("")
-    body.append("export interface WriteMemoryRequest {")
-    body.append("  working?: Record<string, any>;")
-    body.append("  semantic?: Record<string, any>;")
-    body.append("  episodic?: Record<string, any>;")
-    body.append("  archive?: Record<string, any>;")
-    body.append("  summary?: string;")
-    body.append("}")
-    body.append("")
-    body.append("export interface Metrics {")
-    body.append("  uptime_seconds: number;")
-    body.append("  agents_registered: number;")
-    body.append("  events_buffered: number;")
-    body.append("  db_engine: string;")
-    body.append("  status: string;")
-    body.append("}")
-    body.append("")
-    body.append("export interface ReplayResponse {")
-    body.append("  session_id: string;")
-    body.append("  timeline: any[];")
-    body.append("  event_count: number;")
-    body.append("}")
-    body.append("")
+    # NOTE: frontend-local types (ViewName, ConnectionStatus, ApiError, Session,
+    # request DTOs, ...) used to be hardcoded here. They are now hand-maintained
+    # in frontend/src/protocol/frontend-types.ts so this generator emits ONLY the
+    # protocol/ contract types (single source of truth separation).
 
     return "\n".join(header + body)
 

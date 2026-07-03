@@ -1,6 +1,6 @@
 # agents/memory/working — 工作记忆
 
-> 记忆子系统的 `工作记忆` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/MEMORY_GUIDE.md`。
+> 记忆子系统的 `工作记忆` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 当前任务的临时上下文与变量：短时、高带宽、随会话结束回收。
