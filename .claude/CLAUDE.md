@@ -18,7 +18,7 @@
 - AI 改动 ≤1 域 / ≤8 文件 / 行为保持 / 含测试；AI 代码加 `@aegis-gen` 注释头（date/dev/change，新头叠旧头之上，不删旧）。
 - router 禁低熵全广播（仅 Top-K 稀疏路由）；攻防工具仅 Docker 沙箱靶场内运行，永不触真实网络。
 
-**在哪找**：规范 → `developer/specs/` · 契约 → `protocol/` · 接口 → 各域 `api/` · 计划 → `developer/specs/plans/` · 阶段 → `developer/roadmap/` · skills → `.claude/skills/`。
+**在哪找**：规范 → `developer/specs/` · 契约 → `protocol/` · 接口 → 各域 `api/` · 计划 → `developer/specs/plans/` · 阶段 → `developer/roadmap/` · skills → `.claude/skills/` · **模块实现文档 → 根 `MODULE.md` + 各域 `MODULE.md` · 架构仪表盘 → `docs/ARCHITECTURE.md`**。
 
 ---
 
@@ -63,7 +63,7 @@
 | `agents/memory` | 12 子模块（working/episodic/semantic/vector/compression/recall/...） | 08·06 | 14/15(B1-B3 压缩/唤醒) | `agents/api` |
 | `agents/tools` | llms(多模型兼容) · prompts · runtime | 12·08 | 14/15(D2 多模型) | `agents/api` |
 | `agents/api` | 公共接口层：RuntimeAPI / AgentRegistry / Memory / Planning / Execution / Perception / EventBus | 05·10 | 13(双向调用/DI 端口) | — |
-| `protocol` | message/event/scheduler/tool/memory/agent/graph/heartbeat/sync（+`cyber.py` 待建） | 04·06 | 14/15(A1 cyber 类型) | — |
+| `protocol` | message/event/scheduler/tool/memory/agent/graph/heartbeat/sync + `cyber.py`（8 攻防类型 ✅） | 04·06 | 14/15(A1 cyber 类型) | — |
 | `backend` | src/(gateway / controllers / services / mappers) | 05·10·12 | 13·14/15(F 攻防端点) | `backend/src/api` |
 | `frontend` | src/(controllers / services / mappers / views(chat·canvas·graph·monitor·replay)) | 13·05·12 | 13·14/15(G 攻防视图) | — |
 | `infrastructure` | transport / nodes(edge·cloud) / delivery(deployment) | 01·12 | 14/15(H1 沙箱靶场·端边云) | `infrastructure/api` |
@@ -98,7 +98,7 @@
 > 冲突优先级：`00` > `04` ≈ `05` ≈ `06` > 其余编号 > 各模块 `AGENT.md`。必读顺序见根 `AGENT.md`。
 
 ### roadmap（`developer/roadmap/`，P0..P7）
-`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前仅 P0 完成；各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
+`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P5 ✅ 完成**（55 测试通过），**P6 部分完成**（ChatView ✅，攻防视图 🔲），P7 未开始；各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
 
 ### skills（`.claude/skills/`，按需启用）
 - **superpowers（14）**：`writing-plans` · `executing-plans` · `subagent-driven-development` · `dispatching-parallel-agents` · `brainstorming` · `test-driven-development` · `systematic-debugging` · `verification-before-completion` · `requesting-code-review` · `receiving-code-review` · `using-git-worktrees` · `finishing-a-development-branch` · `using-superpowers` · `writing-skills`。
@@ -121,3 +121,4 @@
 ## 维护
 - 本文件**指针式**，不复制 SSOT 全文；SSOT 变动后核对此处链接。
 - 模块结构 / api 变动后：更新对应 `AGENT.md`「交叉引用」段 + 根 `README.md`（`python3 tooling/scripts/gen_readme.py` 刷新自动段，本机无 Python 时手动同步）。
+- 代码实现变动后：更新对应 `MODULE.md`（根 `MODULE.md` 总览 + 各域 `MODULE.md` 详解）+ `docs/ARCHITECTURE.md` 仪表盘。
