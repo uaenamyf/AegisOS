@@ -11,6 +11,7 @@ AegisOS 是面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」的 **Age
 ```
 Developer Agent
   -> 读取本文件（AGENT.md）
+  -> 读取 developer/plan.md（动态开发计划，了解当前待办）
   -> 读取 developer/specs/00_PROJECT_SPEC.md（项目 SSOT）
   -> 读取 developer/specs/03_IMPORT_SPEC.md（依赖矩阵，AI 最易犯错）
   -> 读取 developer/specs/11_AI_CODING_SPEC.md（AI 编码规范）
@@ -21,7 +22,7 @@ Developer Agent
   -> 读取 tooling/configs/ 配置
   -> 生成代码
   -> 运行 Test（质量门禁：ruff format && ruff check --fix && mypy && pytest）
-  -> 生成/更新 Doc + CHANGELOG
+  -> 生成/更新 Doc + CHANGELOG + plan.md（勾选完成任务）
   -> Commit
 ```
 Agent 永不扫描整个项目；按模块边界精准读写，效率高且不会越界破坏其他子系统。
@@ -47,14 +48,16 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 
 ## 必读顺序
 1. 本文件（AGENT.md）
-2. `developer/specs/00_PROJECT_SPEC.md`（项目 SSOT）
-3. `developer/specs/03_IMPORT_SPEC.md`（Import 规范，AI 最重要）
-4. `developer/specs/11_AI_CODING_SPEC.md`（AI 编码规范）
-5. `developer/specs/12_TECH_STACK_SPEC.md`（技术栈）
-6. `developer/roadmap/README.md`（定位当前阶段）
-7. 目标模块的 `AGENT.md`
-8. `protocol/` 相关契约 + `developer/specs/04_PROTOCOL_SPEC.md`
-9. 目标域 `api/` 接口 + `developer/specs/05_API_SPEC.md`
+2. `developer/plan.md`（动态开发计划，了解当前待办和下一步）
+3. `developer/specs/00_PROJECT_SPEC.md`（项目 SSOT）
+4. `developer/specs/03_IMPORT_SPEC.md`（Import 规范，AI 最重要）
+5. `developer/specs/11_AI_CODING_SPEC.md`（AI 编码规范）
+6. `developer/specs/12_TECH_STACK_SPEC.md`（技术栈）
+7. `developer/roadmap/README.md`（定位当前阶段）
+8. 目标模块的 `AGENT.md`
+9. `protocol/` 相关契约 + `developer/specs/04_PROTOCOL_SPEC.md`
+10. 目标域 `api/` 接口 + `developer/specs/05_API_SPEC.md`
+11. 目标域 `MODULE.md`（模块实现详解）+ 根 `MODULE.md`（全局总览）
 
 ## 全局铁律
 - **模块间解耦**：每个域通过 `api/` 子包暴露公共接口（`from {domain}.api import ...`），其他模块**只通过 api/ 调用**，禁止直接导入内部实现子包。内部可自由重构，只要 api/ 签名不变，依赖方不受影响。详见 `developer/specs/03_IMPORT_SPEC.md`。

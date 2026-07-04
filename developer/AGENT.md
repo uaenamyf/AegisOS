@@ -49,7 +49,9 @@ read(spec) -> Guideline；所有 Agent 开发前第一步读取本目录。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/09_DEVELOPMENT_SPEC.md（本目录即 SSOT）
+- **动态开发计划**：developer/plan.md（当前待办任务 + 下一步计划，每次会话必读）
 
 ## 下辖子模块
+- `developer/plan.md` 动态开发计划（当前未完成任务清单，每次完成任务后更新勾选）
 - `developer/specs/` 编号规范 SSOT（`00`–`13`）
 - `developer/roadmap/` 系统级开发计划：`README.md`（总览）+ `P0..P7/`（各阶段目标/输入/输出/接口/测试/风险/完成标准）

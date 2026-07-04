@@ -10,7 +10,7 @@
 
 **项目**：AegisOS = Agent Operating System + AI Native IDE；赛事作品为「面向超长程网络攻击防御的动态异构群体智能协同推理引擎」（荣耀 XH-202631，截止 2026-09-15）。
 
-**第一步**：读 `AGENT.md`（根，仓库最高规范）→ `developer/specs/00_PROJECT_SPEC.md`（SSOT）→ `developer/roadmap/README.md`（当前阶段 P0..P7）→ 目标模块 `AGENT.md`。
+**第一步**：读 `AGENT.md`（根，仓库最高规范）→ `developer/plan.md`（动态待办计划）→ `developer/specs/00_PROJECT_SPEC.md`（SSOT）→ `developer/roadmap/README.md`（当前阶段 P0..P7）→ 目标模块 `AGENT.md`。
 
 **最易违反的铁律**：
 - 跨域调用仅经 `api/`：`from {domain}.api import ...`，禁直接 import 内部子包。
@@ -18,7 +18,7 @@
 - AI 改动 ≤1 域 / ≤8 文件 / 行为保持 / 含测试；AI 代码加 `@aegis-gen` 注释头（date/dev/change，新头叠旧头之上，不删旧）。
 - router 禁低熵全广播（仅 Top-K 稀疏路由）；攻防工具仅 Docker 沙箱靶场内运行，永不触真实网络。
 
-**在哪找**：规范 → `developer/specs/` · 契约 → `protocol/` · 接口 → 各域 `api/` · 计划 → `developer/specs/plans/` · 阶段 → `developer/roadmap/` · skills → `.claude/skills/` · **模块实现文档 → 根 `MODULE.md` + 各域 `MODULE.md` · 架构仪表盘 → `docs/ARCHITECTURE.md`**。
+**在哪找**：规范 → `developer/specs/` · 契约 → `protocol/` · 接口 → 各域 `api/` · **动态计划 → `developer/plan.md`（当前待办）** · 阶段 → `developer/roadmap/` · skills → `.claude/skills/` · **模块实现文档 → 根 `MODULE.md` + 各域 `MODULE.md` · 架构仪表盘 → `docs/ARCHITECTURE.md`**。
 
 ---
 
@@ -109,6 +109,7 @@
 
 ### 计划（`developer/specs/plans/`）
 `13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E 已完成（55 测试通过）；下一步：B3 runtime 集成 + 编排器 + E13 e2e + F/G 攻防端点视图。
+> **动态开发计划**：`developer/plan.md` — 当前未完成任务清单 + 下一步计划，每次会话必读、每次完成任务后更新勾选。
 
 ---
 

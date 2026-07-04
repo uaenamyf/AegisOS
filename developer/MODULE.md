@@ -11,6 +11,7 @@
 ```
 developer/
 ├── CHANGELOG.md            ✅ 变更记录
+├── plan.md                 ✅ 动态开发计划（当前待办清单，每次会话必读）
 ├── specs/                  ✅ 15 个规范文件（唯一真相源）
 │   ├── 00_PROJECT_SPEC.md      项目 SSOT
 │   ├── 01_ARCHITECTURE_SPEC.md 系统架构
@@ -93,6 +94,8 @@ developer/
 | P7 | Deployment | 🔲 未开始 |
 
 详见：[`roadmap/README.md`](roadmap/README.md)
+
+> **动态开发计划**：[`plan.md`](plan.md) — 当前未完成任务清单 + 下一步计划，每次会话必读、每次完成任务后更新勾选。
 
 ---
 
