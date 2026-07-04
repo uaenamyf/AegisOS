@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: 红队漏洞关联 Agent
+# changelog: 红队漏洞关联 Agent
 from __future__ import annotations
 
 import json

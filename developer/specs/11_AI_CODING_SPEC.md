@@ -109,7 +109,7 @@
 
 - 文档与代码**同一 PR**提交；文档滞后 = 未完成。
 - 不手改根 `README.md` 自动生成段。
-- 不添加无关注释（解释 what 而非 why 的冗余注释）；但 **AI 生成/修改的代码必须按 §10 加注释头**（日期/开发人员/改动内容）。意图由测试与命名表达。
+- 不添加无关注释（解释 what 而非 why 的冗余注释）；意图由测试与命名表达。
 
 ---
 
@@ -142,104 +142,78 @@
 12. ❌ 手改根 `README.md` 自动生成段。
 13. ❌ 添加未在 `tooling/configs` 登记的三方依赖。
 14. ❌ 做超阶段（roadmap）的开发。
-15. ❌ AI 生成/修改代码却不加注释头（日期/开发人员/改动内容，见 §10）。
+15. ❌ AI 首次创建文件不加文件头注释（文件说明 + date + dev，见 §10.1）。
+16. ❌ AI 增改函数/方法/接口时不加变更注释（date + dev + changelog + 代码注释，见 §10.2）。
 
 ---
 
-## 10. AI 代码注释规范（Code Annotation，强制）
+## 10. 代码注释与 docstring 规范（强制）
 
-> **凡 AI 生成或修改的代码，必须加注释头，标注日期、开发人员、改动内容。** 这是可追溯与协作开发的基本要求，缺失注释头的 AI 改动一律视为未完成，须补全方可提交。
+> **凡 AI 创建文件或增改函数/方法/接口，必须加注释头；凡 Python 模块、类、公开函数/方法必须有 docstring。** 晦涩难懂的代码行须加行内注释。缺失注释的代码一律视为未完成，须补全方可提交。
 
-### 10.1 注释头格式
+### 10.1 文件头注释（首次创建文件）
 
-统一标记 `@aegis-gen`，后跟三行字段：
+> **AI 首次创建任一代码文件时，必须在文件顶部写注释头：先说明该文件做什么，再标注 `date` 和 `dev`。**
 
-**Python**：
+**Python 示例**（参考 `backend/main.py`）：
 ```python
-# @aegis-gen
 # date: 2026-06-27
 # dev: myf
-# change: 实现 MemoryAPI.read 向量检索与 rerank 逻辑
+"""AegisOS 后端 FastAPI 应用入口。
+
+本模块负责创建并配置 FastAPI 应用实例，包括：日志初始化、CORS 跨域、
+Trace ID 中间件、健康检查/网关/WebSocket 路由挂载、统一错误响应格式化。
+"""
 ```
 
-**TypeScript / 前端**：
+**TypeScript 示例**：
 ```typescript
-// @aegis-gen
 // date: 2026-06-27
 // dev: myf
-// change: 新增 GraphView 动态图渲染组件
+/**
+ * 会话管理 API 服务 — 封装与后端 /api/session 端点的交互。
+ */
 ```
 
 | 字段 | 必填 | 格式 | 说明 |
 |------|:----:|------|------|
-| `@aegis-gen` | ✅ | 固定标记 | 标识本段为 AI 生成/修改 |
+| `date` | ✅ | `YYYY-MM-DD`（ISO 8601） | 文件创建日期 |
+| `dev` | ✅ | git 用户名或人类名 | 开发人员；以 `git config user.name` 为准，如 `myf`、`张三`；**禁写** AI 工具名/模型名 |
+| 文件说明 | ✅ | docstring 或块注释 | 一段话说明该文件职责与核心功能 |
+
+### 10.2 变更注释（增改函数/方法/接口）
+
+> **AI 后续对已有文件的函数、方法、接口进行新增或修改时，必须在改动处正上方写变更注释头：标注 `date`、`dev`、`changelog`，并为生成的代码添加注释以保证可读性。**
+
+**Python 示例**：
+```python
+# date: 2026-07-05
+# dev: myf
+# changelog: 新增 retrieve 方法，支持向量+关键词混合检索
+def retrieve(query: dict) -> list:
+    """检索与 query 相关的记忆片段。"""
+    ...
+```
+
+**TypeScript 示例**：
+```typescript
+// date: 2026-07-05
+// dev: myf
+// changelog: 新增 createSession 方法，调用后端创建会话端点
+export async function createSession(): Promise<Session> {
+  ...
+}
+```
+
+| 字段 | 必填 | 格式 | 说明 |
+|------|:----:|------|------|
 | `date` | ✅ | `YYYY-MM-DD`（ISO 8601） | 改动日期 |
-| `dev` | ✅ | git 用户名或人类名 | 开发人员；以 `git config user.name` 为准，如 `myf`、`张三`；**禁写** AI 工具名/模型名（如 ~~Claude Code (glm-5.2)~~） |
-| `change` | ✅ | 一句话祈使/陈述 | 改动内容简述（做了什么） |
+| `dev` | ✅ | git 用户名或人类名 | 开发人员；以 `git config user.name` 为准；**禁写** AI 工具名/模型名 |
+| `changelog` | ✅ | 一句话祈使/陈述 | 本次改了什么（做了什么） |
 
 > 多人/AI 接续修改同一段时，**追加**新注释头于上方，**不删除**既有注释头，形成改动历史栈（最新在上）。
 
-### 10.2 放置规则
-
-| 场景 | 放置位置 | 示例 |
-|------|----------|------|
-| AI **新建文件** | 文件顶部（模块 docstring/`from __future__` 之后、import 之前或之后均可，保持域内一致） | 文件头注释头 |
-| AI **新增函数/类**（已有文件） | 该函数/类定义正上方 | `def read(...):` 上方 |
-| AI **修改既有函数/类/块** | 被修改块的正上方 | 修改的函数上方 |
-| AI **新增方法/分支** | 对应方法/块上方 | — |
-| 纯格式化/空白调整 | **可省略**（非实质性改动） | — |
-
-### 10.3 示例（新建文件）
-
-```python
-"""agents/memory/retrieval.py — 检索子模块。"""
-from __future__ import annotations
-
-# @aegis-gen
-# date: 2026-06-27
-# dev: myf
-# change: 新建 retrieval 模块，实现向量+关键词+图混合检索
-
-from protocol import MemoryPacket
-
-
-# @aegis-gen
-# date: 2026-06-27
-# dev: myf
-# change: 实现 retrieve 主入口，含 rerank
-def retrieve(query: dict) -> list:
-    ...
-```
-
-### 10.4 示例（修改既有代码，追加注释头）
-
-```python
-# @aegis-gen
-# date: 2026-06-28
-# dev: myf
-# change: 修复 retrieve 在空 query 下的空指针异常
-# @aegis-gen
-# date: 2026-06-27
-# dev: myf
-# change: 实现 retrieve 主入口，含 rerank
-def retrieve(query: dict) -> list:
-    ...
-```
-
-### 10.5 约束
-
-- 注释头字段必须真实，`date` 用改动当日，`dev` 用实际开发方，`change` 如实描述。
-- **`dev` 字段以 `git config user.name` 为准**，禁写 AI 工具名/模型名（如 ~~Claude Code (glm-5.2)~~、~~Cursor (gpt-4o)~~）。
-- 注释头**不替代** commit message；commit 仍须遵循 `00` §13 格式。
-- 注释头**不替代**文档；API/事件/协议变更仍须同步对应规范。
-- 人类开发者手写代码不强制加 `@aegis-gen`，但鼓励记录改动作者。
-- 注释头不计入「无关注释」禁令；它是元数据，非冗余解释。
-
-### 10.6 代码 docstring 规范（强制）
-
-> **凡 Python 文件中的模块、类、公开函数/方法，必须有 docstring。** 晦涩难懂的代码行须加行内注释。缺失 docstring 的代码一律视为未完成，须补全方可提交。
-
-#### docstring 覆盖范围
+### 10.3 docstring 覆盖范围
 
 | 元素 | 是否必须 docstring | 说明 |
 |------|:------------------:|------|
@@ -251,7 +225,7 @@ def retrieve(query: dict) -> list:
 | 常量/枚举 | 推荐 | 行内注释说明含义 |
 | 晦涩代码行 | ✅ | 行内注释（`# ...`）解释 why |
 
-#### docstring 风格
+### 10.4 docstring 风格
 
 统一使用 **Google 风格**（与 Sphinx / napoleon 兼容）：
 
@@ -272,7 +246,7 @@ Raises:
 """
 ```
 
-#### 行内注释规则
+### 10.5 行内注释规则
 
 - **解释 why，而非 what**：代码本身已表达 what，注释应说明**为什么**这样做。
 - **晦涩逻辑必须注释**：算法步骤、正则匹配、位运算、降级/回退逻辑、魔法数字等。
@@ -289,9 +263,10 @@ Raises:
 3. 确认目标模块 AGENT.md 的「读取目录/禁止修改目录/接口/测试」
 4. 确认依赖契约（protocol/ + api/ + configs/）
 5. 实现（单次 ≤1 域，遵循 Spec→Contract→API→Implementation→Test→Document）
-   — 对所有生成/修改的代码加注释头（@aegis-gen/date/dev/change，见 §10）
-   — 为所有模块/类/公开函数添加 docstring + 晦涩代码行内注释（见 §10.6）
-6. 生成/更新测试（§6）— 测试代码同样加注释头
+   — 首次创建文件：文件头注释（文件说明 + date + dev，见 §10.1）
+   — 增改函数/方法/接口：变更注释（date + dev + changelog + 代码注释，见 §10.2）
+   — 为所有模块/类/公开函数添加 docstring + 晦涩代码行内注释（见 §10.3-10.5）
+6. 生成/更新测试（§6）
 7. 运行质量门禁至全绿
 8. 同步文档与 CHANGELOG（§7）
 9. 目录/api 变动 → 刷新根 README

@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
-# @aegis-gen
 # date: 2026-07-03
 # dev: myf
-# change: 剥离硬编码的前端本地类型块——生成器只产出 protocol 契约类型；前端本地类型改由 frontend/src/protocol/frontend-types.ts 手维护
-# @aegis-gen
-# date: 2026-06-27
-# dev: myf
-# change: 新建 gen_ts_types.py，由 protocol/ dataclass 类型生成 TypeScript 类型定义到 frontend/src/protocol/types.ts
+# changelog: 剥离硬编码的前端本地类型块——生成器只产出 protocol 契约类型；前端本地类型改由 frontend/src/protocol/frontend-types.ts 手维护
 """从 protocol/ Python dataclass 生成 TypeScript 类型定义。
 
 读取 `protocol` 包中所有导出类型，内省 dataclass 字段与枚举值，
@@ -165,7 +160,7 @@ def generate() -> str:
     """生成完整的 TS 文件内容字符串。
 
     流程：
-    1. 拼装文件头注释（含 @aegis-gen 标记、eslint/ts-nocheck 开关）。
+    1. 拼装文件头注释（eslint/ts-nocheck 开关）。
     2. 遍历 `protocol.__all__`，将导出对象分类为 enum 与 dataclass 两组。
     3. 先输出 enum 联合类型，再输出 dataclass interface。
 
@@ -173,10 +168,9 @@ def generate() -> str:
         可直接写入 `types.ts` 的完整源码字符串。
     """
     header = [
-        "// @aegis-gen",
         "// date: 2026-06-27",
         "// dev: myf",
-        "// change: 自动生成的 TypeScript 类型定义（由 tooling/scripts/gen_ts_types.py 生成，请勿手动编辑）",
+        "// changelog: 自动生成的 TypeScript 类型定义（由 tooling/scripts/gen_ts_types.py 生成，请勿手动编辑）",
         "",
         "/* eslint-disable */",
         "// @ts-nocheck",

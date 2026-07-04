@@ -22,7 +22,7 @@
 | 08 | [08_AGENT_SPEC.md](08_AGENT_SPEC.md) | Agent Runtime（生命周期/API/Prompt/Memory/Tool/...） | Agent 团队 |
 | 09 | [09_DEVELOPMENT_SPEC.md](09_DEVELOPMENT_SPEC.md) | 开发流程（Spec→Contract→API→Impl→Test→Doc） | 全员 |
 | 10 | [10_INTERFACE_BOUNDARY_SPEC.md](10_INTERFACE_BOUNDARY_SPEC.md) | 接口边界（并行开发核心：谁调谁/异步/网关/EventBus） | 前后端 + Agent |
-| 11 | [11_AI_CODING_SPEC.md](11_AI_CODING_SPEC.md) | AI 编码规范（给 AI Agent：必读/范围/禁改协议 API/测试/冲突/**代码注释头 @aegis-gen**） | AI Coding Agent |
+| 11 | [11_AI_CODING_SPEC.md](11_AI_CODING_SPEC.md) | AI 编码规范（给 AI Agent：必读/范围/禁改协议 API/测试/冲突/**代码注释头 + docstring**） | AI Coding Agent |
 | 12 | [12_TECH_STACK_SPEC.md](12_TECH_STACK_SPEC.md) | 技术栈规范（语言/运行时/框架/库/工具链/版本约束） | 全员 |
 | 13 | [plans/13_FRONTEND_BACKEND_PLAN.md](plans/13_FRONTEND_BACKEND_PLAN.md) | 前后端开发全流程计划（含后端↔智能体双向调用/DI 端口/FastAPI） | 前后端 + Agent |
 | 14 | [plans/14_CYBERDEFENSE_SOLUTION_PLAN.md](plans/14_CYBERDEFENSE_SOLUTION_PLAN.md) | 赛事作品总体方案（超长程攻防/动态异构拓扑/低熵路由/记忆压缩唤醒/端边云/3 场景） | 全员 + 赛事 |

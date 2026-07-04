@@ -1,18 +1,9 @@
-// @aegis-gen
 // date: 2026-07-04
 // dev: Claude Code (glm-5.2)
-// change: 启动时拉取 Agent 列表填充 store.agents（agentApi.list → setAgents），失败静默忽略
-// @aegis-gen
-// date: 2026-07-03
-// dev: Claude Code (glm-5.2)
-// change: 导入源拆分——前端本地类型 ViewName 改从 @/protocol/frontend-types 引入（protocol 生成器剥离前端类型）
-// @aegis-gen
-// date: 2026-06-27
-// dev: Claude Code (glm-5.2)
-// change: 新建 App.tsx，主应用组件：侧边栏导航 + 主内容区按路由渲染
+// changelog: 启动时拉取 Agent 列表填充 store.agents（agentApi.list → setAgents），失败静默忽略
 
 import { useEffect } from "react";
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 import { Sidebar } from "@/views/layout";
 import { CanvasView } from "@/views/canvas";
 import { ChatView } from "@/views/chat";

@@ -1,13 +1,8 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 services/api/agents.ts，Agent API 服务：list/get/invokeAgent/invokeTool
-// @aegis-gen
-// date: 2026-06-27
-// dev: Claude Code (glm-5.2)
-// change: 修复 invoke 端点——invokeAgent 调 POST /agents/{id}/invoke；原 invoke 改名 invokeTool
+// changelog: 新建 services/api/agents.ts，Agent API 服务：list/get/invokeAgent/invokeTool
 
-import { apiClient } from "@/mappers/apimappers/client";
+import { apiClient } from "@/lib/api-client";
 import type { Agent, ToolResult } from "@/protocol/types";
 
 export interface InvokeAgentRequest {

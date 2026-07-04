@@ -54,7 +54,7 @@
 └────────────────────────────────────────────────────┘
 ```
 
-- **入站边界**：一切外部请求经 `backend/src/gateway/`；前端只调 `backend.src.api` 暴露的 REST/WS/SSE。
+- **入站边界**：一切外部请求经 `backend/core/`；前端只调 `backend.api` 暴露的 REST/WS/SSE。
 - **出站边界**：对外 LLM 调用集中在 `agents/tools/llms/`；对外部署集中在 `infrastructure/delivery/`。
 - **数据边界**：跨模块数据结构 = `protocol/` 的 26 个契约类型；禁止裸 JSON 跨模块。
 - **开发边界**：`developer/` 纵切所有层，是规范大脑，不参与运行时。
@@ -64,7 +64,7 @@
 ## 4. 核心设计原则（Design Principles）
 
 1. **契约先行（Contract First）**：`protocol/` 是唯一数据契约；所有跨模块通信走 `protocol/message.py` 的 `Message` 信封。
-2. **同域聚合 + 域内分类**：Agent 相关归 `agents/`（认知架构五层：感知-规划-行动-记忆-工具）；后端归 `backend/`（Controller-Service-Mapper + Gateway）；前端归 `frontend/`（Controller-Service-Mapper + Views）。
+2. **同域聚合 + 域内分类**：Agent 相关归 `agents/`（认知架构五层：感知-规划-行动-记忆-工具）；后端归 `backend/`（Router-Service-Repository-Model + Core）；前端归 `frontend/`（Controller-Service-Mapper + Views）。
 3. **API 解耦（Dependency Inversion）**：每个域通过 `api/` 子包暴露 `typing.Protocol` 接口；其他模块只 `from {domain}.api import XxxAPI`，禁止导入内部实现。实现由各域内部注入，便于 mock。
 4. **模块边界（Boundary）**：每个模块的 `AGENT.md` 规定「读取目录 / 禁止修改目录」；Agent 不得越界。
 5. **低熵稀疏通信（Low Entropy）**：路由按需链式（Agent→Planner→Memory→Coder→Reviewer→Executor），禁止全广播。
@@ -85,7 +85,7 @@
 | 规范层 | `developer/`（含 `specs/`、`roadmap/`） | 项目大脑，纵切所有层，不参与运行时 | — |
 | 契约层 | `protocol/` | 唯一数据契约（26 类型） | 本身即全局契约 |
 | 表现层 | `frontend/` | Controller-Service-Mapper + Views | `frontend/src/`（纯 SPA，无 Python API） |
-| 应用层 | `backend/` | Controller-Service-Mapper + Gateway | `backend/src/api/`（5 接口） |
+| 应用层 | `backend/` | Router-Service-Repository-Model + Core | `backend/api.py`（5 接口） |
 | 智能体域 | `agents/` | 认知架构五层：感知-规划-行动-记忆-工具 | `agents/api/`（5 接口；规划/感知内聚不暴露） |
 | 基础设施层 | `infrastructure/` | 传输-节点-交付 | `infrastructure/api/`（4 接口） |
 | 可观测层 | `observability/` | 观测-度量-呈现 | `observability/api/`（6 接口） |
@@ -266,7 +266,7 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 - **文档同步**：API/Event/Protocol 变更是否同步规范 + CHANGELOG？
 - **安全**：是否泄露密钥？日志是否脱敏？工具是否沙箱执行 + 权限校验？
 - **破坏性**：是否 bump major + 通知依赖方？
-- **AI 合规**：是否符合 `11_AI_CODING_SPEC.md`（修改前读规范、单次改动范围、不擅自改协议/API、**生成/修改代码加 `@aegis-gen` 注释头**、测试/文档/冲突处理）。
+- **AI 合规**：是否符合 `11_AI_CODING_SPEC.md`（修改前读规范、单次改动范围、不擅自改协议/API、**代码注释头**、测试/文档/冲突处理）。
 
 ---
 
@@ -285,7 +285,7 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 | 08 | `08_AGENT_SPEC.md` | Agent Runtime 规范 |
 | 09 | `09_DEVELOPMENT_SPEC.md` | 开发流程规范 |
 | 10 | `10_INTERFACE_BOUNDARY_SPEC.md` | 接口边界规范（并行开发核心） |
-| 11 | `11_AI_CODING_SPEC.md` | AI 编码规范（给 AI Agent；含 `@aegis-gen` 代码注释头） |
+| 11 | `11_AI_CODING_SPEC.md` | AI 编码规范（给 AI Agent；含代码注释头 + docstring 规范） |
 | 12 | `12_TECH_STACK_SPEC.md` | 技术栈规范（语言/运行时/框架/库/工具链/版本约束） |
 | 13 | `plans/13_FRONTEND_BACKEND_PLAN.md` | 前后端开发全流程计划（含后端↔智能体双向调用架构） |
 

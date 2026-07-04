@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: 红队横向移动 Agent
+# changelog: 红队横向移动 Agent
 from __future__ import annotations
 
 import json

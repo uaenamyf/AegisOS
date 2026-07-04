@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-# @aegis-gen
 # date: 2026-07-03
 # dev: myf
-# change: 新建 realign_agent_docs.py，把模块 AGENT.md 中旧 developer/*.md 指南引用重定向到 developer/specs/ SSOT
+# changelog: 新建 realign_agent_docs.py，把模块 AGENT.md 中旧 developer/*.md 指南引用重定向到 developer/specs/ SSOT
 """将模块 AGENT.md 中旧的 `developer/*.md` 指南引用重定向到 `developer/specs/` SSOT。
 
 背景：仓库根目录下原有的 20 份 `developer/*.md` 指南已被删除，

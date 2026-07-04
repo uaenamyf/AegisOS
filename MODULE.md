@@ -32,7 +32,7 @@ protocol/        ← 唯一契约（所有域引用）
        ↓
 agents/api       ← 公共接口（5 个 Protocol + 3 个 DI 端口）
        ↓                ↑
-backend/src/api  ← 调用 agents.api
+backend/api  ← 调用 agents.api
        ↓
 frontend/services ← 调用 backend REST API
 ```
@@ -459,7 +459,7 @@ AI Native IDE 前端，采用 Controller-Service-Mapper 模式 + 5 个视图（C
 
 ```bash
 # 后端
-.venv/bin/uvicorn backend.src.main:app --host 0.0.0.0 --port 8000
+.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 # 前端
 cd frontend && npm run dev

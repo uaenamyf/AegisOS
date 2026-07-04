@@ -1,10 +1,9 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 ChatView，用户与智能体对话的聊天界面
+// changelog: 新建 ChatView，用户与智能体对话的聊天界面
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useAppStore, type ChatMessage } from "@/mappers/store";
+import { useAppStore, type ChatMessage } from "@/lib/store";
 import { agentApi } from "@/services/api/agents";
 import { taskApi } from "@/services/api/tasks";
 

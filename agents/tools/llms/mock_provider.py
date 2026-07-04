@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: Mock LLM provider for testing
+# changelog: Mock LLM provider for testing
 """Mock LLM Provider：用于测试和离线开发的确定性桩件。
 
 不发起任何网络请求，根据预设的响应表返回固定文本，
@@ -34,6 +33,11 @@ class MockProvider:
                 为 ``None`` 时使用空字典（所有请求走兜底逻辑）。
         """
         self._responses = responses or {}
+
+    @property
+    def responses(self) -> dict[str, str]:
+        """返回预设响应表（只读视图，供外部做前缀匹配等高级查找）。"""
+        return self._responses
 
     def complete(self, request: LLMRequest) -> LLMResponse:
         """返回预设的确定性响应。

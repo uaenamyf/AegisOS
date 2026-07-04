@@ -1,9 +1,8 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 views/replay/ReplayView.tsx，回放时间线占位
+// changelog: 新建 views/replay/ReplayView.tsx，回放时间线占位
 
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 
 export function ReplayView() {
   const events = useAppStore((s) => s.events);

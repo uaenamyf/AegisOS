@@ -242,3 +242,69 @@
 - **后端代码 docstring 更新**（5 个文件）：`backend/src/api/__init__.py` + `services/graph.py` + `memory.py` + `session.py` + `task.py` 中 `backend.api` 引用 → `backend.src.api`（`@aegis-gen` 注释头不动）。
 - **CLAUDE.md 更新**：根 `CLAUDE.md` + `.claude/CLAUDE.md` 同步（backend api 列→`backend/src/api/`、前端无 api）。
 - **验收待执行**：`tsc --noEmit` + `vite build`（前端）；`uvicorn backend.src.main:app`（后端）
+
+## [P6] 2026-07-05 后端重构：Controller-Service-Mapper → Router-Service-Repository-Model（扁平四层）
+
+### 重构概要
+将 `backend/src/{controllers,services,mappers,gateway,api}` 旧嵌套结构重构为经典 Python 扁平四层架构 `backend/{routers,services,repositories,models}` + 辅助层 `core/schemas/mocks`，删除 `backend/src/` 目录。
+
+### 目录变更
+- **旧 → 新映射**：
+  - `backend/src/main.py` → `backend/main.py`
+  - `backend/src/composition.py` → `backend/core/composition.py`（813 行精简至 ~170 行）
+  - `backend/src/gateway/{auth,middleware,routes}` → `backend/core/{auth,middleware,routes}.py`
+  - `backend/src/controllers/{api,sse,ws,schemas}` → `backend/routers/{*.py}` + `backend/schemas/`
+  - `backend/src/controllers/api/` 下 10 个路由 → `backend/routers/{health,sessions,tasks,agents,memory,graph,tools,metrics,replay,sse,ws}.py`
+  - `backend/src/services/` → `backend/services/{session,task,agent,memory,graph}_service.py + di_ports.py`
+  - `backend/src/mappers/{database,repositories}` → `backend/repositories/{database,repositories}.py`
+  - `backend/src/mappers/{entities,converters}` → `backend/models/{entities,converters}.py`
+  - `backend/src/api/` → `backend/api.py`
+  - `backend/src/controllers/schemas/` → `backend/schemas/__init__.py`
+- **新增**：`backend/mocks/` 目录（6 个 mock 文件从 composition.py 拆分：agent_registry/runtime/cyber_provider/memory/execution/event_bus）
+- **删除**：`backend/src/` 整个旧目录（含 controllers/services/mappers/gateway/api 子目录及 AGENT.md）
+
+### composition.py 拆分
+- 原文 813 行内联全部 Mock 类定义 → 精简至 ~170 行，Mock 类移至 `backend/mocks/` 6 个独立文件。
+- `agents/tools/llms/mock_provider.py` 新增 `responses` property（修复私有属性 `_responses` 封装泄漏）。
+- 新增 `backend/services/di_ports.py`（DI 端口 Protocol 定义，供 core/composition.py 实现）。
+
+### Import 路径映射（48 处 .py 更新）
+- `backend.src.composition` → `backend.core.composition`
+- `backend.src.controllers.schemas` → `backend.schemas`
+- `backend.src.controllers.api` → `backend.routers`
+- `backend.src.controllers.{sse.events,ws.stream}` → `backend.routers.{sse,ws}`
+- `backend.src.gateway.{auth,middleware,routes}` → `backend.core.{auth,middleware,routes}`
+- `backend.src.mappers.{database,repositories}` → `backend.repositories.{database,repositories}`
+- `backend.src.mappers.{entities,converters}` → `backend.models.{entities,converters}`
+- `backend.src.services.*` → `backend.services.*_service`
+- `backend.src.api` → `backend.api`
+
+### 配置文件更新
+- `Makefile`：`backend.src.main:app` → `backend.main:app`
+- `start.sh`：`backend.src.main:app` → `backend.main:app`
+- `tooling/scripts/gen_readme.py`：`backend.src.api` → `backend.api`、`src/api` → `api`
+- `README.md` + 根 `MODULE.md`：启动命令更新
+
+### AGENT.md 更新（7 个新建 + 1 个重写）
+- **重写**：`backend/AGENT.md`（Controller-Service-Mapper → Router-Service-Repository-Model 全面重写）
+- **新建**：`backend/routers/AGENT.md`、`backend/services/AGENT.md`、`backend/repositories/AGENT.md`、`backend/models/AGENT.md`、`backend/core/AGENT.md`、`backend/schemas/AGENT.md`、`backend/mocks/AGENT.md`
+- **删除**：旧 `backend/src/{api,controllers,gateway,mappers,services}/AGENT.md`（5 个）
+- **重写**：`backend/MODULE.md`（架构图、文件表、端点表全部更新为新路径）
+
+### 规范文档更新（10 个文件）
+- `00_PROJECT_SPEC.md`（入站边界 + 分层表）
+- `01_ARCHITECTURE_SPEC.md`（前端边界 + 后端结构）
+- `02_DIRECTORY_SPEC.md`（3 处 frontend 引用）
+- `03_IMPORT_SPEC.md`（依赖矩阵表头）
+- `05_API_SPEC.md`（2 处 backend.src.api）
+- `09_DEVELOPMENT_SPEC.md`（2 处 backend.src）
+- `10_INTERFACE_BOUNDARY_SPEC.md`（接口矩阵表 5 处 + gateway → core + 禁止行 2 处 + 前端契约行）
+- `12_TECH_STACK_SPEC.md`（2 处 backend.src）
+- `plans/13_FRONTEND_BACKEND_PLAN.md`（B0 里程碑启动命令）
+- `developer/plan.md`（动态计划同步）
+
+### 验收
+- ✅ `ruff format`：23 files reformatted（通过）
+- ✅ `ruff check --fix`：4 errors fixed, 0 remaining（通过）
+- ✅ `pytest`：59 passed（通过）
+- ⚠️ `mypy`：86 errors（均为预先存在的类型标注问题，非本次重构引入；其中 composition.py:101 的 MockEventBusAPI.subscribe 返回类型不匹配需后续修复）

@@ -86,7 +86,7 @@ class XxxAgent:
 
 ### 1.4 运行时调度（MockRuntime 手写 dispatch map）
 
-**现状**：`backend/src/composition.py` 中 `MockRuntime` 有一个 ~120 行的手写 `_cyber_dispatch_map()`，每个 handler 手动做类型转换 + 调用 + `asdict`。
+**现状**：`backend/core/composition.py` 中 `MockRuntime` 有一个 ~120 行的手写 `_cyber_dispatch_map()`，每个 handler 手动做类型转换 + 调用 + `asdict`。
 
 **可替换为**：LangGraph `StateGraph` + 自动状态传递，或注册表模式。
 
@@ -293,7 +293,7 @@ class ModelRouter:
 
 ### Layer 3: 工作流编排 → LangGraph
 
-**替换范围**：`backend/src/composition.py` 的 `MockRuntime` (~200 行)
+**替换范围**：`backend/core/composition.py` 的 `MockRuntime` (~200 行)
 
 #### 现状问题
 
@@ -386,7 +386,7 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 |------|--------|--------|------|
 | `agents/tools/llms/` (4 Provider) | ~220 行 / 4 文件 | ~30 行 / 1 文件 | -86% |
 | `agents/action/` (11 Agent JSON parse) | ~550 行 | ~220 行 | -60% |
-| `backend/src/composition.py` MockRuntime | ~200 行 dispatch | ~60 行 graph | -70% |
+| `backend/core/composition.py` MockRuntime | ~200 行 dispatch | ~60 行 graph | -70% |
 | `protocol/*.py` (to_dict/from_dict) | ~50 行手写序列化 | 0 行（Pydantic 自动） | -100% |
 | **合计** | ~1020 行 | ~310 行 | **-70%** |
 
@@ -446,7 +446,7 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 - [ ] 新建 `agents/planning/orchestrator/graph.py`（红队攻击链图）
 - [ ] 新建 `agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
 - [ ] `MockRuntime` 替换为 `GraphRuntime`（实现 `RuntimeAPI`）
-- [ ] `backend/src/composition.py` 注入 `GraphRuntime`
+- [ ] `backend/core/composition.py` 注入 `GraphRuntime`
 - [ ] 55 测试全通过
 
 ### 阶段 5: 事件总线 + 流式（≤2 文件）

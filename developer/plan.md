@@ -55,11 +55,11 @@
 - [x] E12 `agents/perception/reasoning/neuro_symbolic.py` 神经符号闭环（4 测试）
 
 ### 前后端打通 ✅
-- [x] `backend/src/composition.py` DI 组合根：14 Agent 注册 + MockRuntime 真实调用分发
-- [x] `backend/src/main.py` FastAPI app + CORS + TraceMiddleware + lifespan
+- [x] `backend/core/composition.py` DI 组合根：14 Agent 注册 + MockRuntime 真实调用分发
+- [x] `backend/main.py` FastAPI app + CORS + TraceMiddleware + lifespan
 - [x] 10 个 REST 端点（health/sessions/tasks/agents/graph/memory/tools/metrics/replay）
 - [x] SSE `events.py` + WebSocket `stream.py`
-- [x] `backend/src/mappers/` SQLAlchemy async + aiosqlite（SessionEntity/TaskEntity）
+- [x] `backend/repositories/` SQLAlchemy async + aiosqlite（SessionEntity/TaskEntity）
 - [x] `frontend/src/` React + Vite + Zustand + 36 个 TS 类型
 - [x] `frontend/views/chat/ChatView.tsx` 完整实现（Agent 选择 + 消息收发 + 任务轮询）
 
@@ -114,10 +114,10 @@
 
 #### F — 后端攻防 REST 端点
 > **优先级**：P1 · **预估**：2 天 · **依赖**：编排器
-- [ ] F1 `backend/src/controllers/api/range.py` 靶场管理端点（`/api/v1/range/*`）
-- [ ] F2 `backend/src/controllers/api/topology.py` 拓扑端点（`/api/v1/topology`）
-- [ ] F3 `backend/src/controllers/api/attack.py` 攻击端点（`/api/v1/attack` · `/api/v1/attack/chain`）
-- [ ] F4 `backend/src/controllers/api/defense.py` 防御端点（`/api/v1/defense` · `/api/v1/alerts` · `/api/v1/response`）
+- [ ] F1 `backend/routers/range.py` 靶场管理端点（`/api/v1/range/*`）
+- [ ] F2 `backend/routers/topology.py` 拓扑端点（`/api/v1/topology`）
+- [ ] F3 `backend/routers/attack.py` 攻击端点（`/api/v1/attack` · `/api/v1/attack/chain`）
+- [ ] F4 `backend/routers/defense.py` 防御端点（`/api/v1/defense` · `/api/v1/alerts` · `/api/v1/response`）
 - [ ] F5 `protocol/cyber.py` ThreatIntel 补充 ATT&CK 技战术映射字段
 - [ ] F6 后端测试：攻防端点集成测试
 
@@ -210,7 +210,7 @@
 - [ ] R4.2 新建 `agents/planning/orchestrator/attack_graph.py`（红队攻击链图）
 - [ ] R4.3 新建 `agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
 - [ ] R4.4 `MockRuntime` 替换为 `GraphRuntime`（实现 `RuntimeAPI`）
-- [ ] R4.5 `backend/src/composition.py` 注入 `GraphRuntime`（删除 ~200 行手写 dispatch map）
+- [ ] R4.5 `backend/core/composition.py` 注入 `GraphRuntime`（删除 ~200 行手写 dispatch map）
 - [ ] R4.6 55 测试全通过
 
 **阶段 5: 事件总线 + 流式**（≤2 文件）

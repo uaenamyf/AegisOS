@@ -4,10 +4,9 @@ All cross-module communication must use the types defined here. See
 developer/specs/04_PROTOCOL_SPEC.md for the specification.
 """
 
-# @aegis-gen
 # date: 2026-07-03
 # dev: myf
-# change: docstring 引用从 developer/MESSAGE_PROTOCOL.md 改指 developer/specs/04_PROTOCOL_SPEC.md（SSOT 对齐）
+# changelog: docstring 引用从 developer/MESSAGE_PROTOCOL.md 改指 developer/specs/04_PROTOCOL_SPEC.md（SSOT 对齐）
 
 # ---- Agent 身份与状态 ----
 from .agent import Agent, AgentStatus

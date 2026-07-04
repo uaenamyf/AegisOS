@@ -184,9 +184,9 @@ ruff format && ruff check --fix && mypy && pytest
 ## 13. Frontend 开发流程（frontend/）
 
 ```
-1. 读 specs + 目标 AGENT.md + backend/src/api 接口（前端契约来源）
+1. 读 specs + 目标 AGENT.md + backend/api.py 接口（前端契约来源）
 2. controllers → services → mappers → views 分层实现
-3. 只调 backend.src.api（REST/WS/SSE），不直连 agents/infrastructure
+3. 只调 backend.api（REST/WS/SSE），不直连 agents/infrastructure
 4. 实时：WebSocket（双向）+ SSE（单向事件流）
 5. 质量门禁（tsc/lint/test）→ 文档 → commit
 ```

@@ -1,7 +1,6 @@
-// @aegis-gen
 // date: 2026-06-27
-// dev: Claude Code (glm-5.2)
-// change: 自动生成的 TypeScript 类型定义（由 tooling/scripts/gen_ts_types.py 生成，请勿手动编辑）
+// dev: myf
+// changelog: 自动生成的 TypeScript 类型定义（由 tooling/scripts/gen_ts_types.py 生成，请勿手动编辑）
 
 /* eslint-disable */
 // @ts-nocheck
@@ -31,6 +30,45 @@ export interface Agent {
   status?: any;
   trust_score?: number;
   success_rate?: number;
+}
+
+export interface Alert {
+  alert_id: string;
+  severity?: string;
+  src?: string;
+  dst?: string;
+  technique?: string;
+  raw?: Record<string, any>;
+}
+
+export interface Asset {
+  asset_id: string;
+  host?: string;
+  services?: any[];
+  os?: string;
+  exposure?: string;
+}
+
+export interface AttackChain {
+  chain_id: string;
+  target?: string;
+  steps?: any[];
+  status?: string;
+}
+
+export interface AttackStep {
+  step_id: string;
+  technique?: string;
+  from_asset?: string;
+  to_asset?: string;
+  success?: boolean;
+}
+
+export interface DefenseAction {
+  action_id: string;
+  kind?: string;
+  target?: string;
+  rationale?: string;
 }
 
 export interface Event {
@@ -73,6 +111,7 @@ export interface GraphNode {
   trust_score?: number;
   success_rate?: number;
   latency?: number;
+  status?: string;
 }
 
 export interface Header {
@@ -103,6 +142,8 @@ export interface MemoryPacket {
   compression?: Record<string, any>;
   session_id?: string;
   task_id?: string;
+  kind?: string;
+  recent?: boolean;
 }
 
 export interface Message {
@@ -131,6 +172,13 @@ export interface Plan {
   goal?: string;
   dag?: Record<string, any>;
   tasks?: any[];
+}
+
+export interface ResponsePlan {
+  plan_id: string;
+  actions?: any[];
+  confidence?: number;
+  rollback?: Record<string, any>;
 }
 
 export interface RetryPolicy {
@@ -177,6 +225,14 @@ export interface Task {
   rollback?: any;
   dependency?: any[];
   priority?: number;
+  privacy?: string;
+  latency_budget?: number;
+}
+
+export interface ThreatIntel {
+  technique?: string;
+  tactic?: string;
+  refs?: any[];
 }
 
 export interface ToolCall {
@@ -204,63 +260,10 @@ export interface ToolSpec {
   resource_limit?: Record<string, any>;
 }
 
-// === Frontend-specific types (not from protocol/) ===
-
-export type ViewName = 'chat' | 'canvas' | 'graph' | 'monitor' | 'replay';
-
-export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error';
-
-export interface ApiError {
-  code: string;
-  message: string;
-  trace_id: string;
-}
-
-export interface Session {
-  id: string;
-  user_id: string;
-  status: 'active' | 'closed';
-  context: Record<string, any>;
-  created_at?: string;
-}
-
-export interface CreateSessionRequest {
-  user_id: string;
-}
-
-export interface CreateTaskRequest {
-  goal: string;
-  session_id: string;
-}
-
-export interface InvokeAgentRequest {
-  goal: string;
-  session_id: string;
-}
-
-export interface InvokeToolRequest {
-  name: string;
-  args: Record<string, any>;
-}
-
-export interface WriteMemoryRequest {
-  working?: Record<string, any>;
-  semantic?: Record<string, any>;
-  episodic?: Record<string, any>;
-  archive?: Record<string, any>;
-  summary?: string;
-}
-
-export interface Metrics {
-  uptime_seconds: number;
-  agents_registered: number;
-  events_buffered: number;
-  db_engine: string;
-  status: string;
-}
-
-export interface ReplayResponse {
-  session_id: string;
-  timeline: any[];
-  event_count: number;
+export interface VulnFinding {
+  finding_id: string;
+  cve_id?: string;
+  asset_id?: string;
+  cvss?: number;
+  attack_surface?: string;
 }

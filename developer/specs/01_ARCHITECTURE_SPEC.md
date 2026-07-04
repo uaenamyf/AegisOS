@@ -12,7 +12,7 @@
 │   controllers · services · mappers · views                │
 │    (canvas · graph · monitor · replay)                    │
 ├───────────────────────────────────────────────────────────┤
-│  backend/    应用层  Controller-Service-Mapper + Gateway   │
+│  backend/    应用层  Router-Service-Repository-Model + Core  │
 │   gateway → controllers → services → mappers              │
 ├───────────────────────────────────────────────────────────┤
 │  agents/     智能体域  认知架构五层                          │
@@ -143,14 +143,14 @@ AegisOS 以「微内核 + 插件」组织稳定核心与可变扩展：
 - 技术栈：React + TypeScript + Vite；轻量 store；WebGL/Canvas 图渲染。
 - 结构：`controllers`（interaction/events/routes）→ `services`（api/realtime/session/graph）→ `mappers`（viewmodels/apimappers/store/utils/styles/assets）→ `views`（canvas/graph/monitor/replay）。
 - 实时：WebSocket（双向）+ SSE（单向事件流）。
-- 边界：只调 `backend.src.api` 暴露的 REST/WS/SSE，不直连 `agents`/`infrastructure`。
+- 边界：只调 `backend.api` 暴露的 REST/WS/SSE，不直连 `agents`/`infrastructure`。
 
 ---
 
 ## 13. Backend（后端）
 
 - 技术栈：Python 3.11+、asyncio。
-- 结构：`gateway`（auth/rate-limit/routing/协议适配）→ `controllers`（REST/WS/SSE/schemas/middleware）→ `services`（session/task/agent/memory/graph）→ `mappers`（entities/dto/repositories/converters）。
+- 结构：`core`（composition/auth/middleware/routes）→ `routers`（REST/WS/SSE 端点）→ `services`（session/task/agent/memory/graph + di_ports）→ `repositories`（database/repositories）→ `models`（entities/converters）。
 - 对外：`/api/v1/...` 经 gateway；透传 `X-Trace-Id`/`X-Session-Id`/`X-Task-Id`。
 
 ---

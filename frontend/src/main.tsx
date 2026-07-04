@@ -1,7 +1,6 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 main.tsx，React 根挂载入口
+// changelog: 新建 main.tsx，React 根挂载入口
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

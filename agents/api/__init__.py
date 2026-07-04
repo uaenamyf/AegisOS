@@ -1,11 +1,6 @@
-# @aegis-gen
 # date: 2026-06-27
 # dev: myf
-# change: 重构 agents/api，移除 PlanningAPI 和 PerceptionAPI（内聚为域内部），仅保留外部真正需要的 5 个接口
-# @aegis-gen
-# date: 2026-06-27
-# dev: myf
-# change: 修复接口合理性——RuntimeAPI 加 submit(task)（不指定 agent）；移除 AgentRegistryAPI.invoke（与 Runtime 重叠）；ExecutionAPI 标注直调场景
+# changelog: 重构 agents/api，移除 PlanningAPI 和 PerceptionAPI（内聚为域内部），仅保留外部真正需要的 5 个接口
 """智能体域公共接口包 —— 面向其他域的最小外部接口集合。
 
 本模块仅暴露其他域（主要是 backend）合法调用的接口；智能体域内部的认知能力

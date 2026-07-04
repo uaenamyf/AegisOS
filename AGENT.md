@@ -32,7 +32,7 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 1. **developer/** — 规范层（项目大脑）。含 `developer/specs/`（编号规范 SSOT，`00`–`15`）+ `developer/roadmap/`（P0..P7）。
 2. **protocol/** — 契约层，唯一数据契约。
 3. **frontend/** — 表现层。Controller-Service-Mapper + Views：`controllers/`(交互/事件) · `services/`(API/实时/状态) · `mappers/`(数据转换/全局状态/共享) · `views/`(canvas·graph·monitor·replay)。
-4. **backend/** — 应用层。Controller-Service-Mapper + Gateway：`gateway/`(入口) · `controllers/`(控制器) · `services/`(业务逻辑) · `mappers/`(数据转换/持久化)。
+4. **backend/** — 应用层。Router-Service-Repository-Model + Core：`core/`(组合根DI/鉴权/中间件/路由聚合) · `routers/`(路由层) · `services/`(业务逻辑) · `repositories/`(数据访问) · `models/`(ORM实体) · `schemas/`(契约) · `mocks/`(端口mock)。
 5. **agents/** — 智能体域。认知架构五层：
    - `agents/perception/` 感知：context · reasoning · reflection
    - `agents/planning/` 规划：planner · orchestrator · engine/(planner·scheduler·router·workflow·eventbus·topology)
@@ -71,7 +71,7 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 - 动态路由遵循低熵稀疏通信：按需链式通信（Agent->Planner->Memory->Coder->Reviewer->Executor），禁止全广播。详见 `developer/specs/04_PROTOCOL_SPEC.md` §16。
 - 技术栈只能使用 `developer/specs/12_TECH_STACK_SPEC.md` 登记的语言/框架/库；新增依赖须评估并登记。
 - AI 改动须符合 `developer/specs/11_AI_CODING_SPEC.md`（必读文件、单次范围、禁擅改协议/API、测试/文档/冲突处理）。
-- **AI 生成/修改的代码必须加注释头**：`@aegis-gen` + `date`(YYYY-MM-DD) + `dev`(开发人员/AI) + `change`(改动内容)，见 `developer/specs/11_AI_CODING_SPEC.md` §10。缺失注释头的 AI 改动视为未完成。
+- **代码注释强制**：首次创建文件须在文件顶部写文件说明 + `date` + `dev`（见 §10.1）；后续增改函数/方法/接口须在改动处写 `date` + `dev` + `changelog` + 代码注释（见 §10.2）。缺失注释的代码视为未完成。
 
 ## Agent 统一生命周期
 Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reasoning -> Memory Read -> Tool Call -> Reflection -> Return Result -> Log -> Heartbeat -> Finish

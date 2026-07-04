@@ -1,9 +1,8 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 views/monitor/MonitorView.tsx，Agent 状态监控占位
+// changelog: 新建 views/monitor/MonitorView.tsx，Agent 状态监控占位
 
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 
 export function MonitorView() {
   const agents = useAppStore((s) => s.agents);

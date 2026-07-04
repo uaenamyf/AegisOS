@@ -65,7 +65,7 @@
 | **Vitest** | **>=1.6** | 前端单元测试 | `tests/frontend/` |
 | **Playwright** | **>=1.40** | 前端 E2E 测试 | `tests/e2e/` |
 
-> 前端不引入重型框架（如 Next.js SSR）；纯 SPA，经 `backend.src.gateway` 通信。前端契约 = `backend.src.api` 对外接口 + `protocol` 类型（生成 TS 类型）。
+> 前端不引入重型框架（如 Next.js SSR）；纯 SPA，经 `backend.core` 通信。前端契约 = `backend.api` 对外接口 + `protocol` 类型（生成 TS 类型）。
 
 ---
 

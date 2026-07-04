@@ -30,9 +30,9 @@
 
 ### 2.1 Frontend
 
-> 前端为纯 SPA（React + TypeScript），不对外暴露 Python API。前端经 `backend.src.api` REST/WS/SSE 接口与后端通信。前端内部架构（Controller-Service-Mapper + Views）位于 `frontend/src/`。
+> 前端为纯 SPA（React + TypeScript），不对外暴露 Python API。前端经 `backend.api` REST/WS/SSE 接口与后端通信。前端内部架构（Controller-Service-Mapper + Views）位于 `frontend/src/`。
 
-### 2.2 Backend（`backend.src.api`：SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI）
+### 2.2 Backend（`backend.api`：SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI）
 
 | API | Request | Response | Error | Timeout | Retry | Version |
 |-----|---------|----------|-------|---------|-------|---------|

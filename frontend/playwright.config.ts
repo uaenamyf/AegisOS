@@ -1,11 +1,6 @@
-// @aegis-gen
 // date: 2026-07-04
 // dev: Claude Code (glm-5.2)
-// change: 接入统一配置——baseURL/webServer URL 改从环境变量读取
-// @aegis-gen
-// date: 2026-06-27
-// dev: Claude Code (glm-5.2)
-// change: 新建 playwright.config.ts，E2E 测试配置
+// changelog: 接入统一配置——baseURL/webServer URL 改从环境变量读取
 
 import { defineConfig, devices } from "@playwright/test";
 

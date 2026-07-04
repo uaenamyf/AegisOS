@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: Local model provider (Ollama / vLLM / LM Studio compatible)
+# changelog: Local model provider (Ollama / vLLM / LM Studio compatible)
 """本地模型 Provider 实现（兼容 Ollama / vLLM / LM Studio）。
 
 调用本地运行的 OpenAI 兼容端点（如 Ollama 的 ``/v1/chat/completions``、

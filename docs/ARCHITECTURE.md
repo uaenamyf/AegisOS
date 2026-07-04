@@ -127,30 +127,31 @@
 
 ## backend/ — 应用层（FastAPI）
 
-**定位**：Controller-Service-Mapper 三层 + Gateway 网关，提供 REST API + WebSocket + SSE。
+**定位**：Router-Service-Repository-Model 四层 + Core 核心层，提供 REST API + WebSocket + SSE。
 
 ### 已实现
 
 | 层 | 文件 | 功能 |
 |----|------|------|
-| **入口** | [`main.py`](../backend/src/main.py) | FastAPI app + CORS + TraceMiddleware + lifespan(DB init) |
-| **网关** | [`gateway/routes.py`](../backend/src/gateway/routes.py) | `/api/v1` 前缀 + `verify_api_key` 鉴权 |
-| | [`gateway/auth.py`](../backend/src/gateway/auth.py) | X-API-Key header 校验 |
-| | [`gateway/middleware.py`](../backend/src/gateway/middleware.py) | TraceMiddleware（请求追踪 ID） |
-| **REST** | `controllers/api/sessions.py` | `POST /sessions` · `GET /sessions` |
-| | `controllers/api/tasks.py` | `POST /tasks` · `GET /tasks` · `POST /tasks/{id}/cancel` |
-| | `controllers/api/agents.py` | `GET /agents` · `POST /agents/{id}/invoke` |
-| | `controllers/api/graph.py` | `GET /graph` |
-| | `controllers/api/memory.py` | `GET /memory` · `POST /memory` |
-| | `controllers/api/tools.py` | `POST /tools/invoke` |
-| | `controllers/api/metrics.py` | `GET /metrics` |
-| | `controllers/api/replay.py` | `GET /replay/{session_id}` |
-| | `controllers/api/health.py` | `GET /health`（无鉴权） |
-| **SSE** | `controllers/sse/events.py` | `GET /api/v1/events/stream` 服务器推送 |
-| **WebSocket** | `controllers/ws/stream.py` | `WS /ws/v1/stream` 双向流 |
-| **Service** | `services/session.py` · `task.py` · `agent.py` · `graph.py` · `memory.py` | 业务逻辑层 |
-| **Mapper** | `mappers/database.py` · `entities.py` · `repositories.py` · `converters.py` | SQLAlchemy async + aiosqlite |
-| **DI** | [`composition.py`](../backend/src/composition.py) | 组合根：装配 DB + 仓储 + 服务 + 14 Agent 注册 + MockRuntime |
+| **入口** | [`main.py`](../backend/main.py) | FastAPI app + CORS + TraceMiddleware + lifespan(DB init) |
+| **核心层** | [`core/routes.py`](../backend/core/routes.py) | `/api/v1` 前缀 + `verify_api_key` 鉴权 + 路由聚合 |
+| | [`core/auth.py`](../backend/core/auth.py) | X-API-Key header 校验 |
+| | [`core/middleware.py`](../backend/core/middleware.py) | TraceMiddleware（请求追踪 ID） |
+| **REST** | `routers/sessions.py` | `POST /sessions` · `GET /sessions` |
+| | `routers/tasks.py` | `POST /tasks` · `GET /tasks` · `POST /tasks/{id}/cancel` |
+| | `routers/agents.py` | `GET /agents` · `POST /agents/{id}/invoke` |
+| | `routers/graph.py` | `GET /graph` |
+| | `routers/memory.py` | `GET /memory` · `POST /memory` |
+| | `routers/tools.py` | `POST /tools/invoke` |
+| | `routers/metrics.py` | `GET /metrics` |
+| | `routers/replay.py` | `GET /replay/{session_id}` |
+| | `routers/health.py` | `GET /health`（无鉴权） |
+| **SSE** | `routers/sse.py` | `GET /api/v1/events/stream` 服务器推送 |
+| **WebSocket** | `routers/ws.py` | `WS /ws/v1/stream` 双向流 |
+| **Service** | `services/session_service.py` · `task_service.py` · `agent_service.py` · `graph_service.py` · `memory_service.py` | 业务逻辑层 |
+| **Repository** | `repositories/database.py` · `repositories.py` | SQLAlchemy async + aiosqlite |
+| **Model** | `models/entities.py` · `converters.py` | ORM 实体 + protocol↔Entity 转换 |
+| **DI** | [`core/composition.py`](../backend/core/composition.py) | 组合根：装配 DB + 仓储 + 服务 + 14 Agent 注册 + MockRuntime |
 
 ### API 鉴权
 所有 `/api/v1/*` 端点需要 `X-API-Key: aegis-dev-key` header（`/health` 除外）。
@@ -308,7 +309,7 @@ protocol/ ← 唯一契约（所有域引用）
         ↓
 agents/api ← 公共接口（5 个 Protocol）
         ↓                ↑
-backend/src/api ← 调用 agents.api
+backend/api ← 调用 agents.api
         ↓
 frontend/services ← 调用 backend REST API
 ```

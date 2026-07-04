@@ -13,11 +13,11 @@
 | **外部 REST（/api/v1/...）** | ✅ | 提供 | ❌ | ❌ | 部分 | ✅ | ❌ |
 | **WebSocket /ws/v1/stream** | ✅ | 提供 | ❌ | ❌ | ✅ | ✅ | ❌ |
 | **SSE /api/v1/events** | ✅ | 提供 | ❌ | ❌ | ✅ | ✅ | ❌ |
-| `backend.src.api.SessionAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
-| `backend.src.api.TaskAPI` | ✅(经REST) | 自用 | ❌ | ❌ | create 异步触发 | ✅ | 触发事件 |
-| `backend.src.api.MemoryGatewayAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
-| `backend.src.api.GraphAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
-| `backend.src.api.EventStreamAPI` | ✅(SSE/WS) | 自用 | ❌ | ❌ | ✅ | ✅ | ✅(订阅) |
+| `backend.api.SessionAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
+| `backend.api.TaskAPI` | ✅(经REST) | 自用 | ❌ | ❌ | create 异步触发 | ✅ | 触发事件 |
+| `backend.api.MemoryGatewayAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
+| `backend.api.GraphAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
+| `backend.api.EventStreamAPI` | ✅(SSE/WS) | 自用 | ❌ | ❌ | ✅ | ✅ | ✅(订阅) |
 | `agents.api.AgentRegistryAPI` | ❌ | ✅ | ✅ | ❌ | — | ❌ | ❌ |
 | `agents.api.RuntimeAPI` | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `agents.api.MemoryAPI` | ❌(经后端) | ✅(桥接) | ✅ | ❌ | write 异步 | ❌ | ✅(MemoryUpdate) |
@@ -44,7 +44,7 @@
 
 ## 2. 前端可调用接口（Frontend Boundary）
 
-前端**只能**通过 `backend.src.gateway` 暴露的对外接口与系统交互：
+前端**只能**通过 `backend.core` 暴露的对外接口与系统交互：
 
 | 通道 | 接口 | 用途 |
 |------|------|------|
@@ -67,7 +67,7 @@
 
 - **对外提供**：REST/WS/SSE（经 gateway）。
 - **可调**：`agents.api`（5 接口：AgentRegistryAPI · RuntimeAPI · MemoryAPI · ExecutionAPI · EventBusAPI）、`infrastructure.api`（NodeRegistry/Deployment）、`observability.api`（Monitor/Trace/Replay/Benchmark/Evaluation/Visualization）、`data.api`、`tooling.api`、`protocol`。
-- **禁止**：调 `backend.src.api`（逆向）；直连 `agents`/`infrastructure` 内部子包（须经 `api/`）。
+- **禁止**：调 `backend.api`（逆向）；直连 `agents`/`infrastructure` 内部子包（须经 `api/`）。
 - 后端编排：`TaskAPI.create_task` 调 `RuntimeAPI.submit(task)`（async，不指定 agent），agents 域内部完成 plan→route→schedule→execute→reflect，结果经事件流回推前端。`POST /agents/{id}/invoke` 调 `RuntimeAPI.run(agent_id, task)`（指定 agent 直调）。Plan(DAG) 通过 `Task.plan` 字段 + `GraphUpdate` 事件回传展示。后端订阅 EventBus **只用 subscribe**，不 publish（事件由 Agent 产生）。
 
 ---
@@ -77,7 +77,7 @@
 Agent 域是执行核心：
 
 - **可调**：`agents.api`（5 外部接口 + DI 端口）、`infrastructure.api`（Communication/NodeRegistry/Sync）、`data.api`（Dataset）、`tooling.api`（Config）、`protocol`。规划（plan/route/schedule）与感知（reason/reflect）为域内部能力，不对外暴露。
-- **禁止**：调 `backend.src.api`（逆向依赖）；直连他域内部子包。
+- **禁止**：调 `backend.api`（逆向依赖）；直连他域内部子包。
 - Agent 间协作走 **EventBus + 低熵路由**，不直接互调内部。
 
 ---
@@ -160,7 +160,7 @@ I/O 密集 / 长耗时 / 流式接口必须 `async`：
 ## 9. 并行开发契约
 
 - **契约冻结**：`protocol/` 类型 + 各域 `api/` 签名冻结后，三方并行。
-- **前端**：只依赖 `backend.src.api` 的对外接口契约（REST/WS/SSE 形状 + `protocol` 类型），不依赖后端实现。
+- **前端**：只依赖 `backend.api` 的对外接口契约（REST/WS/SSE 形状 + `protocol` 类型），不依赖后端实现。
 - **后端**：只依赖 `agents.api`/`infrastructure.api`/`observability.api` 的接口签名，不依赖其实现（DI 注入 + mock 测试）。
 - **Agent**：只依赖 `protocol/` + `agents.api` 内部契约（含 `agents.api.ports` DI 端口） + EventBus 事件契约，独立实现角色与引擎。
 - **集成**：三方对契约集成，不对实现集成；接口边界由本文件强约束，冲突在契约层解决。

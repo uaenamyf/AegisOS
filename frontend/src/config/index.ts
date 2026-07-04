@@ -1,7 +1,6 @@
-// @aegis-gen
 // date: 2026-07-04
 // dev: Claude Code (glm-5.2)
-// change: 新建前端统一配置入口——所有 API 地址/端口/密钥/WS 地址统一从 config/index.ts 导出
+// changelog: 新建前端统一配置入口——所有 API 地址/端口/密钥/WS 地址统一从 config/index.ts 导出
 /**
  * AegisOS 前端统一配置。
  *

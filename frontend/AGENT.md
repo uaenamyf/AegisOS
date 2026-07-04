@@ -2,18 +2,27 @@
 
 > 本文件是 `frontend/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 >
-> **目录结构**：所有源码位于 `frontend/src/` 下（与后端 `backend/src/` 结构对齐）。`frontend/` 根仅含配置文件 + `src/`。
+> **目录结构**：所有源码位于 `frontend/src/` 下（与后端 `backend/` 扁平结构对齐）。`frontend/` 根仅含配置文件 + `src/`。
 
 ## 职责
-AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Controller-Service-Mapper** 三层架构 + Views 视图层。
+AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Controller-Service-Lib + Views** 架构，各层与后端四层映射如下：
 
-## 内部分层（Controller-Service-Mapper + Views）
+| 前端层 | 后端对应层 | 职责 |
+|--------|-----------|------|
+| `controllers/` | `routers/` | 接收用户交互与后端事件，参数校验，调用 service |
+| `services/` | `services/` | 前端业务逻辑：API 调用、WS/SSE 管理、状态编排 |
+| `lib/` | `core/` + `repositories/` + `models/` | 基础设施：HTTP 客户端、全局状态 store |
+| `views/` | — | UI 组件（前端独有层） |
+| `protocol/` | `protocol/` | 数据契约（自动生成 TS 类型） |
+
+## 内部分层（Controller-Service-Lib + Views）
 | 分类 | 角色 | 说明 |
 |------|------|------|
 | frontend/src/controllers/ | 控制器 | 接收用户交互与后端事件，参数校验，调用 service，分发到 views |
-| frontend/src/services/ | 服务 | 前端业务逻辑：API 调用、WebSocket/SSE 管理、状态编排 |
-| frontend/src/mappers/ | 映射器 | 数据转换：protocol/ <-> 视图模型 <-> API 请求/响应，共享工具与状态 |
+| frontend/src/services/ | 服务 | 前端业务逻辑：API 调用（`api/`）、实时通信（`realtime/`）、状态编排（`session/`、`graph/`） |
+| frontend/src/lib/ | 基础设施 | HTTP 客户端（`api-client/`，对应后端 `core/` 网关）、全局状态（`store/`，对应后端 `core/composition.py` 运行时状态） |
 | frontend/src/views/ | 视图 | 按功能特性的 UI 组件：chat/canvas/graph/monitor/replay |
+| frontend/src/protocol/ | 类型定义 | `types.ts`(自动生成) + `frontend-types.ts`(手维护前端本地类型) |
 
 ## 读取目录（允许读）
 - backend/
@@ -29,7 +38,7 @@ AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Con
 ## 输出
 - frontend/src/controllers/ 控制器（交互/事件处理）
 - frontend/src/services/ 服务（API 调用、WS/SSE 管理、状态编排）
-- frontend/src/mappers/ 映射器（数据转换、共享工具、全局状态）
+- frontend/src/lib/ 基础设施（HTTP 客户端、全局状态 store）
 - frontend/src/views/ 视图（chat/canvas/graph/monitor/replay）
 
 ## 依赖
@@ -63,7 +72,7 @@ REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
 ```
 用户交互/后端事件 -> frontend/src/controllers/（交互处理/事件分发）
   -> frontend/src/services/（API 调用/WS·SSE 管理/状态编排）
-  -> frontend/src/mappers/（数据转换/视图模型构建/全局状态）
+  -> frontend/src/lib/（HTTP 客户端/全局状态 store）
   -> frontend/src/views/（UI 渲染：chat/canvas/graph/monitor/replay）
 ```
 
@@ -74,8 +83,9 @@ REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
 - **相关计划**：developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（G 攻防视图）
 
 ## 下辖子模块
-- **frontend/src/controllers/** — 控制器：接收用户交互与后端推送事件，参数校验，调用 service，分发到 views。不含业务逻辑。
-- **frontend/src/services/** — 服务：前端业务逻辑核心。API 调用（经 backend/gateway）、WebSocket/SSE 连接管理、状态编排。
-- **frontend/src/mappers/** — 映射器：数据转换（protocol <-> 视图模型 <-> API 请求/响应）、共享工具函数、全局状态管理、主题样式与静态资产。
+- **frontend/src/controllers/** — 控制器：接收用户交互与后端推送事件，参数校验，调用 service，分发到 views。不含业务逻辑。对应后端 `routers/`。
+- **frontend/src/services/** — 服务：前端业务逻辑核心。`api/`(REST 调用)、`realtime/`(WS/SSE 连接管理)、`session/`+`graph/`(状态编排)。对应后端 `services/`。
+- **frontend/src/lib/** — 基础设施：`api-client/`(HTTP 客户端封装，对应后端 `core/` 网关职责)、`store/`(Zustand 全局状态，对应后端 `core/composition.py` 运行时状态)。对应后端 `core/` + `repositories/`。
 - **frontend/src/views/** — 视图：按功能特性的 UI 组件。`chat/`(Agent 对话)、`canvas/`(任务画布)、`graph/`(动态图可视化)、`monitor/`(Agent 监控)、`replay/`(回放时间线)。
+- **frontend/src/protocol/** — 类型定义：`types.ts`(自动生成，经 `tooling/scripts/gen_ts_types.py`) + `frontend-types.ts`(手维护前端本地类型)。对应后端 `protocol/`。
 - **frontend/src/protocol/** — 类型定义：`types.ts`(自动生成) + `frontend-types.ts`(手维护前端本地类型)。

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-# @aegis-gen
 # date: 2026-07-03
 # dev: myf
-# change: 修正生成器引用——关键文档/通信协议/开发流程段从旧 developer/*.md 改指 developer/specs/ SSOT
+# changelog: 修正生成器引用——关键文档/通信协议/开发流程段从旧 developer/*.md 改指 developer/specs/ SSOT
 """动态生成根目录 README.md 的脚本。
 
 本脚本扫描 AegisOS 仓库的真实结构，统计目录/文件/AGENT.md/API 接口等
@@ -115,7 +114,7 @@ def api_summary() -> list[tuple[str, str, list[str]]]:
     # 各域配置：(文件夹名, api 模块全名, api 子目录)
     domains = [
         ("agents", "agents.api", "api"),
-        ("backend", "backend.src.api", "src/api"),
+        ("backend", "backend.api", "api"),
         ("frontend", None, None),  # frontend has no Python API (deleted)
         ("infrastructure", "infrastructure.api", "api"),
         ("observability", "observability.api", "api"),

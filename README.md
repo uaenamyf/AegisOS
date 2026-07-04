@@ -89,7 +89,7 @@ agents/
 cd frontend && npm install && cd ..
 
 # 2. 启动后端（http://localhost:8000）
-.venv/bin/uvicorn backend.src.main:app --reload --host 0.0.0.0 --port 8000
+.venv/bin/uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 # 3. 启动前端（http://localhost:5173）
 cd frontend && npm run dev

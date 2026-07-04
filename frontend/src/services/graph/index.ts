@@ -1,11 +1,10 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 services/graph/index.ts，图数据服务：fetch graph 并订阅 GraphUpdate
+// changelog: 新建 services/graph/index.ts，图数据服务：fetch graph 并订阅 GraphUpdate
 
 import { graphApi } from "@/services/api/graph";
 import { sseManager } from "@/services/realtime/sse";
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 import type { Event, Graph, GraphDiff } from "@/protocol/types";
 
 function applyDiff(diff: GraphDiff): void {

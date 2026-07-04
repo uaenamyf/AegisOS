@@ -67,7 +67,7 @@ developer/
 | 08 | [`08_AGENT_SPEC.md`](specs/08_AGENT_SPEC.md) | Agent 生命周期/API/Prompt/Memory/Tool |
 | 09 | [`09_DEVELOPMENT_SPEC.md`](specs/09_DEVELOPMENT_SPEC.md) | Spec→Contract→API→Impl→Test→Doc |
 | 10 | [`10_INTERFACE_BOUNDARY_SPEC.md`](specs/10_INTERFACE_BOUNDARY_SPEC.md) | 接口边界：谁调谁/异步/网关/EventBus |
-| 11 | [`11_AI_CODING_SPEC.md`](specs/11_AI_CODING_SPEC.md) | AI 必读/范围/禁改协议 API/测试/`@aegis-gen` §10 |
+| 11 | [`11_AI_CODING_SPEC.md`](specs/11_AI_CODING_SPEC.md) | AI 必读/范围/禁改协议 API/测试/代码注释 §10 |
 | 12 | [`12_TECH_STACK_SPEC.md`](specs/12_TECH_STACK_SPEC.md) | 语言/运行时/框架/库/工具链/版本 |
 
 ### 计划文档（specs/plans/）

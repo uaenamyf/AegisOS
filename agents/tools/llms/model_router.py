@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: 多模型路由器
+# changelog: 多模型路由器
 """多模型路由器：根据模型 ID 或调度层级选择对应 Provider。
 
 本模块提供 :class:`ModelRouter`，负责把一次 :class:`LLMRequest`

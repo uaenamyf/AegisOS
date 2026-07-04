@@ -1,10 +1,9 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 controllers/events.ts，后端事件控制器：订阅 SSE 并分发到 store
+// changelog: 新建 controllers/events.ts，后端事件控制器：订阅 SSE 并分发到 store
 
 import { sseManager, wsManager } from "@/services/realtime";
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 import type { Agent, Event, Task } from "@/protocol/types";
 
 export const eventController = {

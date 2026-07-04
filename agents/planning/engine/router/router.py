@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: 低熵稀疏路由 Top-K
+# changelog: 低熵稀疏路由 Top-K
 """低熵稀疏路由器（Top-K 稀疏路由）。
 
 本模块实现基于亲和度与负载惩罚的 Top-K 稀疏路由策略：

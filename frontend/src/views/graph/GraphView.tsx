@@ -1,9 +1,8 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 views/graph/GraphView.tsx，动态图可视化占位
+// changelog: 新建 views/graph/GraphView.tsx，动态图可视化占位
 
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 
 export function GraphView() {
   const graph = useAppStore((s) => s.graph);

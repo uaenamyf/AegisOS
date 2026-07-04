@@ -1,9 +1,9 @@
-// @aegis-gen
-// date: 2026-06-27
+// date: 2026-07-05
 // dev: Claude Code (glm-5.2)
-// change: 新建 views/index.ts，barrel 导出所有视图组件
+// changelog: 补全 ChatView barrel 导出（与后端 routers/__init__.py 完整聚合模式对齐）
 
 export { Sidebar } from "./layout";
+export { ChatView } from "./chat";
 export { CanvasView } from "./canvas";
 export { GraphView } from "./graph";
 export { MonitorView } from "./monitor";

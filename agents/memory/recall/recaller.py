@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: 超长程记忆唤醒机制
+# changelog: 超长程记忆唤醒机制
 """记忆回忆器模块。
 
 提供基于触发词（trigger）的关键词匹配回忆能力。从情景记忆（episodic）和

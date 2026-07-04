@@ -25,7 +25,7 @@ frontend  →  backend  →  agents  →  protocol
 
 ## 2. 依赖矩阵（允许 ✅ / 禁止 ❌）
 
-| 调用方 ↓ \ 被调方 → | protocol | agents.api | backend.src.api | infra.api | observ.api | data.api | tooling.api | 任意域内部 |
+| 调用方 ↓ \ 被调方 → | protocol | agents.api | backend.api | infra.api | observ.api | data.api | tooling.api | 任意域内部 |
 |---------------------|----------|------------|-------------|-----------|------------|----------|-------------|-----------|
 | `frontend/` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `backend/` | ✅ | ✅ | 自用 | ✅ | ✅ | ✅ | ✅ | ❌ |

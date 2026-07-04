@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: 蓝队响应规划 Agent
+# changelog: 蓝队响应规划 Agent
 from __future__ import annotations
 
 import json

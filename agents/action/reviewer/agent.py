@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: 紫队一致性审查 Agent
+# changelog: 紫队一致性审查 Agent
 from __future__ import annotations
 
 import json

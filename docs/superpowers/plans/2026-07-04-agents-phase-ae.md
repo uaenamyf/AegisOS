@@ -19,7 +19,7 @@
 - 跨域调用仅经 `api/` 子包（`from {domain}.api import ...`）；无直接内部 import。
 - 跨模块禁裸 dict，用 Message 信封 + protocol 类型。
 - 禁低熵全广播：router 仅 Top-K 稀疏路由；CI 校验非全广播。
-- AI 改动 不超过 1 域、不超过 8 文件、行为保持、含测试；AI 代码须 `@aegis-gen` 注释头（date/dev/change，新头叠在旧头之上，不删旧）。
+- AI 改动 不超过 1 域、不超过 8 文件、行为保持、含测试；首次创建文件写文件说明 + date + dev（§10.1），增改函数/方法/接口写 date + dev + changelog + 代码注释（§10.2）。
 - API 签名变更 = 破坏性（major bump + CHANGELOG + 通知依赖方）。protocol 字段新增须同步 `04_PROTOCOL_SPEC`/`06_SCHEMA` + CHANGELOG。
 - 不手改 README 自动生成段；protocol 变更后重跑 `gen:types`。
 - LLM 兼容层设计为多方案：本地部署 + OpenAI API + Anthropic API + Mock stub，通过统一 `ModelProvider` 接口切换。

@@ -1,11 +1,6 @@
-// @aegis-gen
 // date: 2026-07-04
 // dev: Claude Code (glm-5.2)
-// change: 接入统一配置——proxy target 改从环境变量读取
-// @aegis-gen
-// date: 2026-06-27
-// dev: Claude Code (glm-5.2)
-// change: 新建 vite.config.ts，React 插件 + /api、/ws 代理至 localhost:8000
+// changelog: 接入统一配置——proxy target 改从环境变量读取
 
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";

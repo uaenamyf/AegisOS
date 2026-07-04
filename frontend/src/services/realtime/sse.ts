@@ -1,18 +1,9 @@
-// @aegis-gen
 // date: 2026-07-04
 // dev: Claude Code (glm-5.2)
-// change: 接入统一配置——SSE URL/apiKey 改从 @/config 读取
-// @aegis-gen
-// date: 2026-07-03
-// dev: Claude Code (glm-5.2)
-// change: 导入源拆分——ConnectionStatus 改从 @/protocol/frontend-types 引入，Event 仍从 @/protocol/types
-// @aegis-gen
-// date: 2026-06-27
-// dev: Claude Code (glm-5.2)
-// change: 新建 services/realtime/sse.ts，SSE 管理器：连接 /api/v1/events 并分发事件到 store
+// changelog: 接入统一配置——SSE URL/apiKey 改从 @/config 读取
 
 import { config } from "@/config";
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 import type { ConnectionStatus } from "@/protocol/frontend-types";
 import type { Event } from "@/protocol/types";
 

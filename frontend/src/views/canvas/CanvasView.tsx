@@ -1,9 +1,8 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 views/canvas/CanvasView.tsx，任务画布占位（DAG 编辑器占位）
+// changelog: 新建 views/canvas/CanvasView.tsx，任务画布占位（DAG 编辑器占位）
 
-import { useAppStore } from "@/mappers/store";
+import { useAppStore } from "@/lib/store";
 
 export function CanvasView() {
   const tasks = useAppStore((s) => s.tasks);

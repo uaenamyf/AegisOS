@@ -15,7 +15,7 @@
 **最易违反的铁律**：
 - 跨域调用仅经 `api/`：`from {domain}.api import ...`，禁直接 import 内部子包。
 - 数据契约只用 `protocol/` 类型，禁自造并行结构；跨模块通信走 `protocol/message.py` Message 信封，禁裸 dict/JSON。
-- AI 改动 ≤1 域 / ≤8 文件 / 行为保持 / 含测试；AI 代码加 `@aegis-gen` 注释头（date/dev/change，新头叠旧头之上，不删旧）。
+- AI 改动 ≤1 域 / ≤8 文件 / 行为保持 / 含测试；首次创建文件写文件说明 + date + dev（§10.1），增改函数/方法/接口写 date + dev + changelog + 代码注释（§10.2）。
 - router 禁低熵全广播（仅 Top-K 稀疏路由）；攻防工具仅 Docker 沙箱靶场内运行，永不触真实网络。
 
 **在哪找**：规范 → `developer/specs/` · 契约 → `protocol/` · 接口 → 各域 `api/` · **动态计划 → `developer/plan.md`（当前待办）** · 阶段 → `developer/roadmap/` · skills → `.claude/skills/` · **模块实现文档 → 根 `MODULE.md` + 各域 `MODULE.md` · 架构仪表盘 → `docs/ARCHITECTURE.md`**。
@@ -33,7 +33,7 @@
 | `developer/` | 规范层（项目大脑）：specs SSOT + roadmap | `developer/AGENT.md` | — |
 | `protocol/` | 契约层，唯一数据契约 | `protocol/AGENT.md` | — |
 | `agents/` | 智能体域：感知-规划-行动-记忆-工具五层 | `agents/AGENT.md` | `agents/api/` |
-| `backend/` | 应用层：Controller-Service-Mapper + Gateway | `backend/AGENT.md` | `backend/src/api/` |
+| `backend/` | 应用层：Router-Service-Repository-Model + Core | `backend/AGENT.md` | `backend/api.py` |
 | `frontend/` | 表现层：Controller-Service-Mapper + Views | `frontend/AGENT.md` | — |
 | `infrastructure/` | 基建：transport / nodes(端·云) / delivery | `infrastructure/AGENT.md` | `infrastructure/api/` |
 | `observability/` | 可观测：inspect / measure / present | `observability/AGENT.md` | `observability/api/` |
@@ -47,7 +47,7 @@
 读 `AGENT.md` → `specs`(00/03/11) → `roadmap` 定位阶段 → 目标模块 `AGENT.md` → `protocol` 契约 + `04` → 目标域 `api` + `05` → 配置 → 生成代码 → 质量门禁（`ruff format && ruff check --fix && mypy && pytest`，本机无 Python 见下）→ 更新 Doc + `CHANGELOG` → Commit。**永不全仓扫描。**
 
 ### 全局铁律（精简）
-模块解耦(`api/`) · `protocol` 唯一契约 · Message 信封 · 不得越界 · API 签名变更=破坏性 · 质量门禁 · 低熵稀疏通信 · 技术栈登记制 · AI 范围/`@aegis-gen` 注释头。详见根 `AGENT.md`「全局铁律」+ `developer/specs/03_IMPORT_SPEC.md` / `04` / `11`。
+模块解耦(`api/`) · `protocol` 唯一契约 · Message 信封 · 不得越界 · API 签名变更=破坏性 · 质量门禁 · 低熵稀疏通信 · 技术栈登记制 · AI 范围/代码注释强制。详见根 `AGENT.md`「全局铁律」+ `developer/specs/03_IMPORT_SPEC.md` / `04` / `11`。
 
 ---
 
@@ -64,7 +64,7 @@
 | `agents/tools` | llms(多模型兼容) · prompts · runtime | 12·08 | 14/15(D2 多模型) | `agents/api` |
 | `agents/api` | 公共接口层：RuntimeAPI / AgentRegistry / Memory / Planning / Execution / Perception / EventBus | 05·10 | 13(双向调用/DI 端口) | — |
 | `protocol` | message/event/scheduler/tool/memory/agent/graph/heartbeat/sync + `cyber.py`（8 攻防类型 ✅） | 04·06 | 14/15(A1 cyber 类型) | — |
-| `backend` | src/(gateway / controllers / services / mappers) | 05·10·12 | 13·14/15(F 攻防端点) | `backend/src/api` |
+| `backend` | routers/services/repositories/models + core/schemas/mocks | 05·10·12 | 13·14/15(F 攻防端点) | `backend/api.py` |
 | `frontend` | src/(controllers / services / mappers / views(chat·canvas·graph·monitor·replay)) | 13·05·12 | 13·14/15(G 攻防视图) | — |
 | `infrastructure` | transport / nodes(edge·cloud) / delivery(deployment) | 01·12 | 14/15(H1 沙箱靶场·端边云) | `infrastructure/api` |
 | `observability` | inspect(monitor·replay) / measure(benchmark·evaluation) / present(visualization) | 01·07 | 14/15(H5 评测·回放) | `observability/api` |
@@ -89,7 +89,7 @@
 | 08 | `08_AGENT_SPEC.md` | Agent Runtime：生命周期/API/Prompt/Memory/Tool |
 | 09 | `09_DEVELOPMENT_SPEC.md` | 开发流程：Spec→Contract→API→Impl→Test→Doc |
 | 10 | `10_INTERFACE_BOUNDARY_SPEC.md` | 接口边界：并行开发核心（谁调谁/异步/网关/EventBus） |
-| 11 | `11_AI_CODING_SPEC.md` | AI 编码规范：必读/范围/禁改协议 API/测试/`@aegis-gen` §10 |
+| 11 | `11_AI_CODING_SPEC.md` | AI 编码规范：必读/范围/禁改协议 API/测试/代码注释 §10 |
 | 12 | `12_TECH_STACK_SPEC.md` | 技术栈：语言/运行时/框架/库/工具链/版本约束 |
 | 13 | `plans/13_FRONTEND_BACKEND_PLAN.md` | 前后端全流程计划（双向调用/DI 端口/FastAPI） |
 | 14 | `plans/14_CYBERDEFENSE_SOLUTION_PLAN.md` | 赛事总体方案（架构/角色/算法/3 场景/评分对齐） |

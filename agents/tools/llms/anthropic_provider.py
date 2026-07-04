@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: Anthropic API provider
+# changelog: Anthropic API provider
 """Anthropic Claude API 的 Provider 实现。
 
 调用 Anthropic Messages 接口，将 :class:`LLMRequest` 翻译为

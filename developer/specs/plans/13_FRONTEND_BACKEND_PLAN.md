@@ -228,7 +228,7 @@ agents P5（planner+agents）─→ B5 后端智能体集成
 
 | 里程碑 | 验收标准 |
 |--------|----------|
-| B0 | `make setup && uvicorn backend.src.main:app` 可启动，`/api/v1/health` 返回 200 |
+| B0 | `make setup && uvicorn backend.main:app` 可启动，`/api/v1/health` 返回 200 |
 | B4 | 全部 REST/WS/SSE 端点可调用（agents 用 mock），返回 `protocol` 类型 |
 | B5 | 真实 agents 接入，`POST /tasks` 完成端到端 goal→plan→execute→result |
 | B6 | 覆盖率≥80%，关键路径≥90%，E2E 通过 |

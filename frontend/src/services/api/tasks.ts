@@ -1,9 +1,8 @@
-// @aegis-gen
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// change: 新建 services/api/tasks.ts，任务 API 服务：create/list/get/cancel
+// changelog: 新建 services/api/tasks.ts，任务 API 服务：create/list/get/cancel
 
-import { apiClient } from "@/mappers/apimappers/client";
+import { apiClient } from "@/lib/api-client";
 import type { Task } from "@/protocol/types";
 
 export interface CreateTaskRequest {

@@ -1,7 +1,6 @@
-# @aegis-gen
 # date: 2026-07-04
 # dev: myf
-# change: OpenAI API provider
+# changelog: OpenAI API provider
 """OpenAI 兼容 API 的 Provider 实现。
 
 调用 OpenAI Chat Completions 接口（或任何兼容该协议的端点，
