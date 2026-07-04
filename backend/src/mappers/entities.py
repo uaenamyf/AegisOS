@@ -1,7 +1,9 @@
 # @aegis-gen
 # date: 2026-06-27
-# dev: Claude Code (glm-5.2)
+# dev: myf
 # change: 新建 SQLAlchemy 2.0 ORM 实体——SessionEntity / TaskEntity
+"""ORM 实体模块：定义 SQLAlchemy 2.0 风格的声明式实体类。"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -12,15 +14,25 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
-    """Declarative base shared by all ORM entities."""
+    """所有 ORM 实体共享的声明式基类。"""
 
 
 def _utcnow() -> datetime:
+    """返回当前 UTC 时间，用作时间戳列的默认值。"""
     return datetime.now(UTC)
 
 
 class SessionEntity(Base):
-    """Persistent representation of a user session."""
+    """用户会话的持久化表示。
+
+    Attributes:
+        id: 会话唯一标识符（64 字符字符串）。
+        user_id: 关联的用户 ID。
+        status: 会话状态（active/closed 等）。
+        context: 会话上下文数据，以 JSON 格式存储。
+        created_at: 创建时间（UTC）。
+        updated_at: 最后更新时间（UTC），每次更新自动刷新。
+    """
 
     __tablename__ = "sessions"
 
@@ -35,7 +47,18 @@ class SessionEntity(Base):
 
 
 class TaskEntity(Base):
-    """Persistent representation of a scheduled Task."""
+    """计划任务的持久化表示。
+
+    Attributes:
+        id: 任务唯一标识符（64 字符字符串）。
+        session_id: 所属会话 ID，建立索引以加速按会话查询。
+        goal: 任务目标描述文本。
+        status: 任务状态（pending/running/succeeded/failed 等）。
+        plan: 任务执行计划，以 JSON 格式存储。
+        result: 任务执行结果，以 JSON 格式存储。
+        created_at: 创建时间（UTC）。
+        updated_at: 最后更新时间（UTC），每次更新自动刷新。
+    """
 
     __tablename__ = "tasks"
 

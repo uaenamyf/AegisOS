@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 # @aegis-gen
 # date: 2026-07-03
-# dev: Claude Code (glm-5.2)
+# dev: myf
 # change: 修正生成器引用——关键文档/通信协议/开发流程段从旧 developer/*.md 改指 developer/specs/ SSOT
-"""Dynamically generate the root README.md from the actual repo structure.
+"""动态生成根目录 README.md 的脚本。
 
-Run:  python3 tooling/scripts/gen_readme.py
-Re-run whenever the structure changes to keep README.md in sync.
+本脚本扫描 AegisOS 仓库的真实结构，统计目录/文件/AGENT.md/API 接口等
+指标，并拼装为 Markdown 文档写入仓库根目录的 README.md。
+
+运行方式：
+    python3 tooling/scripts/gen_readme.py
+
+每当仓库结构发生变化后重新运行，即可保持 README.md 与实际结构同步。
 """
 
 from __future__ import annotations
@@ -14,10 +19,11 @@ from __future__ import annotations
 import os
 from datetime import date
 
+# 仓库根目录：本文件位于 tooling/scripts/，向上回溯三级即为根目录
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Directories that must never be counted as project content (venv, local tooling,
-# caches, build artifacts). Applied to every walk below so stats stay truthful.
+# 绝不应计入项目内容的目录（虚拟环境、本地工具、缓存、构建产物等）。
+# 应用于下方每一次 os.walk，确保统计结果真实可靠。
 _EXCLUDE_DIRS = (
     ".git",
     ".venv",
@@ -33,11 +39,33 @@ _EXCLUDE_DIRS = (
 
 
 def _excluded(dp: str) -> bool:
+    """判断给定相对路径是否落在排除目录内。
+
+    将路径按斜杠切分后，逐段检查是否命中 ``_EXCLUDE_DIRS``。
+
+    Args:
+        dp: 相对于仓库根目录的路径字符串（可含反斜杠）。
+
+    Returns:
+        若路径任意一段命中排除目录则返回 True，否则返回 False。
+    """
     parts = dp.replace("\\", "/").split("/")
     return any(seg in _EXCLUDE_DIRS for seg in parts)
 
 
 def count(pattern_dir: str, name: str) -> int:
+    """统计指定目录树下某文件名的出现次数。
+
+    在 ``pattern_dir`` 子树中递归遍历，统计名为 ``name`` 的文件数量，
+    跳过排除目录。
+
+    Args:
+        pattern_dir: 相对于仓库根目录的起始目录。
+        name: 需要计数的文件名（如 ``AGENT.md``）。
+
+    Returns:
+        命中文件的计数结果。
+    """
     n = 0
     for dp, _, files in os.walk(os.path.join(ROOT, pattern_dir)):
         if _excluded(dp):
@@ -47,12 +75,23 @@ def count(pattern_dir: str, name: str) -> int:
 
 
 def list_dir(rel: str, depth: int = 1) -> list[str]:
+    """以缩进列表形式列出目录内容，支持多级深度。
+
+    Args:
+        rel: 相对于仓库根目录的目录路径。
+        depth: 递归深度，默认为 1（仅列出直接子项）。
+
+    Returns:
+        目录条目列表；子级条目以两个空格缩进表示层级。若目录不存在
+        则返回空列表。
+    """
     base = os.path.join(ROOT, rel)
     if not os.path.isdir(base):
         return []
     entries = sorted(os.listdir(base))
     out = []
     for e in entries:
+        # 跳过隐藏文件和双下划线目录（如 __pycache__）
         if e.startswith(".") or e.startswith("__"):
             continue
         p = os.path.join(base, e)
@@ -65,6 +104,15 @@ def list_dir(rel: str, depth: int = 1) -> list[str]:
 
 
 def api_summary() -> list[tuple[str, str, list[str]]]:
+    """汇总各域的公共 API 接口列表。
+
+    遍历预定义的域列表，定位每个域的 ``api/__init__.py``，解析其中的
+    ``__all__`` 声明，提取含 ``API`` 关键字的导出名称。
+
+    Returns:
+        元组列表，每项为 ``(域文件夹名, api 模块全名, 接口名列表)``。
+    """
+    # 各域配置：(文件夹名, api 模块全名, api 子目录)
     domains = [
         ("agents", "agents.api", "api"),
         ("backend", "backend.src.api", "src/api"),
@@ -76,6 +124,7 @@ def api_summary() -> list[tuple[str, str, list[str]]]:
     ]
     out = []
     for folder, mod, api_sub in domains:
+        # 无 Python API 的域直接记为空接口
         if api_sub is None:
             out.append((folder, mod or "", []))
             continue
@@ -84,13 +133,13 @@ def api_summary() -> list[tuple[str, str, list[str]]]:
         if os.path.isfile(api_dir):
             with open(api_dir, encoding="utf-8") as f:
                 src = f.read()
-            # parse __all__ = [ "X", "Y", ... ]
+            # 解析 __all__ = [ "X", "Y", ... ] 声明块
             start = src.find("__all__")
             if start != -1:
                 bracket = src.find("[", start)
                 end = src.find("]", bracket)
                 block = src[bracket:end]
-                # extract all quoted tokens containing API
+                # 提取所有带引号的标识符，仅保留名称中含 API 的项
                 import re
 
                 names = [
@@ -103,7 +152,16 @@ def api_summary() -> list[tuple[str, str, list[str]]]:
 
 
 def tree_block() -> str:
+    """生成仓库目录树的可视化 Markdown 代码块。
+
+    遍历顶层目录，最多展示三层子目录，每层以两个空格缩进。
+    跳过隐藏目录和 ``__pycache__``。
+
+    Returns:
+        由 ```` ``` ```` 包裹的目录树字符串。
+    """
     lines = ["```"]
+    # 第一层：顶层目录
     top = sorted(
         d
         for d in os.listdir(ROOT)
@@ -111,6 +169,7 @@ def tree_block() -> str:
     )
     for d in top:
         lines.append(f"{d}/")
+        # 第二层：顶层目录的直接子目录
         sub = sorted(
             s
             for s in os.listdir(os.path.join(ROOT, d))
@@ -120,6 +179,7 @@ def tree_block() -> str:
         )
         for s in sub:
             lines.append(f"  {s}/")
+            # 第三层：二级目录的子目录
             ssub = sorted(
                 x
                 for x in os.listdir(os.path.join(ROOT, d, s))
@@ -134,18 +194,27 @@ def tree_block() -> str:
 
 
 def main() -> None:
+    """生成并写入根目录 README.md。
+
+    采集仓库统计指标、API 接口摘要与目录树，拼装 Markdown 内容
+    后写入 ``README.md``，并在终端打印摘要信息。
+    """
     agent_md = count(".", "AGENT.md")
+    # 统计 Python 文件数量，跳过排除目录
     py_files = sum(
         1 for dp, _, fs in os.walk(ROOT) if not _excluded(dp) for f in fs if f.endswith(".py")
     )
+    # 统计 Markdown 文件数量
     md_files = sum(
         1 for dp, _, fs in os.walk(ROOT) if not _excluded(dp) for f in fs if f.endswith(".md")
     )
+    # 目录总数：所有未排除目录减去根目录自身
     total_dirs = sum(1 for dp, _, _ in os.walk(ROOT) if not _excluded(dp)) - 1
     total_files = sum(len(fs) for dp, _, fs in os.walk(ROOT) if not _excluded(dp))
     apis = api_summary()
     total_apis = sum(len(n) for _, _, n in apis)
 
+    # 拼装 API 解耦表
     api_table = "| 域 | api 包 | 公共接口数 | 接口 |\n|----|--------|-----------|------|\n"
     for folder, mod, names in apis:
         api_table += f"| {folder}/ | `{mod}` | {len(names)} | {' · '.join(names)} |\n"
@@ -292,6 +361,7 @@ make deploy ENV=dev
 （待定）
 """
 
+    # 将拼装好的内容写入根目录 README.md
     out = os.path.join(ROOT, "README.md")
     with open(out, "w", encoding="utf-8") as f:
         f.write(s)

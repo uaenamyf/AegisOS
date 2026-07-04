@@ -158,7 +158,7 @@
 ```python
 # @aegis-gen
 # date: 2026-06-27
-# dev: Claude Code (glm-5.2)
+# dev: myf
 # change: 实现 MemoryAPI.read 向量检索与 rerank 逻辑
 ```
 
@@ -166,7 +166,7 @@
 ```typescript
 // @aegis-gen
 // date: 2026-06-27
-// dev: Cursor (claude-3.5)
+// dev: myf
 // change: 新增 GraphView 动态图渲染组件
 ```
 
@@ -174,7 +174,7 @@
 |------|:----:|------|------|
 | `@aegis-gen` | ✅ | 固定标记 | 标识本段为 AI 生成/修改 |
 | `date` | ✅ | `YYYY-MM-DD`（ISO 8601） | 改动日期 |
-| `dev` | ✅ | `AI 工具名 (模型)` 或人类名 | 开发人员；如 `Claude Code (glm-5.2)`、`Cursor (gpt-4o)`、`张三` |
+| `dev` | ✅ | git 用户名或人类名 | 开发人员；以 `git config user.name` 为准，如 `myf`、`张三`；**禁写** AI 工具名/模型名（如 ~~Claude Code (glm-5.2)~~） |
 | `change` | ✅ | 一句话祈使/陈述 | 改动内容简述（做了什么） |
 
 > 多人/AI 接续修改同一段时，**追加**新注释头于上方，**不删除**既有注释头，形成改动历史栈（最新在上）。
@@ -197,7 +197,7 @@ from __future__ import annotations
 
 # @aegis-gen
 # date: 2026-06-27
-# dev: Claude Code (glm-5.2)
+# dev: myf
 # change: 新建 retrieval 模块，实现向量+关键词+图混合检索
 
 from protocol import MemoryPacket
@@ -205,7 +205,7 @@ from protocol import MemoryPacket
 
 # @aegis-gen
 # date: 2026-06-27
-# dev: Claude Code (glm-5.2)
+# dev: myf
 # change: 实现 retrieve 主入口，含 rerank
 def retrieve(query: dict) -> list:
     ...
@@ -216,11 +216,11 @@ def retrieve(query: dict) -> list:
 ```python
 # @aegis-gen
 # date: 2026-06-28
-# dev: Cursor (gpt-4o)
+# dev: myf
 # change: 修复 retrieve 在空 query 下的空指针异常
 # @aegis-gen
 # date: 2026-06-27
-# dev: Claude Code (glm-5.2)
+# dev: myf
 # change: 实现 retrieve 主入口，含 rerank
 def retrieve(query: dict) -> list:
     ...
@@ -229,10 +229,55 @@ def retrieve(query: dict) -> list:
 ### 10.5 约束
 
 - 注释头字段必须真实，`date` 用改动当日，`dev` 用实际开发方，`change` 如实描述。
+- **`dev` 字段以 `git config user.name` 为准**，禁写 AI 工具名/模型名（如 ~~Claude Code (glm-5.2)~~、~~Cursor (gpt-4o)~~）。
 - 注释头**不替代** commit message；commit 仍须遵循 `00` §13 格式。
 - 注释头**不替代**文档；API/事件/协议变更仍须同步对应规范。
 - 人类开发者手写代码不强制加 `@aegis-gen`，但鼓励记录改动作者。
 - 注释头不计入「无关注释」禁令；它是元数据，非冗余解释。
+
+### 10.6 代码 docstring 规范（强制）
+
+> **凡 Python 文件中的模块、类、公开函数/方法，必须有 docstring。** 晦涩难懂的代码行须加行内注释。缺失 docstring 的代码一律视为未完成，须补全方可提交。
+
+#### docstring 覆盖范围
+
+| 元素 | 是否必须 docstring | 说明 |
+|------|:------------------:|------|
+| 模块（文件级） | ✅ | 文件顶部三引号 docstring，说明文件职责 |
+| class | ✅ | 说明类的用途，含 `Attributes` 段列出公开属性 |
+| 公开函数/方法（`public`，非 `_` 前缀） | ✅ | Google 风格，含 `Args`/`Returns`/`Raises`（按需） |
+| 私有函数/方法（`_` 前缀） | 推荐 | 简短说明即可 |
+| `__init__` | ✅ | 说明构造参数 |
+| 常量/枚举 | 推荐 | 行内注释说明含义 |
+| 晦涩代码行 | ✅ | 行内注释（`# ...`）解释 why |
+
+#### docstring 风格
+
+统一使用 **Google 风格**（与 Sphinx / napoleon 兼容）：
+
+```python
+"""检索与 query 相关的记忆片段。
+
+通过向量相似度 + 关键词匹配 + 图遍历混合检索，返回 Top-K 记忆。
+
+Args:
+    query: 查询字典，含 `text`（str）和 `session_id`（str）。
+    top_k: 返回记忆条数上限，默认 5。
+
+Returns:
+    list[MemoryPacket]: 按相关度降序排列的记忆列表。
+
+Raises:
+    ValueError: 当 query 为空或 top_k <= 0 时。
+"""
+```
+
+#### 行内注释规则
+
+- **解释 why，而非 what**：代码本身已表达 what，注释应说明**为什么**这样做。
+- **晦涩逻辑必须注释**：算法步骤、正则匹配、位运算、降级/回退逻辑、魔法数字等。
+- **简单直观的代码不需要注释**：避免冗余（如 `i += 1  # i 加 1`）。
+- **注释语言用中文**。
 
 ---
 
@@ -245,6 +290,7 @@ def retrieve(query: dict) -> list:
 4. 确认依赖契约（protocol/ + api/ + configs/）
 5. 实现（单次 ≤1 域，遵循 Spec→Contract→API→Implementation→Test→Document）
    — 对所有生成/修改的代码加注释头（@aegis-gen/date/dev/change，见 §10）
+   — 为所有模块/类/公开函数添加 docstring + 晦涩代码行内注释（见 §10.6）
 6. 生成/更新测试（§6）— 测试代码同样加注释头
 7. 运行质量门禁至全绿
 8. 同步文档与 CHANGELOG（§7）

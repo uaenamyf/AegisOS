@@ -1,6 +1,6 @@
 # @aegis-gen
 # date: 2026-07-04
-# dev: Claude Code (glm-5.2)
+# dev: myf
 # change: 测试更新为端边云三层调度（device → edge → cloud）
 from agents.planning.engine.scheduler.scheduler import (
     DEVICE_THRESHOLD,
