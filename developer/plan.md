@@ -8,7 +8,7 @@
 > 3. 每次会话结束前 → 更新「最近变更」段
 > 4. 本文件与 `roadmap/README.md`（阶段总览）互补：roadmap 看宏观阶段，plan.md 看具体待办
 >
-> 最后更新：2026-07-04 · 55 测试全通过
+> 最后更新：2026-07-04 · 55 测试全通过 · 统一配置体系 ✅
 
 ---
 
@@ -69,6 +69,17 @@
 - [x] `docs/ARCHITECTURE.md` — 全 10 域实现状态仪表盘
 - [x] `README.md` 模块文档索引表
 - [x] `CLAUDE.md`（根 + `.claude/`）同步更新
+
+### 统一配置体系 ✅
+- [x] `tooling/configs/settings.py` — Python 统一配置加载器（环境变量 > .env > defaults.yaml > 代码默认值）
+- [x] `tooling/configs/defaults.yaml` — 全项目默认值 SSOT（backend/frontend/cors/auth/db/log/rate_limit/trace/frontend_env）
+- [x] `tooling/configs/.env.example` — 环境变量模板
+- [x] `frontend/src/config/index.ts` — 前端统一配置入口（`config` 单例）
+- [x] `frontend/.env` — Vite 环境变量
+- [x] 后端 5 文件接入 settings（main.py/auth.py/middleware.py/database.py）
+- [x] 前端 3 文件接入 config（client.ts/sse.ts/ws.ts）
+- [x] 脚本/构建配置接入环境变量（start.sh/Makefile/vite.config.ts/playwright.config.ts）
+- [x] 55 测试全通过 + TypeScript 类型检查通过
 
 ---
 
@@ -150,11 +161,20 @@
 - [ ] H5.5 `observability/present/visualization/` 数据可视化
 
 #### H7 — 部署交付
-> **优先级**：P2 · **预估**：1-2 天
-- [ ] H7.1 `infrastructure/nodes/edge/` 端侧节点实现
-- [ ] H7.2 `infrastructure/nodes/cloud/` 云侧节点实现
-- [ ] H7.3 端边云协同联调
-- [ ] H7.4 `tooling/scripts/` 靶场编排脚本
+> **优先级**：P2 · **预估**：3-5 天
+- [ ] H7.1 `infrastructure/delivery/deployment/docker/Dockerfile.backend` — 后端镜像
+- [ ] H7.2 `infrastructure/delivery/deployment/docker/Dockerfile.frontend` — 前端镜像（多阶段构建：node build → nginx serve）
+- [ ] H7.3 `infrastructure/delivery/deployment/docker/docker-compose.yml` — 一键编排（backend + frontend + nginx + db）
+- [ ] H7.4 `infrastructure/delivery/deployment/nginx/nginx.conf` — Nginx 反向代理配置
+  - 前端静态文件服务（`dist/`）
+  - `/api/` → backend:8000 REST 代理
+  - `/ws/` → backend:8000 WebSocket 升级代理
+  - gzip 压缩 + 连接超时
+- [ ] H7.5 `infrastructure/delivery/deployment/nginx/conf.d/aegisos.conf` — 站点配置
+- [ ] H7.6 `infrastructure/nodes/edge/` 端侧节点实现
+- [ ] H7.7 `infrastructure/nodes/cloud/` 云侧节点实现
+- [ ] H7.8 端边云协同联调
+- [ ] H7.9 `tooling/scripts/` 靶场编排脚本
 
 ### 📋 P3 — 长期 / 技术债
 
@@ -182,6 +202,15 @@
 #### 工程支撑
 - [ ] `tooling/scripts/check_no_broadcast.py` 低熵全广播检测（C4）
 - [ ] CI/CD 流水线（GitHub Actions）
+- [ ] `tooling/configs/environments/` 多环境覆盖（dev/staging/prod）
+- [ ] `tooling/configs/agents/` Agent 配置（角色/能力/资源限制）
+- [ ] `tooling/configs/models/` 模型配置（多模型路由策略/Token 限额）
+- [ ] `tooling/configs/prompts/` Prompt 配置（版本化管理）
+- [ ] `tooling/configs/deployment.yaml` 部署环境差异配置
+- [ ] HTTPS / TLS 证书配置（赛事演示域名）
+- [ ] `agents/tools/llms/` 真实 LLM API Key 安全注入（环境变量，不硬编码）
+- [ ] 后端生产级 ASGI 服务器（gunicorn + uvicorn workers）
+- [ ] `frontend/dist/` 构建产物校验 + CDN 预留
 
 ---
 
@@ -220,6 +249,7 @@
 | 2026-07-04 | 前后端打通：14 Agent 注册 + Chat 联调 + 文档同步 | （见 CHANGELOG） |
 | 2026-07-04 | 创建模块文档体系：MODULE.md + ARCHITECTURE.md | `fadf83c` `e58caa9` `e4851bc` |
 | 2026-07-04 | Phase A-E 核心引擎 TDD 实现（55 测试） | （见 CHANGELOG） |
+| 2026-07-04 | 统一配置体系：settings.py + defaults.yaml + 前端 config + 20 文件接入 | `240f8c0` |
 
 ---
 
