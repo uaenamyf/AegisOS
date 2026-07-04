@@ -48,16 +48,17 @@ def test_mock_provider_without_matching_response_returns_stub():
 
 def test_router_uses_scheduler_result():
     """Router selects provider based on scheduler Model.tier -> provider mapping."""
-    mock_edge = MockProvider(responses={"default": "edge_response"})
+    # TIER_PROVIDER_MAP: device→local, edge→local, cloud→cloud
+    mock_local = MockProvider(responses={"default": "local_response"})
     mock_cloud = MockProvider(responses={"default": "cloud_response"})
     router = ModelRouter(
-        providers={"edge": mock_edge, "cloud": mock_cloud},
+        providers={"local": mock_local, "cloud": mock_cloud},
         default_provider="cloud",
     )
-    # Simulate scheduler picking edge model
+    # Simulate scheduler picking edge model (tier="edge" → provider "local")
     edge_model = Model(model_id="edge_small", tier="edge", capabilities=["triage"])
     resp = router.complete_with_model(
         LLMRequest(prompt="triage this alert", model_id="edge_small"),
         edge_model,
     )
-    assert resp.text == "edge_response"
+    assert resp.text == "local_response"

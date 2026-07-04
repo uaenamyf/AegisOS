@@ -2,6 +2,10 @@
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
 # change: 新建 defaults.yaml——全项目默认配置 SSOT，被 settings.py 加载
+# @aegis-gen
+# date: 2026-07-04
+# dev: Claude Code (glm-5.2)
+# change: 新增 device/edge/cloud 三层调度阈值与节点配置
 # =============================================================================
 # AegisOS 默认配置（最低优先级）
 # =============================================================================
@@ -49,3 +53,43 @@ trace:
 frontend_env:
   VITE_API_BASE_URL: "http://localhost:8000/api/v1"
   VITE_WS_URL: "ws://localhost:8000/ws/v1/stream"
+
+# =============================================================================
+# 端-边-云 三层调度配置
+# =============================================================================
+# tier 优先级: privacy=local → device ; latency < DEVICE_THRESHOLD → device ;
+#              latency < EDGE_THRESHOLD → edge ; default → cloud
+# 端侧不可用时降级到边侧，边侧不可用时降级到云侧。
+
+scheduling:
+  # 阈值（秒）——与 scheduler.py 中 DEVICE_THRESHOLD / EDGE_THRESHOLD 保持一致
+  device_threshold: 1.0   # latency < 1.0s → 端侧
+  edge_threshold: 5.0     # latency < 5.0s → 边侧
+
+  device:
+    # 端侧（PC/手机/IoT/防火墙盒子）— 超低延迟、完全本地隐私
+    enabled: true
+    provider: local           # 本地推理（规则引擎/嵌入式小模型）
+    model: "rule-engine"      # 默认规则引擎；可切 1-3B 小模型
+    endpoint: "local"         # 无远程端点
+    max_concurrent: 4
+    timeout_ms: 100           # <100ms 超低延迟
+
+  edge:
+    # 边侧（边缘网关/机架服务器/区县汇聚节点）— 中等算力、区域隔离
+    enabled: true
+    provider: local           # Ollama / vLLM（OpenAI 兼容端点）
+    model: "qwen2.5:14b"      # 中型模型 7-14B
+    endpoint: "http://localhost:11434/v1"
+    max_concurrent: 16
+    timeout_ms: 1000          # <1s 中等延迟
+
+  cloud:
+    # 云侧（GPU 集群 / 厂家模型 API）— 强算力、可脱敏
+    enabled: true
+    provider: cloud           # OpenAI / Claude / GPT-4o
+    model: "gpt-4o"
+    endpoint: "https://api.openai.com/v1"
+    max_concurrent: 64
+    timeout_ms: 5000          # 1-5s
+    api_key_env: "OPENAI_API_KEY"   # 从环境变量读取，不硬编码

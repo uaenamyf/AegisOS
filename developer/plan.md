@@ -43,8 +43,8 @@
 - [x] C3 `agents/planning/engine/router/election.py` 异构选举点积（2 测试）
 
 ### Phase D — 调度 + 端边云 ✅
-- [x] D1 `agents/planning/engine/scheduler/scheduler.py` 端边云卸载（3 测试）
-- [x] D2 `agents/tools/llms/model_router.py` 多模型路由（5 测试）
+- [x] D1 `agents/planning/engine/scheduler/scheduler.py` **端-边-云三层卸载**（device/edge/cloud，9 测试）
+- [x] D2 `agents/tools/llms/model_router.py` 多模型路由（TIER_PROVIDER_MAP 三层映射，5 测试）
 - [x] D2 `agents/tools/llms/openai_provider.py` / `anthropic_provider.py` / `local_provider.py` Provider 实现
 
 ### Phase E — 红蓝紫 Agent ✅
@@ -261,7 +261,7 @@
 |------|------|------|------|
 | 场景 1 | 网络防御（红→蓝→紫完整链路） | B3 + E13 + 编排器 | 🔲 待做 |
 | 场景 2 | 超长程攻击链（多步横向移动） | 场景 1 + H1 靶场 | 🔲 待做 |
-| 场景 3 | 端边云协同防御 | 场景 1 + H7 端边云 | 🔲 待做 |
+| 场景 3 | 端-边-云协同防御 | 场景 1 + H7 端边云 | 🔲 待做 |
 
 **优先级**：场景 1 > 场景 2 > 场景 3
 
@@ -290,6 +290,7 @@
 | 2026-07-04 | Phase A-E 核心引擎 TDD 实现（55 测试） | （见 CHANGELOG） |
 | 2026-07-04 | 统一配置体系：settings.py + defaults.yaml + 前端 config + 20 文件接入 | `240f8c0` |
 | 2026-07-04 | Agent 框架规范化调研：7 类重复造轮子诊断 + litellm/instructor/LangGraph 替换方案 | （文档 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md`） |
+| 2026-07-04 | **端-边-云三层调度升级**：scheduler 2 层→3 层(device/edge/cloud) + 4 规则+降级 + model_router 映射 + 9 测试 + defaults.yaml + AGENT.md + plans/14 §8 | （本次提交） |
 
 ---
 

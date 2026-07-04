@@ -3,7 +3,17 @@
 > 本文件是 `infrastructure/nodes/cloud/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
-云侧服务、注册中心与部署：全局编排、模型服务、注册发现。
+**云侧节点（Cloud）**：全局编排、大模型推理、注册发现、跨域攻击链推理。提供最强算力，运行 70B+ 大模型或调用厂家模型 API（OpenAI/Claude/GPT-4o）。
+
+### 云侧 vs 边侧 vs 端侧
+
+| 维度 | 端侧 (device/) | 边侧 (edge/) | 云侧 (cloud/) |
+|------|---------------|-------------|--------------|
+| 物理形态 | PC / 手机 / IoT / 防火墙盒子 | 边缘网关 / 机架服务器 | GPU 集群 / 厂家 API |
+| 算力 | 极弱（规则引擎/1-3B） | 中等（7-14B） | 强（70B+/GPT-4o/Claude） |
+| 延迟 | <100ms | <1s | 1-5s |
+| 攻防场景 | 本地告警分诊、轻量 IDS | 区域威胁聚合、ATT&CK 初筛 | 全局攻击链推理、威胁狩猎假设 |
+| 调度规则 | privacy=local 或 latency<1s | latency<5s | 默认 |
 
 ## 读取目录（允许读）
 - protocol/
@@ -13,7 +23,8 @@
 - developer/
 
 ## 禁止修改目录
-- infrastructure/nodes/edge/ 端侧实现
+- infrastructure/nodes/device/ 端侧实现
+- infrastructure/nodes/edge/ 边侧实现
 - frontend/
 - protocol/ 类型定义
 

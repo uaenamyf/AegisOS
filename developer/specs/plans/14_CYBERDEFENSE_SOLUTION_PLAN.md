@@ -227,20 +227,33 @@ def recall(trigger: str, episodic, vector) -> list[MemoryPacket]:
 
 ---
 
-## 8. 端边云调度（edge-cloud adaptive）
+## 8. 端边云调度（device-edge-cloud adaptive）
 
-### 8.1 策略
+### 8.1 三层定义与场景
 
-- **端侧（小模型）**：低延迟、隐私敏感（本机告警分诊、轻量检测）。
-- **云侧（大模型）**：重推理（攻击链规划、威胁狩猎假设）。
-- **卸载判定**：按 `task.latency_budget` + `task.privacy` + `model.size` 决策。
+| 层 | 物理形态 | 算力/模型 | 延迟 | 隐私 | 攻防场景 |
+|----|---------|----------|------|------|---------|
+| **端 (device)** | PC / 手机 / IoT / 防火墙盒子 | 极弱（规则引擎 / 1-3B 小模型） | <100ms | 完全本地 | 本地告警分诊、轻量 IDS、进程异常检测 |
+| **边 (edge)** | 边缘网关 / 机架服务器 / 区县汇聚节点 | 中等（7-14B，Ollama/vLLM） | <1s | 区域隔离 | 区域威胁聚合、ATT&CK 初筛、流量分析 |
+| **云 (cloud)** | GPU 集群 / 厂家模型 API（OpenAI/Claude） | 强（70B+/GPT-4o） | 1-5s | 可脱敏 | 全局攻击链推理、威胁狩猎假设、跨域关联 |
 
-### 8.2 调度算法
+### 8.2 调度策略（四规则 + 降级）
+
+1. **隐私优先**：`privacy == "local"` → 端侧（device），保证数据不出终端
+2. **超低延迟**：`latency_budget < DEVICE_THRESHOLD(1s)` → 端侧（device）
+3. **低延迟**：`DEVICE_THRESHOLD ≤ latency_budget < EDGE_THRESHOLD(5s)` → 边侧（edge）
+4. **默认**：`latency_budget ≥ EDGE_THRESHOLD` → 云侧（cloud）
+
+**降级链**：端侧不可用 → 边侧 → 云侧；边侧不可用 → 云侧。
+
+### 8.3 调度算法
 
 ```python
 def schedule(task: Task, models: list[Model]) -> Model:
-    if task.privacy == "local" or task.latency_budget < EDGE_THRESHOLD:
-        return pick(models, tier="edge")
+    if task.privacy == "local" or task.latency_budget < DEVICE_THRESHOLD:
+        return pick(models, tier="device", fallback="edge")
+    if task.latency_budget < EDGE_THRESHOLD:
+        return pick(models, tier="edge", fallback="cloud")
     return pick(models, tier="cloud", capability=task.required_capability)
 ```
 

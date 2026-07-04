@@ -9,7 +9,7 @@
 | 分类 | 说明 |
 |------|------|
 | infrastructure/transport/ | 传输（通信通道与编解码，低熵稀疏通信） |
-| infrastructure/nodes/ | 节点（端侧 + 云侧，端边云协同） |
+| infrastructure/nodes/ | 节点（端侧 device + 边侧 edge + 云侧 cloud，端边云协同） |
 | infrastructure/delivery/ | 交付（Docker/K8s/CI/CD 部署） |
 
 ## 读取目录（允许读）
@@ -25,8 +25,9 @@
 
 ## 输出
 - infrastructure/transport/communication/ 通信
-- infrastructure/nodes/edge/ 端侧
-- infrastructure/nodes/cloud/ 云侧
+- infrastructure/nodes/device/ 端侧（PC/手机/IoT，超低延迟本地推理）
+- infrastructure/nodes/edge/ 边侧（边缘网关/机架服务器，区域聚合+中型模型）
+- infrastructure/nodes/cloud/ 云侧（GPU 集群/厂家 API，全局编排+大模型）
 - infrastructure/delivery/deployment/ 部署
 
 ## 依赖
@@ -66,5 +67,5 @@
 ## 下辖子模块（传输-节点-交付 + 公共 API）
 - **infrastructure/api/** 公共接口层：其他模块通过 `from infrastructure.api import ...` 调用本域能力，不直接访问内部子包，实现解耦。
 - **传输 infrastructure/transport/**：`communication/` 低熵稀疏通信（通道/传输/编解码）
-- **节点 infrastructure/nodes/**：`edge/` 端侧节点（本地推理/断连续传）、`cloud/` 云侧节点（全局编排/注册发现）
+- **节点 infrastructure/nodes/**：`device/` 端侧节点（PC/手机/IoT，超低延迟本地推理/断连续传）、`edge/` 边侧节点（边缘网关/机架服务器，区域聚合/中型模型）、`cloud/` 云侧节点（GPU 集群/厂家 API，全局编排/注册发现）
 - **交付 infrastructure/delivery/**：`deployment/` Docker/K8s/CI/CD 部署

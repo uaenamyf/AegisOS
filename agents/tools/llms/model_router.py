@@ -29,8 +29,13 @@ class ModelRouter:
         "mock": "mock",
     }
 
+    # 三层 tier → provider 映射
+    # device: 端侧（PC/手机/IoT）— 本地规则引擎/嵌入式小模型
+    # edge:   边侧（边缘网关/机架服务器）— 中型本地模型 (Ollama/vLLM)
+    # cloud:  云侧（GPU 集群/厂家 API）— OpenAI/Anthropic/大模型
     TIER_PROVIDER_MAP = {
-        "edge": "edge",
+        "device": "local",
+        "edge": "local",
         "cloud": "cloud",
     }
 
