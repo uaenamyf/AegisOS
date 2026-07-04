@@ -1,4 +1,8 @@
 # @aegis-gen
+# date: 2026-07-04
+# dev: Claude Code (glm-5.2)
+# change: 接入统一配置——API Key/header 改从 tooling.configs.settings 读取
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建网关鉴权依赖（API Key，读 gateway.yaml 概念，硬编码 aegis-dev-key）
@@ -6,10 +10,11 @@ from __future__ import annotations
 
 from fastapi import Header, HTTPException, Query
 
-# Dev key sourced from tooling/configs/gateway.yaml -> gateway.auth.default_key.
-# Hardcoded until a config loader is introduced.
-DEV_API_KEY = "aegis-dev-key"
-API_KEY_HEADER = "X-API-Key"
+from tooling.configs.settings import settings
+
+# Config sourced from tooling/configs/settings.py (env > .env > defaults.yaml).
+DEV_API_KEY = settings.auth.default_key
+API_KEY_HEADER = settings.auth.api_key_header
 
 
 async def verify_api_key(

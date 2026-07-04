@@ -1,4 +1,8 @@
 # @aegis-gen
+# date: 2026-07-04
+# dev: Claude Code (glm-5.2)
+# change: 接入统一配置——Trace header 改从 tooling.configs.settings 读取
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建网关中间件——Trace ID 注入与请求日志
@@ -12,9 +16,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from tooling.configs.settings import settings
+
 logger = logging.getLogger("aegis.gateway")
 
-TRACE_HEADER = "X-Trace-Id"
+TRACE_HEADER = settings.trace.header
 
 
 class TraceMiddleware(BaseHTTPMiddleware):

@@ -1,4 +1,8 @@
 # @aegis-gen
+# date: 2026-07-04
+# dev: Claude Code (glm-5.2)
+# change: 接入统一配置——database URL/echo 改从 tooling.configs.settings 读取
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建异步数据库引擎/会话工厂/init_db/get_db（aiosqlite）
@@ -14,8 +18,9 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from backend.src.mappers.entities import Base
+from tooling.configs.settings import settings
 
-DEFAULT_DATABASE_URL = "sqlite+aiosqlite:///./data/aegisos.db"
+DEFAULT_DATABASE_URL = settings.database.url
 
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 

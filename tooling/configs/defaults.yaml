@@ -1,0 +1,51 @@
+# @aegis-gen
+# date: 2026-07-04
+# dev: Claude Code (glm-5.2)
+# change: 新建 defaults.yaml——全项目默认配置 SSOT，被 settings.py 加载
+# =============================================================================
+# AegisOS 默认配置（最低优先级）
+# =============================================================================
+# 优先级: 环境变量 > .env > defaults.yaml
+# 本文件定义所有配置项的默认值；环境覆盖请用 .env 或 shell 环境变量。
+
+backend:
+  host: "0.0.0.0"
+  port: 8000
+  version: "0.1.0"
+
+frontend:
+  host: "localhost"
+  port: 5173
+
+cors:
+  enabled: true
+  origins:
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
+
+auth:
+  enabled: true
+  mode: "api-key"
+  api_key_header: "X-API-Key"
+  default_key: "aegis-dev-key"
+
+database:
+  url: "sqlite+aiosqlite:///./data/aegisos.db"
+  echo: false
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+rate_limit:
+  enabled: true
+  rpm: 120
+
+trace:
+  enabled: true
+  header: "X-Trace-Id"
+
+# --- 前端构建时注入（Vite import.meta.env）---
+frontend_env:
+  VITE_API_BASE_URL: "http://localhost:8000/api/v1"
+  VITE_WS_URL: "ws://localhost:8000/ws/v1/stream"

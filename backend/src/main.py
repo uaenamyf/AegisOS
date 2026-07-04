@@ -1,4 +1,8 @@
 # @aegis-gen
+# date: 2026-07-04
+# dev: Claude Code (glm-5.2)
+# change: 接入统一配置——CORS/logging/version 改从 tooling.configs.settings 读取
+# @aegis-gen
 # date: 2026-06-27
 # dev: Claude Code (glm-5.2)
 # change: 新建 FastAPI 应用入口——CORS/Trace 中间件/网关路由/WS/统一错误格式/lifespan DB 初始化
@@ -16,14 +20,15 @@ from backend.src.controllers.api.health import router as health_router
 from backend.src.controllers.ws.stream import router as ws_router
 from backend.src.gateway.middleware import TraceMiddleware, get_trace_id
 from backend.src.gateway.routes import router as gateway_router
+from tooling.configs.settings import settings
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logging.basicConfig(
+    level=getattr(logging, settings.logging.level.upper(), logging.INFO),
+    format=settings.logging.format,
+)
 
-# CORS origins sourced from tooling/configs/backend.yaml -> backend.cors.origins.
-_CORS_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# CORS origins sourced from tooling/configs/settings.py (env > .env > defaults.yaml).
+_CORS_ORIGINS = list(settings.cors.origins)
 
 
 @asynccontextmanager
@@ -40,7 +45,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="AegisOS Backend", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="AegisOS Backend", version=settings.backend.version, lifespan=lifespan)
 
     # --- Middleware ---
     app.add_middleware(

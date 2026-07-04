@@ -38,3 +38,8 @@ frontend/.tsbuildinfo
 frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/
+
+# --- Environment files（保留 .env.example，忽略实际 .env）---
+.env
+tooling/configs/.env
+frontend/.env.local

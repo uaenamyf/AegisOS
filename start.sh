@@ -12,10 +12,18 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
-PYTHON="/opt/anaconda3/bin/python3.13"
-NPM="/opt/homebrew/bin/npm"
-BACKEND_PORT=8000
-FRONTEND_PORT=5173
+
+# 加载统一配置（tooling/configs/.env），未找到则使用默认值
+if [ -f "$PROJECT_ROOT/tooling/configs/.env" ]; then
+    set -a
+    . "$PROJECT_ROOT/tooling/configs/.env"
+    set +a
+fi
+
+PYTHON="${AEGIS_PYTHON:-/opt/anaconda3/bin/python3.13}"
+NPM="${AEGIS_NPM:-/opt/homebrew/bin/npm}"
+BACKEND_PORT="${AEGIS_BACKEND_PORT:-8000}"
+FRONTEND_PORT="${AEGIS_FRONTEND_PORT:-5173}"
 PID_FILE="/tmp/aegisos_pids"
 
 export PATH="/opt/homebrew/bin:$PATH"

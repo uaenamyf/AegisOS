@@ -7,6 +7,8 @@
 
 PYTHON := python3
 PIP := $(PYTHON) -m pip
+BACKEND_HOST ?= 0.0.0.0
+BACKEND_PORT ?= 8000
 
 setup:
 	$(PIP) install -e ".[dev]"
@@ -17,7 +19,7 @@ frontend-setup:
 	@echo "Frontend dependencies installed."
 
 dev:
-	uvicorn backend.src.main:app --reload --host 0.0.0.0 --port 8000
+	uvicorn backend.src.main:app --reload --host $(BACKEND_HOST) --port $(BACKEND_PORT)
 
 frontend-dev:
 	cd frontend && npm run dev

@@ -1,4 +1,8 @@
 // @aegis-gen
+// date: 2026-07-04
+// dev: Claude Code (glm-5.2)
+// change: 接入统一配置——SSE URL/apiKey 改从 @/config 读取
+// @aegis-gen
 // date: 2026-07-03
 // dev: Claude Code (glm-5.2)
 // change: 导入源拆分——ConnectionStatus 改从 @/protocol/frontend-types 引入，Event 仍从 @/protocol/types
@@ -7,18 +11,13 @@
 // dev: Claude Code (glm-5.2)
 // change: 新建 services/realtime/sse.ts，SSE 管理器：连接 /api/v1/events 并分发事件到 store
 
+import { config } from "@/config";
 import { useAppStore } from "@/mappers/store";
 import type { ConnectionStatus } from "@/protocol/frontend-types";
 import type { Event } from "@/protocol/types";
 
-const DEFAULT_SSE_URL = "http://localhost:8000/api/v1/events";
-
 function sseUrl(): string {
-  const env = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
-  if (env.length > 0) {
-    return env.replace(/\/api\/v1\/?$/, "/api/v1/events");
-  }
-  return DEFAULT_SSE_URL;
+  return config.sseUrl;
 }
 
 export type SseHandler = (event: Event) => void;
@@ -47,7 +46,7 @@ export class SseManager {
   }
 
   private open(): void {
-    const url = `${sseUrl()}?stream=${encodeURIComponent(this.stream)}&api_key=aegis-dev-key`;
+    const url = `${sseUrl()}?stream=${encodeURIComponent(this.stream)}&api_key=${config.apiKey}`;
     this.setStatus("connecting");
     const source = new EventSource(url);
     this.source = source;

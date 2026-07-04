@@ -1,4 +1,8 @@
 // @aegis-gen
+// date: 2026-07-04
+// dev: Claude Code (glm-5.2)
+// change: 接入统一配置——baseURL/apiKey 改从 @/config 读取
+// @aegis-gen
 // date: 2026-07-03
 // dev: Claude Code (glm-5.2)
 // change: 导入源拆分——前端本地类型 ApiError 改从 @/protocol/frontend-types 引入（protocol 生成器剥离前端类型）
@@ -7,13 +11,11 @@
 // dev: Claude Code (glm-5.2)
 // change: 新建 apimappers/client.ts，REST fetch 封装：base URL、鉴权头、错误处理
 
+import { config } from "@/config";
 import type { ApiError } from "@/protocol/frontend-types";
 
-const DEFAULT_BASE_URL = "http://localhost:8000/api/v1";
-
 function baseUrl(): string {
-  const env = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
-  return env.length > 0 ? env : DEFAULT_BASE_URL;
+  return config.apiBaseUrl;
 }
 
 function authToken(): string | null {
@@ -42,13 +44,13 @@ function traceHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
-    "X-API-Key": "aegis-dev-key",
+    [config.apiKeyHeader]: config.apiKey,
   };
   try {
     const trace = localStorage.getItem("aegis.trace_id");
     const session = localStorage.getItem("aegis.session_id");
-    if (trace) headers["X-Trace-Id"] = trace;
-    if (session) headers["X-Session-Id"] = session;
+    if (trace) headers[config.traceHeader] = trace;
+    if (session) headers[config.sessionHeader] = session;
   } catch {
     /* ignore storage errors */
   }
