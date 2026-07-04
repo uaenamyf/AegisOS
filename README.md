@@ -1,277 +1,255 @@
-# AegisOS
+<div align="center">
 
-> **Agent Operating System (AOS) + AI Native IDE** — 面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」，方向为**面向超长程网络攻击防御的动态异构群体智能协同推理引擎**，的可由 Agent 自主开发与运行的群体智能系统。
+# 🛡️ AegisOS
 
-## 核心特性
-- **动态异构群体智能**（Dynamic Heterogeneous Topology）
-- **长期记忆**（Long-term Memory，含知识库）
-- **低熵通信**（Low Entropy Communication，稀疏链式路由）
-- **端边云协同**（Edge-Cloud Collaboration）
-- **可运行系统**（Runnable System，开箱可部署）
-- **AI 可自主开发**（Developer Operating System + 全仓库 AGENT.md 规范体系）
+### Agent Operating System + AI Native IDE
 
-## 架构总览
-```
-┌──────────────────────────────────────────────────┐
-│  frontend/  表现层（Controller-Service-Mapper + Views）│
-├──────────────────────────────────────────────────┤
-│  backend/   应用层（Controller-Service-Mapper + Gateway）│
-├──────────────────────────────────────────────────┤
-│  agents/    智能体域（感知-规划-行动-记忆-工具 五层）   │
-├──────────────────────────────────────────────────┤
-│  protocol/  契约层（唯一数据契约）                    │
-├──────────────────────────────────────────────────┤
-│  infrastructure/  基础设施层（传输-节点-交付）         │
-└──────────────────────────────────────────────────┘
-  observability/  可观测与评估（观测-度量-呈现）
-  data/  tooling/  docs/  tests/  developer/  支撑与规范
-```
+**面向超长程网络攻击防御的动态异构群体智能协同推理引擎**
 
-## 顶层目录
-| 目录 | 角色 | 内部分类 | 公共 API |
-|------|------|----------|----------|
-| `developer/` | 规范层（项目大脑） | `*.md` + `roadmap/`(P0..P7) | — |
-| `protocol/` | 契约层 | 数据类（Message/Event/Task/...） | 本身即全局契约 |
-| `frontend/` | 表现层 | src/(controllers · services · mappers · views · protocol) | — |
-| `backend/` | 应用层 | src/(controllers · services · mappers · gateway) | `backend/src/api/` |
-| `agents/` | 智能体域 | perception · planning · action · memory · tools | `agents/api/` |
-| `infrastructure/` | 基础设施层 | transport · nodes · delivery | `infrastructure/api/` |
-| `observability/` | 可观测与评估层 | inspect · measure · present | `observability/api/` |
-| `data/` | 数据层 | datasets · models | `data/api/` |
-| `tooling/` | 工程支撑层 | configs · scripts | `tooling/api/` |
-| `docs/` | 文档资产层 | api · architecture · guides · assets · examples | — |
-| `tests/` | 测试 | unit · integration · e2e · fixtures · benchmarks | — |
+*荣耀 XH-202631 · 挑战杯揭榜挂帅 · 截止 2026-09-15*
 
-### agents/ — 认知架构五层（感知-规划-行动-记忆-工具）
-| 分类 | 内容 |
+</div>
+
+---
+
+## 📌 这是什么？
+
+AegisOS 是一个**可由 AI Agent 自主开发与运行**的群体智能系统，核心能力：
+
+| 能力 | 说明 |
 |------|------|
-| `agents/perception/` 感知 | context(上下文) · reasoning(推理) · reflection(反思评估) |
-| `agents/planning/` 规划 | planner(角色) · orchestrator(角色) · engine/(planner·scheduler·router·workflow·eventbus·topology) |
-| `agents/action/` 行动 | 红队(recon·vuln_correlator·exploit_planner·lateral_move) + 蓝队(detector·triage·threat_hunt·ir_planner·forensics) + 紫队(critic·reviewer) + execution/(executor沙箱·tools) |
-| `agents/memory/` 记忆 | 12 子模块（含 semantic 知识库） |
-| `agents/tools/` 工具 | llms(模型调用) · prompts(提示词) · runtime(运行时) |
+| 🔀 **动态异构群体智能** | 多角色 Agent 自组织协同，按能力动态选举最优执行节点 |
+| 🧠 **超长程记忆** | 上下文压缩 + 记忆唤醒，支持超长任务链不丢上下文 |
+| 📡 **低熵稀疏通信** | Top-K 路由（非全广播），最小化 Agent 间通信开销 |
+| ☁️ **端边云协同** | 按隐私/延迟约束自动卸载到端侧或云侧模型 |
+| 🔴🔵🟣 **红蓝紫攻防** | 11 个攻防 Agent 覆盖侦察→漏洞→利用→检测→响应全链路 |
+| 🤖 **AI 自主开发** | 全仓库 78 个 AGENT.md 规范，Agent 按模块边界精准读写 |
 
-### backend/ — Controller-Service-Mapper + Gateway
-`gateway/`(入口) -> `controllers/`(参数校验/响应封装) -> `services/`(业务逻辑) -> `mappers/`(数据转换/持久化)
+---
 
-### frontend/ — Controller-Service-Mapper + Views
-`controllers/`(交互/事件) -> `services/`(API/实时/状态) -> `mappers/`(数据转换/共享) -> `views/`(canvas·graph·monitor·replay)
+## 🏗️ 架构总览
 
-## 模块间 API 解耦
-每个域通过 `api/` 子包暴露公共接口，其他模块只通过 `from {domain}.api import ...` 调用，不直接访问内部实现。
-
-| 域 | api 包 | 公共接口数 | 接口 |
-|----|--------|-----------|------|
-| agents/ | `agents.api` | 5 | AgentRegistryAPI · MemoryAPI · ExecutionAPI · EventBusAPI · RuntimeAPI |
-| backend/ | `backend.src.api` | 5 | SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI |
-| frontend/ | — (纯 SPA) | — | 纯前端应用，不暴露 Python API |
-| infrastructure/ | `infrastructure.api` | 4 | CommunicationAPI · NodeRegistryAPI · SyncAPI · DeploymentAPI |
-| observability/ | `observability.api` | 6 | MonitorAPI · TraceAPI · ReplayAPI · BenchmarkAPI · EvaluationAPI · VisualizationAPI |
-| data/ | `data.api` | 2 | DatasetAPI · ModelSchemaAPI |
-| tooling/ | `tooling.api` | 2 | ConfigAPI · ScriptAPI |
-
-> 共 **27** 个公共接口。接口参数/返回值一律使用 `protocol/` 契约类型。`api/` 签名变更属破坏性变更。
-
-## 数据流
 ```
-User Goal
-  -> backend/gateway -> backend/controllers -> backend/services
-  -> agents/planning/engine/planner: 分解为 Plan(DAG)
-  -> agents/planning/engine/topology: 构建动态异构图
-  -> agents/planning/engine/router: 低熵路由选择 Agent 链
-  -> agents/planning/engine/scheduler: 调度执行
-  -> agents/tools/runtime: 托管 Agent 生命周期
-  -> agents/action/{role}: receive->think->tool->reflect->respond
-     ├─ agents/memory: 读写 MemoryPacket
-     ├─ agents/action/execution/(tools+executor): 执行工具
-     ├─ agents/tools/llms: 推理
-     └─ agents/perception/reflection: 自评并写入 agents/memory/reflection
-  -> agents/planning/engine/eventbus: 广播事件
-  -> observability/inspect/(monitor+replay): 观测与记录
-  -> observability/measure/evaluation: 评估
-  -> frontend: 实时可视化
+┌─────────────────────────────────────────────────────────┐
+│  frontend/   表现层  React + Vite + Zustand + React Flow  │
+├─────────────────────────────────────────────────────────┤
+│  backend/    应用层  FastAPI + SQLAlchemy + WebSocket      │
+├─────────────────────────────────────────────────────────┤
+│  agents/     智能体域  感知 → 规划 → 行动 → 记忆 → 工具     │
+├─────────────────────────────────────────────────────────┤
+│  protocol/   契约层  Message 信封 + 强类型 Payload（唯一）  │
+├─────────────────────────────────────────────────────────┤
+│  infrastructure/  基建  Docker 沙箱 · 端边云 · 传输         │
+└─────────────────────────────────────────────────────────┘
+   observability/  可观测   data/  数据   tooling/  工具链
 ```
 
-## 通信协议
-自研分层协议（非裸 JSON）：`protocol/` 定义 Message 信封 + 强类型 Payload。
-- Message: message_id/parent_id/task_id/workflow_id/sender/receiver/priority/ttl/timestamp/payload
-- Event: AgentStart/AgentFinish/ToolCall/ToolFinish/Retry/Rollback/MemoryUpdate/GraphUpdate
-- 动态路由: Task -> Semantic Graph -> Agent Graph -> Dynamic Routing -> Sparse Communication -> Adaptive Graph -> Graph Update
+### 智能体域 — 认知架构五层
 
-详见 `developer/specs/04_PROTOCOL_SPEC.md`。
-
-## 开发流程（AI 自主开发）
-```
-Developer Agent
-  -> 读取 developer/specs/（00_PROJECT_SPEC 等）+ roadmap/ 定位阶段
-  -> 读取目标模块 AGENT.md（职责/边界/接口）
-  -> 读取 protocol/ 契约 + tooling/configs/ 配置
-  -> 生成代码 -> 运行 tests/ -> 更新文档与 CHANGELOG -> commit
-```
-Agent 永不扫描整个项目；按模块边界精准读写。
-
-## 快速开始
-```bash
-# 后端
-.venv/bin/python -m uvicorn backend.src.main:app --reload --host 0.0.0.0 --port 8000
-
-# 前端
-cd frontend && npm install && npm run dev
-
-# 测试
-.venv/bin/python -m pytest tests/ -v
-
-# 质量门禁
-.venv/bin/ruff format && .venv/bin/ruff check --fix && .venv/bin/mypy protocol agents backend --ignore-missing-imports
-```
-
-## 当前进度（2026-07-04）
-- ✅ Phase A-E：protocol 攻防类型 + 记忆压缩/唤醒 + 拓扑/路由/选举 + 端边云调度 + 11 红蓝紫 Agent + 神经符号闭环（55 测试通过）
-- ✅ 前后端打通：14 Agent 注册 + Chat 联调 + Swagger UI
-- 🔲 下一步：B3 runtime 集成 + 编排器 + E13 e2e + F/G 攻防端点视图 + H 基建
-
-## 实际目录结构（自动生成）
 ```
 agents/
-  action/
-    coder/
-    critic/
-    debugger/
-    docwriter/
-    execution/
-    executor/
-    researcher/
-    reviewer/
-    tester/
-  api/
-  memory/
-    archive/
-    cache/
-    checkpoint/
-    compression/
-    episodic/
-    reflection/
-    retrieval/
-    semantic/
-    snapshot/
-    sync/
-    vector/
-    working/
-  perception/
-    context/
-    reasoning/
-    reflection/
-  planning/
-    engine/
-    orchestrator/
-    planner/
-  tools/
-    llms/
-    prompts/
-    runtime/
-backend/
-  api/
-  controllers/
-  gateway/
-  mappers/
-  services/
-data/
-  api/
-  datasets/
-  models/
-developer/
-  roadmap/
-    P0/
-    P1/
-    P2/
-    P3/
-    P4/
-    P5/
-    P6/
-    P7/
-  specs/
-    plans/
-docs/
-  examples/
-frontend/
-  api/
-  controllers/
-    events/
-    interaction/
-    routes/
-  mappers/
-    apimappers/
-    components/
-    store/
-    styles/
-    utils/
-    viewmodels/
-  public/
-  services/
-    api/
-    graph/
-    realtime/
-    session/
-  src/
-    protocol/
-  views/
-    agents/
-    canvas/
-    dashboard/
-    graph/
-    layout/
-    monitor/
-    replay/
-infrastructure/
-  api/
-  delivery/
-    deployment/
-  nodes/
-    cloud/
-    edge/
-  transport/
-    communication/
-observability/
-  api/
-  inspect/
-    monitor/
-    replay/
-  measure/
-    benchmark/
-    evaluation/
-  present/
-    visualization/
-protocol/
-tests/
-tooling/
-  api/
-  configs/
-  scripts/
+├── perception/   感知 — context · reasoning · reflection
+├── planning/      规划 — topology · router · scheduler · planner · orchestrator
+├── action/        行动 — 11 个红蓝紫攻防 Agent（见下表）
+├── memory/        记忆 — compression · recall + 10 子模块
+└── tools/         工具 — llms（多模型兼容） · prompts · runtime
 ```
 
-## 仓库统计（自动生成，2026-07-03）
-| 指标 | 数量 |
+### 攻防 Agent 角色
+
+| 队伍 | Agent | 职责 |
+|------|-------|------|
+| 🔴 **红队** | `recon` | 网络侦察，发现资产 |
+| 🔴 | `vuln_correlator` | 漏洞关联，CVE 匹配 |
+| 🔴 | `exploit_planner` | 攻击链规划，输出 DAG |
+| 🔴 | `lateral_move` | 横向移动路径规划 |
+| 🔵 **蓝队** | `detector` | 入侵检测，事件→告警 |
+| 🔵 | `triage` | 告警分诊，去噪 + 优先级 |
+| 🔵 | `threat_hunt` | 威胁狩猎，ATT&CK 假设生成 |
+| 🔵 | `ir_planner` | 响应计划（含 rollback） |
+| 🔵 | `forensics` | 取证分析 |
+| 🟣 **紫队** | `critic` | 对抗性校验，红蓝产出反驳 |
+| 🟣 | `reviewer` | 一致性审查，最终结论 |
+
+---
+
+## 🚀 快速开始
+
+### 前置条件
+
+- Python 3.12+（项目自带 `.venv/`）
+- Node.js 18+（前端开发）
+- macOS / Linux
+
+### 启动
+
+```bash
+# 1. 安装依赖
+.venv/bin/pip install -e ".[dev]"
+cd frontend && npm install && cd ..
+
+# 2. 启动后端（http://localhost:8000）
+.venv/bin/uvicorn backend.src.main:app --reload --host 0.0.0.0 --port 8000
+
+# 3. 启动前端（http://localhost:5173）
+cd frontend && npm run dev
+```
+
+### 验证
+
+```bash
+# 运行测试
+.venv/bin/python -m pytest tests/ -v          # 55 passed
+
+# 质量门禁
+.venv/bin/ruff format && .venv/bin/ruff check --fix
+
+# API 文档
+open http://localhost:8000/docs                # Swagger UI
+```
+
+> API 鉴权：所有 `/api/v1/*` 端点需 `X-API-Key: aegis-dev-key` header。
+
+---
+
+## 📊 当前进度
+
+| Phase | 内容 | 状态 | 测试 |
+|-------|------|------|------|
+| **A** | protocol 攻防类型（cyber.py） | ✅ 完成 | 6 |
+| **B** | 超长程记忆压缩 + 唤醒 | ✅ 完成 | 7 |
+| **C** | 拓扑 + 低熵路由 + 异构选举 | ✅ 完成 | 10 |
+| **D** | 端边云调度 + 多模型兼容 | ✅ 完成 | 9 |
+| **E** | 11 红蓝紫 Agent + 神经符号闭环 | ✅ 完成 | 23 |
+| — | 前后端打通（14 Agent + Chat） | ✅ 完成 | — |
+| **B3** | 记忆接入 runtime 认知循环 | 🔲 待做 | — |
+| **E13** | 场景 1 端到端测试 | 🔲 待做 | — |
+| **F** | 后端攻防 REST 端点 | 🔲 待做 | — |
+| **G** | 前端攻防视图（DAG/看板/回放） | 🔲 待做 | — |
+| **H** | Docker 沙箱 + Neo4j/Qdrant + 评测 | 🔲 待做 | — |
+
+> 完整 gap 分析见 `/memories/repo/gap-analysis.md`。
+
+---
+
+## 📡 通信协议
+
+所有跨模块通信走 **Message 信封**（非裸 JSON），`protocol/` 是唯一数据契约：
+
+```
+Message
+├── header:  message_id / parent_id / task_id / sender / receiver
+├── payload:  protocol 强类型（Asset / Alert / AttackChain / ...）
+└── meta:    priority / ttl / timestamp
+```
+
+**8 种事件**：`AgentStart` · `AgentFinish` · `ToolCall` · `ToolFinish` · `Retry` · `Rollback` · `MemoryUpdate` · `GraphUpdate`
+
+**动态路由**：`Task → 活跃子图 → Top-K 稀疏路由 → 异构选举 → 执行 → GraphUpdate`
+
+详见 [`developer/specs/04_PROTOCOL_SPEC.md`](developer/specs/04_PROTOCOL_SPEC.md)。
+
+---
+
+## 📁 项目结构
+
+```
+AegisOS/
+├── protocol/          # 契约层（Message/Event/Task/Graph/cyber.py）
+├── agents/            # 智能体域
+│   ├── action/        #   11 个红蓝紫攻防 Agent
+│   ├── memory/        #   压缩 + 唤醒 + 10 子模块
+│   ├── planning/      #   拓扑/路由/调度/选举
+│   ├── perception/    #   推理/反思/神经符号闭环
+│   └── tools/         #   多模型兼容层（OpenAI/Anthropic/Local）
+├── backend/           # FastAPI 应用层
+├── frontend/          # React + Vite 表现层
+├── developer/         # 规范层（specs/ + roadmap/）
+├── infrastructure/    # 基建（沙箱/端边云/传输）
+├── observability/     # 可观测（监控/基准/评测）
+├── data/              # 数据（Neo4j/Qdrant 待接入）
+├── tests/             # 测试（55 passed）
+└── tooling/           # 工具链（gen_readme/gen_ts_types）
+```
+
+<details>
+<summary>📖 完整目录树（点击展开）</summary>
+
+```
+agents/
+├── action/
+│   ├── recon/  vuln_correlator/  exploit_planner/  lateral_move/
+│   ├── detector/  triage/  threat_hunt/  ir_planner/  forensics/
+│   └── critic/  reviewer/
+├── api/
+├── memory/
+│   ├── compression/  recall/  working/  episodic/  semantic/
+│   └── vector/  archive/  cache/  checkpoint/  reflection/  ...
+├── perception/
+│   └── context/  reasoning/  reflection/
+├── planning/
+│   └── engine/  orchestrator/  planner/
+└── tools/
+    └── llms/  prompts/  runtime/
+backend/
+└── controllers/  services/  mappers/  gateway/  api/
+frontend/
+└── controllers/  services/  mappers/  views/  protocol/
+infrastructure/
+└── transport/  nodes/(edge·cloud)  delivery/
+observability/
+└── inspect/  measure/  present/
+developer/
+└── specs/  roadmap/(P0-P7)/  CHANGELOG.md
+```
+
+</details>
+
+---
+
+## 🔧 模块间 API 解耦
+
+每个域通过 `api/` 子包暴露公共接口，跨域调用仅经 `from {domain}.api import ...`：
+
+| 域 | 接口数 | 公共 API |
+|----|--------|----------|
+| `agents/` | 5 | RuntimeAPI · AgentRegistry · Memory · Planning · EventBus |
+| `backend/` | 5 | Session · Task · MemoryGateway · Graph · EventStream |
+| `infrastructure/` | 4 | Communication · NodeRegistry · Sync · Deployment |
+| `observability/` | 6 | Monitor · Trace · Replay · Benchmark · Evaluation · Visualization |
+| `data/` | 2 | Dataset · ModelSchema |
+| `tooling/` | 2 | Config · Script |
+
+> 共 **27** 个公共接口，参数/返回值一律使用 `protocol/` 契约类型。
+
+---
+
+## 🤖 AI 自主开发流程
+
+```
+读取 AGENT.md（模块边界）→ specs（规范 SSOT）→ roadmap（定位阶段）
+→ protocol（契约）+ api（接口）→ 生成代码 → 质量门禁 → 更新文档 → commit
+```
+
+**铁律**：Agent 永不扫描整个项目；改动 ≤1 域 / ≤8 文件；AI 代码加 `@aegis-gen` 注释头。
+
+---
+
+## 📚 关键文档
+
+| 文档 | 说明 |
 |------|------|
-| 顶层域 | 11 |
-| 总目录 | 123 |
-| 总文件 | 232 |
-| AGENT.md | 78 |
-| Python 文件 | 56 |
-| Markdown 文件 | 116 |
-| 公共 API 接口 | 27 |
-| protocol 契约类型 | 26 |
+| [`AGENT.md`](AGENT.md) | 仓库总规范（最高优先级） |
+| [`developer/specs/00_PROJECT_SPEC.md`](developer/specs/00_PROJECT_SPEC.md) | 项目 SSOT |
+| [`developer/specs/04_PROTOCOL_SPEC.md`](developer/specs/04_PROTOCOL_SPEC.md) | 通信协议规范 |
+| [`developer/specs/05_API_SPEC.md`](developer/specs/05_API_SPEC.md) | API 接口规范 |
+| [`developer/specs/11_AI_CODING_SPEC.md`](developer/specs/11_AI_CODING_SPEC.md) | AI 编码规范 |
+| [`developer/roadmap/README.md`](developer/roadmap/README.md) | 开发计划 P0-P7 |
+| [`developer/specs/plans/15_CYBERDEFENSE_TASKS.md`](developer/specs/plans/15_CYBERDEFENSE_TASKS.md) | 赛事实施任务清单 |
+| 各目录 `AGENT.md` | 模块边界与开发规范（共 78 个） |
 
-## 关键文档
-- `AGENT.md` — 仓库总规范（最高优先级）
-- `developer/specs/README.md` — 规范体系索引（SSOT）
-- `developer/specs/00_PROJECT_SPEC.md` — 项目 SSOT（目标/边界/生命周期）
-- `developer/specs/01_ARCHITECTURE_SPEC.md` — 系统总体架构
-- `developer/specs/04_PROTOCOL_SPEC.md` — 通信协议规范
-- `developer/specs/02_DIRECTORY_SPEC.md` — 仓库目录导航
-- `developer/specs/05_API_SPEC.md` — API 接口规范
-- `developer/specs/11_AI_CODING_SPEC.md` — AI 编码规范
-- `developer/roadmap/README.md` — 系统级开发计划 P0..P7
-- 各目录 `AGENT.md` — 模块边界与开发规范
+---
 
-## 许可
+## 📜 许可
+
 （待定）
