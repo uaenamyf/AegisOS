@@ -16,7 +16,7 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 收尾 + P6 部分 + 赛事 Phase F-H 待启动 |
+| **当前阶段** | P5 收尾 + P6 部分 + 框架规范化方案(R1-R5) + 赛事 Phase F-H 待启动 |
 | **测试** | 55 passed（protocol 6 + memory 7 + planning 10 + tools 5 + action 15 + perception 4 + 基础 8） |
 | **已完成 Phase** | A ✅ · B(部分) ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ |
 | **待完成 Phase** | B3 · E13 · F · G · H |
@@ -178,8 +178,47 @@
 
 ### 📋 P3 — 长期 / 技术债
 
-#### 协议迁移
-- [ ] `protocol/*.py` 从 `@dataclass` 迁移到 Pydantic v2（`06 §12` 待办）
+#### Agent 框架规范化与替换（详见 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md`）
+> **优先级**：P3 · **预估**：5-7 天 · **收益**：代码量 -70%，新增 checkpoint/流式/100+模型兼容
+
+**阶段 1: Protocol → Pydantic**（1 域 / ≤8 文件）
+- [ ] R1.1 `protocol/cyber.py` → Pydantic BaseModel（删除手写 `to_dict()` / `from_dict()`）
+- [ ] R1.2 `protocol/message.py` → Pydantic
+- [ ] R1.3 `protocol/graph.py` → Pydantic
+- [ ] R1.4 `protocol/agent.py` / `event.py` / `scheduler.py` / `memory.py` → Pydantic
+- [ ] R1.5 `protocol/tool.py` / `heartbeat.py` / `sync.py` → Pydantic
+- [ ] R1.6 更新所有引用：`asdict()` → `model_dump()` / `from_dict()` → `model_validate()`
+- [ ] R1.7 55 测试全通过
+
+**阶段 2: LLM Provider → litellm + instructor**（≤4 文件）
+- [ ] R2.1 安装 `litellm` + `instructor` 依赖
+- [ ] R2.2 新建 `agents/tools/llms/unified_provider.py`（~30 行，替代 4 个手写 Provider ~220 行）
+- [ ] R2.3 `ModelRouter` 改为委托 `UnifiedProvider`
+- [ ] R2.4 MockProvider 保留（测试用），实现 litellm mock adapter
+- [ ] R2.5 删除 `openai_provider.py` / `anthropic_provider.py` / `local_provider.py`
+- [ ] R2.6 55 测试全通过
+
+**阶段 3: Agent 结构化输出 → instructor**（≤8 文件/批，分 2 批）
+- [ ] R3.1 批 1（红队 4 Agent）：recon / vuln_correlator / exploit_planner / lateral_move
+- [ ] R3.2 批 2（蓝队 5 + 紫队 2 Agent）：detector / triage / threat_hunt / ir_planner / forensics / critic / reviewer
+- [ ] R3.3 每个 Agent 的 `json.loads` + `try/except` 替换为 `instructor` 结构化调用
+- [ ] R3.4 删除 SYSTEM_PROMPT 中的 JSON 格式说明（instructor 自动注入）
+- [ ] R3.5 55 测试全通过
+
+**阶段 4: LangGraph 编排**（≤4 文件）
+- [ ] R4.1 安装 `langgraph` + `langgraph-checkpoint-sqlite`
+- [ ] R4.2 新建 `agents/planning/orchestrator/attack_graph.py`（红队攻击链图）
+- [ ] R4.3 新建 `agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
+- [ ] R4.4 `MockRuntime` 替换为 `GraphRuntime`（实现 `RuntimeAPI`）
+- [ ] R4.5 `backend/src/composition.py` 注入 `GraphRuntime`（删除 ~200 行手写 dispatch map）
+- [ ] R4.6 55 测试全通过
+
+**阶段 5: 事件总线 + 流式**（≤2 文件）
+- [ ] R5.1 新建 `agents/planning/engine/eventbus/impl.py`（基于 `blinker` 或 LangGraph callback）
+- [ ] R5.2 LangGraph `app.stream()` → SSE → 前端 `EventSource`
+- [ ] R5.3 55 测试全通过
+
+#### 协议迁移（已并入 R1 阶段）
 - [ ] `protocol/scheduler.py` Task 补充 `payload` 字段（当前 MockRuntime 用 getattr fallback）
 
 #### 记忆子系统补全（10 个空模块）
@@ -250,6 +289,7 @@
 | 2026-07-04 | 创建模块文档体系：MODULE.md + ARCHITECTURE.md | `fadf83c` `e58caa9` `e4851bc` |
 | 2026-07-04 | Phase A-E 核心引擎 TDD 实现（55 测试） | （见 CHANGELOG） |
 | 2026-07-04 | 统一配置体系：settings.py + defaults.yaml + 前端 config + 20 文件接入 | `240f8c0` |
+| 2026-07-04 | Agent 框架规范化调研：7 类重复造轮子诊断 + litellm/instructor/LangGraph 替换方案 | （文档 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md`） |
 
 ---
 
