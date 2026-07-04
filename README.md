@@ -155,6 +155,7 @@ Message
 
 ```
 AegisOS/
+├── MODULE.md          # 📖 模块总览（10 大模块逐一介绍）
 ├── protocol/          # 契约层（Message/Event/Task/Graph/cyber.py）
 ├── agents/            # 智能体域
 │   ├── action/        #   11 个红蓝紫攻防 Agent
@@ -171,6 +172,8 @@ AegisOS/
 ├── tests/             # 测试（55 passed）
 └── tooling/           # 工具链（gen_readme/gen_ts_types）
 ```
+
+> 每个大模块下有独立的 `MODULE.md` 详解该模块实现了什么功能，详见上方[模块实现文档](#模块实现文档)表。
 
 <details>
 <summary>📖 完整目录树（点击展开）</summary>
@@ -237,6 +240,8 @@ developer/
 
 ## 📚 关键文档
 
+### 规范与计划
+
 | 文档 | 说明 |
 |------|------|
 | [`AGENT.md`](AGENT.md) | 仓库总规范（最高优先级） |
@@ -247,6 +252,22 @@ developer/
 | [`developer/roadmap/README.md`](developer/roadmap/README.md) | 开发计划 P0-P7 |
 | [`developer/specs/plans/15_CYBERDEFENSE_TASKS.md`](developer/specs/plans/15_CYBERDEFENSE_TASKS.md) | 赛事实施任务清单 |
 | 各目录 `AGENT.md` | 模块边界与开发规范（共 78 个） |
+
+### 模块实现文档
+
+| 文档 | 说明 |
+|------|------|
+| [`MODULE.md`](MODULE.md) | **模块总览**：10 大模块「是什么、做了什么、子模块有哪些」逐一介绍 |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构仪表盘：全 10 域代码文件数/测试数/实现状态一览 |
+| [`protocol/MODULE.md`](protocol/MODULE.md) | 契约层 10 个 .py 文件详解 |
+| [`agents/MODULE.md`](agents/MODULE.md) | 智能体域五层架构 + 11 Agent 角色表 |
+| [`backend/MODULE.md`](backend/MODULE.md) | FastAPI 全链路：10 REST 端点 + SSE/WS + DI |
+| [`frontend/MODULE.md`](frontend/MODULE.md) | React+Vite 架构 + ChatView 实现 |
+| [`infrastructure/MODULE.md`](infrastructure/MODULE.md) | 基建层 4 API 协议 + 传输/节点/交付计划 |
+| [`observability/MODULE.md`](observability/MODULE.md) | 可观测层 6 API 协议 + inspect/measure/present |
+| [`data/MODULE.md`](data/MODULE.md) | 数据层 2 API 协议 + SQLite + Neo4j/Qdrant 待接入 |
+| [`tooling/MODULE.md`](tooling/MODULE.md) | 3 个可用脚本详解 + 配置文件 |
+| [`developer/MODULE.md`](developer/MODULE.md) | 15 个规范文件索引 + roadmap P0-P7 进度 |
 
 ---
 
