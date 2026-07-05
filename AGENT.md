@@ -57,7 +57,7 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 8. 目标模块的 `AGENT.md`
 9. `protocol/` 相关契约 + `developer/specs/04_PROTOCOL_SPEC.md`
 10. 目标域 `api/` 接口 + `developer/specs/05_API_SPEC.md`
-11. 目标域 `MODULE.md`（模块实现详解）+ 根 `MODULE.md`（全局总览）
+11. 目标域 `AGENT.md` 末尾的「📋 模块实现详解」段 + 根 `AGENT.md` 末尾的「📋 模块实现总览」段
 
 ## 全局铁律
 - **模块间解耦**：每个域通过 `api/` 子包暴露公共接口（`from {domain}.api import ...`），其他模块**只通过 api/ 调用**，禁止直接导入内部实现子包。内部可自由重构，只要 api/ 签名不变，依赖方不受影响。详见 `developer/specs/03_IMPORT_SPEC.md`。
@@ -112,3 +112,258 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 
 ## README 动态维护
 根 `README.md` 由 `tooling/scripts/gen_readme.py` 扫描仓库实际结构自动生成（目录树、AGENT.md 计数、api 接口表、文件统计）。目录结构或 api 变动后运行 `python3 tooling/scripts/gen_readme.py` 刷新，勿手改自动生成段。
+
+---
+
+## 📋 模块实现总览
+
+> 原 `MODULE.md` 内容，已合并至此。逐层介绍 AegisOS 每个大模块「是什么、做了什么、下面有哪些子模块」，帮助新人快速理解整个工程的代码实现现状。
+
+### 📊 全局仪表盘
+
+| # | 大模块 | 是什么 | 代码文件 | 测试数 | 实现状态 |
+|---|--------|--------|---------|--------|---------|
+| 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
+| 2 | `agents/` | 智能体域 — 认知核心，五层架构 | 20 `.py` | 41 | ✅ 核心算法完成 / 🔲 编排器待补 |
+| 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 18 `.py` | — | ✅ 可运行 |
+| 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 |
+| 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
+| 6 | `observability/` | 可观测层 — 监控 · 基准 · 可视化 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
+| 7 | `data/` | 数据层 — 数据集 · 模型 schema | 1 `.py` | 0 | 🔲 仅 API 协议 + SQLite |
+| 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
+| 9 | `developer/` | 规范层 — SSOT 规范 + roadmap | 0 `.py` | — | ✅ 规范就位 |
+| 10 | `tests/` | 测试 — 59 个测试全通过 | 26 `.py` | 59 | ✅ Phase A-E 覆盖 |
+
+**模块依赖关系**：
+
+```
+developer/specs  ← 定义规范（唯一真相源 SSOT）
+       ↓
+protocol/        ← 唯一契约（所有域引用）
+       ↓
+agents/api       ← 公共接口（5 个 Protocol + 3 个 DI 端口）
+       ↓                ↑
+backend/api  ← 调用 agents.api
+       ↓
+frontend/services ← 调用 backend REST API
+```
+
+> **铁律**：跨域调用仅经 `from {domain}.api import ...`，禁止直接 import 内部子包。数据契约只用 `protocol/` 类型。
+
+---
+
+### 1. `protocol/` — 契约层
+
+#### 是什么
+全系统**唯一**的数据类型定义层。所有跨模块通信的参数、返回值、消息载体必须使用 `protocol/` 里定义的类型，禁止任何模块自造并行结构。这是整个工程的「宪法」。
+
+#### 做了什么
+定义了 10 个 `.py` 文件，覆盖消息通信、事件总线、智能体注册、任务调度、记忆包、动态异构图、工具调用、心跳、端边云同步，以及攻防专用的 8 个 dataclass。
+
+#### 子模块（10 个文件）
+
+| 文件 | 核心类型 | 功能说明 |
+|------|---------|---------|
+| `message.py` | `Message` · `NodeRef` | **消息信封**：跨模块通信的统一载体 |
+| `event.py` | `EventType`(8 种) · `Event` | **事件总线**：8 种事件类型 |
+| `agent.py` | `Agent` · `AgentStatus` | **智能体注册**：agent_id/name/role/capabilities/status/trust_score |
+| `scheduler.py` | `Task` · `TaskStatus` · `RetryPolicy` | **任务调度**：任务生命周期。⚠️ Task 缺 payload 字段 |
+| `memory.py` | `MemoryPacket` | **记忆包**：task_id/kind/summary/working/episodic/compression/recent |
+| `graph.py` | `Graph` · `GraphNode` · `GraphEdge` · `GraphDiff` · `NodeKind` | **动态异构图** |
+| `tool.py` | `ToolCall` · `ToolResult` · `ToolSpec` | **工具调用契约** |
+| `heartbeat.py` | `Heartbeat` | **心跳**：Agent 存活检测 |
+| `sync.py` | `SyncStatus` · `SyncOp` | **端边云同步** |
+| `cyber.py` | `Asset` · `VulnFinding` · `AttackStep` · `AttackChain` · `Alert` · `DefenseAction` · `ResponsePlan` · `ThreatIntel` | **攻防协议类型**（8 个 dataclass） |
+
+#### 测试
+`tests/protocol/test_cyber.py` — 6 个测试，验证 8 个攻防类型的字段、序列化、反序列化。
+
+#### 未实现
+- `cyber.py` 中 `ThreatIntel` 仅基础结构，无 ATT&CK 技战术映射。
+
+📎 各文件字段详解：[`protocol/AGENT.md`](protocol/AGENT.md) · 规范：[`04_PROTOCOL_SPEC.md`](developer/specs/04_PROTOCOL_SPEC.md)
+
+---
+
+### 2. `agents/` — 智能体域
+
+#### 是什么
+系统的**认知核心**，实现五层架构：感知 → 规划 → 行动 → 记忆 → 工具。群体智能协同推理引擎的核心代码所在。
+
+#### 做了什么
+- **规划引擎**：活跃子图过滤、低熵稀疏路由（Top-K=3）、异构选举（点积匹配）、端边云卸载调度
+- **记忆子系统**：上下文压缩（超预算时保留 decision+recent）和记忆唤醒（关键词匹配 Top-5）
+- **攻防 Agent**：11 个 Agent 全部完成 — 红队 4 个、蓝队 5 个、紫队 2 个
+- **感知层**：神经符号闭环（符号规则验证 + LLM 重新生成 → 迭代修复）
+- **工具层**：多模型路由（gpt→OpenAI, claude→Anthropic, local→本地）
+- **公共接口**：5 个 Protocol 接口 + 3 个 DI 端口
+
+📎 五层架构详解 + 子模块状态：[`agents/AGENT.md`](agents/AGENT.md) · 规范：[`08_AGENT_SPEC.md`](developer/specs/08_AGENT_SPEC.md)
+
+---
+
+### 3. `backend/` — 应用层（FastAPI）
+
+#### 是什么
+后端应用层，采用 **Router-Service-Repository-Model** 四层架构 + Core 网关入口，对外提供 REST API + WebSocket + SSE 实时通信。
+
+#### 做了什么
+- **FastAPI 应用**：完整的 app 创建 + CORS + 请求追踪中间件 + lifespan 数据库初始化
+- **网关鉴权**：`/api/v1/*` 前缀路由 + X-API-Key header 鉴权（`aegis-dev-key`）
+- **10 个 REST 端点**：health / sessions / tasks / agents / graph / memory / tools / metrics / replay
+- **实时通信**：SSE 事件推送 + WebSocket 双向流
+- **数据持久化**：SQLAlchemy async + aiosqlite，Session/Task 实体 + 仓储 + 转换器
+- **DI 组合根**：`composition.py` 装配 DB + 仓储 + 服务 + 14 Agent 注册 + MockRuntime
+
+#### 未实现
+- 🔲 攻防端点 `/api/v1/range/*`（靶场/拓扑/攻击/攻击链/防御）
+
+📎 架构 + 端点详解：[`backend/AGENT.md`](backend/AGENT.md) · 规范：[`05_API_SPEC.md`](developer/specs/05_API_SPEC.md) · [`10_INTERFACE_BOUNDARY_SPEC.md`](developer/specs/10_INTERFACE_BOUNDARY_SPEC.md)
+
+---
+
+### 4. `frontend/` — 表现层（React + Vite）
+
+#### 是什么
+AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视图（Chat / Canvas / Graph / Monitor / Replay）。
+
+#### 做了什么
+- **类型系统**：`gen_ts_types.py` 自动生成的 36 个 TS 类型
+- **全局状态**：Zustand store 管理 session/agents/chatMessages/graph/isSending
+- **API 客户端**：统一 HTTP 客户端（baseURL + X-API-Key header）
+- **5 个 REST 服务**：agents / sessions / tasks / memory / graph
+- **实时通信**：SSE + WebSocket 封装
+- **ChatView 完整实现**：Agent 选择 + 消息收发 + 任务提交 + 状态轮询 + 自动滚动
+- **5 个视图骨架**：chat ✅ / canvas 🔲 / graph 🔲 / monitor 🔲 / replay 🔲
+
+#### 未实现
+- 🔲 CanvasView / GraphView / MonitorView / ReplayView
+- 🔲 前端 cyber 类型（protocol/cyber.py 未映射到 TS）
+
+📎 架构 + ChatView 详解：[`frontend/AGENT.md`](frontend/AGENT.md) · 计划：[`plans/13_FRONTEND_BACKEND_PLAN.md`](developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md)
+
+---
+
+### 5. `infrastructure/` — 基建层
+
+#### 是什么
+基建层，负责传输通信、端边云节点管理、部署交付。赛事要求包含 Docker 沙箱靶场。
+
+#### 做了什么
+- **API 协议定义**：4 个 Protocol 接口（CommunicationAPI / NodeRegistryAPI / SyncAPI / DeploymentAPI）
+
+#### 未实现
+- 🔲 Docker 沙箱靶场（赛事 H1 核心需求）
+- 🔲 端边云通信与节点管理全部待实现
+
+📎 目录 + 赛事需求：[`infrastructure/AGENT.md`](infrastructure/AGENT.md)
+
+---
+
+### 6. `observability/` — 可观测层
+
+#### 是什么
+可观测层，分为三个子域：inspect（监控 · 回放）、measure（基准 · 评测）、present（可视化）。
+
+#### 做了什么
+- **API 协议定义**：6 个 Protocol 接口（MonitorAPI / TraceAPI / ReplayAPI / BenchmarkAPI / EvaluationAPI / VisualizationAPI）
+
+#### 未实现
+- 🔲 全部子模块仅有 AGENT.md，无代码实现
+- 🔲 赛事 H5：5 维度评测 + 攻击链回放
+
+📎 目录 + 赛事需求：[`observability/AGENT.md`](observability/AGENT.md)
+
+---
+
+### 7. `data/` — 数据层
+
+#### 是什么
+数据层，管理数据集和模型 schema。赛事要求接入 Neo4j 和 Qdrant。
+
+#### 做了什么
+- **API 协议定义**：2 个 Protocol 接口（DatasetAPI / ModelSchemaAPI）
+- **SQLite 数据库**：`aegisos.db` 文件（后端运行时自动生成）
+
+#### 未实现
+- 🔲 Neo4j 拓扑图 + ATT&CK 图接入（赛事 H2）
+- 🔲 Qdrant 向量库接入（赛事 H2）
+
+📎 目录 + 赛事需求：[`data/AGENT.md`](data/AGENT.md)
+
+---
+
+### 8. `tooling/` — 工程支撑
+
+#### 是什么
+工程支撑层，提供自动化脚本和配置文件。
+
+#### 做了什么
+- **3 个可用脚本**：`gen_readme.py` / `gen_ts_types.py` / `realign_agent_docs.py`
+- **API 协议定义**：2 个 Protocol 接口（ConfigAPI / ScriptAPI）
+- **配置文件**：backend.yaml + gateway.yaml
+
+#### 未实现
+- 🔲 `check_no_broadcast.py`（C4：检测低熵全广播违规）
+
+📎 脚本 + 配置详解：[`tooling/AGENT.md`](tooling/AGENT.md)
+
+---
+
+### 9. `developer/` — 规范层
+
+#### 是什么
+项目「大脑」，存放唯一真相源（SSOT）的规范文档和 roadmap 阶段计划。**P0 规范未完成前不得写业务代码**。
+
+#### 做了什么
+- **15 个规范文件**（00-15）
+- **roadmap P0-P7**：P0-P5 已完成，P6 部分完成，P7 未开始
+- **CHANGELOG.md**：变更记录
+
+📎 规范索引 + roadmap 进度：[`developer/AGENT.md`](developer/AGENT.md)
+
+---
+
+### 10. `tests/` — 测试
+
+#### 是什么
+测试目录，覆盖 Phase A-E 的全部单元测试。当前 59 个测试全部通过。
+
+#### 测试分布
+
+| 目录 | 测试数 | 覆盖内容 |
+|------|--------|---------|
+| `tests/protocol/` | 6 | 8 个攻防 dataclass |
+| `tests/agents/memory/` | 7 | 上下文压缩 + 记忆唤醒 |
+| `tests/agents/planning/` | 10 | 活跃子图 + Top-K 路由 + 选举 + 调度 |
+| `tests/agents/tools/` | 5 | 多模型路由 |
+| `tests/agents/action/` | 23 | 11 个攻防 Agent + 神经符号闭环 |
+| `tests/基础/` | 4 | 基础测试 |
+
+#### 未实现
+- 🔲 `tests/e2e/` — 端到端集成测试（场景 1：红→蓝→紫完整链路）
+
+---
+
+### 技术栈速查
+
+| 层 | 技术栈 |
+|----|--------|
+| 后端 | Python 3.12 · FastAPI · SQLAlchemy(async) · aiosqlite · uvicorn |
+| 前端 | React 18 · Vite 5.4.21 · Zustand 4.5 · TypeScript 5.6 |
+| 协议 | Python `@dataclass`（§12 计划迁移 Pydantic） |
+| 数据库 | SQLite（`aegisos.db`）→ Neo4j + Qdrant（待接入） |
+| 测试 | pytest · ruff · mypy |
+
+### 快速启动
+
+```bash
+# 后端
+.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
+
+# 前端
+cd frontend && npm run dev
+
+# 测试
+.venv/bin/pytest tests/ -v
+```

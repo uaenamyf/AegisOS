@@ -155,7 +155,6 @@ Message
 
 ```
 AegisOS/
-├── MODULE.md          # 📖 模块总览（10 大模块逐一介绍）
 ├── protocol/          # 契约层（Message/Event/Task/Graph/cyber.py）
 ├── agents/            # 智能体域
 │   ├── action/        #   11 个红蓝紫攻防 Agent
@@ -173,7 +172,7 @@ AegisOS/
 └── tooling/           # 工具链（gen_readme/gen_ts_types）
 ```
 
-> 每个大模块下有独立的 `MODULE.md` 详解该模块实现了什么功能，详见上方[模块实现文档](#模块实现文档)表。
+> 每个大模块的 `AGENT.md` 末尾附有「📋 模块实现详解」段，说明该模块实现了什么功能，详见下方[模块实现文档](#模块实现文档)表。
 
 <details>
 <summary>📖 完整目录树（点击展开）</summary>
@@ -257,17 +256,19 @@ developer/
 
 | 文档 | 说明 |
 |------|------|
-| [`MODULE.md`](MODULE.md) | **模块总览**：10 大模块「是什么、做了什么、子模块有哪些」逐一介绍 |
+| [`AGENT.md`](AGENT.md) | **仓库总规范**：全局铁律 + AI 开发流程 + 模块实现总览（10 大模块「是什么、做了什么、子模块有哪些」逐一介绍） |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构仪表盘：全 10 域代码文件数/测试数/实现状态一览 |
-| [`protocol/MODULE.md`](protocol/MODULE.md) | 契约层 10 个 .py 文件详解 |
-| [`agents/MODULE.md`](agents/MODULE.md) | 智能体域五层架构 + 11 Agent 角色表 |
-| [`backend/MODULE.md`](backend/MODULE.md) | FastAPI 全链路：10 REST 端点 + SSE/WS + DI |
-| [`frontend/MODULE.md`](frontend/MODULE.md) | React+Vite 架构 + ChatView 实现 |
-| [`infrastructure/MODULE.md`](infrastructure/MODULE.md) | 基建层 4 API 协议 + 传输/节点/交付计划 |
-| [`observability/MODULE.md`](observability/MODULE.md) | 可观测层 6 API 协议 + inspect/measure/present |
-| [`data/MODULE.md`](data/MODULE.md) | 数据层 2 API 协议 + SQLite + Neo4j/Qdrant 待接入 |
-| [`tooling/MODULE.md`](tooling/MODULE.md) | 3 个可用脚本详解 + 配置文件 |
-| [`developer/MODULE.md`](developer/MODULE.md) | 15 个规范文件索引 + roadmap P0-P7 进度 |
+| [`protocol/AGENT.md`](protocol/AGENT.md) | 契约层 10 个 .py 文件详解 |
+| [`agents/AGENT.md`](agents/AGENT.md) | 智能体域五层架构 + 11 Agent 角色表 |
+| [`backend/AGENT.md`](backend/AGENT.md) | FastAPI 全链路：10 REST 端点 + SSE/WS + DI |
+| [`frontend/AGENT.md`](frontend/AGENT.md) | React+Vite 架构 + ChatView 实现 |
+| [`infrastructure/AGENT.md`](infrastructure/AGENT.md) | 基建层 4 API 协议 + 传输/节点/交付计划 |
+| [`observability/AGENT.md`](observability/AGENT.md) | 可观测层 6 API 协议 + inspect/measure/present |
+| [`data/AGENT.md`](data/AGENT.md) | 数据层 2 API 协议 + SQLite + Neo4j/Qdrant 待接入 |
+| [`tooling/AGENT.md`](tooling/AGENT.md) | 3 个可用脚本详解 + 配置文件 |
+| [`developer/AGENT.md`](developer/AGENT.md) | 15 个规范文件索引 + roadmap P0-P7 进度 |
+
+> 各域 `AGENT.md` 末尾附「📋 模块实现详解」段（原 `MODULE.md` 内容已合并至此）。
 
 ---
 

@@ -18,7 +18,7 @@
 - AI 改动 ≤1 域 / ≤8 文件 / 行为保持 / 含测试；首次创建文件写文件说明 + date + dev（§10.1），增改函数/方法/接口写 date + dev + changelog + 代码注释（§10.2）。
 - router 禁低熵全广播（仅 Top-K 稀疏路由）；攻防工具仅 Docker 沙箱靶场内运行，永不触真实网络。
 
-**在哪找**：规范 → `developer/specs/` · 契约 → `protocol/` · 接口 → 各域 `api/` · **动态计划 → `developer/plan.md`（当前待办）** · 阶段 → `developer/roadmap/` · skills → `.claude/skills/` · **模块实现文档 → 根 `MODULE.md` + 各域 `MODULE.md` · 架构仪表盘 → `docs/ARCHITECTURE.md`**。
+**在哪找**：规范 → `developer/specs/` · 契约 → `protocol/` · 接口 → 各域 `api/` · **动态计划 → `developer/plan.md`（当前待办）** · 阶段 → `developer/roadmap/` · skills → `.claude/skills/` · **模块实现文档 → 各域 `AGENT.md` 末尾「📋 模块实现详解」 + 根 `AGENT.md` 末尾「📋 模块实现总览」· 架构仪表盘 → `docs/ARCHITECTURE.md`**。
 
 ---
 
@@ -122,4 +122,4 @@
 ## 维护
 - 本文件**指针式**，不复制 SSOT 全文；SSOT 变动后核对此处链接。
 - 模块结构 / api 变动后：更新对应 `AGENT.md`「交叉引用」段 + 根 `README.md`（`python3 tooling/scripts/gen_readme.py` 刷新自动段，本机无 Python 时手动同步）。
-- 代码实现变动后：更新对应 `MODULE.md`（根 `MODULE.md` 总览 + 各域 `MODULE.md` 详解）+ `docs/ARCHITECTURE.md` 仪表盘。
+- 代码实现变动后：更新对应 `AGENT.md` 末尾「📋 模块实现详解」段（根 `AGENT.md` 末尾「📋 模块实现总览」段）+ `docs/ARCHITECTURE.md` 仪表盘。

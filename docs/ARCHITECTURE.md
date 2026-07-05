@@ -1,6 +1,7 @@
-# AegisOS 模块实现总览
+# AegisOS 架构仪表盘
 
 > 本文件对每个顶层域的实际**代码实现状态**做精确描述：已实现什么、未实现什么、关键文件在哪、测试覆盖如何。
+> 各域详细实现文档已合并至对应 `AGENT.md` 末尾「📋 模块实现详解」段；全局模块总览已合并至根 `AGENT.md` 末尾「📋 模块实现总览」段。
 > 最后更新：2026-07-04 · 55 个测试全通过
 
 ---
@@ -9,15 +10,15 @@
 
 | 域 | 代码文件 | 测试数 | 实现状态 | 模块文档 |
 |----|---------|--------|---------|---------|
-| [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [MODULE.md](protocol/MODULE.md) |
-| [`agents/`](#agents) | 20 `.py` | 41 | ✅ 核心算法完成 / 🔲 编排器+runtime 集成待补 | [MODULE.md](agents/MODULE.md) |
-| [`backend/`](#backend) | 18 `.py` | — | ✅ REST+WS+SSE+DB 可用 | [MODULE.md](backend/MODULE.md) |
-| [`frontend/`](#frontend) | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 | [MODULE.md](frontend/MODULE.md) |
-| [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [MODULE.md](infrastructure/MODULE.md) |
-| [`observability/`](#observability) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [MODULE.md](observability/MODULE.md) |
-| [`data/`](#data) | 1 `.py` | 0 | 🔲 仅 API 协议定义 + SQLite DB | [MODULE.md](data/MODULE.md) |
-| [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [MODULE.md](tooling/MODULE.md) |
-| [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [MODULE.md](developer/MODULE.md) |
+| [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
+| [`agents/`](#agents) | 20 `.py` | 41 | ✅ 核心算法完成 / 🔲 编排器+runtime 集成待补 | [AGENT.md](../agents/AGENT.md) |
+| [`backend/`](#backend) | 18 `.py` | — | ✅ REST+WS+SSE+DB 可用 | [AGENT.md](../backend/AGENT.md) |
+| [`frontend/`](#frontend) | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 | [AGENT.md](../frontend/AGENT.md) |
+| [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../infrastructure/AGENT.md) |
+| [`observability/`](#observability) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../observability/AGENT.md) |
+| [`data/`](#data) | 1 `.py` | 0 | 🔲 仅 API 协议定义 + SQLite DB | [AGENT.md](../data/AGENT.md) |
+| [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
+| [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
 | [`tests/`](#tests) | 26 `.py` | 55 | ✅ Phase A-E 覆盖 | — |
 
 ---
@@ -47,7 +48,7 @@
 ### 未实现
 - `cyber.py` 中 `ThreatIntel` 仅基础结构，无 ATT&CK 技战术映射
 
-📎 详细文档：[`protocol/MODULE.md`](../protocol/MODULE.md) · 规范：[`04_PROTOCOL_SPEC.md`](../developer/specs/04_PROTOCOL_SPEC.md)
+📎 详细文档：[`protocol/AGENT.md`](../protocol/AGENT.md) 末尾「📋 模块实现详解」 · 规范：[`04_PROTOCOL_SPEC.md`](../developer/specs/04_PROTOCOL_SPEC.md)
 
 ---
 
@@ -121,7 +122,7 @@
 
 > 另有 `ports.py`：`PersistencePort` · `SessionPort` · `TaskUpdatePort`（DI 端口）
 
-📎 详细文档：[`agents/MODULE.md`](../agents/MODULE.md) · 规范：[`08_AGENT_SPEC.md`](../developer/specs/08_AGENT_SPEC.md)
+📎 详细文档：[`agents/AGENT.md`](../agents/AGENT.md) 末尾「📋 模块实现详解」 · 规范：[`08_AGENT_SPEC.md`](../developer/specs/08_AGENT_SPEC.md)
 
 ---
 
@@ -159,7 +160,7 @@
 ### 未实现
 - 🔲 攻防端点 `/api/v1/range/*`（靶场/拓扑/攻击/攻击链/防御）
 
-📎 详细文档：[`backend/MODULE.md`](../backend/MODULE.md)
+📎 详细文档：[`backend/AGENT.md`](../backend/AGENT.md) 末尾「📋 模块实现详解」
 
 ---
 
@@ -195,7 +196,7 @@
 - 🔲 ReplayView：时序回放
 - 🔲 前端 cyber 类型（protocol/cyber.py 未映射到 TS）
 
-📎 详细文档：[`frontend/MODULE.md`](../frontend/MODULE.md)
+📎 详细文档：[`frontend/AGENT.md`](../frontend/AGENT.md) 末尾「📋 模块实现详解」
 
 ---
 
@@ -215,7 +216,7 @@
 - 🔲 `delivery/deployment/` — 部署交付
 - 🔲 Docker 沙箱靶场
 
-📎 详细文档：[`infrastructure/MODULE.md`](../infrastructure/MODULE.md)
+📎 详细文档：[`infrastructure/AGENT.md`](../infrastructure/AGENT.md) 末尾「📋 模块实现详解」
 
 ---
 
@@ -233,7 +234,7 @@
 - 🔲 `measure/benchmark/` · `measure/evaluation/`
 - 🔲 `present/visualization/`
 
-📎 详细文档：[`observability/MODULE.md`](../observability/MODULE.md)
+📎 详细文档：[`observability/AGENT.md`](../observability/AGENT.md) 末尾「📋 模块实现详解」
 
 ---
 
@@ -249,7 +250,7 @@
 - 🔲 `datasets/` — 仅 AGENT.md
 - 🔲 `models/` — 仅 AGENT.md（Neo4j 拓扑图 + Qdrant 向量库待接入）
 
-📎 详细文档：[`data/MODULE.md`](../data/MODULE.md)
+📎 详细文档：[`data/AGENT.md`](../data/AGENT.md) 末尾「📋 模块实现详解」
 
 ---
 
@@ -267,7 +268,7 @@
 | `configs/gateway.yaml` | 网关配置 |
 | `api/__init__.py` | 2 个 Protocol 接口：`ConfigAPI` · `ScriptAPI` |
 
-📎 详细文档：[`tooling/MODULE.md`](../tooling/MODULE.md)
+📎 详细文档：[`tooling/AGENT.md`](../tooling/AGENT.md) 末尾「📋 模块实现详解」
 
 ---
 
@@ -278,7 +279,7 @@
 - `roadmap/` — P0-P7 阶段计划，每个阶段独立目录
 - `CHANGELOG.md` — 变更记录
 
-📎 详细文档：[`developer/MODULE.md`](../developer/MODULE.md)
+📎 详细文档：[`developer/AGENT.md`](../developer/AGENT.md) 末尾「📋 模块实现详解」
 
 ---
 

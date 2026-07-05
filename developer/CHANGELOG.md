@@ -2,6 +2,19 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P6] 2026-07-04 文档整合：MODULE.md → AGENT.md
+
+### 变更内容
+- 将根 `MODULE.md` 内容合并到根 `AGENT.md` 末尾「📋 模块实现总览」段。
+- 将 9 个域 `MODULE.md`（protocol/agents/backend/frontend/infrastructure/observability/data/tooling/developer）内容合并到对应 `AGENT.md` 末尾「📋 模块实现详解」段。
+- 删除全部 10 个 `MODULE.md` 文件（根 + 9 域）。
+- 更新全局引用：`docs/ARCHITECTURE.md`（总览仪表盘 + 9 处详细文档链接）、`README.md`（项目结构 + 模块文档索引表）、`CLAUDE.md`（根 + `.claude/`，L0 在哪找 + 维护段）、`developer/plan.md`（文档体系记录 + 维护提醒）。
+- 各 `AGENT.md` 合并段均以 `> 原 {domain}/MODULE.md 内容，已合并至此。` 标注来源。
+
+### 动机
+- 消除 `MODULE.md` 作为独立文件类型，统一到 `AGENT.md`（开发规范 + 实现详情同文档）。
+- 减少文件数量，降低维护成本；新「📋 模块实现详解」段与原 AGENT.md 内容在同一文件内更易交叉引用。
+
 ## [P6] 2026-07-04 前后端打通：Agent 注册 + Chat 联调 + 文档同步
 
 ### 后端（composition.py）

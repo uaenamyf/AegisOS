@@ -242,8 +242,8 @@
 - [x] **Phase E（部分）** — E1-E11 11 个攻防 Agent 全部实现（红队 4 + 蓝队 5 + 紫队 2 = 15 测试）+ E12 `agents/perception/reasoning/neuro_symbolic.py` 神经符号闭环（4 测试）
 
 ### 2026-07-04 文档体系 ✅
-- [x] 根 `MODULE.md` — 10 大模块总览
-- [x] 9 个域 `MODULE.md`（protocol/agents/backend/frontend/infrastructure/observability/data/tooling/developer）
+- [x] 根 `AGENT.md` 末尾「📋 模块实现总览」段 — 10 大模块总览（原根 `MODULE.md` 已合并）
+- [x] 9 个域 `AGENT.md` 末尾「📋 模块实现详解」段（protocol/agents/backend/frontend/infrastructure/observability/data/tooling/developer，原各域 `MODULE.md` 已合并）
 - [x] `docs/ARCHITECTURE.md` — 全 10 域实现状态仪表盘
 - [x] `README.md` 模块文档索引表
 - [x] `CLAUDE.md`（根 + `.claude/`）同步更新
@@ -264,7 +264,7 @@
 1. **每次会话开始**：读本文件了解当前待办 → 读 `roadmap/README.md` 了解宏观阶段
 2. **每次完成任务**：勾选 `[x]` → 更新 `CHANGELOG.md` → 更新本文件「最近变更」段 → 从待完成移到已完成
 3. **新增计划项**：添加到对应 Phase 下 → 标注优先级（P0/P1/P2/P3）→ 标注预估时间和依赖
-4. **阶段完成**：更新 `roadmap/README.md` 进度勾选 + `MODULE.md` 实现状态 + `docs/ARCHITECTURE.md` 仪表盘
+4. **阶段完成**：更新 `roadmap/README.md` 进度勾选 + `AGENT.md` 末尾「📋 模块实现详解」实现状态 + `docs/ARCHITECTURE.md` 仪表盘
 5. **本文件路径**：`developer/plan.md` — 整合 `specs/plans/13`、`14`、`15` 的执行态视图；SSOT 仍为原文件
 
 ---
