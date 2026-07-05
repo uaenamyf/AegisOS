@@ -8,10 +8,10 @@
 > 1. 每完成一个任务 → 勾选 `[x]` + 在 `developer/CHANGELOG.md` 记录
 > 2. 每新增计划项 → 添加到对应 Phase 下，标注优先级（P0 最高）
 > 3. 每次会话结束前 → 更新「最近变更」段
-> 4. 本文件与 `roadmap/README.md`（阶段总览）互补：roadmap 看宏观阶段，plan.md 看具体待办
-> 5. `specs/plans/13`、`14`、`15` 仍作为 SSOT 保留，本文件为执行态整合视图
+> 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
+> 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-05 · 59 测试全通过 · 文档对齐实际结构 ✅
+> 最后更新：2026-07-05 · 59 测试全通过 · 文档对齐实际结构 ✅ · 整合 roadmap 到附录 D ✅
 
 ---
 
@@ -261,10 +261,10 @@
 
 ## 📌 维护提醒
 
-1. **每次会话开始**：读本文件了解当前待办 → 读 `roadmap/README.md` 了解宏观阶段
+1. **每次会话开始**：读本文件了解当前待办 + 宏观阶段（附录 D 整合自 `roadmap/`）
 2. **每次完成任务**：勾选 `[x]` → 更新 `CHANGELOG.md` → 更新本文件「最近变更」段 → 从待完成移到已完成
 3. **新增计划项**：添加到对应 Phase 下 → 标注优先级（P0/P1/P2/P3）→ 标注预估时间和依赖
-4. **阶段完成**：更新 `roadmap/README.md` 进度勾选 + `AGENT.md` 末尾「📋 模块实现详解」实现状态 + `docs/ARCHITECTURE.md` 仪表盘
+4. **阶段完成**：更新 `roadmap/README.md` 进度勾选 + 本文件附录 D 进度勾选 + `AGENT.md` 末尾「📋 模块实现详解」实现状态 + `docs/ARCHITECTURE.md` 仪表盘
 5. **本文件路径**：`developer/plan.md` — 整合 `specs/plans/13`、`14`、`15` 的执行态视图；SSOT 仍为原文件
 
 ---
@@ -431,10 +431,93 @@ gen_ts_types.py 是前后端契约同步桥梁，protocol 变更后 CI 重跑
 
 ---
 
+## 📎 附录 D — Roadmap 阶段总览（整合自 `developer/roadmap/`）
+
+> 本附录整合 `developer/roadmap/README.md` 及 `P0/`–`P7/` 各阶段详情。**注意**：此处 P0–P7 指 **roadmap 开发阶段**，与上方「待完成」§5–§8 中的 **P0–P3 优先级标签**（立即执行/短期/中期/长期）含义不同，勿混淆。
+>
+> SSOT 仍为 `developer/roadmap/`，本附录为执行态整合视图。
+
+### 阶段推进链
+
+```
+P0 项目初始化 → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment
+```
+
+### 阶段总览
+
+| 阶段 | 名称 | 目标 | 完成标准 | 状态 |
+|------|------|------|----------|------|
+| P0 | 项目初始化 | 搭建骨架与开发规范 | 可运行空壳 + 文档就位 | ✅ 完成 |
+| P1 | Protocol | 定义通信协议 | 协议可序列化往返 | ✅ 完成 |
+| P2 | Memory | 记忆子系统 | 可读写检索 + 压缩 | ✅ 完成（10 子模块待补） |
+| P3 | Router | 动态图路由 | 动态路由可计算 | ✅ 完成 |
+| P4 | Scheduler | 调度器 | 任务可调度执行 | ✅ 完成 |
+| P5 | Planner+Agents | 规划器与 Agent | 群体完成端到端任务 | ✅ 完成（编排器/runtime 集成/E13 待补） |
+| P6 | Frontend | AI Native IDE | 可视化可交互 | ✅ 部分完成（攻防视图待补） |
+| P7 | Deployment | 部署交付 | 开箱可部署 | 🔲 未开始 |
+
+### 各阶段详情
+
+> 每阶段统一字段：目标 / 输入 / 输出 / 接口 / 测试 / 风险 / 完成标准 / 依赖阶段（目标与完成标准见上表）。
+
+| 阶段 | 输入 | 输出 | 接口 | 测试 | 风险 | 依赖 |
+|------|------|------|------|------|------|------|
+| P0 | 需求文档（补充.md/开发.md） | 分层目录 / developer 规范 / CI 空壳 | 无 | 结构校验脚本 | 规范不一致导致返工 | 无（起点） |
+| P1 | 协议设计（`specs/04`） | `protocol/*.py` 数据类 + 序列化 | Message/Event/Task/Memory/Heartbeat/Graph/Tool/Sync | 协议序列化往返测试 | 格式频繁变更导致全局返工 | 需 P0 |
+| P2 | `protocol/` 契约 | `agents/memory/` 12 子模块 + 统一接口 | read/write/retrieve(MemoryPacket) | 存取/检索/压缩/同步测试 | 向量索引性能与一致性 | 需 P1 |
+| P3 | `protocol/` + `topology/` | `router/` 动态图与低熵路由 | route(task) -> Route | 路由决策与图更新测试 | 动态图一致性 | 需 P2 |
+| P4 | `router/` + 任务 | `scheduler/` 队列与策略 | schedule(task) -> execution | 调度/抢占/重试测试 | 死锁/饥饿 | 需 P3 |
+| P5 | `scheduler/` + `memory/` | `planner/` + `agents/*` + `tools/runtime/` | plan(goal) / receive()->...->respond() | 规划与 Agent 端到端测试 | 计划质量与 Agent 协作稳定性 | 需 P4 |
+| P6 | `backend/` API | `frontend/` 画布/图谱/监控/回放 | REST + WebSocket + SSE | E2E 前端测试 | 实时性与大规模图渲染 | 需 P5 |
+| P7 | 全系统 | `infrastructure/delivery/deployment/` docker/k8s/ci + `tooling/scripts/` | make build/deploy | 部署冒烟测试 | 环境差异与密钥管理 | 需 P6 |
+
+### 阶段输出路径
+
+| 阶段 | 输出路径 |
+|------|---------|
+| P0 | 分层目录骨架 + `developer/` + 全部 AGENT.md |
+| P1 | `protocol/*.py` |
+| P2 | `agents/memory/`（12 子模块） |
+| P3 | `agents/planning/engine/topology/` + `agents/planning/engine/router/` |
+| P4 | `agents/planning/engine/scheduler/` |
+| P5 | `agents/planning/engine/planner/` + `agents/`（角色 + runtime） |
+| P6 | `frontend/` + `backend/` |
+| P7 | `infrastructure/delivery/deployment/` + `tooling/scripts/` |
+
+### 当前进度（勾选）
+
+- [x] P0 目录结构（同域聚合分层）与 AGENT.md 体系
+- [x] P1 Protocol 实现（cyber.py 8 类型 + memory/graph/scheduler 字段扩展，6 测试）
+- [x] P2 Memory 实现（compression/compactor.py + recall/recaller.py，7 测试；其余 10 子模块待补）
+- [x] P3 Router 实现（topology 活跃子图 + router Top-K 稀疏路由 + election 异构选举，10 测试）
+- [x] P4 Scheduler 实现（端边云三层调度 device/edge/cloud + 多模型兼容层 model_router，13 测试）
+- [~] P5 Planner + Agents 实现（11 红蓝紫 Agent + 神经符号闭环已完成 23 测试；planner/orchestrator/workflow/eventbus 编排器待补；B3 runtime 集成待补；E13 e2e 测试待补）
+- [~] P6 Frontend 实现（5 视图占位 + Chat 联调已完成；攻防视图 G1-G3 + 后端攻防端点 F 待补）
+- [ ] P7 Deployment 实现
+
+### 赛事作品对齐（XH-202631 荣耀·超长程群体智能）
+
+> 赛事作品以 AegisOS 为底座，落地「面向超长程网络攻击防御的动态异构群体智能协同推理引擎」。总体方案见 `plans/14`，可执行任务清单见 `plans/15`。
+
+| roadmap 阶段 | 赛事作品扩展 |
+|---------|------------|
+| P1 Protocol | 新增 `protocol/cyber.py` 攻防类型（Asset/AttackChain/Alert/DefenseAction/...） |
+| P2 Memory | 12 子模块 + 超长程压缩/唤醒（ATT&CK/CVE/向量/情景） |
+| P3 Router | 低熵稀疏路由（Top-K，非全广播）+ 动态异构选举 |
+| P4 Scheduler | 调度 + 端边云卸载（云大模型/端小模型） |
+| P5 Planner+Agents | 红蓝紫 Agent 角色 + 神经-符号协同推理闭环 |
+| P6 Frontend | 5 视图（攻击链 DAG/防御看板/时序回放）+ 后端攻防端点 |
+| P7 Deployment | Docker 沙箱靶场 + Neo4j/Qdrant + 3 场景演示 + 5 维度评测 |
+
+- 截止：2026-09-15 提交；增量交付，每阶段可演示；优先跑通场景 1（网络防御）。
+
+---
+
 ## 🔄 最近变更
 
 | 日期 | 变更 | 提交 |
 |------|------|------|
+| 2026-07-05 | 整合 `developer/roadmap/`（P0-P7 阶段详情 + 进度 + 赛事对齐）到 plan.md 附录 D | （本次提交） |
 | 2026-07-05 | 全工程文档对齐实际结构（14 文件，backend 扁平化 + frontend mappers/→lib/） | `0997b6d` |
 | 2026-07-05 | 整合 plans/13、14、15 到 plan.md，待完成在前+已完成在后 | （本次提交） |
 | 2026-07-04 | 前后端打通：14 Agent 注册 + Chat 联调 + 文档同步 | （见 CHANGELOG） |
