@@ -1,14 +1,17 @@
 # plan.md — AegisOS 动态开发计划
 
-> **本文件是项目的「活计划」**，动态维护当前未完成的内容和下一步计划。每次会话开始时阅读此文件了解「现在该做什么」，每次完成任务后更新勾选状态。
+> **本文件是项目的「活计划」**，整合了 `specs/plans/13`（前后端全流程）、`14`（赛事总体方案）、`15`（实施任务清单）的核心内容，动态维护当前未完成的内容和下一步计划。
+>
+> **结构**：待完成在前（§1-§7）→ 已完成在后（§8-§10）→ 附录（§11-§12）
 >
 > 维护规则：
 > 1. 每完成一个任务 → 勾选 `[x]` + 在 `developer/CHANGELOG.md` 记录
 > 2. 每新增计划项 → 添加到对应 Phase 下，标注优先级（P0 最高）
 > 3. 每次会话结束前 → 更新「最近变更」段
 > 4. 本文件与 `roadmap/README.md`（阶段总览）互补：roadmap 看宏观阶段，plan.md 看具体待办
+> 5. `specs/plans/13`、`14`、`15` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-04 · 55 测试全通过 · 统一配置体系 ✅
+> 最后更新：2026-07-05 · 59 测试全通过 · 文档对齐实际结构 ✅
 
 ---
 
@@ -17,73 +20,27 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 收尾 + P6 部分 + 框架规范化方案(R1-R5) + 赛事 Phase F-H 待启动 |
-| **测试** | 55 passed（protocol 6 + memory 7 + planning 10 + tools 5 + action 15 + perception 4 + 基础 8） |
-| **已完成 Phase** | A ✅ · B(部分) ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ |
-| **待完成 Phase** | B3 · E13 · F · G · H |
+| **测试** | 59 passed（protocol 6 + memory 7 + planning 10 + tools 5 + action 23 + perception 4 + 基础 4） |
+| **已完成 Phase** | A ✅ · B(部分) ✅ · C ✅ · D ✅ · E(部分) ✅ · 前后端打通 ✅ · 文档对齐 ✅ |
+| **待完成 Phase** | B3 · E13 · F · G · H · R1-R5 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
----
+### 赛事对齐（详见 §11 附录）
 
-## ✅ 已完成任务（不做不删，留痕）
+| 评分维度 | 占比 | 对应任务 | 状态 |
+|---------|------|---------|------|
+| 完整性 | 40 | 8 域全实现 + 3 场景可演示 + 回放 | A-E ✅ / F-H 🔲 |
+| 应用创新 | 25 | 攻防对抗仿真 + 跨领域 3 场景 | Agent ✅ / 场景 🔲 |
+| 技术创新 | 20 | 动态异构拓扑 + 低熵路由 + 神经符号闭环 + 记忆压缩唤醒 | C/D/B/E ✅ |
+| 性能 | 15 | benchmark + 端边云调度优化 | 调度 ✅ / 评测 🔲 |
 
-### Phase A — Protocol 攻防类型 ✅
-- [x] A1 `protocol/cyber.py` 8 个攻防 dataclass（Asset/VulnFinding/AttackStep/AttackChain/Alert/DefenseAction/ResponsePlan/ThreatIntel）
-- [x] A1 `protocol/__init__.py` 导出 + `04_PROTOCOL_SPEC.md` / `06_SCHEMA_SPEC.md` 登记
-- [x] A1 测试 6 个（`tests/protocol/test_cyber.py`）
+### 3 场景覆盖
 
-### Phase B — 超长程记忆 ✅(部分)
-- [x] B1 `protocol/memory.py` 扩展 `kind` / `recent` 字段
-- [x] B1 `agents/memory/compression/compactor.py` 上下文压缩（4 测试）
-- [x] B2 `agents/memory/recall/recaller.py` 记忆唤醒 Top-5（3 测试）
-
-### Phase C — 动态异构拓扑 + 低熵路由 ✅
-- [x] C1 `protocol/graph.py` 扩展 `GraphNode.status` 字段
-- [x] C1 `agents/planning/engine/topology/topology.py` 活跃子图（2 测试）
-- [x] C2 `agents/planning/engine/router/router.py` Top-K=3 稀疏路由（3 测试）
-- [x] C3 `agents/planning/engine/router/election.py` 异构选举点积（2 测试）
-
-### Phase D — 调度 + 端边云 ✅
-- [x] D1 `agents/planning/engine/scheduler/scheduler.py` **端-边-云三层卸载**（device/edge/cloud，9 测试）
-- [x] D2 `agents/tools/llms/model_router.py` 多模型路由（TIER_PROVIDER_MAP 三层映射，5 测试）
-- [x] D2 `agents/tools/llms/openai_provider.py` / `anthropic_provider.py` / `local_provider.py` Provider 实现
-
-### Phase E — 红蓝紫 Agent ✅
-- [x] E1-E11 11 个攻防 Agent 全部实现（15 测试）：
-  - 🔴 红队：recon · vuln_correlator · exploit_planner · lateral_move
-  - 🔵 蓝队：detector · triage · threat_hunt · ir_planner · forensics
-  - 🟣 紫队：critic · reviewer
-- [x] E12 `agents/perception/reasoning/neuro_symbolic.py` 神经符号闭环（4 测试）
-
-### 前后端打通 ✅
-- [x] `backend/core/composition.py` DI 组合根：14 Agent 注册 + MockRuntime 真实调用分发
-- [x] `backend/main.py` FastAPI app + CORS + TraceMiddleware + lifespan
-- [x] 10 个 REST 端点（health/sessions/tasks/agents/graph/memory/tools/metrics/replay）
-- [x] SSE `events.py` + WebSocket `stream.py`
-- [x] `backend/repositories/` SQLAlchemy async + aiosqlite（SessionEntity/TaskEntity）
-- [x] `frontend/src/` React + Vite + Zustand + 36 个 TS 类型
-- [x] `frontend/views/chat/ChatView.tsx` 完整实现（Agent 选择 + 消息收发 + 任务轮询）
-
-### 文档体系 ✅
-- [x] 根 `MODULE.md` — 10 大模块总览
-- [x] 9 个域 `MODULE.md`（protocol/agents/backend/frontend/infrastructure/observability/data/tooling/developer）
-- [x] `docs/ARCHITECTURE.md` — 全 10 域实现状态仪表盘
-- [x] `README.md` 模块文档索引表
-- [x] `CLAUDE.md`（根 + `.claude/`）同步更新
-
-### 统一配置体系 ✅
-- [x] `tooling/configs/settings.py` — Python 统一配置加载器（环境变量 > .env > defaults.yaml > 代码默认值）
-- [x] `tooling/configs/defaults.yaml` — 全项目默认值 SSOT（backend/frontend/cors/auth/db/log/rate_limit/trace/frontend_env）
-- [x] `tooling/configs/.env.example` — 环境变量模板
-- [x] `frontend/src/config/index.ts` — 前端统一配置入口（`config` 单例）
-- [x] `frontend/.env` — Vite 环境变量
-- [x] 后端 5 文件接入 settings（main.py/auth.py/middleware.py/database.py）
-- [x] 前端 3 文件接入 config（client.ts/sse.ts/ws.ts）
-- [x] 脚本/构建配置接入环境变量（start.sh/Makefile/vite.config.ts/playwright.config.ts）
-- [x] 55 测试全通过 + TypeScript 类型检查通过
-
----
-
-## 🔲 待完成任务（按优先级排序）
+| 场景 | 描述 | 依赖 | 状态 |
+|------|------|------|------|
+| 场景 1 | 网络防御（红→蓝→紫完整链路） | B3 + E13 + 编排器 | 🔲 待做 |
+| 场景 2 | 超长程攻击链（多步横向移动） | 场景 1 + H1 靶场 | 🔲 待做 |
+| 场景 3 | 端-边-云协同防御 | 场景 1 + H7 端边云 | 🔲 待做 |
 
 ### 🔥 P0 — 立即执行（本周）
 
@@ -253,31 +210,224 @@
 
 ---
 
-## 🎯 赛事场景覆盖计划
+## ✅ 已完成任务（留痕，按完成时间倒序）
 
-> 3 个场景需在赛事截止（2026-09-15）前完成演示。详见 `plans/14_CYBERDEFENSE_SOLUTION_PLAN.md`。
+### 2026-07-05 文档对齐实际结构 ✅
+- [x] 全工程 14 个治理文档路径对齐：backend 扁平化（src/→扁平 + gateway/→core/ + controllers/→routers/ + mappers/→repositories/+models/）+ frontend mappers/→lib/（store/+api-client/）
+- [x] 模式名修正：Controller-Service-Mapper → Controller-Service-Lib（前端）/ Router-Service-Repository-Model（后端）
+- [x] CHANGELOG.md 历史引用保持不动（记录过去重构事件的史实）
 
-| 场景 | 描述 | 依赖 | 状态 |
-|------|------|------|------|
-| 场景 1 | 网络防御（红→蓝→紫完整链路） | B3 + E13 + 编排器 | 🔲 待做 |
-| 场景 2 | 超长程攻击链（多步横向移动） | 场景 1 + H1 靶场 | 🔲 待做 |
-| 场景 3 | 端-边-云协同防御 | 场景 1 + H7 端边云 | 🔲 待做 |
+### 2026-07-04 前后端打通 ✅
+- [x] `backend/core/composition.py` DI 组合根：14 Agent 注册 + MockRuntime 真实调用分发
+- [x] `backend/main.py` FastAPI app + CORS + TraceMiddleware + lifespan
+- [x] 10 个 REST 端点（health/sessions/tasks/agents/graph/memory/tools/metrics/replay）
+- [x] SSE `events.py` + WebSocket `stream.py`
+- [x] `backend/repositories/` SQLAlchemy async + aiosqlite（SessionEntity/TaskEntity）
+- [x] `frontend/src/` React + Vite + Zustand + 36 个 TS 类型
+- [x] `frontend/views/chat/ChatView.tsx` 完整实现（Agent 选择 + 消息收发 + 任务轮询）
+- [x] 59 测试全通过
 
-**优先级**：场景 1 > 场景 2 > 场景 3
+### 2026-07-04 统一配置体系 ✅
+- [x] `tooling/configs/settings.py` — Python 统一配置加载器（环境变量 > .env > defaults.yaml > 代码默认值）
+- [x] `tooling/configs/defaults.yaml` — 全项目默认值 SSOT
+- [x] `tooling/configs/.env.example` — 环境变量模板
+- [x] `frontend/src/config/index.ts` — 前端统一配置入口
+- [x] 后端 5 文件 + 前端 3 文件 + 脚本/构建配置全部接入
+
+### 2026-07-04 Phase A-E 核心引擎 TDD 实现 ✅（55 测试）
+- [x] **Phase A** — `protocol/cyber.py` 8 个攻防 dataclass（Asset/VulnFinding/AttackStep/AttackChain/Alert/DefenseAction/ResponsePlan/ThreatIntel）+ 6 测试
+- [x] **Phase B（部分）** — `protocol/memory.py` 扩 kind/recent + `agents/memory/compression/compactor.py` 上下文压缩（4 测试）+ `agents/memory/recall/recaller.py` 记忆唤醒 Top-5（3 测试）
+- [x] **Phase C** — `protocol/graph.py` 扩 GraphNode.status + `agents/planning/engine/topology/topology.py` 活跃子图（2 测试）+ `agents/planning/engine/router/router.py` Top-K=3 稀疏路由（3 测试）+ `agents/planning/engine/router/election.py` 异构选举点积（2 测试）
+- [x] **Phase D** — `agents/planning/engine/scheduler/scheduler.py` 端-边-云三层卸载（device/edge/cloud，9 测试）+ `agents/tools/llms/model_router.py` 多模型路由（TIER_PROVIDER_MAP 三层映射，5 测试）+ openai/anthropic/local Provider 实现
+- [x] **Phase E（部分）** — E1-E11 11 个攻防 Agent 全部实现（红队 4 + 蓝队 5 + 紫队 2 = 15 测试）+ E12 `agents/perception/reasoning/neuro_symbolic.py` 神经符号闭环（4 测试）
+
+### 2026-07-04 文档体系 ✅
+- [x] 根 `MODULE.md` — 10 大模块总览
+- [x] 9 个域 `MODULE.md`（protocol/agents/backend/frontend/infrastructure/observability/data/tooling/developer）
+- [x] `docs/ARCHITECTURE.md` — 全 10 域实现状态仪表盘
+- [x] `README.md` 模块文档索引表
+- [x] `CLAUDE.md`（根 + `.claude/`）同步更新
+
+### 2026-07-04 Agent 框架规范化调研 ✅
+- [x] `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md` — 7 类重复造轮子诊断 + litellm/instructor/LangGraph 替换方案（→ R1-R5 待执行）
+
+### 2026-06-26 P0 初始化 ✅
+- [x] AegisOS 仓库骨架（37 顶层模块 → 同域聚合分层 → 8 域 + tooling/docs/tests）
+- [x] 全仓库 AGENT.md 体系（78 个）
+- [x] developer/ 规范层（specs 00-12 + plans 13-15 + roadmap P0-P7）
+- [x] protocol/ 通信契约（10 模块 + cyber.py 攻防扩展）
 
 ---
 
-## 📐 评分维度对齐
+## 📌 维护提醒
 
-> 赛事评分 5 维度，对应实现任务。详见 `plans/14` §评分对齐。
+1. **每次会话开始**：读本文件了解当前待办 → 读 `roadmap/README.md` 了解宏观阶段
+2. **每次完成任务**：勾选 `[x]` → 更新 `CHANGELOG.md` → 更新本文件「最近变更」段 → 从待完成移到已完成
+3. **新增计划项**：添加到对应 Phase 下 → 标注优先级（P0/P1/P2/P3）→ 标注预估时间和依赖
+4. **阶段完成**：更新 `roadmap/README.md` 进度勾选 + `MODULE.md` 实现状态 + `docs/ARCHITECTURE.md` 仪表盘
+5. **本文件路径**：`developer/plan.md` — 整合 `specs/plans/13`、`14`、`15` 的执行态视图；SSOT 仍为原文件
 
-| 维度 | 评分点 | 对应任务 | 状态 |
-|------|--------|---------|------|
-| 准确率 | 攻击链/告警/响应的准确性 | E1-E11 Agent + E13 e2e | ✅ Agent 完成 / 🔲 e2e 待做 |
-| 召回率 | 检测覆盖率（漏报率） | detector + threat_hunt | ✅ Agent 完成 / 🔲 评测待做 |
-| 延迟 | 端到端响应时间 | H5.3 Benchmark | 🔲 待做 |
-| 资源 | CPU/内存/容器开销 | H5.3 Benchmark | 🔲 待做 |
-| 鲁棒性 | 对抗样本/异常输入处理 | critic + reviewer + H5.4 | ✅ Agent 完成 / 🔲 评测待做 |
+---
+
+## 📎 附录 A — 赛事总体方案摘要（整合自 `plans/14`）
+
+### 产品定位
+
+**AegisOS = Agent Operating System**。赛事作品以 AegisOS 为底座，构建「面向超长程网络攻击防御的动态异构群体智能协同推理引擎」：
+
+- **超长程**：攻击链/防御响应跨数十~数百步、跨小时~天级时序 → 记忆压缩 + 唤醒 + 分段推理
+- **动态异构**：Agent 群体由不同模型/不同 Prompt/不同能力域的异构单元组成，拓扑随任务动态重组
+- **群体智能**：多 Agent 协同（红蓝紫对抗 + 元认知 critique/review）
+- **深度协同推理**：神经（LLM）+ 符号（ATT&CK/CVE 知识图）闭环，可解释、可回放、可验证
+
+### 赛事映射
+
+| 项 | 值 |
+|----|-----|
+| 赛事 | 挑战杯揭榜挂帅 XH-202631（荣耀终端股份有限公司） |
+| 命题 | 面向超长程复杂任务的动态异构群体智能架构与深度协同推理技术 |
+| 评分构成 | 完整性 40 + 应用创新 25 + 技术创新 20 + 性能 15 |
+| 截止 | 2026-09-15 |
+
+### 命题分解
+
+| 命题关键词 | 本方案对应能力 | 落地位置 |
+|-----------|---------------|---------|
+| 超长程 | 记忆压缩/唤醒、分段 Planner、时序回放 | `agents/memory/`、`agents/planning/engine/planner/`、`observability/inspect/replay/` |
+| 动态异构 | 异构 Agent 池 + 动态拓扑选举 + 多模型兼容层 | `agents/`、`agents/planning/engine/topology/`、`agents/tools/llms/` |
+| 群体协同 | 红蓝紫对抗 + router 稀疏路由 + critic/reviewer | `agents/planning/engine/router/`、`agents/action/critic/` |
+| 深度协同推理 | 神经-符号闭环（LLM ↔ ATT&CK/CVE 图） | `agents/perception/reasoning/`、`data/` |
+
+### 红蓝紫 Agent 角色一览
+
+| 阵营 | 角色 | 目录 | 输入→输出 |
+|------|------|------|----------|
+| 🔴 红队 | recon | `agents/action/recon/` | 目标范围 → Asset[] |
+| 🔴 红队 | vuln_correlator | `agents/action/vuln_correlator/` | Asset[] → VulnFinding[] |
+| 🔴 红队 | exploit_planner | `agents/action/exploit_planner/` | VulnFinding[] → AttackChain |
+| 🔴 红队 | lateral_move | `agents/action/lateral_move/` | ExploitPlan+Topology → LateralStep[] |
+| 🔵 蓝队 | detector | `agents/action/detector/` | 事件流 → Alert[] |
+| 🔵 蓝队 | triage | `agents/action/triage/` | Alert[] → PrioritizedAlert[] |
+| 🔵 蓝队 | threat_hunt | `agents/action/threat_hunt/` | PrioritizedAlert+ATT&CK → HuntHypothesis[] |
+| 🔵 蓝队 | ir_planner | `agents/action/ir_planner/` | HuntHypothesis → ResponsePlan |
+| 🔵 蓝队 | forensics | `agents/action/forensics/` | ResponsePlan → ForensicReport |
+| 🟣 紫队 | critic | `agents/action/critic/` | 红蓝产出 → 反驳/校验 |
+| 🟣 紫队 | reviewer | `agents/action/reviewer/` | 产出 → 一致性结论 |
+
+### 端边云调度策略（四规则 + 降级）
+
+| 层 | 物理形态 | 算力 | 延迟 | 攻防场景 |
+|----|---------|------|------|---------|
+| 端 (device) | PC/手机/IoT/防火墙 | 极弱（规则/1-3B 小模型） | <100ms | 本地告警分诊、轻量 IDS |
+| 边 (edge) | 边缘网关/机架服务器 | 中等（7-14B, Ollama/vLLM） | <1s | 区域威胁聚合、ATT&CK 初筛 |
+| 云 (cloud) | GPU 集群/模型 API | 强（70B+/GPT-4o） | 1-5s | 全局攻击链推理、跨域关联 |
+
+调度规则：① privacy=local → 端 ② latency<1s → 端 ③ latency<5s → 边 ④ 默认 → 云。降级：端→边→云。
+
+### 后端攻防端点（Phase F 细节）
+
+| 端点 | → service | 说明 |
+|------|-----------|------|
+| POST /api/v1/range/start | range.start | 启动靶场会话 |
+| GET /api/v1/range/{id}/topology | range.topology | 靶场网络拓扑 |
+| POST /api/v1/range/{id}/red/attack | range.red_attack | 提交红队目标→群体推理攻击链 |
+| GET /api/v1/range/{id}/chain | range.chain | 攻击链 DAG |
+| GET /api/v1/range/{id}/defense | range.defense | 蓝队响应 + 防御动作 |
+| GET /api/v1/threat/attack-techniques | threat.techniques | ATT&CK 图查询 |
+
+> 编排仍走 `RuntimeAPI.submit(task)`（见 `plans/13` §3.1）；端点仅领域入口。
+
+### 里程碑验收
+
+| 里程碑 | 验收标准 | 状态 |
+|--------|----------|------|
+| M1（P1-P2） | `cyber.py` 类型可序列化往返；记忆压缩单元测试通过 | ✅ |
+| M2（P3-P4） | router 稀疏路由可计算且非全广播；调度可卸载 | ✅ |
+| M3（P5） | 红蓝紫 Agent 端到端跑通场景 1（攻击链→响应→回放） | 🔲 E13 待做 |
+| M4（P6） | 5 视图可交互，攻击链 DAG 可视化 + 回放 | 🔲 F/G 待做 |
+| M5（P7+演示） | 3 场景可演示，benchmark + 5 维度评测报告就绪 | 🔲 H 待做 |
+
+---
+
+## 📎 附录 B — 前后端开发计划摘要（整合自 `plans/13`）
+
+### 后端↔智能体双向调用设计
+
+- **正向**：后端经 `agents.api.RuntimeAPI.submit(task)` 编排智能体（后端→agents 正向依赖）
+- **反向**：智能体经 DI 端口回调后端（`agents/api/ports.py` 定义端口 Protocol，backend 实现并注入，经典 DIP 零逆向 import）
+  - `PersistencePort`：save_task_result / save_artifact
+  - `SessionPort`：get_session / get_user_context
+  - `TaskUpdatePort`：update_status
+  - 凡能走 EventBus 的不设端口
+
+### 后端 REST 端点（现有 + 攻防扩展）
+
+| 方法 | 路径 | → service | 状态 |
+|------|------|-----------|------|
+| GET | /api/v1/health | — | ✅ |
+| POST | /api/v1/sessions | session.create | ✅ |
+| GET/DELETE | /api/v1/sessions/{id} | session.get/close | ✅ |
+| POST | /api/v1/tasks | task.create → RuntimeAPI.submit | ✅ |
+| GET | /api/v1/tasks · /api/v1/tasks/{id} | task.list/get | ✅ |
+| POST | /api/v1/tasks/{id}/cancel | task.cancel | ✅ |
+| GET | /api/v1/agents | agent.list → AgentRegistryAPI | ✅ |
+| GET | /api/v1/agents/{id} | agent.get | ✅ |
+| POST | /api/v1/agents/{id}/invoke | agent.invoke → RuntimeAPI.run | ✅ |
+| GET/POST | /api/v1/memory/{session} | memory.read/write → MemoryAPI | ✅ |
+| GET | /api/v1/graph | graph.get → EventBus 订阅缓存 | ✅ |
+| POST | /api/v1/tools/{name}/invoke | tool.invoke → ExecutionAPI | ✅ |
+| GET | /api/v1/metrics | metrics → MonitorAPI | ✅ |
+| GET | /api/v1/replay/{session} | replay → ReplayAPI | ✅ |
+| WS | /ws/v1/stream?session= | EventStream → EventBus.subscribe | ✅ |
+| SSE | /api/v1/events?stream= | EventStream → EventBus.subscribe | ✅ |
+| POST | /api/v1/range/* | range.* | 🔲 Phase F |
+| GET | /api/v1/threat/attack-techniques | threat.techniques | 🔲 Phase F |
+
+### 前端分层职责
+
+| 层 | 目录 | 职责 |
+|----|------|------|
+| Controllers | `frontend/src/controllers/` | 交互/事件处理 + 调 service + 分发 views |
+| Services | `frontend/src/services/` | API 调用（经 api-client）、WS/SSE 管理、状态编排 |
+| Lib | `frontend/src/lib/` | HTTP 客户端（api-client/）、全局 store（Zustand） |
+| Views | `frontend/src/views/` | chat ✅ / canvas 🔲 / graph 🔲 / monitor 🔲 / replay 🔲 |
+
+### 并行与依赖编排
+
+```
+protocol(P1) ──┬─→ backend 骨架 ──→ routers→services→repositories ──→ 智能体集成(需 P5) ──→ 测试
+               └─→ frontend 骨架 ──→ lib→services→controllers→views ──→ E2E(需后端)
+gen_ts_types.py 是前后端契约同步桥梁，protocol 变更后 CI 重跑
+```
+
+---
+
+## 📎 附录 C — 实施任务清单摘要（整合自 `plans/15`）
+
+> 核心算法任务（A/B/C）已含完整 TDD 代码并实现；其余任务含确切路径 + 接口契约 + 验收命令。
+
+### Global Constraints
+
+- `protocol/` 是唯一数据契约；现有 `@dataclass`（非 Pydantic），新增类型沿用 dataclass 风格
+- id 字段统一 `*_id`；枚举用驼峰（`NodeKind.Agent`）；`Graph.nodes` 为 dict
+- 跨域调用仅经 `api/`；跨模块禁裸 dict，用 Message 信封
+- 禁低熵全广播：router 仅 Top-K 稀疏路由
+- AI 改动 ≤1 域、≤8 文件、行为保持、含测试
+- 攻防工具仅 Docker 沙箱靶场内运行，永不触真实网络
+- API 签名变更 = 破坏性（major bump + CHANGELOG）
+
+### 技术栈（生产级）
+
+| 层 | 技术 | 版本约束 |
+|----|------|---------|
+| 后端 | FastAPI / Uvicorn / SQLAlchemy+aiosqlite | >=0.110 / >=0.29 / >=2.0 |
+| 消息 | Redis Streams | >=7 |
+| 图 | Neo4j | >=5 |
+| 向量 | Qdrant | >=1.8 |
+| 沙箱 | Docker | — |
+| 通信 | gRPC / MQTT | — |
+| LLM | OpenAI 兼容多模型层 | — |
+| 前端 | React 18 / TS 5 / Vite 5 / Zustand / React Flow / Tailwind / shadcn | — |
 
 ---
 
@@ -285,19 +435,10 @@
 
 | 日期 | 变更 | 提交 |
 |------|------|------|
+| 2026-07-05 | 全工程文档对齐实际结构（14 文件，backend 扁平化 + frontend mappers/→lib/） | `0997b6d` |
+| 2026-07-05 | 整合 plans/13、14、15 到 plan.md，待完成在前+已完成在后 | （本次提交） |
 | 2026-07-04 | 前后端打通：14 Agent 注册 + Chat 联调 + 文档同步 | （见 CHANGELOG） |
-| 2026-07-04 | 创建模块文档体系：MODULE.md + ARCHITECTURE.md | `fadf83c` `e58caa9` `e4851bc` |
-| 2026-07-04 | Phase A-E 核心引擎 TDD 实现（55 测试） | （见 CHANGELOG） |
+| 2026-07-04 | Phase A-E 核心引擎 TDD 实现（55→59 测试） | （见 CHANGELOG） |
 | 2026-07-04 | 统一配置体系：settings.py + defaults.yaml + 前端 config + 20 文件接入 | `240f8c0` |
 | 2026-07-04 | Agent 框架规范化调研：7 类重复造轮子诊断 + litellm/instructor/LangGraph 替换方案 | （文档 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md`） |
-| 2026-07-04 | **端-边-云三层调度升级**：scheduler 2 层→3 层(device/edge/cloud) + 4 规则+降级 + model_router 映射 + 9 测试 + defaults.yaml + AGENT.md + plans/14 §8 | （本次提交） |
-
----
-
-## 📌 维护提醒
-
-1. **每次会话开始**：读本文件了解当前待办 → 读 `roadmap/README.md` 了解宏观阶段
-2. **每次完成任务**：勾选 `[x]` → 更新 `CHANGELOG.md` → 更新本文件「最近变更」段
-3. **新增计划项**：添加到对应 Phase 下 → 标注优先级（P0/P1/P2/P3）→ 标注预估时间和依赖
-4. **阶段完成**：更新 `roadmap/README.md` 进度勾选 + `MODULE.md` 实现状态 + `docs/ARCHITECTURE.md` 仪表盘
-5. **本文件路径**：`developer/plan.md`（非 `specs/plans/` 下的赛事计划，后者是 SSOT 不改动）
+| 2026-07-04 | 端-边-云三层调度升级：scheduler 2 层→3 层 + 4 规则+降级 + model_router 映射 | （见 CHANGELOG） |
