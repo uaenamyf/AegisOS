@@ -20,7 +20,7 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 收尾 + P6 部分 + 框架规范化方案(R1-R5) + 赛事 Phase F-H 待启动 |
-| **测试** | 59 passed（protocol 6 + memory 7 + planning 10 + tools 5 + action 23 + perception 4 + 基础 4） |
+| **测试** | 59 passed（protocol 6 + memory 7 + planning 18 + tools 5 + action 19 + perception 4） |
 | **已完成 Phase** | A ✅ · B(部分) ✅ · C ✅ · D ✅ · E(部分) ✅ · 前后端打通 ✅ · 文档对齐 ✅ |
 | **待完成 Phase** | B3 · E13 · F · G · H · R1-R5 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
@@ -32,7 +32,7 @@
 | 完整性 | 40 | 8 域全实现 + 3 场景可演示 + 回放 | A-E ✅ / F-H 🔲 |
 | 应用创新 | 25 | 攻防对抗仿真 + 跨领域 3 场景 | Agent ✅ / 场景 🔲 |
 | 技术创新 | 20 | 动态异构拓扑 + 低熵路由 + 神经符号闭环 + 记忆压缩唤醒 | C/D/B/E ✅ |
-| 性能 | 15 | benchmark + 端边云调度优化 | 调度 ✅ / 评测 🔲 |
+| 性能 | 15 | benchmark + 端边云三层调度优化 | 调度 ✅ / 评测 🔲 |
 
 ### 3 场景覆盖
 
@@ -145,7 +145,7 @@
 - [ ] R1.4 `protocol/agent.py` / `event.py` / `scheduler.py` / `memory.py` → Pydantic
 - [ ] R1.5 `protocol/tool.py` / `heartbeat.py` / `sync.py` → Pydantic
 - [ ] R1.6 更新所有引用：`asdict()` → `model_dump()` / `from_dict()` → `model_validate()`
-- [ ] R1.7 55 测试全通过
+- [ ] R1.7 59 测试全通过
 
 **阶段 2: LLM Provider → litellm + instructor**（≤4 文件）
 - [ ] R2.1 安装 `litellm` + `instructor` 依赖
@@ -153,14 +153,14 @@
 - [ ] R2.3 `ModelRouter` 改为委托 `UnifiedProvider`
 - [ ] R2.4 MockProvider 保留（测试用），实现 litellm mock adapter
 - [ ] R2.5 删除 `openai_provider.py` / `anthropic_provider.py` / `local_provider.py`
-- [ ] R2.6 55 测试全通过
+- [ ] R2.6 59 测试全通过
 
 **阶段 3: Agent 结构化输出 → instructor**（≤8 文件/批，分 2 批）
 - [ ] R3.1 批 1（红队 4 Agent）：recon / vuln_correlator / exploit_planner / lateral_move
 - [ ] R3.2 批 2（蓝队 5 + 紫队 2 Agent）：detector / triage / threat_hunt / ir_planner / forensics / critic / reviewer
 - [ ] R3.3 每个 Agent 的 `json.loads` + `try/except` 替换为 `instructor` 结构化调用
 - [ ] R3.4 删除 SYSTEM_PROMPT 中的 JSON 格式说明（instructor 自动注入）
-- [ ] R3.5 55 测试全通过
+- [ ] R3.5 59 测试全通过
 
 **阶段 4: LangGraph 编排**（≤4 文件）
 - [ ] R4.1 安装 `langgraph` + `langgraph-checkpoint-sqlite`
@@ -168,12 +168,12 @@
 - [ ] R4.3 新建 `agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
 - [ ] R4.4 `MockRuntime` 替换为 `GraphRuntime`（实现 `RuntimeAPI`）
 - [ ] R4.5 `backend/core/composition.py` 注入 `GraphRuntime`（删除 ~200 行手写 dispatch map）
-- [ ] R4.6 55 测试全通过
+- [ ] R4.6 59 测试全通过
 
 **阶段 5: 事件总线 + 流式**（≤2 文件）
 - [ ] R5.1 新建 `agents/planning/engine/eventbus/impl.py`（基于 `blinker` 或 LangGraph callback）
 - [ ] R5.2 LangGraph `app.stream()` → SSE → 前端 `EventSource`
-- [ ] R5.3 55 测试全通过
+- [ ] R5.3 59 测试全通过
 
 #### 协议迁移（已并入 R1 阶段）
 - [ ] `protocol/scheduler.py` Task 补充 `payload` 字段（当前 MockRuntime 用 getattr fallback）
@@ -234,12 +234,12 @@
 - [x] `frontend/src/config/index.ts` — 前端统一配置入口
 - [x] 后端 5 文件 + 前端 3 文件 + 脚本/构建配置全部接入
 
-### 2026-07-04 Phase A-E 核心引擎 TDD 实现 ✅（55 测试）
+### 2026-07-04 Phase A-E 核心引擎 TDD 实现 ✅（59 测试）
 - [x] **Phase A** — `protocol/cyber.py` 8 个攻防 dataclass（Asset/VulnFinding/AttackStep/AttackChain/Alert/DefenseAction/ResponsePlan/ThreatIntel）+ 6 测试
 - [x] **Phase B（部分）** — `protocol/memory.py` 扩 kind/recent + `agents/memory/compression/compactor.py` 上下文压缩（4 测试）+ `agents/memory/recall/recaller.py` 记忆唤醒 Top-5（3 测试）
-- [x] **Phase C** — `protocol/graph.py` 扩 GraphNode.status + `agents/planning/engine/topology/topology.py` 活跃子图（2 测试）+ `agents/planning/engine/router/router.py` Top-K=3 稀疏路由（3 测试）+ `agents/planning/engine/router/election.py` 异构选举点积（2 测试）
-- [x] **Phase D** — `agents/planning/engine/scheduler/scheduler.py` 端-边-云三层卸载（device/edge/cloud，9 测试）+ `agents/tools/llms/model_router.py` 多模型路由（TIER_PROVIDER_MAP 三层映射，5 测试）+ openai/anthropic/local Provider 实现
-- [x] **Phase E（部分）** — E1-E11 11 个攻防 Agent 全部实现（红队 4 + 蓝队 5 + 紫队 2 = 15 测试）+ E12 `agents/perception/reasoning/neuro_symbolic.py` 神经符号闭环（4 测试）
+- [x] **Phase C** — `protocol/graph.py` 扩 GraphNode.status + `agents/planning/engine/topology/topology.py` 活跃子图（3 测试）+ `agents/planning/engine/router/router.py` Top-K=3 稀疏路由（4 测试）+ `agents/planning/engine/router/election.py` 异构选举点积（3 测试）
+- [x] **Phase D** — `agents/planning/engine/scheduler/scheduler.py` 端-边-云三层卸载（device/edge/cloud，8 测试）+ `agents/tools/llms/model_router.py` 多模型路由（TIER_PROVIDER_MAP 三层映射，5 测试）+ openai/anthropic/local Provider 实现
+- [x] **Phase E（部分）** — E1-E11 11 个攻防 Agent 全部实现（红队 4 + 蓝队 5 + 紫队 2 = 19 测试）+ E12 `agents/perception/reasoning/neuro_symbolic.py` 神经符号闭环（4 测试），共 23 测试
 
 ### 2026-07-04 文档体系 ✅
 - [x] 根 `AGENT.md` 末尾「📋 模块实现总览」段 — 10 大模块总览（原根 `MODULE.md` 已合并）

@@ -108,7 +108,7 @@ def active_subgraph(graph: Graph, required_capability: str) -> Graph
 
 **逻辑**：过滤 `status in {active, degraded}` 且 `required_capability in node.capabilities` 的节点，返回子图。
 
-**测试**：2 个 — capability 过滤 · degraded 包含
+**测试**：3 个 — capability+status 过滤 · degraded 显式包含 · 无匹配返回空图
 
 ---
 
@@ -125,7 +125,7 @@ def route(message: Message, topology: Graph, required_capability: str) -> list[N
    - load_penalty = `latency`（默认 0.0）
 3. 返回 Top-3（`TOP_K = 3`），**非全广播**
 
-**测试**：3 个 — 稀疏性 · 跳过 idle · 偏好高成功率
+**测试**：4 个 — 稀疏性 · 跳过 idle · 偏好高成功率 · 空候选返回空
 
 ---
 
@@ -138,30 +138,33 @@ def elect(task_features: list[float], instances: list[GraphNode],
 
 **逻辑**：计算 `task_features` 与每个实例 `capability_vector` 的点积，选最高分。
 
-**测试**：2 个 — 最优匹配 · 翻转特征后选另一个
+**测试**：3 个 — 最优匹配 · 翻转特征后选另一个 · 单实例返回自身
 
 ---
 
-##### `engine/scheduler/scheduler.py` — 端边云卸载调度
+##### `engine/scheduler/scheduler.py` — 端边云三层卸载调度
 
 ```python
 @dataclass
 class Model:
     model_id: str
-    tier: str       # edge | cloud
+    tier: str       # device | edge | cloud
     size: str       # small | medium | large
     capabilities: list
 
 def schedule(task: Task, models: list[Model], required_capability: str | None = None) -> Model
 ```
 
-**调度规则**：
-1. `task.privacy == "local"` → 必须 edge
-2. `task.latency_budget < 5.0` (EDGE_THRESHOLD) → 偏好 edge
-3. 否则 → 偏好 cloud
-4. 按 `required_capability` 过滤
+**三层分级**：device（端侧 PC/手机/IoT）→ edge（边侧网关/机架服务器）→ cloud（云侧 GPU 集群/模型 API）
 
-**测试**：3 个 — privacy=local 选 edge · 低延迟选 edge · 高延迟选 cloud
+**调度规则（四规则 + 降级）**：
+1. `task.privacy == "local"` → 必须 device；无 device 降级取层级最低候选
+2. `latency_budget < 1.0`（DEVICE_THRESHOLD）→ 优先 device；无 device 降级到 edge，再缺失取首个
+3. `latency_budget < 5.0`（EDGE_THRESHOLD）→ 优先 edge；无 edge 取首个
+4. 其余 → cloud；无 cloud 取首个
+5. 按 `required_capability` 过滤
+
+**测试**：8 个 — privacy=local 选 device · 超低延迟选 device · 超低延迟无 device 降级 edge · 低延迟选 edge · privacy=local 无 device 降级 edge · 高延迟选 cloud · 能力过滤 · 三层共存选 edge
 
 ---
 
@@ -268,7 +271,7 @@ def recall(trigger: str, episodic: list[MemoryPacket], vector: list[MemoryPacket
 
 **实现模式**：每个 Agent 接收 `ModelProvider`，通过 LLM ��成结构化 JSON → 解析为 protocol 类型。Mock 测试使用 `MockProvider`。
 
-**测试**：15 个（每个 Agent 1-2 个测试），全部通过。
+**测试**：19 个（每个 Agent 1-2 个测试），全部通过。
 
 ---
 
@@ -324,12 +327,13 @@ class ModelRouter:
     MODEL_PREFIX_MAP = {"gpt": "openai", "o1": "openai", "o3": "openai",
                         "claude": "anthropic", "local": "local", "qwen": "local",
                         "deepseek": "local", "llama": "local", "mock": "mock"}
+    TIER_PROVIDER_MAP = {"device": "local", "edge": "local", "cloud": "cloud"}
 ```
 
 **路由逻辑**：
 1. 按 `request.model_id` 前缀匹配 provider
 2. 匹配不到 → 使用 `default_provider`
-3. `complete_with_model()` 按 scheduler Model.tier 映射
+3. `complete_with_model()` 按 scheduler Model.tier（device/edge/cloud）映射到 provider
 
 **测试**：5 个 — mock 返回 · 正确 provider 分发 · fallback 到默认 · 无匹配返回 stub · tier 映射
 
@@ -368,8 +372,8 @@ class ModelRouter:
 | 目录 | 文件数 | 测试数 |
 |------|--------|--------|
 | `tests/agents/memory/` | 2 | 7 |
-| `tests/agents/planning/` | 4 | 10 |
+| `tests/agents/planning/` | 4 | 18 |
 | `tests/agents/tools/` | 1 | 5 |
-| `tests/agents/action/` | 11 | 15 |
+| `tests/agents/action/` | 11 | 19 |
 | `tests/agents/perception/` | 1 | 4 |
-| **合计** | **19** | **41** |
+| **合计** | **19** | **53** |

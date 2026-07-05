@@ -38,13 +38,13 @@
 - `developer/specs/06_SCHEMA_SPEC.md`：登记 MemoryPacketSchema.kind/recent + GraphNodeSchema.status + §14 CyberSchema 类型表 + §12 映射表更新。
 
 ### 验证
-- `pytest tests/ -v`：55 passed。
+- `pytest tests/ -v`：59 passed。
 - GET /agents 返回 14 个 Agent；POST /agents/recon/invoke 返回 2 资产；POST /agents/detector/invoke 返回 1 告警。
 - 前端 Chat 下拉框显示 14 个 Agent；Swagger UI 可访问。
 
 ## [P1-P5] 2026-07-04 Phase A-E：攻防核心引擎 TDD 实现
 
-> 按 `docs/superpowers/plans/2026-07-04-agents-phase-ae.md` 计划，以 TDD 方式实现攻防群体智能核心引擎（12 任务，55 测试全通过）。
+> 按 `docs/superpowers/plans/2026-07-04-agents-phase-ae.md` 计划，以 TDD 方式实现攻防群体智能核心引擎（12 任务，59 测试全通过）。
 
 ### Phase A — protocol 攻防类型 (A1)
 - 新增 `protocol/cyber.py`：8 个 `@dataclass`（Asset / VulnFinding / AttackStep / AttackChain(含 to_dict/from_dict) / Alert / DefenseAction / ResponsePlan / ThreatIntel）。
@@ -63,10 +63,9 @@
 - 新增 `agents/planning/engine/router/router.py`：`route(message, topology, required_capability) -> list[NodeRef]`，Top-K=3 稀疏路由（非全广播），按 success_rate - latency 排序。
 - 新增 `agents/planning/engine/router/election.py`：`elect(task_features, instances, capability_vectors) -> NodeRef`，任务特征向量与能力向量点积最大者当选。
 - 测试：10 个（3 topology + 4 router + 3 election）。
-
-### Phase D — 端边云调度 + 多模型兼容层 (D1+D2)
+### Phase D — 端边云三层调度 + 多模型兼容层 (D1+D2)
 - 扩展 `protocol/scheduler.py`：`Task` 新增 `privacy: str = "standard"` 和 `latency_budget: float = 10.0`。
-- 新增 `agents/planning/engine/scheduler/scheduler.py`：`schedule(task, models, required_capability) -> Model`，privacy=local 或低延迟预算选 edge、否则选 cloud。
+- 新增 `agents/planning/engine/scheduler/scheduler.py`：`schedule(task, models, required_capability) -> Model`，端边云三层卸载（device/edge/cloud），四规则 + 降级：privacy=local→device，latency<1s→device，latency<5s→edge，默认→cloud；缺失时逐级降级。
 - 新增 `agents/tools/llms/` 多模型兼容层：
   - `base.py`：`ModelProvider` Protocol + `LLMRequest` / `LLMResponse` dataclass。
   - `mock_provider.py`：确定性 Mock（测试/离线开发用）。
@@ -75,7 +74,7 @@
   - `local_provider.py`：Ollama / vLLM / LM Studio 本地模型。
   - `model_router.py`：`ModelRouter` 按模型前缀 / tier 路由到对应 provider。
   - `scheduler_adapter.py`：薄适配层，避免 tools 直接依赖 planning。
-- 测试：9 个（4 scheduler + 5 model_router）。
+- 测试：13 个（8 scheduler + 5 model_router）。
 
 ### Phase E — 红蓝紫 Agent 角色 + 神经符号闭环 (E1-E12)
 - **红队 (E1-E4)**：
@@ -99,7 +98,7 @@
 ### 质量门禁
 - `ruff format`：43 文件已格式化。
 - `ruff check --fix`：51 个问题自动修复，剩余 8 个为既有代码（StrEnum 建议 + 已有模块类型注解）。
-- `pytest tests/ -v`：**55 passed in 0.04s**。
+- `pytest tests/ -v`：**59 passed in 0.05s**。
 - 所有 AI 生成代码含 `@aegis-gen` 注释头（date/dev/change）。
 
 ## [P0] 2026-06-26

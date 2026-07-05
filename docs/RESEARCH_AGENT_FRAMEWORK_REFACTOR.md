@@ -424,7 +424,7 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 - [ ] `protocol/memory.py` → Pydantic
 - [ ] `protocol/tool.py` / `heartbeat.py` / `sync.py` → Pydantic
 - [ ] 更新所有引用 `asdict()` → `model_dump()` / `from_dict()` → `model_validate()`
-- [ ] 55 测试全通过
+- [ ] 59 测试全通过
 
 ### 阶段 2: LLM Provider 统一（≤4 文件）
 - [ ] 安装 `litellm` + `instructor`
@@ -432,14 +432,14 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 - [ ] `ModelRouter` 改为委托 `UnifiedProvider`
 - [ ] MockProvider 保留（测试用），但实现 `litellm` mock adapter
 - [ ] 删除 `openai_provider.py` / `anthropic_provider.py` / `local_provider.py`
-- [ ] 55 测试全通过
+- [ ] 59 测试全通过
 
 ### 阶段 3: Agent 结构化输出（≤8 文件/批，分 2 批）
 - [ ] 批 1（红队 4 Agent）：`recon` / `vuln_correlator` / `exploit_planner` / `lateral_move`
 - [ ] 批 2（蓝队 5 + 紫队 2 Agent）：`detector` / `triage` / `threat_hunt` / `ir_planner` / `forensics` / `critic` / `reviewer`
 - [ ] 每个 Agent 的 `json.loads` 替换为 `instructor` 结构化调用
 - [ ] 删除 `SYSTEM_PROMPT` 中的 JSON 格式说明（instructor 自动注入）
-- [ ] 55 测试全通过
+- [ ] 59 测试全通过
 
 ### 阶段 4: LangGraph 编排（≤4 文件）
 - [ ] 安装 `langgraph`
@@ -447,12 +447,12 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 - [ ] 新建 `agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
 - [ ] `MockRuntime` 替换为 `GraphRuntime`（实现 `RuntimeAPI`）
 - [ ] `backend/core/composition.py` 注入 `GraphRuntime`
-- [ ] 55 测试全通过
+- [ ] 59 测试全通过
 
 ### 阶段 5: 事件总线 + 流式（≤2 文件）
 - [ ] 新建 `agents/planning/engine/eventbus/impl.py`（基于 `blinker` 或 LangGraph callback）
 - [ ] LangGraph `app.stream()` → SSE → 前端 `EventSource`
-- [ ] 55 测试全通过
+- [ ] 59 测试全通过
 
 ---
 
@@ -486,7 +486,7 @@ dependencies = [
 
 | 风险 | 概率 | 影响 | 缓解 |
 |------|------|------|------|
-| Pydantic 迁移破坏现有 55 测试 | 中 | 中 | 先跑测试确认基线，逐文件迁移每步验证 |
+| Pydantic 迁移破坏现有 59 测试 | 中 | 中 | 先跑测试确认基线，逐文件迁移每步验证 |
 | litellm 版本兼容性 | 低 | 低 | 锁定版本，CI 验证 |
 | instructor 重试导致 token 消耗增加 | 中 | 低 | 配置 `max_retries=1`，MockProvider 不走 instructor |
 | LangGraph 学习曲线 | 中 | 中 | 先包装现有 Agent，不改算法 |

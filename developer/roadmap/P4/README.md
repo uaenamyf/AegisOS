@@ -3,7 +3,7 @@
 > AegisOS 系统级开发计划阶段 P4。Agent 开发前据此定位「现在做哪一步、下一步是什么」。
 
 ## 目标
-实现调度器
+实现端边云三层卸载调度器（device/edge/cloud）
 
 ## 输入
 agents/planning/engine/router/ + 任务

@@ -5,6 +5,8 @@
 ## 职责
 任务调度与队列管理：按优先级、资源、依赖调度执行单元，支持抢占与重试。
 
+**端边云三层卸载**（已实现 `scheduler.py`）：依据任务的隐私约束（`privacy`）与延迟预算（`latency_budget`），在 device（端侧 PC/手机/IoT）→ edge（边侧网关/机架服务器）→ cloud（云侧 GPU 集群/模型 API）三个层级中选择最合适的模型执行任务。四规则 + 降级：① privacy=local → device ② latency<1s → device ③ latency<5s → edge ④ 默认 → cloud；缺失时逐级降级。
+
 ## 读取目录（允许读）
 - protocol/
 - agents/planning/engine/router/

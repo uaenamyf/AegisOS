@@ -99,7 +99,7 @@ cd frontend && npm run dev
 
 ```bash
 # 运行测试
-.venv/bin/python -m pytest tests/ -v          # 55 passed
+.venv/bin/python -m pytest tests/ -v          # 59 passed
 
 # 质量门禁
 .venv/bin/ruff format && .venv/bin/ruff check --fix
@@ -119,7 +119,7 @@ open http://localhost:8000/docs                # Swagger UI
 | **A** | protocol 攻防类型（cyber.py） | ✅ 完成 | 6 |
 | **B** | 超长程记忆压缩 + 唤醒 | ✅ 完成 | 7 |
 | **C** | 拓扑 + 低熵路由 + 异构选举 | ✅ 完成 | 10 |
-| **D** | 端边云调度 + 多模型兼容 | ✅ 完成 | 9 |
+| **D** | 端边云三层调度 + 多模型兼容 | ✅ 完成 | 13 |
 | **E** | 11 红蓝紫 Agent + 神经符号闭环 | ✅ 完成 | 23 |
 | — | 前后端打通（14 Agent + Chat） | ✅ 完成 | — |
 | **B3** | 记忆接入 runtime 认知循环 | 🔲 待做 | — |
@@ -168,7 +168,7 @@ AegisOS/
 ├── infrastructure/    # 基建（沙箱/端边云/传输）
 ├── observability/     # 可观测（监控/基准/评测）
 ├── data/              # 数据（Neo4j/Qdrant 待接入）
-├── tests/             # 测试（55 passed）
+├── tests/             # 测试（59 passed）
 └── tooling/           # 工具链（gen_readme/gen_ts_types）
 ```
 

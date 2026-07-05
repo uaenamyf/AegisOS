@@ -98,7 +98,7 @@
 > 冲突优先级：`00` > `04` ≈ `05` ≈ `06` > 其余编号 > 各模块 `AGENT.md`。必读顺序见根 `AGENT.md`。
 
 ### roadmap（`developer/roadmap/`，P0..P7）
-`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P5 ✅ 完成**（55 测试通过），**P6 部分完成**（ChatView ✅，攻防视图 🔲），P7 未开始；各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
+`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P5 ✅ 完成**（59 测试通过），**P6 部分完成**（ChatView ✅，攻防视图 🔲），P7 未开始；各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
 
 ### skills（`.claude/skills/`，按需启用）
 - **superpowers（14）**：`writing-plans` · `executing-plans` · `subagent-driven-development` · `dispatching-parallel-agents` · `brainstorming` · `test-driven-development` · `systematic-debugging` · `verification-before-completion` · `requesting-code-review` · `receiving-code-review` · `using-git-worktrees` · `finishing-a-development-branch` · `using-superpowers` · `writing-skills`。
@@ -108,7 +108,7 @@
 - ⚠️ 本会话发现：子代理执行模型 `deepseek-v4-flash` 对本 token 无访问权（403），多代理派发暂不可用；改用脚本/主线直改。
 
 ### 计划（`developer/specs/plans/`）
-`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E 已完成（55 测试通过）；下一步：B3 runtime 集成 + 编排器 + E13 e2e + F/G 攻防端点视图。
+`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E 已完成（59 测试通过）；下一步：B3 runtime 集成 + 编排器 + E13 e2e + F/G 攻防端点视图。
 > **动态开发计划**：`developer/plan.md` — 当前未完成任务清单 + 下一步计划，每次会话必读、每次完成任务后更新勾选。
 
 ---

@@ -2,7 +2,7 @@
 
 > 本文件对每个顶层域的实际**代码实现状态**做精确描述：已实现什么、未实现什么、关键文件在哪、测试覆盖如何。
 > 各域详细实现文档已合并至对应 `AGENT.md` 末尾「📋 模块实现详解」段；全局模块总览已合并至根 `AGENT.md` 末尾「📋 模块实现总览」段。
-> 最后更新：2026-07-04 · 55 个测试全通过
+> 最后更新：2026-07-05 · 59 个测试全通过
 
 ---
 
@@ -65,7 +65,7 @@
 | [`engine/topology/topology.py`](../agents/planning/engine/topology/topology.py) | `active_subgraph()` | 按 capability + status(active/degraded) 过滤活跃子图 | 2 |
 | [`engine/router/router.py`](../agents/planning/engine/router/router.py) | `route()` | 低熵稀疏路由 Top-K=3，按 affinity - load_penalty 排序 | 3 |
 | [`engine/router/election.py`](../agents/planning/engine/router/election.py) | `elect()` | 异构选举：task_features · capability_vectors 点积最高者胜出 | 2 |
-| [`engine/scheduler/scheduler.py`](../agents/planning/engine/scheduler/scheduler.py) | `schedule()` · `Model` | 端边云卸载：privacy=local→edge，latency<5s→edge，否则→cloud | 3 |
+| [`engine/scheduler/scheduler.py`](../agents/planning/engine/scheduler/scheduler.py) | `schedule()` · `Model` | 端边云三层卸载：device/edge/cloud，privacy=local→device，latency<1s→device，latency<5s→edge，否则→cloud，降级端→边→云 | 8 |
 
 > 🔲 **未实现**：`planner/` · `orchestrator/` · `engine/workflow/` · `engine/eventbus/` 仅有 AGENT.md，编排器全空
 
@@ -108,7 +108,7 @@
 |------|-----|------|------|
 | [`llms/base.py`](../agents/tools/llms/base.py) | `LLMRequest` · `LLMResponse` · `ModelProvider` | LLM 调用抽象基类 | — |
 | [`llms/mock_provider.py`](../agents/tools/llms/mock_provider.py) | `MockProvider` | 测试用 Mock 实现 | — |
-| [`llms/model_router.py`](../agents/tools/llms/model_router.py) | `ModelRouter` | 多模型路由：gpt→OpenAI, claude→Anthropic, local/*→本地, 按 tier(edge/cloud) 映射 | 5 |
+| [`llms/model_router.py`](../agents/tools/llms/model_router.py) | `ModelRouter` | 多模型路由：gpt→OpenAI, claude→Anthropic, local/*→本地, 按 tier(device/edge/cloud) 映射 | 5 |
 
 #### `agents/api/` — 公共接口（✅ 5 接口定义完成）
 
@@ -285,15 +285,15 @@
 
 ## tests/ — 测试
 
-### 测试分布（55 个测试，全通过）
+### 测试分布（59 个测试，全通过）
 
 | 目录 | 测试文件 | 测试数 | 覆盖内容 |
 |------|---------|--------|---------|
 | `tests/protocol/` | `test_cyber.py` | 6 | 8 个攻防 dataclass 字段/序列化 |
 | `tests/agents/memory/` | `test_compactor.py` · `test_recaller.py` | 7 | 上下文压缩 + 记忆唤醒 |
-| `tests/agents/planning/` | `test_topology.py` · `test_router.py` · `test_election.py` · `test_scheduler.py` | 10 | 活跃子图 + Top-K 路由 + 选举 + 调度 |
+| `tests/agents/planning/` | `test_topology.py` · `test_router.py` · `test_election.py` · `test_scheduler.py` | 18 | 活跃子图 + Top-K 路由 + 选举 + 端边云三层调度 |
 | `tests/agents/tools/` | `test_model_router.py` | 5 | 多模型路由 |
-| `tests/agents/action/` | 11 个 `test_*.py` | 15 | 11 个攻防 Agent |
+| `tests/agents/action/` | 11 个 `test_*.py` | 19 | 11 个攻防 Agent |
 | `tests/agents/perception/` | `test_neuro_symbolic.py` | 4 | 神经符号闭环 |
 
 ### 未实现
