@@ -39,7 +39,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["protocol", "agents", "backend", "frontend", "infrastructure", "observability", "data", "tooling"]
+known-first-party = ["protocol", "aegisos_agents", "backend", "frontend", "infrastructure", "observability", "data", "tooling"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -59,4 +59,4 @@ addopts = "-ra --tb=short"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["protocol*", "agents*", "backend*", "frontend*", "infrastructure*", "observability*", "data*", "tooling*"]
+include = ["protocol*", "aegisos_agents*", "backend*", "frontend*", "infrastructure*", "observability*", "data*", "tooling*"]

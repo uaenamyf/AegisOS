@@ -9,8 +9,8 @@
 
 from __future__ import annotations
 
-from agents.tools.llms.base import LLMRequest, LLMResponse
-from agents.tools.llms.mock_provider import MockProvider
+from aegisos_agents.tools.llms.base import LLMRequest, LLMResponse
+from aegisos_agents.tools.llms.mock_provider import MockProvider
 
 
 def _build_cyber_mock_responses() -> dict[str, str]:

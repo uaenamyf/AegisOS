@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-05 · 59 测试全通过 · 文档对齐实际结构 ✅ · 整合 roadmap 到附录 D ✅
+> 最后更新：2026-07-06 · 90 测试全通过 · B3 记忆接入 runtime ✅ · E13 场景 1 端到端 ✅ · 文档对齐实际结构 ✅ · 整合 roadmap 到附录 D ✅
 
 ---
 
@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 收尾 + P6 部分 + 框架规范化方案(R1-R5) + 赛事 Phase F-H 待启动 |
-| **测试** | 59 passed（protocol 6 + memory 7 + planning 18 + tools 5 + action 19 + perception 4） |
-| **已完成 Phase** | A ✅ · B(部分) ✅ · C ✅ · D ✅ · E(部分) ✅ · 前后端打通 ✅ · 文档对齐 ✅ |
-| **待完成 Phase** | B3 · E13 · F · G · H · R1-R5 |
+| **测试** | 90 passed（protocol 6 + memory 33 + planning 18 + tools 5 + action 19 + perception 4 + e2e 5） |
+| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · 文档对齐 ✅ |
+| **待完成 Phase** | 编排器 · F · G · H · R1-R5 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -44,20 +44,7 @@
 
 ### 🔥 P0 — 立即执行（本周）
 
-#### B3 — 记忆接入 runtime 认知循环
-> **优先级**：P0 · **预估**：1-2 天 · **阻塞**：E13 端到端测试
-- [ ] B3.1 `agents/memory/working/` 工作记忆实现（当前会话上下文存储）
-- [ ] B3.2 `agents/memory/episodic/` 情景记忆实现（历史任务经验存储）
-- [ ] B3.3 `agents/memory/semantic/` 语义记忆实现（ATT&CK/CVE 知识库）
-- [ ] B3.4 `agents/memory/vector/` 向量记忆实现（Qdrant 接入预留）
-- [ ] B3.5 编排器调用 compactor + recaller 形成闭环
-- [ ] B3.6 测试：记忆读写检索 + 压缩唤醒集成测试
-
-#### E13 — 场景 1 端到端测试
-> **优先级**：P0 · **预估**：1 天 · **依赖**：B3 完成
-- [ ] E13.1 `tests/e2e/test_scenario1.py` — 红→蓝→紫完整链路
-- [ ] E13.2 测试流程：recon → vuln_correlator → exploit_planner → detector → triage → ir_planner → critic → reviewer
-- [ ] E13.3 验证 AttackChain → Alert → ResponsePlan → Critique 全链路数据流
+> ✅ B3 + E13 已于 2026-07-06 完成，详见 §8「已完成任务」。下一步 P1：编排器实现。
 
 ### ⚡ P1 — 短期（1-2 周）
 
@@ -212,6 +199,23 @@
 
 ## ✅ 已完成任务（留痕，按完成时间倒序）
 
+### 2026-07-06 B3 记忆接入 runtime 认知循环 + E13 场景 1 端到端 ✅（90 测试）
+
+**B3 — 记忆接入 runtime 认知循环**（agents/memory/ 域，11 文件 + 5 测试文件，+31 测试）
+- [x] B3.1 `agents/memory/working/store.py` — WorkingMemory 工作记忆（按 session 隔离的上下文栈，add/get/clear/sessions）
+- [x] B3.2 `agents/memory/episodic/store.py` — EpisodicMemory 情景记忆（跨会话历史经验累积，add/all/by_task）
+- [x] B3.3 `agents/memory/semantic/store.py` — SemanticMemory 语义记忆（ATT&CK/CVE 知识库，预置 8 个种子技战术，add/get/search/seed_attack_knowledge）
+- [x] B3.4 `agents/memory/vector/store.py` — VectorMemory 向量记忆（余弦相似度 Top-K 检索，Qdrant 接入预留位，add/search）
+- [x] B3.5 `agents/memory/memory_store.py` — MemoryStore 集成层：聚合四层存储 + compactor + recaller，实现 MemoryAPI（read/write/retrieve），提供 recall/search_knowledge/compress/end_session 形成认知循环闭环
+- [x] B3.6 测试：`tests/agents/memory/test_working.py`(4) + `test_episodic.py`(3) + `test_semantic.py`(4) + `test_vector.py`(5) + `test_memory_store.py`(10) = 26 测试
+
+**E13 — 场景 1 端到端测试**（tests/e2e/ 域，1 测试文件，+5 测试）
+- [x] E13.1 `tests/e2e/test_scenario1.py` — 红→蓝→紫完整链路
+- [x] E13.2 测试流程：recon → vuln_correlator → exploit_planner → detector → triage → threat_hunt → ir_planner → critic → reviewer
+- [x] E13.3 验证 AttackChain → Alert → ResponsePlan → Critique 全链路数据流 + B3 记忆闭环（write → recall → compress → 压缩后仍可唤醒）
+
+**质量门禁**：ruff format ✅ · ruff check ✅（我的文件全通过）· mypy ✅（实现文件 0 错误，protocol/ 既有 39 错误未触碰）· pytest 90 passed（59→90）
+
 ### 2026-07-05 文档对齐实际结构 ✅
 - [x] 全工程 14 个治理文档路径对齐：backend 扁平化（src/→扁平 + gateway/→core/ + controllers/→routers/ + mappers/→repositories/+models/）+ frontend mappers/→lib/（store/+api-client/）
 - [x] 模式名修正：Controller-Service-Mapper → Controller-Service-Lib（前端）/ Router-Service-Repository-Model（后端）
@@ -343,7 +347,7 @@
 |--------|----------|------|
 | M1（P1-P2） | `cyber.py` 类型可序列化往返；记忆压缩单元测试通过 | ✅ |
 | M2（P3-P4） | router 稀疏路由可计算且非全广播；调度可卸载 | ✅ |
-| M3（P5） | 红蓝紫 Agent 端到端跑通场景 1（攻击链→响应→回放） | 🔲 E13 待做 |
+| M3（P5） | 红蓝紫 Agent 端到端跑通场景 1（攻击链→响应→回放） | ✅ E13 完成 |
 | M4（P6） | 5 视图可交互，攻击链 DAG 可视化 + 回放 | 🔲 F/G 待做 |
 | M5（P7+演示） | 3 场景可演示，benchmark + 5 维度评测报告就绪 | 🔲 H 待做 |
 
@@ -517,6 +521,7 @@ P0 项目初始化 → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler 
 
 | 日期 | 变更 | 提交 |
 |------|------|------|
+| 2026-07-06 | B3 记忆接入 runtime（4 存储 + MemoryStore 闭环，+26 测试）+ E13 场景 1 端到端（+5 测试），90 passed | （本次提交） |
 | 2026-07-05 | 整合 `developer/roadmap/`（P0-P7 阶段详情 + 进度 + 赛事对齐）到 plan.md 附录 D | （本次提交） |
 | 2026-07-05 | 全工程文档对齐实际结构（14 文件，backend 扁平化 + frontend mappers/→lib/） | `0997b6d` |
 | 2026-07-05 | 整合 plans/13、14、15 到 plan.md，待完成在前+已完成在后 | （本次提交） |

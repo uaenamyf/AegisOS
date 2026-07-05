@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from agents.api import RuntimeAPI
+from aegisos_agents.api import RuntimeAPI
 from backend.repositories.repositories import TaskRepository
 from protocol import Task, TaskStatus
 

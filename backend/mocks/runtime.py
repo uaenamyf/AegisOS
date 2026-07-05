@@ -8,17 +8,17 @@ from __future__ import annotations
 from dataclasses import asdict as _asdict
 from typing import Any
 
-from agents.action.critic.agent import CriticAgent
-from agents.action.detector.agent import DetectorAgent
-from agents.action.exploit_planner.agent import ExploitPlannerAgent
-from agents.action.forensics.agent import ForensicsAgent
-from agents.action.ir_planner.agent import IRPlannerAgent
-from agents.action.lateral_move.agent import LateralMoveAgent
-from agents.action.recon.agent import ReconAgent
-from agents.action.reviewer.agent import ReviewerAgent
-from agents.action.threat_hunt.agent import ThreatHuntAgent
-from agents.action.triage.agent import TriageAgent
-from agents.action.vuln_correlator.agent import VulnCorrelatorAgent
+from aegisos_agents.action.critic.agent import CriticAgent
+from aegisos_agents.action.detector.agent import DetectorAgent
+from aegisos_agents.action.exploit_planner.agent import ExploitPlannerAgent
+from aegisos_agents.action.forensics.agent import ForensicsAgent
+from aegisos_agents.action.ir_planner.agent import IRPlannerAgent
+from aegisos_agents.action.lateral_move.agent import LateralMoveAgent
+from aegisos_agents.action.recon.agent import ReconAgent
+from aegisos_agents.action.reviewer.agent import ReviewerAgent
+from aegisos_agents.action.threat_hunt.agent import ThreatHuntAgent
+from aegisos_agents.action.triage.agent import TriageAgent
+from aegisos_agents.action.vuln_correlator.agent import VulnCorrelatorAgent
 from backend.mocks.cyber_provider import _CyberMockProvider
 from protocol import Heartbeat, NodeRef, Task, TaskStatus
 from protocol.cyber import Alert, Asset, AttackChain, ResponsePlan, VulnFinding

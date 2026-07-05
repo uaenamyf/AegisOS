@@ -2,6 +2,58 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [infra] 2026-07-06 项目目录 agents/ → aegisos_agents/（解决 SDK 包名冲突）
+
+### 变更内容
+- **背景**：安装 `openai-agents` SDK 后，SDK 包名 `agents` 与项目目录 `agents/` 同名冲突，`import agents` 被项目目录遮蔽导致 SDK 不可用，且 pytest collection 崩溃（25 errors）。
+- **执行 A 方案**：`git mv agents aegisos_agents` + `git mv tests/agents tests/aegisos_agents`。
+- **import 替换**：46 个 `.py` 文件中 86 处 `from agents.` → `from aegisos_agents.`（sed 全仓替换）。
+- **配置更新**：`pyproject.toml` 的 `ruff.lint.isort.known-first-party` + `setuptools.packages.find.include` 从 `agents*` → `aegisos_agents*`。
+- **editable 重装**：`pip install -e . --no-deps` 重新扫描包发现。
+- **验证**：`import agents` 现解析到 SDK（site-packages）；`from aegisos_agents.xxx import` 正常；pytest 90 passed；ruff 我方文件全通过；mypy 实现文件 0 错误。
+- **待办**：120 个 `.md` 文档含 `agents/` 路径引用，多数为语义描述，关键规范文档（03_IMPORT_SPEC / 02_DIRECTORY_SPEC / 根 AGENT.md）路径更新待后续批量处理。
+
+### 影响范围
+- 46 个 `.py` 文件（aegisos_agents/ 30 + tests/aegisos_agents/ 15 + backend/ 5）
+- pyproject.toml
+- 目录：agents/ → aegisos_agents/，tests/agents/ → tests/aegisos_agents/
+
+## [docs] 2026-07-06 框架替换方案文档核实修正
+
+### 变更内容
+- 基于 2026-07-06 对 `agents/` 全目录 56 个 `.py` 文件（3133 行）的逐文件审查，修正 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md` 4 处诊断差异 + 补入 3 处新发现：
+  - **§1.1**：4 Provider 行数 ~220 → 实测 368（未计 docstring 的低估）
+  - **§1.2**：11 Agent 行数 ~550 → 实测 882；补入第 12 处 `neuro_symbolic.py` L146-168（原文遗漏）
+  - **§1.4**：MockRuntime 位置 `composition.py` → `backend/mocks/runtime.py`（2026-07-05 拆出）；dispatch 85 行
+  - **§1.5**：memory 现状 2 实现 → 7 实现（B3 新增 5 文件 700 行）；新增 13 子模块实现状态表
+  - **§1.8 新增**：`_CyberMockProvider` 硬编码 JSON 220 行 / `model_router.py` 前缀路由可由 litellm 替代 / `memory_store.py` write 分发（保留）
+  - **§4**：替换前后对比表更新为实测行数（~1020 → ~1628 行可替换，-69%）
+  - **§5**：保留模块表补入 B3 五层存储 + neuro_symbolic 符号验证逻辑 + model_router tier 部分
+  - **§6**：迁移路线测试基线 59 → 90；阶段 3 从 2 批改 3 批（补入 neuro_symbolic + cyber_provider mock 简化）
+
+## [P5] 2026-07-06 B3 记忆接入 runtime 认知循环 + E13 场景 1 端到端
+
+### B3 — 记忆接入 runtime 认知循环（agents/memory/ 域）
+- 新增 `agents/memory/working/store.py` — WorkingMemory 工作记忆：按 session_id 隔离的上下文栈，add/get/clear/sessions。
+- 新增 `agents/memory/episodic/store.py` — EpisodicMemory 情景记忆：跨会话历史经验累积，add/all/by_task。
+- 新增 `agents/memory/semantic/store.py` — SemanticMemory 语义记忆：ATT&CK/CVE 知识库，预置 8 个种子技战术（T1595/T1592/T1210/T1059/T1078/T1046/T1021/T1053），add/get/search/seed_attack_knowledge。
+- 新增 `agents/memory/vector/store.py` — VectorMemory 向量记忆：余弦相似度 Top-K 检索（Qdrant 接入预留位），add/search。
+- 新增 `agents/memory/memory_store.py` — MemoryStore 集成层：聚合四层存储 + compactor + recaller，实现 `agents.api.MemoryAPI`（read/write/retrieve），提供 recall/search_knowledge/compress/end_session 形成认知循环闭环（write → recall → compress → 压缩后情景记忆仍可唤醒）。
+- 修复 `compress` 重填工作记忆时 digest 包 session_id 缺失问题：重填时给每个包盖上目标 session_id。
+- 新增测试 26 个：test_working(4) + test_episodic(3) + test_semantic(4) + test_vector(5) + test_memory_store(10)。
+
+### E13 — 场景 1 端到端测试（tests/e2e/ 域）
+- 新增 `tests/e2e/test_scenario1.py` — 红→蓝→紫完整链路 5 个测试：
+  - 红队链路（recon→vuln_correlator→exploit_planner→AttackChain）
+  - 蓝队链路（detector→triage→threat_hunt→ir_planner→ResponsePlan）
+  - 紫队链路（critic 校验攻击链 + reviewer 跨产出一致性审查）
+  - 全链路数据流集成（Asset→VulnFinding→AttackChain→Alert→ResponsePlan→Critique + B3 记忆闭环验证）
+  - 记忆唤醒辅助推理（recall 唤醒历史经验 + 语义知识库查询 ATT&CK 横向移动）
+- 使用 `_CyberMockProvider` 驱动 11 个真实 Agent 实例，无需真实 LLM API。
+
+### 质量门禁
+- ruff format ✅ · ruff check ✅（新增文件全通过）· mypy ✅（实现文件 0 错误，protocol/ 既有 39 错误未触碰）· pytest 90 passed（59→90，+31）。
+
 ## [P6] 2026-07-04 文档整合：MODULE.md → AGENT.md
 
 ### 变更内容

@@ -124,7 +124,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | # | 大模块 | 是什么 | 代码文件 | 测试数 | 实现状态 |
 |---|--------|--------|---------|--------|---------|
 | 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
-| 2 | `agents/` | 智能体域 — 认知核心，五层架构 | 20 `.py` | 41 | ✅ 核心算法完成 / 🔲 编排器待补 |
+| 2 | `agents/` | 智能体域 — 认知核心，五层架构 | 25 `.py` | 84 | ✅ 核心算法完成 / 🔲 编排器待补 |
 | 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 18 `.py` | — | ✅ 可运行 |
 | 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 |
 | 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
@@ -132,7 +132,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 7 | `data/` | 数据层 — 数据集 · 模型 schema | 1 `.py` | 0 | 🔲 仅 API 协议 + SQLite |
 | 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
 | 9 | `developer/` | 规范层 — SSOT 规范 + roadmap | 0 `.py` | — | ✅ 规范就位 |
-| 10 | `tests/` | 测试 — 59 个测试全通过 | 26 `.py` | 59 | ✅ Phase A-E 覆盖 |
+| 10 | `tests/` | 测试 — 90 个测试全通过 | 27 `.py` | 90 | ✅ Phase A-E + B3 + E13 覆盖 |
 
 **模块依赖关系**：
 
@@ -334,14 +334,15 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 | 目录 | 测试数 | 覆盖内容 |
 |------|--------|---------|
 | `tests/protocol/` | 6 | 8 个攻防 dataclass |
-| `tests/agents/memory/` | 7 | 上下文压缩 + 记忆唤醒 |
+| `tests/agents/memory/` | 33 | 4 层记忆存储 + MemoryStore 闭环 + 压缩/唤醒 |
 | `tests/agents/planning/` | 10 | 活跃子图 + Top-K 路由 + 选举 + 调度 |
 | `tests/agents/tools/` | 5 | 多模型路由 |
 | `tests/agents/action/` | 23 | 11 个攻防 Agent + 神经符号闭环 |
+| `tests/e2e/` | 5 | 场景 1 红→蓝→紫端到端 + B3 记忆闭环 |
 | `tests/基础/` | 4 | 基础测试 |
 
 #### 未实现
-- 🔲 `tests/e2e/` — 端到端集成测试（场景 1：红→蓝→紫完整链路）
+- 🔲 `tests/e2e/` 场景 2/3 端到端测试（超长程攻击链 / 端-边-云协同防御）
 
 ---
 

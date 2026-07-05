@@ -1,4 +1,7 @@
 # @aegis-gen
+# date: 2026-07-06
+# dev: myf
+# changelog: 全文核实修正——基于 2026-07-06 对 agents/ 56 文件 3133 行的逐文件审查，修正 4 处诊断差异 + 补入 3 处文档未覆盖的新发现
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
 # change: 新建 Agent 框架替换/规范化方案——逐模块分析可替换性 + 分层架构 + 迁移路线
@@ -8,6 +11,8 @@
 > 本文档基于对 `agents/`、`protocol/`、`backend/`、`agents/tools/llms/`、`agents/planning/engine/`、`agents/memory/` 的完整代码审查。
 >
 > **核心问题**：项目有一套功能正确但"手写"的 Agent 框架，存在大量可以用标准库/成熟框架替换的重复逻辑。
+>
+> **2026-07-06 修订**：基于对 `agents/` 全目录 56 个 `.py` 文件（3133 行）的逐文件审查，修正了原文 4 处数量诊断（§1.1/§1.2/§1.4/§1.5），并补入 3 处原文未覆盖的新发现（§1.8）。行数以 `wc -l` 实测为准（含 docstring）。
 
 ---
 
@@ -15,20 +20,25 @@
 
 ### 1.1 LLM 调用层（4 个 Provider 全是手写 HTTP）
 
+> **2026-07-06 修正**：实测 4 文件共 **368 行**（原文记 ~220 行，系未计 docstring 的低估），平均 92 行/文件。
+
 **现状**：`agents/tools/llms/` 下 4 个 Provider 各自手写 httpx 请求：
 
-| 文件 | 重复逻辑 | 可替换为 |
-|------|---------|---------|
-| `openai_provider.py` | 手写 httpx POST + auth header + payload 构造 + JSON parse | `litellm.completion()` 一行 |
-| `anthropic_provider.py` | 手写 httpx POST + anthropic-version header + content block 解析 | `litellm.completion()` 一行 |
-| `local_provider.py` | 手写 httpx POST（OpenAI 兼容格式） | `litellm.completion()` 一行 |
-| `mock_provider.py` | 前缀匹配 + 预置 JSON | `litellm` mock adapter 或 `unittest.mock` |
+| 文件 | `wc -l` 实测 | 重复逻辑 | 可替换为 |
+|------|------------|---------|---------|
+| `openai_provider.py` | 105 | 手写 httpx POST + auth header + payload 构造 + JSON parse | `litellm.completion()` 一行 |
+| `anthropic_provider.py` | 107 | 手写 httpx POST + anthropic-version header + content block 解析 | `litellm.completion()` 一行 |
+| `local_provider.py` | 89 | 手写 httpx POST（OpenAI 兼容格式） | `litellm.completion()` 一行 |
+| `mock_provider.py` | 67 | 前缀匹配 + 预置 JSON | `litellm` mock adapter 或 `unittest.mock` |
+| **合计** | **368** | | 压缩到 1 文件 ~30 行 |
 
-**代码量**：4 文件 × ~55 行 = ~220 行，可压缩到 1 文件 ~30 行。
+**代码量**：4 文件共 368 行（含 docstring），可压缩到 1 文件 ~30 行（**-92%**）。
 
 **根因**：每个 Provider 重复实现了：认证、请求构造、超时、错误处理、响应解析。这正是 `litellm` 要解决的问题。
 
-### 1.2 结构化输出（11 个 Agent 全是 `json.loads` + try/except）
+### 1.2 结构化输出（11+1 个 Agent 全是 `json.loads` + try/except）
+
+> **2026-07-06 修正**：实测 11 个攻防 Agent 共 **882 行**（原文记 ~550 行，系未计 docstring 的低估），平均 80 行/文件。**补入第 12 处**：`agents/perception/reasoning/neuro_symbolic.py` L146-168 与 11 个攻防 Agent 完全同构，原文遗漏。
 
 **现状**：每个攻防 Agent 的模式完全相同：
 
@@ -43,25 +53,30 @@ except (json.JSONDecodeError, KeyError):
     return [] / {} / FallbackObject()
 ```
 
-| Agent 文件 | JSON 解析逻辑 | 错误兜底 |
-|-----------|-------------|---------|
-| `recon/agent.py` | `json.loads` → `[Asset(**a)]` | `return []` |
-| `detector/agent.py` | `json.loads` → `[Alert(**a)]` | `return []` |
-| `vuln_correlator/agent.py` | `json.loads` → `[VulnFinding(**f)]` | `return []` |
-| `exploit_planner/agent.py` | `json.loads` → `AttackChain(**data)` | `return AttackChain(chain_id="", status="failed")` |
-| `lateral_move/agent.py` | `json.loads` → `[AttackStep(**s)]` | `return []` |
-| `triage/agent.py` | `json.loads` → `[Alert]` | `return alerts` (原始) |
-| `threat_hunt/agent.py` | `json.loads` → `list[dict]` | `return []` |
-| `ir_planner/agent.py` | `json.loads` → `ResponsePlan(**data)` | `return ResponsePlan(plan_id="")` |
-| `forensics/agent.py` | `json.loads` → `dict` | `return {"report_id": "", ...}` |
-| `critic/agent.py` | `json.loads` → `dict` | `return {"valid": False, ...}` |
-| `reviewer/agent.py` | `json.loads` → `dict` | `return {"consistent": False, ...}` |
+| Agent 文件 | `wc -l` | JSON 解析逻辑 | 错误兜底 |
+|-----------|---------|-------------|---------|
+| `recon/agent.py` | 77 | `json.loads` → `[Asset(**a)]` | `return []` |
+| `detector/agent.py` | 78 | `json.loads` → `[Alert(**a)]` | `return []` |
+| `vuln_correlator/agent.py` | 82 | `json.loads` → `[VulnFinding(**f)]` | `return []` |
+| `exploit_planner/agent.py` | 93 | `json.loads` → `AttackChain(**data)` | `return AttackChain(chain_id="", status="failed")` |
+| `lateral_move/agent.py` | 88 | `json.loads` → `[AttackStep(**s)]` | `return []` |
+| `triage/agent.py` | 81 | `json.loads` → `[Alert]` | `return alerts` (原始) |
+| `threat_hunt/agent.py` | 73 | `json.loads` → `list[dict]` | `return []` |
+| `ir_planner/agent.py` | 73 | `json.loads` → `ResponsePlan(**data)` | `return ResponsePlan(plan_id="")` |
+| `forensics/agent.py` | 74 | `json.loads` → `dict` | `return {"report_id": "", ...}` |
+| `critic/agent.py` | 85 | `json.loads` → `dict` | `return {"valid": False, ...}` |
+| `reviewer/agent.py` | 78 | `json.loads` → `dict` | `return {"consistent": False, ...}` |
+| **小计（11 攻防 Agent）** | **882** | | |
+| `perception/reasoning/neuro_symbolic.py` | 169 | `json.loads` → `AttackChain`（第 12 处，**原文遗漏**） | 原链 `chain` 降级返回 |
+| **合计（12 处）** | **1051** | | |
 
-**代码量**：11 文件 × ~50 行 = ~550 行，其中 ~60% 是重复的 JSON parse + error fallback。
+**代码量**：12 文件共 1051 行，其中 ~60% 是重复的 JSON parse + error fallback（约 630 行可删除）。
 
 **可替换为**：`instructor` 库 + Pydantic，或 `langchain` `StructuredOutputParser`。
 
-### 1.3 Agent 类结构（11 个几乎一模一样）
+### 1.3 Agent 类结构（12 个几乎一模一样）
+
+> **2026-07-06 修正**：含 11 个攻防 Agent + 1 个 `neuro_symbolic.py`（共 12 个同构类，原文仅计 11 个）。
 
 **现状**：每个 Agent 类的结构完全相同：
 
@@ -80,21 +95,47 @@ class XxxAgent:
         # json parse + fallback
 ```
 
-唯一差异：system_prompt 文本、temperature、输入→输出映射。
+唯一差异：system_prompt 文本、temperature、输入→输出映射。`critic` 额多有 `side` 参数选择红/蓝 prompt。
 
 **可替换为**：一个泛型基类 + 声明式配置（见下文 §3）。
 
 ### 1.4 运行时调度（MockRuntime 手写 dispatch map）
 
-**现状**：`backend/core/composition.py` 中 `MockRuntime` 有一个 ~120 行的手写 `_cyber_dispatch_map()`，每个 handler 手动做类型转换 + 调用 + `asdict`。
+> **2026-07-06 修正**：位置已从 `backend/core/composition.py` 拆到 `backend/mocks/runtime.py`（2026-07-05 重构）。实测全文 182 行，其中 `_cyber_dispatch_map()` 方法体 85 行（11 个内嵌 handler），`__init__` 13 行，`run()` 29 行。
+
+**现状**：`backend/mocks/runtime.py` 中 `MockRuntime` 有一个 85 行的手写 `_cyber_dispatch_map()`，每个 handler 手动做类型转换 + 调用 + `asdict`。
 
 **可替换为**：LangGraph `StateGraph` + 自动状态传递，或注册表模式。
 
-### 1.5 记忆系统（只有骨架无持久化）
+### 1.5 记忆系统（B3 已实现核心存储，6 子模块仍空）
 
-**现状**：`agents/memory/` 12 个子模块只有 `compression/` 和 `recall/` 有实现（各 ~30 行），其余为空目录。
+> **2026-07-06 修正**：原文记"只有骨架无持久化"（2026-07-04 状态：仅 compression/recall 有实现）。2026-07-06 B3 完成后已新增 5 个文件（working/episodic/semantic/vector/store.py + memory_store.py 集成层），当前 **7/13 子模块有实现**，共 700 行。但 6 个子模块仍为空目录。
 
-**可替换为**：`langgraph.checkpoint`（状态持久化）+ `langchain.memory`（对话记忆）+ Qdrant 向量（已有规划）。
+**现状**（2026-07-06）：
+
+| 子模块 | 实现文件 | 行数 | 状态 |
+|--------|---------|------|------|
+| `working/` | `store.py` | 70 | ✅ 已实现（B3.1，会话级上下文栈） |
+| `episodic/` | `store.py` | 70 | ✅ 已实现（B3.2，跨会话历史经验） |
+| `semantic/` | `store.py` | 130 | ✅ 已实现（B3.3，ATT&CK 知识库+8 种子） |
+| `vector/` | `store.py` | 93 | ✅ 已实现（B3.4，余弦相似度，Qdrant 预留） |
+| `compression/` | `compactor.py` | 82 | ✅ 已实现（token 预算压缩） |
+| `recall/` | `recaller.py` | 66 | ✅ 已实现（触发词唤醒 Top-5） |
+| —（根） | `memory_store.py` | 189 | ✅ 已实现（B3.5 集成层，实现 MemoryAPI） |
+| `archive/` | — | 0 | ❌ 空目录 |
+| `cache/` | — | 0 | ❌ 空目录 |
+| `checkpoint/` | — | 0 | ❌ 空目录（可由 LangGraph checkpoint 替代） |
+| `reflection/` | — | 0 | ❌ 空目录 |
+| `retrieval/` | — | 0 | ❌ 空目录 |
+| `snapshot/` | — | 0 | ❌ 空目录 |
+| `sync/` | — | 0 | ❌ 空目录 |
+
+**可替换/增强为**：
+- `checkpoint/` → `langgraph.checkpoint`（状态持久化，超长程任务中断恢复）
+- 其余 5 个空子模块 → 按需实现或由框架能力覆盖
+- `vector/` 当前纯内存余弦检索 → 对接 Qdrant（H2 计划）
+- `semantic/` 当前内存 dict → 对接 Neo4j ATT&CK 图（H2 计划）
+- 已实现的 7 个子模块（含 compression/recall 核心算法）**保留不变**
 
 ### 1.6 Protocol 类型（dataclass 而非 Pydantic）
 
@@ -107,6 +148,32 @@ class XxxAgent:
 **现状**：`agents/api/__init__.py` 定义了 `EventBusAPI` Protocol（publish/subscribe），但无任何实现。
 
 **可替换为**：`blinker`（轻量）或 `fastapi.Event` + SSE stream，或 LangGraph callback。
+
+### 1.8 2026-07-06 新发现（原文未覆盖）
+
+> 以下 3 处在原文（2026-07-04）中未提及，经本次逐文件审查发现。
+
+#### 1.8.1 `_CyberMockProvider` 硬编码 JSON 响应表（`backend/mocks/cyber_provider.py`，220 行）
+
+原文只关注了生产代码的重复，**遗漏了测试基础设施的维护负担**。`_build_cyber_mock_responses()`（L16-176，160 行）手写了 11 段 JSON 字符串作为攻防 Agent 的 mock 响应，`_CyberMockProvider`（L179-220）还额外实现了"精确匹配 → 前缀回退"的匹配逻辑。
+
+**问题**：若用 instructor + Pydantic 结构化输出，mock 只需返回 Pydantic 实例而非 JSON 文本，这 160 行硬编码 JSON 可大幅缩减（mock 直接构造领域对象，无需 JSON 序列化往返）。
+
+**可替换为**：instructor mock + Pydantic 实例直接构造（-60%）。
+
+#### 1.8.2 `model_router.py` 前缀路由表（`agents/tools/llms/model_router.py`，158 行）
+
+原文 §5 将 `ModelRouter` 归为"保留不变的核心算法"，但审查发现其内部实为两层逻辑：
+- **前缀路由**（`MODEL_PREFIX_MAP` 9 条前缀→provider 映射，~60 行）— 这部分可由 `litellm` 内置路由（按 model_id 前缀自动分发）替代
+- **tier 路由**（`TIER_PROVIDER_MAP` 3 条 tier→provider 映射 + `complete_with_model()`，~60 行）— 这是项目特有的端边云调度需求，litellm 不提供，**保留**
+
+**建议**：R2 阶段将前缀路由委托 litellm，仅保留 tier 路由（158 行 → ~60 行，-62%）。
+
+#### 1.8.3 `memory_store.py` write() 四路 if 分发（`agents/memory/memory_store.py:98-108`）
+
+`MemoryStore.write()` 按 `packet.kind`/`episodic`/`embedding`/`semantic` 字段做 4 路 if 分发到 working/episodic/vector/semantic 存储层。这是一个小型 dispatch 逻辑，原文未提及。
+
+**结论**：这是**领域路由**（按记忆内容类型分发，非按模型/Agent 路由），框架难替代，**建议保留**。仅作记录，不纳入替换计划。
 
 ---
 
@@ -274,7 +341,9 @@ instructor 自动处理：
 
 #### 2c. ModelRouter 保留但简化
 
-`ModelRouter` 的前缀路由逻辑和 `scheduler` 的 tier 路由逻辑保留——这是项目特有的「端边云调度」需求，litellm 不提供。但实现可以简化为：
+> **2026-07-06 修正**：`ModelRouter` 的**前缀路由**（`MODEL_PREFIX_MAP` 9 条）可由 litellm 内置路由替代；**tier 路由**（`TIER_PROVIDER_MAP` + `complete_with_model()`）是项目特有的端边云调度需求，litellm 不提供，保留。详见 §1.8.2。
+
+`ModelRouter` 的 tier 路由逻辑保留——这是项目特有的「端边云调度」需求，litellm 不提供。但前缀路由部分可委托 litellm，实现简化为：
 
 ```python
 class ModelRouter:
@@ -293,7 +362,7 @@ class ModelRouter:
 
 ### Layer 3: 工作流编排 → LangGraph
 
-**替换范围**：`backend/core/composition.py` 的 `MockRuntime` (~200 行)
+**替换范围**：`backend/mocks/runtime.py` 的 `MockRuntime`（85 行 dispatch / 182 行全文，原位于 `backend/core/composition.py`，2026-07-05 拆出）
 
 #### 现状问题
 
@@ -382,19 +451,28 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 
 ## 4. 替换前后代码量对比
 
-| 模块 | 替换前 | 替换后 | 减少 |
-|------|--------|--------|------|
-| `agents/tools/llms/` (4 Provider) | ~220 行 / 4 文件 | ~30 行 / 1 文件 | -86% |
-| `agents/action/` (11 Agent JSON parse) | ~550 行 | ~220 行 | -60% |
-| `backend/core/composition.py` MockRuntime | ~200 行 dispatch | ~60 行 graph | -70% |
+> **2026-07-06 修正**：以下行数均以 `wc -l` 实测为准（含 docstring），原文系估算值（未计 docstring）。
+
+| 模块 | 替换前（实测） | 替换后 | 减少 |
+|------|--------------|--------|------|
+| `agents/tools/llms/` (4 Provider) | 368 行 / 4 文件 | ~30 行 / 1 文件 | -92% |
+| `agents/tools/llms/model_router.py` 前缀路由 | ~60 行（158 行中的前缀部分） | 0 行（litellm 内置） | -100%（tier 部分保留） |
+| `agents/action/` (11 Agent JSON parse) | 882 行 | ~350 行 | -60% |
+| `agents/perception/reasoning/neuro_symbolic.py` parse 段 | ~23 行 | 0 行（instructor） | -100% |
+| `backend/mocks/runtime.py` MockRuntime dispatch | 85 行 dispatch / 182 行全文 | ~60 行 graph | -70% |
+| `backend/mocks/cyber_provider.py` 硬编码 JSON | 160 行 | ~60 行（Pydantic mock 实例） | -62% |
 | `protocol/*.py` (to_dict/from_dict) | ~50 行手写序列化 | 0 行（Pydantic 自动） | -100% |
-| **合计** | ~1020 行 | ~310 行 | **-70%** |
+| **合计** | **~1628 行** | **~500 行** | **-69%** |
 
 同时新增能力：checkpoint / 流式 / 有环图 / 自动重试 / JSON Schema / 100+ 模型兼容。
+
+> 原文记 ~1020 行 → -70%，修正后 ~1628 行 → -69%，结论方向一致，绝对值更准确。
 
 ---
 
 ## 5. 保留不变的模块
+
+> **2026-07-06 修正**：memory 部分更新为 B3 后现状；明确 `neuro_symbolic.py` 的符号验证逻辑保留、仅 JSON parse 段替换。
 
 | 模块 | 保留原因 |
 |------|---------|
@@ -407,12 +485,17 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 | `agents/planning/engine/topology/` 活跃子图 | 项目特有拓扑计算 |
 | `agents/memory/compression/` 上下文压缩 | 项目特有超长程压缩算法 |
 | `agents/memory/recall/` 唤醒机制 | 项目特有记忆检索策略 |
+| `agents/memory/working+episodic+semantic+vector+memory_store` | B3 新增的领域存储（700 行），保留 |
+| `agents/perception/reasoning/neuro_symbolic.py` 符号验证逻辑 | 项目特有神经-符号闭环算法（仅 L146-168 JSON parse 段被 instructor 替换，验证+迭代逻辑保留） |
+| `agents/tools/llms/model_router.py` tier 路由部分 | 项目特有端边云 tier 调度（前缀路由部分可由 litellm 替代，见 §1.8.2） |
 
 **原则**：业务领域逻辑保留，基础设施层替换。
 
 ---
 
 ## 6. 迁移路线（5 阶段）
+
+> **2026-07-06 修正**：当前测试基线 90 passed（B3 + E13 已完成，原文记 59）。阶段 3 补入 `neuro_symbolic.py`（第 12 处）+ `cyber_provider.py` mock 简化。
 
 ### 阶段 1: Protocol Pydantic 迁移（1 域 / ≤8 文件）
 - [ ] `protocol/cyber.py` → Pydantic BaseModel
@@ -424,22 +507,23 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 - [ ] `protocol/memory.py` → Pydantic
 - [ ] `protocol/tool.py` / `heartbeat.py` / `sync.py` → Pydantic
 - [ ] 更新所有引用 `asdict()` → `model_dump()` / `from_dict()` → `model_validate()`
-- [ ] 59 测试全通过
+- [ ] 90 测试全通过
 
 ### 阶段 2: LLM Provider 统一（≤4 文件）
 - [ ] 安装 `litellm` + `instructor`
 - [ ] 新建 `agents/tools/llms/unified_provider.py`
-- [ ] `ModelRouter` 改为委托 `UnifiedProvider`
+- [ ] `ModelRouter` 前缀路由委托 litellm（仅保留 tier 路由）
 - [ ] MockProvider 保留（测试用），但实现 `litellm` mock adapter
 - [ ] 删除 `openai_provider.py` / `anthropic_provider.py` / `local_provider.py`
-- [ ] 59 测试全通过
+- [ ] 90 测试全通过
 
-### 阶段 3: Agent 结构化输出（≤8 文件/批，分 2 批）
+### 阶段 3: Agent 结构化输出（≤8 文件/批，分 3 批）
 - [ ] 批 1（红队 4 Agent）：`recon` / `vuln_correlator` / `exploit_planner` / `lateral_move`
 - [ ] 批 2（蓝队 5 + 紫队 2 Agent）：`detector` / `triage` / `threat_hunt` / `ir_planner` / `forensics` / `critic` / `reviewer`
+- [ ] 批 3（感知层 + mock 基础设施）：`perception/reasoning/neuro_symbolic.py`（第 12 处，**原文遗漏，本次补入**）+ `backend/mocks/cyber_provider.py` 硬编码 JSON → Pydantic mock 实例
 - [ ] 每个 Agent 的 `json.loads` 替换为 `instructor` 结构化调用
 - [ ] 删除 `SYSTEM_PROMPT` 中的 JSON 格式说明（instructor 自动注入）
-- [ ] 59 测试全通过
+- [ ] 90 测试全通过
 
 ### 阶段 4: LangGraph 编排（≤4 文件）
 - [ ] 安装 `langgraph`
@@ -447,12 +531,12 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 - [ ] 新建 `agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
 - [ ] `MockRuntime` 替换为 `GraphRuntime`（实现 `RuntimeAPI`）
 - [ ] `backend/core/composition.py` 注入 `GraphRuntime`
-- [ ] 59 测试全通过
+- [ ] 90 测试全通过
 
 ### 阶段 5: 事件总线 + 流式（≤2 文件）
 - [ ] 新建 `agents/planning/engine/eventbus/impl.py`（基于 `blinker` 或 LangGraph callback）
 - [ ] LangGraph `app.stream()` → SSE → 前端 `EventSource`
-- [ ] 59 测试全通过
+- [ ] 90 测试全通过
 
 ---
 

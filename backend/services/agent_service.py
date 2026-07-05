@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agents.api import AgentRegistryAPI, RuntimeAPI
+from aegisos_agents.api import AgentRegistryAPI, RuntimeAPI
 from protocol import Agent, Task
 
 

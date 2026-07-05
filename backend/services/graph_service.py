@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import contextlib
 
-from agents.api import EventBusAPI
+from aegisos_agents.api import EventBusAPI
 from protocol import Event, Graph
 
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from agents.api import MemoryAPI
+from aegisos_agents.api import MemoryAPI
 from protocol import MemoryPacket
 
 

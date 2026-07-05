@@ -138,10 +138,10 @@ developer/
 |------|------|------|
 | P0 | 项目初始化 | ✅ 完成 |
 | P1 | Protocol | ✅ 完成 |
-| P2 | Memory | ✅ 完成（10 子模块待补） |
+| P2 | Memory | ✅ 完成（6 子模块待补） |
 | P3 | Router | ✅ 完成 |
 | P4 | Scheduler | ✅ 完成 |
-| P5 | Planner + Agents | ✅ 完成（编排器/runtime 集成待补） |
+| P5 | Planner + Agents | ✅ 完成（编排器待补；E13 端到端已完成） |
 | P6 | Frontend | ✅ 部分完成（攻防视图待补） |
 | P7 | Deployment | 🔲 未开始 |
 
