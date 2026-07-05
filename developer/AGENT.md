@@ -33,7 +33,7 @@ read(spec) -> Guideline；所有 Agent 开发前第一步读取本目录。
 `logs/developer/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/developer/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/developer/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/developer.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

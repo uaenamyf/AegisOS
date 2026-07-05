@@ -1,6 +1,6 @@
 # Agents 智能体域（域根） — AGENT.md
 
-> 本文件是 `agents/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 智能体域：一切与 agent 相关的功能。按认知架构「感知-规划-行动-记忆-工具」五层组织，是系统的智能核心。
@@ -8,16 +8,16 @@
 ## 内部分层（感知-规划-行动-记忆-工具）
 | 分类 | 范式 | 说明 |
 |------|------|------|
-| agents/perception/ | 感知 | 上下文管理、推理、反思（接收理解输入、评估结果） |
-| agents/planning/ | 规划 | 规划角色 Agent、编排 Agent、编排引擎（规划/调度/路由/工作流/事件总线/拓扑） |
-| agents/action/ | 行动 | 执行角色 Agent（代码/测试/调试/评审/调研/文档）+ 执行能力（沙箱/工具） |
-| agents/memory/ | 记忆 | 多层长期记忆（12 子模块，含 semantic 知识库） |
-| agents/tools/ | 工具 | 模型调用、提示词模板、运行时托管 |
+| aegisos_agents/perception/ | 感知 | 上下文管理、推理、反思（接收理解输入、评估结果） |
+| aegisos_agents/planning/ | 规划 | 规划角色 Agent、编排 Agent、编排引擎（规划/调度/路由/工作流/事件总线/拓扑） |
+| aegisos_agents/action/ | 行动 | 执行角色 Agent（代码/测试/调试/评审/调研/文档）+ 执行能力（沙箱/工具） |
+| aegisos_agents/memory/ | 记忆 | 多层长期记忆（12 子模块，含 semantic 知识库） |
+| aegisos_agents/tools/ | 工具 | 模型调用、提示词模板、运行时托管 |
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/
-- agents/action/execution/
+- aegisos_agents/planning/engine/
+- aegisos_agents/action/execution/
 - tooling/configs/
 - developer/specs/08_AGENT_SPEC.md
 
@@ -27,30 +27,30 @@
 - developer/
 
 ## 输出
-- agents/*/ 角色 Agent
-- agents/memory/ 记忆（含知识库）
-- agents/tools/llms/ 模型调用
-- agents/tools/prompts/ 提示词
-- agents/tools/runtime/ 运行时
-- agents/planning/engine/ 编排引擎（规划/调度/路由/工作流/事件总线/拓扑）
-- agents/action/execution/ 执行能力（执行器/工具）
+- aegisos_agents/*/ 角色 Agent
+- aegisos_agents/memory/ 记忆（含知识库）
+- aegisos_agents/tools/llms/ 模型调用
+- aegisos_agents/tools/prompts/ 提示词
+- aegisos_agents/tools/runtime/ 运行时
+- aegisos_agents/planning/engine/ 编排引擎（规划/调度/路由/工作流/事件总线/拓扑）
+- aegisos_agents/action/execution/ 执行能力（执行器/工具）
 
 ## 依赖
-- agents/planning/engine/ 编排调度
-- agents/action/execution/ 工具执行
+- aegisos_agents/planning/engine/ 编排调度
+- aegisos_agents/action/execution/ 工具执行
 - protocol/ 契约
 
 ## 接口
 register/invoke(agent) -> Result；详见各子模块 AGENT.md。
 
 ## 测试方式
-`pytest tests/agents/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/agents/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/aegisos_agents/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/agents.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -66,28 +66,28 @@ register/invoke(agent) -> Result；详见各子模块 AGENT.md。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
 
 ## 下辖子模块（按感知-规划-行动-记忆-工具分类 + 公共 API）
-- **agents/api/** 公共接口层：其他模块通过 `from agents.api import ...` 调用本域能力，不直接访问内部子包，实现解耦。
-- **感知 agents/perception/**：`context/`（上下文管理）、`reasoning/`（推理）、`reflection/`（反思评估）
-- **规划 agents/planning/**：`planner/`（规划角色 Agent）、`orchestrator/`（编排角色 Agent）、`engine/`（编排引擎：planner/scheduler/router/workflow/eventbus/topology）
-- **行动 agents/action/**：`coder/`、`executor/`（执行角色）、`tester/`、`debugger/`、`critic/`、`reviewer/`、`researcher/`、`docwriter/`（角色 Agent）+ `execution/`（executor 沙箱 + tools 工具）
-- **记忆 agents/memory/**：12 子模块（working/episodic/semantic/vector/archive/compression/retrieval/reflection/checkpoint/cache/snapshot/sync）
-- **工具 agents/tools/**：`llms/`（模型调用）、`prompts/`（提示词，含 roles/）、`runtime/`（运行时托管）
+- **aegisos_agents/api/** 公共接口层：其他模块通过 `from aegisos_agents.api import ...` 调用本域能力，不直接访问内部子包，实现解耦。
+- **感知 aegisos_agents/perception/**：`context/`（上下文管理）、`reasoning/`（推理）、`reflection/`（反思评估）
+- **规划 aegisos_agents/planning/**：`planner/`（规划角色 Agent）、`orchestrator/`（编排角色 Agent）、`engine/`（编排引擎：planner/scheduler/router/workflow/eventbus/topology）
+- **行动 aegisos_agents/action/**：`coder/`、`executor/`（执行角色）、`tester/`、`debugger/`、`critic/`、`reviewer/`、`researcher/`、`docwriter/`（角色 Agent）+ `execution/`（executor 沙箱 + tools 工具）
+- **记忆 aegisos_agents/memory/**：12 子模块（working/episodic/semantic/vector/archive/compression/retrieval/reflection/checkpoint/cache/snapshot/sync）
+- **工具 aegisos_agents/tools/**：`llms/`（模型调用）、`prompts/`（提示词，含 roles/）、`runtime/`（运行时托管）
 
 ---
 
 ## 📋 模块实现详解
 
-> 原 `agents/MODULE.md` 内容，已合并至此。
+> 原 `aegisos_agents/MODULE.md` 内容，已合并至此。
 
 ### 五层架构总览
 
 ```
-agents/
+aegisos_agents/
 ├── perception/   感知 — context · reasoning · reflection
 ├── planning/      规划 — engine/(topology · router · scheduler) · planner · orchestrator
 ├── action/        行动 — 11 个红蓝紫攻防 Agent + execution
@@ -96,7 +96,7 @@ agents/
 └── api/           公共接口 — 5 个 Protocol + 3 个 DI 端口
 ```
 
-### agents/planning/ — 规划引擎
+### aegisos_agents/planning/ — 规划引擎
 
 #### ✅ 已实现
 
@@ -181,7 +181,7 @@ def schedule(task: Task, models: list[Model], required_capability: str | None = 
 
 ---
 
-### agents/memory/ — 记忆子系统
+### aegisos_agents/memory/ — 记忆子系统
 
 #### ✅ 已实现
 
@@ -281,7 +281,7 @@ class VectorMemory:
 ##### `memory_store.py` — 记忆集成存储 / 认知循环中枢（B3.5）
 
 ```python
-class MemoryStore:  # 实现 agents.api.MemoryAPI
+class MemoryStore:  # 实现 aegisos_agents.api.MemoryAPI
     def read(self, query: dict) -> MemoryPacket
     def write(self, packet: MemoryPacket) -> bool
     def retrieve(self, query: dict) -> list
@@ -313,7 +313,7 @@ class MemoryStore:  # 实现 agents.api.MemoryAPI
 
 ---
 
-### agents/action/ — 攻防 Agent（11 个全部完成）
+### aegisos_agents/action/ — 攻防 Agent（11 个全部完成）
 
 #### 🔴 红队（4 个）
 
@@ -345,13 +345,15 @@ class MemoryStore:  # 实现 agents.api.MemoryAPI
 | `critic` | [`critic/agent.py`](action/critic/agent.py) | `critique(chain_or_plan)` | 红蓝产出 → 对抗性反驳 |
 | `reviewer` | [`reviewer/agent.py`](action/reviewer/agent.py) | `review(inputs)` | 全部产出 → 一致性审查 |
 
-**实现模式**：每个 Agent 接收 `ModelProvider`，通过 LLM ��成结构化 JSON → 解析为 protocol 类型。Mock 测试使用 `MockProvider`。
+**实现模式**：每个 Agent 继承 `StructuredAgent[T]`（`action/structured_agent.py`），通过 openai-agents SDK `Agent` + `Runner.run_sync` + `output_type`（Pydantic BaseModel）实现结构化输出，无需手写 `json.loads`。Mock 测试使用 `MockSDKModel`（适配 SDK `Model` 接口）。详见 `action/AGENT.md`。
 
 **测试**：19 个（每个 Agent 1-2 个测试），全部通过。
 
+**SDK 集成状态**：✅ 11 个攻防 Agent 已全部迁移到 openai-agents SDK（S1-S4 完成）。
+
 ---
 
-### agents/perception/ — 感知层
+### aegisos_agents/perception/ — 感知层
 
 #### ✅ 已实现
 
@@ -372,6 +374,8 @@ class NeuroSymbolicLoop:
 
 **测试**：4 个 — 合法链通过 · 非法技术被标记 · 闭环修复 · 迭代上限
 
+**⚠️ SDK 重构 P0**：这是 `aegisos_agents/` 中**唯一**仍用旧 `ModelProvider.complete()` + `json.loads` 手写解析的 LLM 调用点。待迁移到 `StructuredAgent[ExploitPlannerResult]`，`validate_chain` 符号侧保留。详见 `developer/plan.md` R4-R5。
+
 ---
 
 #### 🔲 未实现
@@ -380,17 +384,29 @@ class NeuroSymbolicLoop:
 
 ---
 
-### agents/tools/ — 工具层
+### aegisos_agents/tools/ — 工具层
 
 #### ✅ 已实现
 
-##### `llms/base.py` — LLM 抽象基类
+##### `llms/sdk_provider.py` — openai-agents SDK 适配器（✅ S2 完成）
+
+`SDKProvider` 桥接项目 `ModelProvider` Protocol 到 SDK `OpenAIChatCompletionsModel`，支持双模式：
+- **Mock 模式**（`AEGIS_USE_MOCK=1`）：走 `MockSDKModel`，测试无需真实 API
+- **真实 API 模式**（`OPENAI_API_KEY` / `OPENAI_BASE_URL`）：走火山引擎 ARK 等
+
+##### `llms/mock_sdk_model.py` — SDK Mock 适配器（✅ S2 完成）
+
+`MockSDKModel(Model)` 实现 SDK `Model` 接口，将 `MockProvider` 包装为 SDK `ModelResponse`。
+
+##### `llms/base.py` — 旧 LLM 抽象基类（⚠️ R5 清理目标）
 
 | 类 | 字段/方法 |
 |----|----------|
 | `LLMRequest` | `prompt` · `model_id` · `system_prompt` · `temperature` · `max_tokens` |
 | `LLMResponse` | `content` · `model_id` · `usage` · `latency_ms` |
 | `ModelProvider` | `complete(request) -> LLMResponse`（Protocol） |
+
+> ⚠️ `ModelProvider`/`LLMRequest`/`LLMResponse` 仅被 `neuro_symbolic.py` 和 `MockProvider` 使用。R5 任务：neuro_symbolic 迁移后删除旧接口。
 
 ##### `llms/mock_provider.py` — Mock 实现
 
@@ -421,7 +437,7 @@ class ModelRouter:
 
 ---
 
-### agents/api/ — 公共接口
+### aegisos_agents/api/ — 公共接口
 
 #### 5 个 Protocol 接口
 
@@ -430,8 +446,8 @@ class ModelRouter:
 | `AgentRegistryAPI` | `register(agent)` · `get(agent_id)` · `list_agents()` | backend |
 | `RuntimeAPI` | `submit(task)` · `run(agent_id, task)` · `stop(agent_id)` · `heartbeat(agent_id)` | backend |
 | `MemoryAPI` | `read(query)` · `write(packet)` · `retrieve(query)` | backend |
-| `ExecutionAPI` | `execute(call)` | agents/action |
-| `EventBusAPI` | `publish(event)` · `subscribe(topic, handler)` | agents/planning |
+| `ExecutionAPI` | `execute(call)` | aegisos_agents/action |
+| `EventBusAPI` | `publish(event)` · `subscribe(topic, handler)` | aegisos_agents/planning |
 
 #### 3 个 DI 端口（[`ports.py`](api/ports.py)）
 
@@ -447,10 +463,38 @@ class ModelRouter:
 
 | 目录 | 文件数 | 测试数 |
 |------|--------|--------|
-| `tests/agents/memory/` | 7 | 33 |
-| `tests/agents/planning/` | 4 | 18 |
-| `tests/agents/tools/` | 1 | 5 |
-| `tests/agents/action/` | 11 | 19 |
-| `tests/agents/perception/` | 1 | 4 |
+| `tests/aegisos_agents/memory/` | 7 | 33 |
+| `tests/aegisos_agents/planning/` | 4 | 18 |
+| `tests/aegisos_agents/tools/` | 1 | 5 |
+| `tests/aegisos_agents/action/` | 11 | 19 |
+| `tests/aegisos_agents/perception/` | 1 | 4 |
 | `tests/e2e/` | 1 | 5 |
 | **合计** | **25** | **84** |
+
+---
+
+### 🔧 openai-agents SDK 集成状态
+
+> 2026-07-06 全量排查。详见 `developer/plan.md`「openai-agents SDK 重构排查」段。
+
+#### ✅ 已完成（S1-S4）
+
+| 文件 | SDK 能力 |
+|------|---------|
+| `action/structured_agent.py` | `Agent` + `Runner.run_sync` + `output_type`（泛型基类） |
+| `action/output_types.py` | 11 个 Pydantic BaseModel 作为 `output_type` |
+| `action/{recon,vuln_correlator,exploit_planner,lateral_move,detector,triage,threat_hunt,ir_planner,forensics,critic,reviewer}/agent.py` | 全部继承 `StructuredAgent[T]`，无 `json.loads` |
+| `tools/llms/sdk_provider.py` | `OpenAIChatCompletionsModel` + `set_default_openai_api("chat_completions")` |
+| `tools/llms/mock_sdk_model.py` | SDK `Model` 接口实现（Mock 适配） |
+| `planning/orchestrator/cyber_orchestrator.py` | 9 个 SDK Agent 装配 + 红蓝紫链 |
+
+#### 🔲 待 SDK 重构（R4-R5）
+
+| # | 文件 | 当前 | SDK 方案 | 优先级 |
+|---|------|------|---------|--------|
+| 1 | `perception/reasoning/neuro_symbolic.py` | 旧 `ModelProvider.complete()` + `json.loads` | `StructuredAgent[ExploitPlannerResult]` | **P0** |
+| 2 | `planning/orchestrator/cyber_orchestrator.py` | 手动 `_run()` 串联 | SDK `Agent.handoffs` 声明式串联 | P1 |
+| 3 | `planning/orchestrator/cyber_orchestrator.py` | 手动 `if critique.valid` 判断 | SDK `guardrails` 自动校验 + 回退重试 | P1 |
+| 4 | `planning/orchestrator/cyber_orchestrator.py` | `print` 日志 | SDK `tracing`（`RunTrace`） | P2 |
+| 5 | `backend/mocks/runtime.py` MockRuntime | 85 行手写 dispatch map | 替换为 `CyberOrchestrator` 调用 | P1 |
+| 6 | `tools/llms/base.py` 旧接口 | `ModelProvider`/`LLMRequest`/`LLMResponse` | neuro_symbolic 迁移后删除 | P2 |

@@ -32,7 +32,7 @@
 |----|------|----------|------|
 | `developer/` | 规范层（项目大脑）：specs SSOT + roadmap | `developer/AGENT.md` | — |
 | `protocol/` | 契约层，唯一数据契约 | `protocol/AGENT.md` | — |
-| `agents/` | 智能体域：感知-规划-行动-记忆-工具五层 | `agents/AGENT.md` | `agents/api/` |
+| `aegisos_agents/` | 智能体域：感知-规划-行动-记忆-工具五层 | `aegisos_agents/AGENT.md` | `aegisos_agents/api/` |
 | `backend/` | 应用层：Router-Service-Repository-Model + Core | `backend/AGENT.md` | `backend/api.py` |
 | `frontend/` | 表现层：Controller-Service-Lib + Views | `frontend/AGENT.md` | — |
 | `infrastructure/` | 基建：transport / nodes(端·云) / delivery | `infrastructure/AGENT.md` | `infrastructure/api/` |
@@ -57,12 +57,12 @@
 
 | 域 | 主要职责 | 主要规范 | 关键计划 | 接口边界 |
 |----|---------|---------|---------|---------|
-| `agents/perception` | context / reasoning / reflection | 08 | 14/15 | `agents/api` |
-| `agents/planning` | planner / orchestrator / engine(planner·scheduler·router·workflow·eventbus·topology) | 03·08·04(§16 低熵) | 14/15 | `agents/api` |
-| `agents/action` | coder·executor·tester·debugger·critic·reviewer·researcher·docwriter + execution(沙箱) | 08·11 | 14/15(红蓝紫 E1-E11) | `agents/api` |
-| `agents/memory` | 12 子模块（working/episodic/semantic/vector/compression/recall/...） | 08·06 | 14/15(B1-B3 压缩/唤醒) | `agents/api` |
-| `agents/tools` | llms(多模型兼容) · prompts · runtime | 12·08 | 14/15(D2 多模型) | `agents/api` |
-| `agents/api` | 公共接口层：RuntimeAPI / AgentRegistry / Memory / Planning / Execution / Perception / EventBus | 05·10 | 13(双向调用/DI 端口) | — |
+| `aegisos_agents/perception` | context / reasoning / reflection | 08 | 14/15 | `aegisos_agents/api` |
+| `aegisos_agents/planning` | planner / orchestrator / engine(planner·scheduler·router·workflow·eventbus·topology) | 03·08·04(§16 低熵) | 14/15 | `aegisos_agents/api` |
+| `aegisos_agents/action` | coder·executor·tester·debugger·critic·reviewer·researcher·docwriter + execution(沙箱) | 08·11 | 14/15(红蓝紫 E1-E11) | `aegisos_agents/api` |
+| `aegisos_agents/memory` | 12 子模块（working/episodic/semantic/vector/compression/recall/...） | 08·06 | 14/15(B1-B3 压缩/唤醒) | `aegisos_agents/api` |
+| `aegisos_agents/tools` | llms(多模型兼容) · prompts · runtime | 12·08 | 14/15(D2 多模型) | `aegisos_agents/api` |
+| `aegisos_agents/api` | 公共接口层：RuntimeAPI / AgentRegistry / Memory / Planning / Execution / Perception / EventBus | 05·10 | 13(双向调用/DI 端口) | — |
 | `protocol` | message/event/scheduler/tool/memory/agent/graph/heartbeat/sync + `cyber.py`（8 攻防类型 ✅） | 04·06 | 14/15(A1 cyber 类型) | — |
 | `backend` | routers/services/repositories/models + core/schemas/mocks | 05·10·12 | 13·14/15(F 攻防端点) | `backend/api.py` |
 | `frontend` | src/(controllers / services / mappers / views(chat·canvas·graph·monitor·replay)) | 13·05·12 | 13·14/15(G 攻防视图) | — |
@@ -98,7 +98,7 @@
 > 冲突优先级：`00` > `04` ≈ `05` ≈ `06` > 其余编号 > 各模块 `AGENT.md`。必读顺序见根 `AGENT.md`。
 
 ### roadmap（`developer/roadmap/`，P0..P7）
-`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P5 ✅ 完成**（59 测试通过），**P6 部分完成**（ChatView ✅，攻防视图 🔲），P7 未开始；各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
+`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P5 ✅ 完成**（94 测试通过），**P6 部分完成**（ChatView ✅，攻防视图 🔲），P7 未开始；**openai-agents SDK 集成 S1-S4 ✅ 完成**（11 个攻防 Agent + SDKProvider + CyberOrchestrator），R4-R5 SDK 深化进行中。各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
 
 ### skills（`.claude/skills/`，按需启用）
 - **superpowers（14）**：`writing-plans` · `executing-plans` · `subagent-driven-development` · `dispatching-parallel-agents` · `brainstorming` · `test-driven-development` · `systematic-debugging` · `verification-before-completion` · `requesting-code-review` · `receiving-code-review` · `using-git-worktrees` · `finishing-a-development-branch` · `using-superpowers` · `writing-skills`。
@@ -108,7 +108,7 @@
 - ⚠️ 本会话发现：子代理执行模型 `deepseek-v4-flash` 对本 token 无访问权（403），多代理派发暂不可用；改用脚本/主线直改。
 
 ### 计划（`developer/specs/plans/`）
-`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E 已完成（59 测试通过）；下一步：B3 runtime 集成 + 编排器 + E13 e2e + F/G 攻防端点视图。
+`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E + B3 + E13 + SDK S1-S4 已完成（94 测试通过）；下一步：R4 SDK 编排深化（handoffs/guardrails/tracing）+ R5 旧接口清理 + F/G 攻防端点视图。
 > **动态开发计划**：`developer/plan.md` — 当前未完成任务清单 + 下一步计划，每次会话必读、每次完成任务后更新勾选。
 
 ---
@@ -117,6 +117,7 @@
 - **Python 环境**：macOS 上有 `.venv/`（Python 3.12.13 + greenlet 3.5.3），可运行 `pytest`/`ruff`/`mypy`/`uvicorn` 全链路。Windows 环境仅有 node + perl（Python 域代码须在 macOS/容器内开发）。详见 memory `aegisos-windows-no-python`。
 - **赛事**：XH-202631，截止 2026-09-15；详见 memory `aegisos-cyberdefense-competition` 与 `plans/14` · `15`。
 - **protocol 现状**：`protocol/*.py` 为 `@dataclass`（非 Pydantic，`06 §12` 列迁移待办）；id 字段约定 `*_id`；`Graph.nodes` 为 dict；`NodeKind.Agent` 驼峰。
+- **openai-agents SDK 集成**：S1-S4 ✅ 完成（`StructuredAgent[T]` 基类 + 11 个攻防 Agent + `SDKProvider`/`MockSDKModel` + `CyberOrchestrator`）；R4-R5 🔲 待深化（handoffs/guardrails/tracing + 旧接口清理）；`neuro_symbolic.py` 是唯一未迁移的 LLM 调用点（P0）。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
 
 ---
 

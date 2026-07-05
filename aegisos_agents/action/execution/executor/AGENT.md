@@ -1,42 +1,42 @@
 # Execution/Executor 执行器 — AGENT.md
 
-> 本文件是 `agents/action/execution/executor/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/action/execution/executor/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
-工具与任务执行器：沙箱化执行、超时控制、结果采集、失败回滚。区别于 agents/action/executor 角色 Agent。
+工具与任务执行器：沙箱化执行、超时控制、结果采集、失败回滚。区别于 aegisos_agents/action/executor 角色 Agent。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/action/execution/tools/
-- agents/tools/runtime/
+- aegisos_agents/action/execution/tools/
+- aegisos_agents/tools/runtime/
 - tooling/configs/
 - developer/
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/
+- aegisos_agents/planning/engine/
 - protocol/ 类型定义
 
 ## 输出
-- agents/action/execution/executor/runners/
-- agents/action/execution/executor/sandbox/
+- aegisos_agents/action/execution/executor/runners/
+- aegisos_agents/action/execution/executor/sandbox/
 
 ## 依赖
-- agents/action/execution/tools/ 工具注册
-- agents/tools/runtime/ 运行环境
+- aegisos_agents/action/execution/tools/ 工具注册
+- aegisos_agents/tools/runtime/ 运行环境
 - protocol/ ToolCall
 
 ## 接口
 execute(tool_call) -> ToolResult；沙箱隔离。
 
 ## 测试方式
-`pytest tests/agents/action/execution/executor/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/action/execution/executor/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/action/execution/executor/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/action/execution/executor/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/executor/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/executor/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/executor.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -52,6 +52,6 @@ execute(tool_call) -> ToolResult；沙箱隔离。
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
 - **本模块规范补充**：11_AI_CODING_SPEC.md（沙箱隔离）
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

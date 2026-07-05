@@ -11,12 +11,12 @@
 - `infrastructure/delivery/deployment/`（部署与脚本协同）
 
 ## 禁止修改目录
-- `frontend/`、`backend/`、`agents/`、`agents/planning/engine/`、`agents/action/execution/`、`infrastructure/`、`observability/`、`data/` 的业务源码
+- `frontend/`、`backend/`、`aegisos_agents/`、`aegisos_agents/planning/engine/`、`aegisos_agents/action/execution/`、`infrastructure/`、`observability/`、`data/` 的业务源码
 - `protocol/` 类型定义
 - `developer/` 规范文档
 
 ## 输出
-- `tooling/configs/` 环境与各模块配置（environments/agents/models/prompts/各模块 yaml）
+- `tooling/configs/` 环境与各模块配置（environments/aegisos_agents/models/prompts/各模块 yaml）
 - `tooling/scripts/` setup/build/test/deploy 等自动化脚本
 
 ## 依赖
@@ -33,7 +33,7 @@
 `logs/tooling/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/tooling/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/tooling/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/`（自身即配置源；环境差异通过 `tooling/configs/environments/` 覆盖）。

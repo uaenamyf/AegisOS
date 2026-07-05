@@ -33,12 +33,12 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 2. **protocol/** — 契约层，唯一数据契约。
 3. **frontend/** — 表现层。Controller-Service-Lib + Views：`controllers/`(交互/事件) · `services/`(API/实时/状态) · `lib/`(HTTP 客户端/全局状态) · `views/`(chat·canvas·graph·monitor·replay)。
 4. **backend/** — 应用层。Router-Service-Repository-Model + Core：`core/`(组合根DI/鉴权/中间件/路由聚合) · `routers/`(路由层) · `services/`(业务逻辑) · `repositories/`(数据访问) · `models/`(ORM实体) · `schemas/`(契约) · `mocks/`(端口mock)。
-5. **agents/** — 智能体域。认知架构五层：
-   - `agents/perception/` 感知：context · reasoning · reflection
-   - `agents/planning/` 规划：planner · orchestrator · engine/(planner·scheduler·router·workflow·eventbus·topology)
-   - `agents/action/` 行动：coder·executor·tester·debugger·critic·reviewer·researcher·docwriter + execution/(executor·tools)
-   - `agents/memory/` 记忆：12 子模块（含 semantic 知识库）
-   - `agents/tools/` 工具：llms · prompts · runtime
+5. **aegisos_agents/** — 智能体域。认知架构五层：
+   - `aegisos_agents/perception/` 感知：context · reasoning · reflection
+   - `aegisos_agents/planning/` 规划：planner · orchestrator · engine/(planner·scheduler·router·workflow·eventbus·topology)
+   - `aegisos_agents/action/` 行动：coder·executor·tester·debugger·critic·reviewer·researcher·docwriter + execution/(executor·tools)
+   - `aegisos_agents/memory/` 记忆：12 子模块（含 semantic 知识库）
+   - `aegisos_agents/tools/` 工具：llms · prompts · runtime
 6. **infrastructure/** — 基础设施层。分类：`transport/`(通信) · `nodes/`(端·云) · `delivery/`(部署)。
 7. **observability/** — 可观测与评估层。分类：`inspect/`(监控·回放) · `measure/`(基准·评估) · `present/`(可视化)。
 8. **data/** — 数据层：`datasets/` · `models/`。
@@ -124,7 +124,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | # | 大模块 | 是什么 | 代码文件 | 测试数 | 实现状态 |
 |---|--------|--------|---------|--------|---------|
 | 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
-| 2 | `agents/` | 智能体域 — 认知核心，五层架构 | 25 `.py` | 84 | ✅ 核心算法完成 / 🔲 编排器待补 |
+| 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 25 `.py` | 84 | ✅ 核心算法完成 / ✅ SDK 集成 S1-S4 / 🔲 编排器深化 R4 |
 | 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 18 `.py` | — | ✅ 可运行 |
 | 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 |
 | 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
@@ -132,7 +132,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 7 | `data/` | 数据层 — 数据集 · 模型 schema | 1 `.py` | 0 | 🔲 仅 API 协议 + SQLite |
 | 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
 | 9 | `developer/` | 规范层 — SSOT 规范 + roadmap | 0 `.py` | — | ✅ 规范就位 |
-| 10 | `tests/` | 测试 — 90 个测试全通过 | 27 `.py` | 90 | ✅ Phase A-E + B3 + E13 覆盖 |
+| 10 | `tests/` | 测试 — 94 个测试全通过 | 27 `.py` | 94 | ✅ Phase A-E + B3 + E13 + SDK 覆盖 |
 
 **模块依赖关系**：
 
@@ -141,9 +141,9 @@ developer/specs  ← 定义规范（唯一真相源 SSOT）
        ↓
 protocol/        ← 唯一契约（所有域引用）
        ↓
-agents/api       ← 公共接口（5 个 Protocol + 3 个 DI 端口）
+aegisos_agents/api       ← 公共接口（5 个 Protocol + 3 个 DI 端口）
        ↓                ↑
-backend/api  ← 调用 agents.api
+backend/api  ← 调用 aegisos_agents.api
        ↓
 frontend/services ← 调用 backend REST API
 ```
@@ -185,7 +185,7 @@ frontend/services ← 调用 backend REST API
 
 ---
 
-### 2. `agents/` — 智能体域
+### 2. `aegisos_agents/` — 智能体域
 
 #### 是什么
 系统的**认知核心**，实现五层架构：感知 → 规划 → 行动 → 记忆 → 工具。群体智能协同推理引擎的核心代码所在。
@@ -198,7 +198,20 @@ frontend/services ← 调用 backend REST API
 - **工具层**：多模型路由（gpt→OpenAI, claude→Anthropic, local→本地）
 - **公共接口**：5 个 Protocol 接口 + 3 个 DI 端口
 
-📎 五层架构详解 + 子模块状态：[`agents/AGENT.md`](agents/AGENT.md) · 规范：[`08_AGENT_SPEC.md`](developer/specs/08_AGENT_SPEC.md)
+#### openai-agents SDK 集成
+
+> ✅ S1-S4 完成 · 🔲 R4-R5 待深化。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
+
+| 能力 | 状态 | 说明 |
+|------|------|------|
+| `StructuredAgent[T]` 基类 | ✅ | 封装 SDK `Agent` + `Runner.run_sync` + `output_type`（Pydantic BaseModel） |
+| 11 个攻防 Agent 迁移 | ✅ | 全部继承 `StructuredAgent[T]`，无 `json.loads` |
+| `SDKProvider` + `MockSDKModel` | ✅ | 双模式：Mock（`AEGIS_USE_MOCK=1`）/ 火山引擎 ARK 真实 API |
+| `CyberOrchestrator` 编排器 | ✅ 部分 | 9 个 SDK Agent 装配 + 红蓝紫链；🔲 handoffs/guardrails/tracing 待 R4 |
+| `neuro_symbolic.py` 迁移 | 🔲 P0 | 唯一仍用旧 `ModelProvider.complete()` + `json.loads` 的 LLM 调用点 |
+| 旧 `base.py` 接口清理 | 🔲 R5 | `LLMRequest`/`LLMResponse`/`ModelProvider` 待 neuro_symbolic 迁移后删除 |
+
+📎 五层架构详解 + 子模块状态：[`aegisos_agents/AGENT.md`](aegisos_agents/AGENT.md) · 规范：[`08_AGENT_SPEC.md`](developer/specs/08_AGENT_SPEC.md)
 
 ---
 
@@ -210,7 +223,7 @@ frontend/services ← 调用 backend REST API
 #### 做了什么
 - **FastAPI 应用**：完整的 app 创建 + CORS + 请求追踪中间件 + lifespan 数据库初始化
 - **网关鉴权**：`/api/v1/*` 前缀路由 + X-API-Key header 鉴权（`aegis-dev-key`）
-- **10 个 REST 端点**：health / sessions / tasks / agents / graph / memory / tools / metrics / replay
+- **10 个 REST 端点**：health / sessions / tasks / aegisos_agents / graph / memory / tools / metrics / replay
 - **实时通信**：SSE 事件推送 + WebSocket 双向流
 - **数据持久化**：SQLAlchemy async + aiosqlite，Session/Task 实体 + 仓储 + 转换器
 - **DI 组合根**：`composition.py` 装配 DB + 仓储 + 服务 + 14 Agent 注册 + MockRuntime
@@ -229,7 +242,7 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 
 #### 做了什么
 - **类型系统**：`gen_ts_types.py` 自动生成的 36 个 TS 类型
-- **全局状态**：Zustand store 管理 session/agents/chatMessages/graph/isSending
+- **全局状态**：Zustand store 管理 session/aegisos_agents/chatMessages/graph/isSending
 - **API 客户端**：统一 HTTP 客户端（baseURL + X-API-Key header）
 - **5 个 REST 服务**：agents / sessions / tasks / memory / graph
 - **实时通信**：SSE + WebSocket 封装
@@ -334,10 +347,10 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 | 目录 | 测试数 | 覆盖内容 |
 |------|--------|---------|
 | `tests/protocol/` | 6 | 8 个攻防 dataclass |
-| `tests/agents/memory/` | 33 | 4 层记忆存储 + MemoryStore 闭环 + 压缩/唤醒 |
-| `tests/agents/planning/` | 10 | 活跃子图 + Top-K 路由 + 选举 + 调度 |
-| `tests/agents/tools/` | 5 | 多模型路由 |
-| `tests/agents/action/` | 23 | 11 个攻防 Agent + 神经符号闭环 |
+| `tests/aegisos_agents/memory/` | 33 | 4 层记忆存储 + MemoryStore 闭环 + 压缩/唤醒 |
+| `tests/aegisos_agents/planning/` | 10 | 活跃子图 + Top-K 路由 + 选举 + 调度 |
+| `tests/aegisos_agents/tools/` | 5 | 多模型路由 |
+| `tests/aegisos_agents/action/` | 23 | 11 个攻防 Agent + 神经符号闭环 |
 | `tests/e2e/` | 5 | 场景 1 红→蓝→紫端到端 + B3 记忆闭环 |
 | `tests/基础/` | 4 | 基础测试 |
 
@@ -353,8 +366,9 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 | 后端 | Python 3.12 · FastAPI · SQLAlchemy(async) · aiosqlite · uvicorn |
 | 前端 | React 18 · Vite 5.4.21 · Zustand 4.5 · TypeScript 5.6 |
 | 协议 | Python `@dataclass`（§12 计划迁移 Pydantic） |
+| AI SDK | openai-agents SDK · `StructuredAgent[T]` + `output_type`（Pydantic）· Mock/真实 API 双模式 |
 | 数据库 | SQLite（`aegisos.db`）→ Neo4j + Qdrant（待接入） |
-| 测试 | pytest · ruff · mypy |
+| 测试 | pytest · ruff · mypy · 94 tests passing |
 
 ### 快速启动
 

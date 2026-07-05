@@ -7,13 +7,13 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/topology/
+- aegisos_agents/planning/engine/topology/
 - tooling/configs/
 - developer/specs/04_PROTOCOL_SPEC.md
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/planner/
+- aegisos_agents/planning/engine/planner/
 - protocol/ 类型定义
 
 ## 输出
@@ -23,7 +23,7 @@
 
 ## 依赖
 - protocol/ Message
-- agents/planning/engine/topology/ 路径
+- aegisos_agents/planning/engine/topology/ 路径
 
 ## 接口
 send/recv(message)；低熵稀疏通信协议。
@@ -35,7 +35,7 @@ send/recv(message)；低熵稀疏通信协议。
 `logs/infrastructure/transport/communication/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/communication/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/communication/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/communication.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

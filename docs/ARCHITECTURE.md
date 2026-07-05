@@ -2,7 +2,7 @@
 
 > 本文件对每个顶层域的实际**代码实现状态**做精确描述：已实现什么、未实现什么、关键文件在哪、测试覆盖如何。
 > 各域详细实现文档已合并至对应 `AGENT.md` 末尾「📋 模块实现详解」段；全局模块总览已合并至根 `AGENT.md` 末尾「📋 模块实现总览」段。
-> 最后更新：2026-07-05 · 59 个测试全通过
+> 最后更新：2026-07-06 · 94 个测试全通过 · SDK 集成 S1-S4 ✅
 
 ---
 
@@ -11,7 +11,7 @@
 | 域 | 代码文件 | 测试数 | 实现状态 | 模块文档 |
 |----|---------|--------|---------|---------|
 | [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
-| [`agents/`](#agents) | 20 `.py` | 41 | ✅ 核心算法完成 / 🔲 编排器+runtime 集成待补 | [AGENT.md](../agents/AGENT.md) |
+| [`aegisos_agents/`](#agents) | 25 `.py` | 84 | ✅ 核心算法完成 / ✅ SDK S1-S4 / 🔲 编排器深化 R4 | [AGENT.md](../aegisos_agents/AGENT.md) |
 | [`backend/`](#backend) | 18 `.py` | — | ✅ REST+WS+SSE+DB 可用 | [AGENT.md](../backend/AGENT.md) |
 | [`frontend/`](#frontend) | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 | [AGENT.md](../frontend/AGENT.md) |
 | [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../infrastructure/AGENT.md) |
@@ -19,7 +19,7 @@
 | [`data/`](#data) | 1 `.py` | 0 | 🔲 仅 API 协议定义 + SQLite DB | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
 | [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
-| [`tests/`](#tests) | 26 `.py` | 55 | ✅ Phase A-E 覆盖 | — |
+| [`tests/`](#tests) | 27 `.py` | 94 | ✅ Phase A-E + B3 + E13 + SDK 覆盖 | — |
 
 ---
 
@@ -52,65 +52,87 @@
 
 ---
 
-## agents/ — 智能体域
+## aegisos_agents/ — 智能体域
 
 **定位**：系统的认知核心，五层架构：感知 → 规划 → 行动 → 记忆 → 工具。
 
+### 🔧 openai-agents SDK 集成状态
+
+> ✅ S1-S4 完成 · 🔲 R4-R5 待深化。详见 `aegisos_agents/AGENT.md` + `developer/plan.md`。
+
+| 能力 | 状态 |
+|------|------|
+| `StructuredAgent[T]` 基类（SDK `Agent` + `Runner.run_sync` + `output_type`） | ✅ |
+| 11 个攻防 Agent（红 4 + 蓝 5 + 紫 2，全部继承 StructuredAgent，无 `json.loads`） | ✅ |
+| `SDKProvider` + `MockSDKModel`（双模式：Mock / 火山引擎 ARK） | ✅ |
+| `CyberOrchestrator`（9 个 SDK Agent 装配 + 红蓝紫链） | ✅ 部分 |
+| `neuro_symbolic.py` 迁移 | 🔲 P0（唯一未迁移的 LLM 调用点） |
+| SDK `handoffs` / `guardrails` / `tracing` | 🔲 R4 |
+| 旧 `base.py` 接口清理 | 🔲 R5 |
+
 ### 子模块实现状态
 
-#### `agents/planning/` — 规划引擎（✅ 核心算法完成）
+#### `aegisos_agents/planning/` — 规划引擎（✅ 核心算法完成）
 
 | 文件 | 函数/类 | 功能 | 测试 |
 |------|--------|------|------|
-| [`engine/topology/topology.py`](../agents/planning/engine/topology/topology.py) | `active_subgraph()` | 按 capability + status(active/degraded) 过滤活跃子图 | 2 |
-| [`engine/router/router.py`](../agents/planning/engine/router/router.py) | `route()` | 低熵稀疏路由 Top-K=3，按 affinity - load_penalty 排序 | 3 |
-| [`engine/router/election.py`](../agents/planning/engine/router/election.py) | `elect()` | 异构选举：task_features · capability_vectors 点积最高者胜出 | 2 |
-| [`engine/scheduler/scheduler.py`](../agents/planning/engine/scheduler/scheduler.py) | `schedule()` · `Model` | 端边云三层卸载：device/edge/cloud，privacy=local→device，latency<1s→device，latency<5s→edge，否则→cloud，降级端→边→云 | 8 |
+| [`engine/topology/topology.py`](../aegisos_agents/planning/engine/topology/topology.py) | `active_subgraph()` | 按 capability + status(active/degraded) 过滤活跃子图 | 2 |
+| [`engine/router/router.py`](../aegisos_agents/planning/engine/router/router.py) | `route()` | 低熵稀疏路由 Top-K=3，按 affinity - load_penalty 排序 | 3 |
+| [`engine/router/election.py`](../aegisos_agents/planning/engine/router/election.py) | `elect()` | 异构选举：task_features · capability_vectors 点积最高者胜出 | 2 |
+| [`engine/scheduler/scheduler.py`](../aegisos_agents/planning/engine/scheduler/scheduler.py) | `schedule()` · `Model` | 端边云三层卸载：device/edge/cloud，privacy=local→device，latency<1s→device，latency<5s→edge，否则→cloud，降级端→边→云 | 8 |
 
-> 🔲 **未实现**：`planner/` · `orchestrator/` · `engine/workflow/` · `engine/eventbus/` 仅有 AGENT.md，编排器全空
+> 🔲 **未实现**：`planner/` · `engine/workflow/` · `engine/eventbus/` 仅有 AGENT.md
+> ✅ **CyberOrchestrator**：`orchestrator/cyber_orchestrator.py` 已用 SDK Agent 实现红蓝紫攻防链编排（R4 待深化 handoffs/guardrails/tracing）
 
-#### `agents/memory/` — 记忆子系统（✅ 压缩+唤醒完成，🔲 10 子模块空）
+#### `aegisos_agents/memory/` — 记忆子系统（✅ B3 四层+集成层完成，🔲 7 子模块空）
 
 | 文件 | 函数 | 功能 | 测试 |
 |------|------|------|------|
-| [`compression/compactor.py`](../agents/memory/compression/compactor.py) | `compress()` · `_token_estimate()` | 上下文压缩：超 budget 时保留 decision+recent，其余合并为 digest | 4 |
-| [`recall/recaller.py`](../agents/memory/recall/recaller.py) | `recall()` | 记忆唤醒：trigger 关键词匹配 episodic+vector，decision 优先，Top-5 | 3 |
+| [`compression/compactor.py`](../aegisos_agents/memory/compression/compactor.py) | `compress()` · `_token_estimate()` | 上下文压缩：超 budget 时保留 decision+recent，其余合并为 digest | 4 |
+| [`recall/recaller.py`](../aegisos_agents/memory/recall/recaller.py) | `recall()` | 记忆唤醒：trigger 关键词匹配 episodic+vector，decision 优先，Top-5 | 3 |
+| [`working/store.py`](../aegisos_agents/memory/working/store.py) | `WorkingMemory` | 工作记忆：按 session_id 隔离的上下文栈 | 4 |
+| [`episodic/store.py`](../aegisos_agents/memory/episodic/store.py) | `EpisodicMemory` | 情景记忆：跨会话历史经验累积 | 3 |
+| [`semantic/store.py`](../aegisos_agents/memory/semantic/store.py) | `SemanticMemory` | 语义记忆/知识库：8 个 ATT&CK 种子技战术 | 4 |
+| [`vector/store.py`](../aegisos_agents/memory/vector/store.py) | `VectorMemory` | 向量记忆：余弦相似度 Top-K 检索 | 5 |
+| [`memory_store.py`](../aegisos_agents/memory/memory_store.py) | `MemoryStore` | 集成存储：聚合四层 + compactor + recaller，认知循环中枢 | 10 |
 
-> 🔲 **未实现**：working/episodic/semantic/vector/archive/cache/checkpoint/reflection/retrieval/snapshot/sync 全部仅 AGENT.md
+> 🔲 **未实现**：archive/cache/checkpoint/reflection/retrieval/snapshot/sync 仅 AGENT.md
 
-#### `agents/action/` — 攻防 Agent（✅ 11 个全部完成）
+#### `aegisos_agents/action/` — 攻防 Agent（✅ 11 个全部完成）
 
 | Agent | 文件 | 核心方法 | 输入 → 输出 | 测试 |
 |-------|------|---------|------------|------|
-| 🔴 `recon` | [`recon/agent.py`](../agents/action/recon/agent.py) | `scan(target_range)` | 目标范围 → `list[Asset]` | 2 |
-| 🔴 `vuln_correlator` | [`vuln_correlator/agent.py`](../agents/action/vuln_correlator/agent.py) | `correlate(assets, cve_db)` | 资产+CVE库 → `list[VulnFinding]` | 1 |
-| 🔴 `exploit_planner` | [`exploit_planner/agent.py`](../agents/action/exploit_planner/agent.py) | `plan(findings)` | 漏洞列表 → `AttackChain` | 1 |
-| 🔴 `lateral_move` | [`lateral_move/agent.py`](../agents/action/lateral_move/agent.py) | `plan_moves(chain)` | 攻击链 → 横向移动步骤 | 1 |
-| 🔵 `detector` | [`detector/agent.py`](../agents/action/detector/agent.py) | `detect(events)` | 事件流 → `list[Alert]` | 2 |
-| 🔵 `triage` | [`triage/agent.py`](../agents/action/triage/agent.py) | `triage(alerts)` | 告警列表 → 按严重度排序 | 1 |
-| 🔵 `threat_hunt` | [`threat_hunt/agent.py`](../agents/action/threat_hunt/agent.py) | `hunt(alerts)` | 告警 → ATT&CK 假设 | 1 |
-| 🔵 `ir_planner` | [`ir_planner/agent.py`](../agents/action/ir_planner/agent.py) | `plan_response(hypotheses)` | 假设 → `ResponsePlan`(含 rollback) | 2 |
-| 🔵 `forensics` | [`forensics/agent.py`](../agents/action/forensics/agent.py) | `investigate(alert)` | 告警 → 取证报告 | 1 |
-| 🟣 `critic` | [`critic/agent.py`](../agents/action/critic/agent.py) | `critique(chain_or_plan)` | 对抗性校验，红蓝产出反驳 | 2 |
-| 🟣 `reviewer` | [`reviewer/agent.py`](../agents/action/reviewer/agent.py) | `review(inputs)` | 一致性审查，最终结论 | 1 |
+| 🔴 `recon` | [`recon/agent.py`](../aegisos_agents/action/recon/agent.py) | `scan(target_range)` | 目标范围 → `list[Asset]` | 2 |
+| 🔴 `vuln_correlator` | [`vuln_correlator/agent.py`](../aegisos_agents/action/vuln_correlator/agent.py) | `correlate(assets, cve_db)` | 资产+CVE库 → `list[VulnFinding]` | 1 |
+| 🔴 `exploit_planner` | [`exploit_planner/agent.py`](../aegisos_agents/action/exploit_planner/agent.py) | `plan(findings)` | 漏洞列表 → `AttackChain` | 1 |
+| 🔴 `lateral_move` | [`lateral_move/agent.py`](../aegisos_agents/action/lateral_move/agent.py) | `plan_moves(chain)` | 攻击链 → 横向移动步骤 | 1 |
+| 🔵 `detector` | [`detector/agent.py`](../aegisos_agents/action/detector/agent.py) | `detect(events)` | 事件流 → `list[Alert]` | 2 |
+| 🔵 `triage` | [`triage/agent.py`](../aegisos_agents/action/triage/agent.py) | `triage(alerts)` | 告警列表 → 按严重度排序 | 1 |
+| 🔵 `threat_hunt` | [`threat_hunt/agent.py`](../aegisos_agents/action/threat_hunt/agent.py) | `hunt(alerts)` | 告警 → ATT&CK 假设 | 1 |
+| 🔵 `ir_planner` | [`ir_planner/agent.py`](../aegisos_agents/action/ir_planner/agent.py) | `plan_response(hypotheses)` | 假设 → `ResponsePlan`(含 rollback) | 2 |
+| 🔵 `forensics` | [`forensics/agent.py`](../aegisos_agents/action/forensics/agent.py) | `investigate(alert)` | 告警 → 取证报告 | 1 |
+| 🟣 `critic` | [`critic/agent.py`](../aegisos_agents/action/critic/agent.py) | `critique(chain_or_plan)` | 对抗性校验，红蓝产出反驳 | 2 |
+| 🟣 `reviewer` | [`reviewer/agent.py`](../aegisos_agents/action/reviewer/agent.py) | `review(inputs)` | 一致性审查，最终结论 | 1 |
 
-#### `agents/perception/` — 感知层（✅ 神经符号闭环完成）
+#### `aegisos_agents/perception/` — 感知层（✅ 神经符号闭环完成）
 
 | 文件 | 函数/类 | 功能 | 测试 |
 |------|--------|------|------|
-| [`reasoning/neuro_symbolic.py`](../agents/perception/reasoning/neuro_symbolic.py) | `validate_chain()` · `NeuroSymbolicLoop` | 符号验证（allowed_techniques 规则） + LLM 重新生成 → 迭代修复 | 4 |
+| [`reasoning/neuro_symbolic.py`](../aegisos_agents/perception/reasoning/neuro_symbolic.py) | `validate_chain()` · `NeuroSymbolicLoop` | 符号验证（allowed_techniques 规则） + LLM 重新生成 → 迭代修复 | 4 |
 
 > 🔲 **未实现**：`context/` · `reflection/` 仅有 AGENT.md
 
-#### `agents/tools/` — 工具层（✅ 多模型兼容完成）
+#### `aegisos_agents/tools/` — 工具层（✅ 多模型兼容 + SDK 适配完成）
 
 | 文件 | 类 | 功能 | 测试 |
 |------|-----|------|------|
-| [`llms/base.py`](../agents/tools/llms/base.py) | `LLMRequest` · `LLMResponse` · `ModelProvider` | LLM 调用抽象基类 | — |
-| [`llms/mock_provider.py`](../agents/tools/llms/mock_provider.py) | `MockProvider` | 测试用 Mock 实现 | — |
-| [`llms/model_router.py`](../agents/tools/llms/model_router.py) | `ModelRouter` | 多模型路由：gpt→OpenAI, claude→Anthropic, local/*→本地, 按 tier(device/edge/cloud) 映射 | 5 |
+| [`llms/sdk_provider.py`](../aegisos_agents/tools/llms/sdk_provider.py) | `SDKProvider` | SDK 适配器：桥接 `ModelProvider` → SDK `OpenAIChatCompletionsModel`，双模式 Mock/ARK | — |
+| [`llms/mock_sdk_model.py`](../aegisos_agents/tools/llms/mock_sdk_model.py) | `MockSDKModel` | SDK Mock 适配器：将 `MockProvider` 包装为 SDK `ModelResponse` | — |
+| [`llms/base.py`](../aegisos_agents/tools/llms/base.py) | `LLMRequest` · `LLMResponse` · `ModelProvider` | 旧 LLM 调用抽象基类（⚠️ R5 清理目标） | — |
+| [`llms/mock_provider.py`](../aegisos_agents/tools/llms/mock_provider.py) | `MockProvider` | 测试用 Mock 实现 | — |
+| [`llms/model_router.py`](../aegisos_agents/tools/llms/model_router.py) | `ModelRouter` | 多模型路由：gpt→OpenAI, claude→Anthropic, local/*→本地, 按 tier(device/edge/cloud) 映射 | 5 |
 
-#### `agents/api/` — 公共接口（✅ 5 接口定义完成）
+#### `aegisos_agents/api/` — 公共接口（✅ 5 接口定义完成）
 
 | 接口 | 方法 |
 |------|------|
@@ -122,7 +144,7 @@
 
 > 另有 `ports.py`：`PersistencePort` · `SessionPort` · `TaskUpdatePort`（DI 端口）
 
-📎 详细文档：[`agents/AGENT.md`](../agents/AGENT.md) 末尾「📋 模块实现详解」 · 规范：[`08_AGENT_SPEC.md`](../developer/specs/08_AGENT_SPEC.md)
+📎 详细文档：[`aegisos_agents/AGENT.md`](../aegisos_agents/AGENT.md) 末尾「📋 模块实现详解」 · 规范：[`08_AGENT_SPEC.md`](../developer/specs/08_AGENT_SPEC.md)
 
 ---
 
@@ -140,7 +162,7 @@
 | | [`core/middleware.py`](../backend/core/middleware.py) | TraceMiddleware（请求追踪 ID） |
 | **REST** | `routers/sessions.py` | `POST /sessions` · `GET /sessions` |
 | | `routers/tasks.py` | `POST /tasks` · `GET /tasks` · `POST /tasks/{id}/cancel` |
-| | `routers/agents.py` | `GET /agents` · `POST /agents/{id}/invoke` |
+| | `routers/agents.py` | `GET /agents` · `POST /aegisos_agents/{id}/invoke` |
 | | `routers/graph.py` | `GET /graph` |
 | | `routers/memory.py` | `GET /memory` · `POST /memory` |
 | | `routers/tools.py` | `POST /tools/invoke` |
@@ -174,7 +196,7 @@
 |----|---------|------|
 | **类型** | [`src/protocol/types.ts`](../frontend/src/protocol/types.ts) | 自动生成（`gen_ts_types.py`），36 个 TS 类型映射 protocol/*.py |
 | | `src/protocol/frontend-types.ts` | `ViewName` · 路由类型 |
-| **Store** | `lib/store/index.ts` | Zustand 全局状态：session/agents/chatMessages/graph/isSending |
+| **Store** | `lib/store/index.ts` | Zustand 全局状态：session/aegisos_agents/chatMessages/graph/isSending |
 | **API Client** | `lib/api-client/client.ts` | 统一 HTTP 客户端（baseURL + X-API-Key） |
 | **Services** | `services/api/agents.ts` · `sessions.ts` · `tasks.ts` · `memory.ts` · `graph.ts` | REST API 调用封装 |
 | | `services/graph/index.ts` | 图数据服务 |
@@ -290,11 +312,11 @@
 | 目录 | 测试文件 | 测试数 | 覆盖内容 |
 |------|---------|--------|---------|
 | `tests/protocol/` | `test_cyber.py` | 6 | 8 个攻防 dataclass 字段/序列化 |
-| `tests/agents/memory/` | `test_compactor.py` · `test_recaller.py` | 7 | 上下文压缩 + 记忆唤醒 |
-| `tests/agents/planning/` | `test_topology.py` · `test_router.py` · `test_election.py` · `test_scheduler.py` | 18 | 活跃子图 + Top-K 路由 + 选举 + 端边云三层调度 |
-| `tests/agents/tools/` | `test_model_router.py` | 5 | 多模型路由 |
-| `tests/agents/action/` | 11 个 `test_*.py` | 19 | 11 个攻防 Agent |
-| `tests/agents/perception/` | `test_neuro_symbolic.py` | 4 | 神经符号闭环 |
+| `tests/aegisos_agents/memory/` | `test_compactor.py` · `test_recaller.py` | 7 | 上下文压缩 + 记忆唤醒 |
+| `tests/aegisos_agents/planning/` | `test_topology.py` · `test_router.py` · `test_election.py` · `test_scheduler.py` | 18 | 活跃子图 + Top-K 路由 + 选举 + 端边云三层调度 |
+| `tests/aegisos_agents/tools/` | `test_model_router.py` | 5 | 多模型路由 |
+| `tests/aegisos_agents/action/` | 11 个 `test_*.py` | 19 | 11 个攻防 Agent |
+| `tests/aegisos_agents/perception/` | `test_neuro_symbolic.py` | 4 | 神经符号闭环 |
 
 ### 未实现
 - 🔲 `tests/e2e/` — 端到端集成测试（场景 1 红→蓝→紫完整链路）
@@ -308,9 +330,9 @@ developer/specs ← 定义规范（SSOT）
         ↓
 protocol/ ← 唯一契约（所有域引用）
         ↓
-agents/api ← 公共接口（5 个 Protocol）
+aegisos_agents/api ← 公共接口（5 个 Protocol）
         ↓                ↑
-backend/api ← 调用 agents.api
+backend/api ← 调用 aegisos_agents.api
         ↓
 frontend/services ← 调用 backend REST API
 ```

@@ -9,6 +9,7 @@
 主要导出：
     - elect: 选举入口，返回得分最高的 NodeRef。
 """
+
 from __future__ import annotations
 
 from protocol.graph import GraphNode

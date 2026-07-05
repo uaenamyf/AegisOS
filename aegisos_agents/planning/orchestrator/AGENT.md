@@ -1,16 +1,16 @@
 # Agent: Orchestrator — AGENT.md
 
-> 本文件是 `agents/planning/orchestrator/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/planning/orchestrator/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 编排 Agent：协调多 Agent 协作流程，维护群体智能协作拓扑。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/router/
-- agents/planning/engine/scheduler/
-- agents/
-- agents/tools/prompts/roles/orchestrator/
+- aegisos_agents/planning/engine/router/
+- aegisos_agents/planning/engine/scheduler/
+- aegisos_agents/
+- aegisos_agents/tools/prompts/roles/orchestrator/
 - tooling/configs/agents/orchestrator.yaml
 
 ## 禁止修改目录
@@ -22,21 +22,21 @@
 - GraphUpdate 协作图变更
 
 ## 依赖
-- agents/planning/engine/router/ 路由
-- agents/planning/engine/scheduler/ 调度
+- aegisos_agents/planning/engine/router/ 路由
+- aegisos_agents/planning/engine/scheduler/ 调度
 - protocol/ Message
 
 ## 接口
 receive(goal) -> think() -> coordinate() -> Result
 
 ## 测试方式
-`pytest tests/agents/planning/orchestrator/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/planning/orchestrator/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/planning/orchestrator/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/planning/orchestrator/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/roles/orchestrator/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/roles/orchestrator/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/agents/orchestrator.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -61,6 +61,6 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

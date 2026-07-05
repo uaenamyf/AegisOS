@@ -1,3 +1,6 @@
+# date: 2026-07-06
+# dev: myf
+# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + TriageResult 替代 json.loads+try/except（~81 行→~62 行）
 # date: 2026-07-04
 # dev: myf
 # changelog: 蓝队告警分诊 Agent
@@ -5,14 +8,17 @@ from __future__ import annotations
 
 import json
 
-from aegisos_agents.tools.llms.base import LLMRequest, ModelProvider
+from aegisos_agents.action.output_types import TriageResult
+from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert
 
-"""蓝队告警分诊 Agent 模块。
+"""蓝队告警分诊 Agent 模块（SDK 结构化输出版）。
 
 本模块接收入侵检测阶段产出的告警列表，利用大语言模型进行去重和
 按严重级别排序，输出优先级排序后的告警列表，为后续威胁狩猎和
-响应规划提供高优先级输入。
+响应规划提供高优先级输入。SDK 的 ``output_type`` 结构化输出自动
+处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
 """
 
 # 告警严重级别排序权重：数值越小优先级越高
@@ -25,35 +31,51 @@ SYSTEM_PROMPT = (
 )
 
 
-class TriageAgent:
-    """蓝队告警分诊 Agent。
+class TriageAgent(StructuredAgent[TriageResult]):
+    """蓝队告警分诊 Agent（SDK 结构化输出）。
 
     接收原始告警列表，利用大语言模型进行去重和优先级排序，
-    输出按严重级别排序后的告警列表。若模型调用失败，则退回
-    原始告警列表作为 fallback。
+    SDK 的 ``output_type`` 机制自动将返回 JSON 解析为 :class:`TriageResult`
+    （Pydantic 验证 + 自动重试）。再据排序后的 alert_id 从原始告警中
+    映射回 ``Alert`` 对象返回；结果为空时回退原始告警列表。
+
+    Attributes:
+        SYSTEM_PROMPT: 系统提示词，描述 Agent 角色与输出格式。
+        OUTPUT_TYPE: SDK 结构化输出类型 :class:`TriageResult`。
+        TEMPERATURE: 采样温度，0.1 保证排序结果的确定性。
     """
 
-    def __init__(self, provider: ModelProvider):
+    SYSTEM_PROMPT = SYSTEM_PROMPT
+    OUTPUT_TYPE = TriageResult
+    TEMPERATURE = 0.1
+
+    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
         """初始化告警分诊 Agent。
 
+        兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
+        保持现有测试（``TriageAgent(provider=mock)``）无需改动。
+
         Args:
-            provider: LLM 模型提供者，用于发送补全请求。
+            provider: 旧版 ``ModelProvider``（MockProvider），兼容现有测试签名。
+            mock: :class:`MockProvider` 实例，显式传入时用于 Mock 模式。
         """
-        self._provider = provider
+        # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
+        if provider is not None and mock is None:
+            mock = provider
+        super().__init__(mock=mock)
 
     def triage(self, alerts: list[Alert]) -> list[Alert]:
         """对告警列表进行去重和优先级排序。
 
-        将告警信息序列化为 JSON 交给 LLM，模型返回去重排序后的
-        alert_id 列表，据此从原始告警中映射出排序后的 ``Alert`` 对象。
-        若模型调用失败，返回原始告警列表；若解析结果为空，也返回
-        原始告警列表。
+        将告警信息序列化为 JSON 交给 LLM，SDK 自动处理 JSON 解析与
+        Pydantic 验证。模型返回排序后的 alert_id 序列，据此从原始
+        告警中映射出排序后的 ``Alert`` 对象。结果为空时回退原始告警列表。
 
         Args:
             alerts: 待分诊的原始告警列表。
 
         Returns:
-            分诊排序后的告警列表；异常时回退返回原始告警列表。
+            分诊排序后的告警列表；结果为空时回退返回原始告警列表。
         """
         alerts_desc = json.dumps(  # 将告警信息序列化为 JSON 供模型理解
             [
@@ -61,21 +83,9 @@ class TriageAgent:
                 for a in alerts
             ]
         )
-        resp = self._provider.complete(
-            LLMRequest(
-                prompt=f"Triage these alerts: {alerts_desc}",
-                model_id="triage",
-                system_prompt=SYSTEM_PROMPT,
-                temperature=0.1,  # 极低温度保证排序结果的确定性
-            )
-        )
-        if not resp.ok:
-            return alerts  # fallback: 返回原始告警列表
-        try:
-            data = json.loads(resp.text)  # 解析模型返回的 JSON
-            ordered_ids = [a.get("alert_id", "") for a in data.get("alerts", [])]  # 模型排序后的 alert_id 序列
-            alert_map = {a.alert_id: a for a in alerts}  # 构建 alert_id -> Alert 的映射
-            result = [alert_map[aid] for aid in ordered_ids if aid in alert_map]  # 按模型顺序重建列表
-            return result if result else alerts  # 结果为空时回退原始告警
-        except (json.JSONDecodeError, KeyError):
-            return alerts  # JSON 解析失败，回退原始告警
+        result = self._run(f"Triage these alerts: {alerts_desc}")
+        # 模型排序后的 alert_id 序列
+        ordered_ids = [a.alert_id for a in result.alerts]
+        alert_map = {a.alert_id: a for a in alerts}  # 构建 alert_id -> Alert 的映射
+        mapped = [alert_map[aid] for aid in ordered_ids if aid in alert_map]  # 按模型顺序重建列表
+        return mapped if mapped else alerts  # 结果为空时回退原始告警

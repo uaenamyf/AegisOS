@@ -1,18 +1,21 @@
+# date: 2026-07-06
+# dev: myf
+# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + output_type 替代 json.loads+try/except（~77 行→~45 行）
 # date: 2026-07-04
 # dev: myf
 # changelog: 红队侦察 Agent
 from __future__ import annotations
 
-import json
-
-from aegisos_agents.tools.llms.base import LLMRequest, ModelProvider
+from aegisos_agents.action.output_types import ReconResult
+from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Asset
 
-"""红队侦察 Agent 模块。
+"""红队侦察 Agent 模块（SDK 结构化输出版）。
 
-本模块负责对目标网络范围进行侦察扫描，识别存活资产及其暴露面信息
-（主机、开放服务、操作系统、暴露级别），为后续漏洞关联和利用链规划
-提供基础资产清单。
+本模块负责对目标网络范围进行侦察扫描，识别存活资产及其暴露面信息。
+使用 openai-agents SDK 的 ``output_type`` 结构化输出，由 SDK 自动处理
+JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
 """
 
 SYSTEM_PROMPT = (
@@ -22,56 +25,59 @@ SYSTEM_PROMPT = (
 )
 
 
-class ReconAgent:
-    """红队侦察 Agent。
+class ReconAgent(StructuredAgent[ReconResult]):
+    """红队侦察 Agent（SDK 结构化输出）。
 
-    利用大语言模型对目标网络范围进行资产发现与暴露面分析，
-    将模型返回的 JSON 结果解析为 ``Asset`` 列表。
+    利用 LLM 对目标网络范围进行资产发现与暴露面分析，SDK 的 ``output_type``
+    机制自动将返回 JSON 解析为 :class:`ReconResult`（Pydantic 验证 + 自动重试）。
+
+    Attributes:
+        SYSTEM_PROMPT: 系统提示词，描述 Agent 角色与输出格式。
+        OUTPUT_TYPE: SDK 结构化输出类型 :class:`ReconResult`。
+        TEMPERATURE: 采样温度，0.3 保证侦察结果稳定。
     """
 
-    def __init__(self, provider: ModelProvider):
+    SYSTEM_PROMPT = SYSTEM_PROMPT
+    OUTPUT_TYPE = ReconResult
+    TEMPERATURE = 0.3
+
+    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
         """初始化侦察 Agent。
 
+        兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
+        保持现有测试（``ReconAgent(provider=mock)``）无需改动。
+
         Args:
-            provider: LLM 模型提供者，用于发送补全请求。
+            provider: 旧版 ``ModelProvider``（MockProvider），兼容现有测试签名。
+            mock: :class:`MockProvider` 实例，显式传入时用于 Mock 模式。
         """
-        self._provider = provider
+        # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
+        if provider is not None and mock is None:
+            mock = provider
+        super().__init__(mock=mock)
 
     def scan(self, target_range: str) -> list[Asset]:
         """对目标网络范围执行侦察扫描，返回发现的资产列表。
 
-        向 LLM 发送目标范围，模型返回 JSON 格式的资产清单后，
-        解析为 ``Asset`` 对象列表。若模型调用失败或 JSON 解析
-        失败，返回空列表。
+        SDK 自动处理 LLM 调用 → JSON 解析 → Pydantic 验证，
+        失败时 SDK 内部自动重试。最终将 :class:`AssetModel` 转为
+        :class:`Asset`（protocol dataclass）返回，保持接口兼容。
 
         Args:
             target_range: 目标网络范围描述，例如 ``"192.168.1.0/24"``。
 
         Returns:
-            发现的资产列表；调用失败或解析异常时返回空列表。
+            发现的资产列表（``protocol.cyber.Asset``）；LLM 失败时返回空列表。
         """
-        prompt = f"Scan target range: {target_range}"
-        resp = self._provider.complete(
-            LLMRequest(
-                prompt=prompt,
-                model_id="recon-agent",
-                system_prompt=SYSTEM_PROMPT,
-                temperature=0.3,  # 较低温度保证侦察结果稳定
+        result = self._run(f"Scan target range: {target_range}")
+        # Pydantic Model → protocol dataclass 转换
+        return [
+            Asset(
+                asset_id=a.asset_id,
+                host=a.host,
+                services=a.services,
+                os=a.os,
+                exposure=a.exposure,
             )
-        )
-        if not resp.ok:
-            return []  # 模型调用失败，返回空列表
-        try:
-            data = json.loads(resp.text)  # 解析模型返回的 JSON
-            return [
-                Asset(
-                    asset_id=a.get("asset_id", ""),
-                    host=a.get("host", ""),
-                    services=a.get("services", []),
-                    os=a.get("os", ""),
-                    exposure=a.get("exposure", "external"),  # 默认暴露级别为 external
-                )
-                for a in data.get("assets", [])  # 遍历 assets 数组
-            ]
-        except (json.JSONDecodeError, KeyError):
-            return []  # JSON 解析失败或字段缺失，返回空列表
+            for a in result.assets
+        ]

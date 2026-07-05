@@ -1,41 +1,41 @@
 # Engine/Topology 动态拓扑 — AGENT.md
 
-> 本文件是 `agents/planning/engine/topology/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/planning/engine/topology/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 动态异构拓扑图构建与布局：节点/边/权重/熵/延迟/信任度维护，图变更事件。供 router 消费。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/router/
+- aegisos_agents/planning/engine/router/
 - tooling/configs/
 - developer/
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/planner/
+- aegisos_agents/planning/engine/planner/
 - protocol/ 类型定义
 
 ## 输出
-- agents/planning/engine/topology/graph/
-- agents/planning/engine/topology/layout/
-- agents/planning/engine/topology/metrics/
+- aegisos_agents/planning/engine/topology/graph/
+- aegisos_agents/planning/engine/topology/layout/
+- aegisos_agents/planning/engine/topology/metrics/
 
 ## 依赖
-- agents/planning/engine/router/ 路由消费
+- aegisos_agents/planning/engine/router/ 路由消费
 - protocol/ Graph/GraphUpdate
 
 ## 接口
 build/update_graph() -> Graph；产出动态异构拓扑。
 
 ## 测试方式
-`pytest tests/agents/planning/engine/topology/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/planning/engine/topology/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/planning/engine/topology/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/planning/engine/topology/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/topology/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/topology/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/topology.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -51,6 +51,6 @@ build/update_graph() -> Graph；产出动态异构拓扑。
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
 - **本模块规范补充**：04_PROTOCOL_SPEC.md §16 低熵稀疏路由（赛事核心）
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

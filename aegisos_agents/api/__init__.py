@@ -36,9 +36,9 @@ from .ports import PersistencePort, SessionPort, TaskUpdatePort  # DI 端口，�
 class AgentRegistryAPI(Protocol):
     """智能体注册表接口，提供智能体的注册、查询与枚举能力。
 
-    后端可通过此接口查询当前可用的智能体集合，用于任务派发决策。
-n    Attributes:
-        无实例属性；本接口为 ``Protocol``，仅约束方法签名。
+        后端可通过此接口查询当前可用的智能体集合，用于任务派发决策。
+    n    Attributes:
+            无实例属性；本接口为 ``Protocol``，仅约束方法签名。
     """
 
     def register(self, agent: Agent) -> None:

@@ -10,7 +10,7 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/memory/
+- aegisos_agents/memory/
 - data/datasets/
 - tooling/configs/
 - developer/
@@ -26,7 +26,7 @@
 
 ## 依赖
 - data/datasets/ 数据
-- agents/memory/ 反思
+- aegisos_agents/memory/ 反思
 - protocol/ Event
 
 ## 接口
@@ -39,7 +39,7 @@ run(suite) -> BenchmarkReport；evaluate(run) -> Report。
 `logs/observability/measure/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/measure/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/measure/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/measure.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

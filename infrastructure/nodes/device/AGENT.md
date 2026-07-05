@@ -69,5 +69,5 @@
 - **本模块规范**：developer/specs/01_ARCHITECTURE_SPEC.md + 12_TECH_STACK_SPEC.md
 - **API 边界**：infrastructure/api/ — from infrastructure.api import ...
 - **数据契约**：protocol/message.py / protocol/sync.py
-- **调度算法**：agents/planning/engine/scheduler/ — tier="device" 对应本层
+- **调度算法**：aegisos_agents/planning/engine/scheduler/ — tier="device" 对应本层
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（H1 沙箱靶场/端边云）

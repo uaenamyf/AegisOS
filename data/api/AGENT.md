@@ -18,7 +18,7 @@
 - data/ 内部实现（datasets/models）
 - frontend/
 - backend/
-- agents/
+- aegisos_agents/
 - protocol/ 类型定义
 
 ## 输出

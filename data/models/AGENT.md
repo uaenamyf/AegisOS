@@ -33,7 +33,7 @@ register/validate(model)；单一可信 Schema 源。
 `logs/data/models/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/models/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/models/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/models.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

@@ -15,6 +15,7 @@
     - Model: 模型描述数据类。
     - schedule: 调度入口，按规则选定执行模型。
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,8 +23,8 @@ from dataclasses import dataclass, field
 from protocol.scheduler import Task
 
 # --- 三层延迟阈值 ---
-DEVICE_THRESHOLD = 1.0   # 秒；低于此值必须端侧处理（超低延迟）
-EDGE_THRESHOLD = 5.0    # 秒；低于此值优先边侧处理（低延迟）
+DEVICE_THRESHOLD = 1.0  # 秒；低于此值必须端侧处理（超低延迟）
+EDGE_THRESHOLD = 5.0  # 秒；低于此值优先边侧处理（低延迟）
 
 # --- 三层 tier 定义 ---
 # device: 端侧（PC/手机/IoT/防火墙盒子）— 超低延迟、完全本地隐私

@@ -36,7 +36,7 @@ build/deploy(env)；开箱可部署。
 `logs/infrastructure/delivery/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/delivery/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/delivery/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/delivery.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

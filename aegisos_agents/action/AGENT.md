@@ -1,6 +1,6 @@
 # Agents/Action 行动层 — AGENT.md
 
-> 本文件是 `agents/action/` 分类的开发规范，隶属 `agents/` 域。AI 开发本分类下模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/action/` 分类的开发规范，隶属 `aegisos_agents/` 域。AI 开发本分类下模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 分类范式
 认知架构·行动（Action）：执行与产出
@@ -10,38 +10,38 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/memory/
-- agents/tools/
-- agents/planning/
+- aegisos_agents/memory/
+- aegisos_agents/tools/
+- aegisos_agents/planning/
 - tooling/configs/
 
 ## 禁止修改目录
 - frontend/
 - protocol/ 类型定义
-- agents/planning/ 编排逻辑
+- aegisos_agents/planning/ 编排逻辑
 
 ## 输出
-- agents/action/{recon,vuln_correlator,exploit_planner,lateral_move}/ 红队 Agent
-- agents/action/{detector,triage,threat_hunt,ir_planner,forensics}/ 蓝队 Agent
-- agents/action/{critic,reviewer}/ 紫队 Agent
-- agents/action/execution/ 执行能力
+- aegisos_agents/action/{recon,vuln_correlator,exploit_planner,lateral_move}/ 红队 Agent
+- aegisos_agents/action/{detector,triage,threat_hunt,ir_planner,forensics}/ 蓝队 Agent
+- aegisos_agents/action/{critic,reviewer}/ 紫队 Agent
+- aegisos_agents/action/execution/ 执行能力
 
 ## 依赖
-- agents/tools/ 工具与模型
-- agents/memory/ 上下文
+- aegisos_agents/tools/ 工具与模型
+- aegisos_agents/memory/ 上下文
 - protocol/ ToolCall
 
 ## 接口
 receive(task) -> think() -> tool() -> respond() -> Result。
 
 ## 测试方式
-`pytest tests/agents/action/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/action/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/action/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/action/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/action/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/action/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/action.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -57,17 +57,37 @@ receive(task) -> think() -> tool() -> respond() -> Result。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
 
 ## 下辖子模块
-- agents/action/coder/ — 代码生成 Agent
-- agents/action/executor/ — 执行角色 Agent（区别于 agents/action/execution/executor/ 沙箱执行器）
-- agents/action/tester/ — 测试 Agent
-- agents/action/debugger/ — 调试 Agent
-- agents/action/critic/ — 代码评审 Agent
-- agents/action/reviewer/ — 审查放行 Agent
-- agents/action/researcher/ — 调研检索 Agent
-- agents/action/docwriter/ — 文档 Agent
-- agents/action/execution/ — 执行能力：executor(沙箱执行器) + tools(工具注册)
+- aegisos_agents/action/structured_agent.py — `StructuredAgent[T]` 泛型基类，包装 SDK `Agent` + `Runner.run_sync` + `output_type`
+- aegisos_agents/action/output_types.py — 11 个 Pydantic BaseModel 作为 SDK `output_type`
+- aegisos_agents/action/recon/ — 红队侦察 Agent（StructuredAgent[ReconResult]）
+- aegisos_agents/action/vuln_correlator/ — 红队漏洞关联 Agent（StructuredAgent[VulnCorrelatorResult]）
+- aegisos_agents/action/exploit_planner/ — 红队利用规划 Agent（StructuredAgent[ExploitPlannerResult]）
+- aegisos_agents/action/lateral_move/ — 红队横向移动 Agent（StructuredAgent[LateralMoveResult]）
+- aegisos_agents/action/detector/ — 蓝队检测 Agent（StructuredAgent[DetectorResult]）
+- aegisos_agents/action/triage/ — 蓝队分诊 Agent（StructuredAgent[TriageResult]）
+- aegisos_agents/action/threat_hunt/ — 蓝队威胁狩猎 Agent（StructuredAgent[ThreatHuntResult]）
+- aegisos_agents/action/ir_planner/ — 蓝队应急响应规划 Agent（StructuredAgent[IRPlannerResult]）
+- aegisos_agents/action/forensics/ — 蓝队取证 Agent（StructuredAgent[ForensicsResult]）
+- aegisos_agents/action/critic/ — 紫队批判 Agent（StructuredAgent[CritiqueResult]，双 Agent 红/蓝）
+- aegisos_agents/action/reviewer/ — 紫队审查 Agent（StructuredAgent[ReviewResult]）
+- aegisos_agents/action/execution/ — 执行能力：executor(沙箱执行器) + tools(工具注册)
+
+> ⚠️ 原始 `coder/` `executor/` `tester/` `debugger/` `researcher/` `docwriter/` 仅有 AGENT.md 骨架，赛事版攻防 Agent 已替代上述通用角色。
+
+---
+
+### 🔧 SDK 集成状态
+
+> 2026-07-06 全量排查。✅ **11 个攻防 Agent 已全部迁移到 openai-agents SDK**。
+
+- **基类**：`StructuredAgent[T]`（Generic）封装 SDK `Agent` + `Runner.run_sync` + `output_type`
+- **输出类型**：`output_types.py` 定义 11 个 Pydantic BaseModel
+- **模型适配**：`tools/llms/sdk_provider.py` → `OpenAIChatCompletionsModel`（真实 API）/ `tools/llms/mock_sdk_model.py` → `MockSDKModel`（测试）
+- **无 `json.loads`**：所有 Agent 通过 SDK `output_type` 获得结构化输出，无需手写 JSON 解析
+
+详见 `aegisos_agents/AGENT.md`「openai-agents SDK 集成状态」段 + `developer/plan.md`。

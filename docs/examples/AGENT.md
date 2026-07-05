@@ -7,8 +7,8 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/
-- agents/action/execution/
+- aegisos_agents/
+- aegisos_agents/action/execution/
 - tooling/configs/
 - developer/
 
@@ -22,8 +22,8 @@
 - docs/examples/notebooks/
 
 ## 依赖
-- agents/
-- agents/action/execution/
+- aegisos_agents/
+- aegisos_agents/action/execution/
 - protocol/
 
 ## 接口
@@ -36,7 +36,7 @@ run_example(name)；开箱可跑。
 `logs/docs/examples/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/examples/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/examples/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/examples.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

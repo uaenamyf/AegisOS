@@ -10,6 +10,7 @@
 主要导出：
     - route: 对外路由入口，返回排序后的候选 NodeRef 列表。
 """
+
 from __future__ import annotations
 
 from aegisos_agents.planning.engine.topology.topology import active_subgraph

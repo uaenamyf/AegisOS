@@ -7,8 +7,8 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/eventbus/
-- agents/memory/
+- aegisos_agents/planning/engine/eventbus/
+- aegisos_agents/memory/
 - tooling/configs/
 - developer/
 
@@ -23,8 +23,8 @@
 - observability/inspect/replay/timeline/
 
 ## 依赖
-- agents/planning/engine/eventbus/ 事件
-- agents/memory/ snapshot
+- aegisos_agents/planning/engine/eventbus/ 事件
+- aegisos_agents/memory/ snapshot
 
 ## 接口
 record/replay(session) -> Timeline；确定性回放。
@@ -36,7 +36,7 @@ record/replay(session) -> Timeline；确定性回放。
 `logs/observability/inspect/replay/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/replay/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/replay/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/replay.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

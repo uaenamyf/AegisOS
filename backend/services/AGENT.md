@@ -3,14 +3,14 @@
 > 本文件是 `backend/services/` 的开发规范，隶属 `backend/` 域。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
-服务层：业务逻辑核心。用例编排（会话管理、任务下发、Agent 编排），事务管理，调用 agents/ 子系统与 backend/repositories/。控制器与持久化之间的业务中枢。
+服务层：业务逻辑核心。用例编排（会话管理、任务下发、Agent 编排），事务管理，调用 aegisos_agents/ 子系统与 backend/repositories/。控制器与持久化之间的业务中枢。
 
 ## 读取目录（允许读）
 - backend/repositories/
 - backend/models/
 - backend/core/
-- agents/api/
-- agents/planning/engine/
+- aegisos_agents/api/
+- aegisos_agents/planning/engine/
 - protocol/
 - tooling/configs/
 - developer/specs/05_API_SPEC.md
@@ -24,13 +24,13 @@
 - protocol/
 - developer/
 - frontend/
-- agents/（只经 agents/api/ 调用）
+- aegisos_agents/（只经 aegisos_agents/api/ 调用）
 
 ## 输出
 - services/session_service.py — 会话管理（创建/查询/关闭）
 - services/task_service.py — 任务管理（创建/查询/状态流转）
 - services/agent_service.py — Agent 编排（调用/查询/控制）
-- services/memory_service.py — 记忆网关（桥接 agents.api.MemoryAPI）
+- services/memory_service.py — 记忆网关（桥接 aegisos_agents.api.MemoryAPI）
 - services/graph_service.py — 动态图查询
 - services/di_ports.py — 依赖注入端口定义（Protocol 接口，供 core/composition.py 实现）
 - services/__init__.py — barrel 导出
@@ -39,7 +39,7 @@
 - backend/repositories/ — 数据持久化
 - backend/models/converters.py — protocol↔Entity 转换
 - backend/core/composition.py — DI 注入
-- agents/api/ — 智能体域公共接口（AgentRegistry/Runtime/Memory/Execution/EventBus）
+- aegisos_agents/api/ — 智能体域公共接口（AgentRegistry/Runtime/Memory/Execution/EventBus）
 - protocol/ — 数据契约
 
 ## 接口
@@ -56,4 +56,4 @@
 - **仓储层**：backend/repositories/（数据访问）
 - **模型层**：backend/models/（ORM 实体 + 转换器）
 - **组合根**：backend/core/composition.py（DI 装配）
-- **Agent 域**：agents/api/（公共接口）
+- **Agent 域**：aegisos_agents/api/（公共接口）

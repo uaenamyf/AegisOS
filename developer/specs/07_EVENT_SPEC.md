@@ -1,6 +1,6 @@
 # 07_EVENT_SPEC.md — 事件总线规范
 
-> 上游：`00_PROJECT_SPEC.md`、`04_PROTOCOL_SPEC.md`。本文件定义 EventBus（`agents/planning/engine/eventbus/`）。
+> 上游：`00_PROJECT_SPEC.md`、`04_PROTOCOL_SPEC.md`。本文件定义 EventBus（`aegisos_agents/planning/engine/eventbus/`）。
 > 事件类型定义在 `protocol/event.py`（`EventType` 8 类）。事件封装于 `Message` 信封投递。
 
 ---
@@ -102,8 +102,8 @@ Draft → Proposed（本文件登记 + protocol/event.py 登记）
 
 | 模块 | 角色 |
 |------|------|
-| `agents/planning/engine/eventbus/` | EventBus 实现 |
-| `agents/api.EventBusAPI` | 公共接口 |
+| `aegisos_agents/planning/engine/eventbus/` | EventBus 实现 |
+| `aegisos_agents/api.EventBusAPI` | 公共接口 |
 | `observability/inspect/monitor/` | 订阅事件做监控/告警 |
 | `observability/inspect/replay/` | 订阅/读取事件做回放 |
 | `observability/measure/evaluation/` | 基于事件做评估评分 |

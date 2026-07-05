@@ -1,18 +1,18 @@
 # @aegis-gen
 # date: 2026-07-06
 # dev: myf
-# changelog: 全文核实修正——基于 2026-07-06 对 agents/ 56 文件 3133 行的逐文件审查，修正 4 处诊断差异 + 补入 3 处文档未覆盖的新发现
+# changelog: 全文核实修正——基于 2026-07-06 对 aegisos_agents/ 56 文件 3133 行的逐文件审查，修正 4 处诊断差异 + 补入 3 处文档未覆盖的新发现
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
 # change: 新建 Agent 框架替换/规范化方案——逐模块分析可替换性 + 分层架构 + 迁移路线
 
 # Agent 框架规范化与替换方案
 
-> 本文档基于对 `agents/`、`protocol/`、`backend/`、`agents/tools/llms/`、`agents/planning/engine/`、`agents/memory/` 的完整代码审查。
+> 本文档基于对 `aegisos_agents/`、`protocol/`、`backend/`、`aegisos_agents/tools/llms/`、`aegisos_agents/planning/engine/`、`aegisos_agents/memory/` 的完整代码审查。
 >
 > **核心问题**：项目有一套功能正确但"手写"的 Agent 框架，存在大量可以用标准库/成熟框架替换的重复逻辑。
 >
-> **2026-07-06 修订**：基于对 `agents/` 全目录 56 个 `.py` 文件（3133 行）的逐文件审查，修正了原文 4 处数量诊断（§1.1/§1.2/§1.4/§1.5），并补入 3 处原文未覆盖的新发现（§1.8）。行数以 `wc -l` 实测为准（含 docstring）。
+> **2026-07-06 修订**：基于对 `aegisos_agents/` 全目录 56 个 `.py` 文件（3133 行）的逐文件审查，修正了原文 4 处数量诊断（§1.1/§1.2/§1.4/§1.5），并补入 3 处原文未覆盖的新发现（§1.8）。行数以 `wc -l` 实测为准（含 docstring）。
 
 ---
 
@@ -22,7 +22,7 @@
 
 > **2026-07-06 修正**：实测 4 文件共 **368 行**（原文记 ~220 行，系未计 docstring 的低估），平均 92 行/文件。
 
-**现状**：`agents/tools/llms/` 下 4 个 Provider 各自手写 httpx 请求：
+**现状**：`aegisos_agents/tools/llms/` 下 4 个 Provider 各自手写 httpx 请求：
 
 | 文件 | `wc -l` 实测 | 重复逻辑 | 可替换为 |
 |------|------------|---------|---------|
@@ -38,7 +38,7 @@
 
 ### 1.2 结构化输出（11+1 个 Agent 全是 `json.loads` + try/except）
 
-> **2026-07-06 修正**：实测 11 个攻防 Agent 共 **882 行**（原文记 ~550 行，系未计 docstring 的低估），平均 80 行/文件。**补入第 12 处**：`agents/perception/reasoning/neuro_symbolic.py` L146-168 与 11 个攻防 Agent 完全同构，原文遗漏。
+> **2026-07-06 修正**：实测 11 个攻防 Agent 共 **882 行**（原文记 ~550 行，系未计 docstring 的低估），平均 80 行/文件。**补入第 12 处**：`aegisos_agents/perception/reasoning/neuro_symbolic.py` L146-168 与 11 个攻防 Agent 完全同构，原文遗漏。
 
 **现状**：每个攻防 Agent 的模式完全相同：
 
@@ -145,7 +145,7 @@ class XxxAgent:
 
 ### 1.7 事件总线（只有接口无实现）
 
-**现状**：`agents/api/__init__.py` 定义了 `EventBusAPI` Protocol（publish/subscribe），但无任何实现。
+**现状**：`aegisos_agents/api/__init__.py` 定义了 `EventBusAPI` Protocol（publish/subscribe），但无任何实现。
 
 **可替换为**：`blinker`（轻量）或 `fastapi.Event` + SSE stream，或 LangGraph callback。
 
@@ -161,7 +161,7 @@ class XxxAgent:
 
 **可替换为**：instructor mock + Pydantic 实例直接构造（-60%）。
 
-#### 1.8.2 `model_router.py` 前缀路由表（`agents/tools/llms/model_router.py`，158 行）
+#### 1.8.2 `model_router.py` 前缀路由表（`aegisos_agents/tools/llms/model_router.py`，158 行）
 
 原文 §5 将 `ModelRouter` 归为"保留不变的核心算法"，但审查发现其内部实为两层逻辑：
 - **前缀路由**（`MODEL_PREFIX_MAP` 9 条前缀→provider 映射，~60 行）— 这部分可由 `litellm` 内置路由（按 model_id 前缀自动分发）替代
@@ -169,7 +169,7 @@ class XxxAgent:
 
 **建议**：R2 阶段将前缀路由委托 litellm，仅保留 tier 路由（158 行 → ~60 行，-62%）。
 
-#### 1.8.3 `memory_store.py` write() 四路 if 分发（`agents/memory/memory_store.py:98-108`）
+#### 1.8.3 `memory_store.py` write() 四路 if 分发（`aegisos_agents/memory/memory_store.py:98-108`）
 
 `MemoryStore.write()` 按 `packet.kind`/`episodic`/`embedding`/`semantic` 字段做 4 路 if 分发到 working/episodic/vector/semantic 存储层。这是一个小型 dispatch 逻辑，原文未提及。
 
@@ -247,7 +247,7 @@ class Asset(BaseModel):
 
 ### Layer 2: LLM Provider → litellm + instructor
 
-**替换范围**：`agents/tools/llms/`（8 文件 → 3 文件）
+**替换范围**：`aegisos_agents/tools/llms/`（8 文件 → 3 文件）
 
 #### 2a. 统一 LLM 调用：litellm
 
@@ -256,7 +256,7 @@ class Asset(BaseModel):
 # openai_provider.py / anthropic_provider.py / local_provider.py / mock_provider.py
 
 # ---------- 替换后：1 个文件 ----------
-# agents/tools/llms/provider.py (~30 行)
+# aegisos_agents/tools/llms/provider.py (~30 行)
 import litellm
 
 class UnifiedProvider:
@@ -455,10 +455,10 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 
 | 模块 | 替换前（实测） | 替换后 | 减少 |
 |------|--------------|--------|------|
-| `agents/tools/llms/` (4 Provider) | 368 行 / 4 文件 | ~30 行 / 1 文件 | -92% |
-| `agents/tools/llms/model_router.py` 前缀路由 | ~60 行（158 行中的前缀部分） | 0 行（litellm 内置） | -100%（tier 部分保留） |
-| `agents/action/` (11 Agent JSON parse) | 882 行 | ~350 行 | -60% |
-| `agents/perception/reasoning/neuro_symbolic.py` parse 段 | ~23 行 | 0 行（instructor） | -100% |
+| `aegisos_agents/tools/llms/` (4 Provider) | 368 行 / 4 文件 | ~30 行 / 1 文件 | -92% |
+| `aegisos_agents/tools/llms/model_router.py` 前缀路由 | ~60 行（158 行中的前缀部分） | 0 行（litellm 内置） | -100%（tier 部分保留） |
+| `aegisos_agents/action/` (11 Agent JSON parse) | 882 行 | ~350 行 | -60% |
+| `aegisos_agents/perception/reasoning/neuro_symbolic.py` parse 段 | ~23 行 | 0 行（instructor） | -100% |
 | `backend/mocks/runtime.py` MockRuntime dispatch | 85 行 dispatch / 182 行全文 | ~60 行 graph | -70% |
 | `backend/mocks/cyber_provider.py` 硬编码 JSON | 160 行 | ~60 行（Pydantic mock 实例） | -62% |
 | `protocol/*.py` (to_dict/from_dict) | ~50 行手写序列化 | 0 行（Pydantic 自动） | -100% |
@@ -479,15 +479,15 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 | `protocol/cyber.py` 的攻防类型定义 | 业务领域类型，框架无关（仅 dataclass→Pydantic 迁移） |
 | `protocol/graph.py` 的拓扑类型 | 业务领域类型，Graph/GraphNode/GraphEdge 是项目核心 |
 | `protocol/message.py` 的 Message 信封 | 项目通信契约，不应由框架定义 |
-| `agents/planning/engine/router/` Top-K 路由 | 项目特有算法，LangGraph 不提供低熵稀疏路由 |
-| `agents/planning/engine/router/election.py` 异构选举 | 项目特有点积选举算法 |
-| `agents/planning/engine/scheduler/` 端边云调度 | 项目特有调度策略 |
-| `agents/planning/engine/topology/` 活跃子图 | 项目特有拓扑计算 |
-| `agents/memory/compression/` 上下文压缩 | 项目特有超长程压缩算法 |
-| `agents/memory/recall/` 唤醒机制 | 项目特有记忆检索策略 |
-| `agents/memory/working+episodic+semantic+vector+memory_store` | B3 新增的领域存储（700 行），保留 |
-| `agents/perception/reasoning/neuro_symbolic.py` 符号验证逻辑 | 项目特有神经-符号闭环算法（仅 L146-168 JSON parse 段被 instructor 替换，验证+迭代逻辑保留） |
-| `agents/tools/llms/model_router.py` tier 路由部分 | 项目特有端边云 tier 调度（前缀路由部分可由 litellm 替代，见 §1.8.2） |
+| `aegisos_agents/planning/engine/router/` Top-K 路由 | 项目特有算法，LangGraph 不提供低熵稀疏路由 |
+| `aegisos_agents/planning/engine/router/election.py` 异构选举 | 项目特有点积选举算法 |
+| `aegisos_agents/planning/engine/scheduler/` 端边云调度 | 项目特有调度策略 |
+| `aegisos_agents/planning/engine/topology/` 活跃子图 | 项目特有拓扑计算 |
+| `aegisos_agents/memory/compression/` 上下文压缩 | 项目特有超长程压缩算法 |
+| `aegisos_agents/memory/recall/` 唤醒机制 | 项目特有记忆检索策略 |
+| `aegisos_agents/memory/working+episodic+semantic+vector+memory_store` | B3 新增的领域存储（700 行），保留 |
+| `aegisos_agents/perception/reasoning/neuro_symbolic.py` 符号验证逻辑 | 项目特有神经-符号闭环算法（仅 L146-168 JSON parse 段被 instructor 替换，验证+迭代逻辑保留） |
+| `aegisos_agents/tools/llms/model_router.py` tier 路由部分 | 项目特有端边云 tier 调度（前缀路由部分可由 litellm 替代，见 §1.8.2） |
 
 **原则**：业务领域逻辑保留，基础设施层替换。
 
@@ -511,7 +511,7 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 
 ### 阶段 2: LLM Provider 统一（≤4 文件）
 - [ ] 安装 `litellm` + `instructor`
-- [ ] 新建 `agents/tools/llms/unified_provider.py`
+- [ ] 新建 `aegisos_agents/tools/llms/unified_provider.py`
 - [ ] `ModelRouter` 前缀路由委托 litellm（仅保留 tier 路由）
 - [ ] MockProvider 保留（测试用），但实现 `litellm` mock adapter
 - [ ] 删除 `openai_provider.py` / `anthropic_provider.py` / `local_provider.py`
@@ -527,14 +527,14 @@ app = graph.compile(checkpointer=MemorySaver())  # 自动 checkpoint
 
 ### 阶段 4: LangGraph 编排（≤4 文件）
 - [ ] 安装 `langgraph`
-- [ ] 新建 `agents/planning/orchestrator/graph.py`（红队攻击链图）
-- [ ] 新建 `agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
+- [ ] 新建 `aegisos_agents/planning/orchestrator/graph.py`（红队攻击链图）
+- [ ] 新建 `aegisos_agents/planning/orchestrator/defense_graph.py`（蓝队防御链图）
 - [ ] `MockRuntime` 替换为 `GraphRuntime`（实现 `RuntimeAPI`）
 - [ ] `backend/core/composition.py` 注入 `GraphRuntime`
 - [ ] 90 测试全通过
 
 ### 阶段 5: 事件总线 + 流式（≤2 文件）
-- [ ] 新建 `agents/planning/engine/eventbus/impl.py`（基于 `blinker` 或 LangGraph callback）
+- [ ] 新建 `aegisos_agents/planning/engine/eventbus/impl.py`（基于 `blinker` 或 LangGraph callback）
 - [ ] LangGraph `app.stream()` → SSE → 前端 `EventSource`
 - [ ] 90 测试全通过
 

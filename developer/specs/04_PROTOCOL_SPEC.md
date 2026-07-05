@@ -178,7 +178,7 @@
 | `permission` | str | "default" | 权限等级 |
 | `resource_limit` | dict | {} | 资源限制 |
 
-工具经 `agents/action/execution/executor/` 沙箱执行；每次调用发 `ToolCall`/`ToolFinish` 事件。
+工具经 `aegisos_agents/action/execution/executor/` 沙箱执行；每次调用发 `ToolCall`/`ToolFinish` 事件。
 
 ---
 
@@ -272,7 +272,7 @@
 
 ## 11. Checkpoint（检查点）
 
-- 位置：`agents/memory/checkpoint/`、`agents/memory/snapshot/`。
+- 位置：`aegisos_agents/memory/checkpoint/`、`aegisos_agents/memory/snapshot/`。
 - 语义：周期性保存任务/记忆快照，失败后从检查点恢复，避免全量重放。
 - 协议表现：以 `MemoryPacket.compression` + `session_id`/`task_id` 关联恢复点。
 

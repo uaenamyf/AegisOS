@@ -10,7 +10,7 @@
 | 层 | 域 | 语言/运行时 | 核心依赖 | 状态 |
 |----|----|------------|----------|------|
 | 契约层 | `protocol/` | Python 3.11+ | Pydantic v2（目标）；现 dataclass 基线 | 迁移中（P1） |
-| 智能体域 | `agents/` | Python 3.11+ | asyncio、Pydantic | 待实现 |
+| 智能体域 | `aegisos_agents/` | Python 3.11+ | asyncio、Pydantic | 待实现 |
 | 应用层 | `backend/` | Python 3.11+ | asyncio、Pydantic、**FastAPI**、**Uvicorn**、**SQLAlchemy** | 待实现 |
 | 表现层 | `frontend/` | TypeScript 5+ | React 18、Vite 5、**Zustand**、**Vitest**、**Playwright** | 待实现 |
 | 基础设施 | `infrastructure/` | Python 3.11+ | asyncio | 待实现 |
@@ -121,7 +121,7 @@ ruff format && ruff check --fix && mypy && pytest
 | 容器 | Docker | 镜像化 |
 | 编排 | Kubernetes | 云侧编排 |
 | CI/CD | GitHub Actions（建议） | 自动质量门禁 + 构建 + 部署 |
-| 配置 | YAML（`tooling/configs/`） | environments/agents/models/prompts |
+| 配置 | YAML（`tooling/configs/`） | environments/aegisos_agents/models/prompts |
 | 端边云 | 离线优先 + 向量时钟同步 | `infrastructure/nodes/{edge,cloud}`、`SyncPacket` |
 | 入口 | `backend/gateway/` | 鉴权 + 限流 + 协议适配 |
 

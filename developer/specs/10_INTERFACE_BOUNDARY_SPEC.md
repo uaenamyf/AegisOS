@@ -18,11 +18,11 @@
 | `backend.api.MemoryGatewayAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
 | `backend.api.GraphAPI` | ✅(经REST) | 自用 | ❌ | ❌ | — | ✅ | ❌ |
 | `backend.api.EventStreamAPI` | ✅(SSE/WS) | 自用 | ❌ | ❌ | ✅ | ✅ | ✅(订阅) |
-| `agents.api.AgentRegistryAPI` | ❌ | ✅ | ✅ | ❌ | — | ❌ | ❌ |
-| `agents.api.RuntimeAPI` | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `agents.api.MemoryAPI` | ❌(经后端) | ✅(桥接) | ✅ | ❌ | write 异步 | ❌ | ✅(MemoryUpdate) |
-| `agents.api.ExecutionAPI` | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | ✅(ToolCall/Finish) |
-| `agents.api.EventBusAPI` | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | 本身即 EventBus |
+| `aegisos_agents.api.AgentRegistryAPI` | ❌ | ✅ | ✅ | ❌ | — | ❌ | ❌ |
+| `aegisos_agents.api.RuntimeAPI` | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `aegisos_agents.api.MemoryAPI` | ❌(经后端) | ✅(桥接) | ✅ | ❌ | write 异步 | ❌ | ✅(MemoryUpdate) |
+| `aegisos_agents.api.ExecutionAPI` | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | ✅(ToolCall/Finish) |
+| `aegisos_agents.api.EventBusAPI` | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | 本身即 EventBus |
 | `infrastructure.api.CommunicationAPI` | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `infrastructure.api.NodeRegistryAPI` | ❌ | ✅ | ✅ | ✅ | — | ❌ | ❌ |
 | `infrastructure.api.SyncAPI` | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
@@ -53,7 +53,7 @@
 | SSE | `/api/v1/events?stream=...` | 单向事件流（AgentStart/Finish/ToolCall/MemoryUpdate/GraphUpdate） |
 
 **禁止**：
-- 前端直连 `agents.api` / `infrastructure.api` / `observability.api`（除经 backend 暴露的）。
+- 前端直连 `aegisos_agents.api` / `infrastructure.api` / `observability.api`（除经 backend 暴露的）。
 - 前端直接读写 `protocol/` 跨域结构（须经 backend 序列化）。
 - 前端直连数据库 / LLM。
 
@@ -66,9 +66,9 @@
 后端是应用层，编排各域：
 
 - **对外提供**：REST/WS/SSE（经 gateway）。
-- **可调**：`agents.api`（5 接口：AgentRegistryAPI · RuntimeAPI · MemoryAPI · ExecutionAPI · EventBusAPI）、`infrastructure.api`（NodeRegistry/Deployment）、`observability.api`（Monitor/Trace/Replay/Benchmark/Evaluation/Visualization）、`data.api`、`tooling.api`、`protocol`。
-- **禁止**：调 `backend.api`（逆向）；直连 `agents`/`infrastructure` 内部子包（须经 `api/`）。
-- 后端编排：`TaskAPI.create_task` 调 `RuntimeAPI.submit(task)`（async，不指定 agent），agents 域内部完成 plan→route→schedule→execute→reflect，结果经事件流回推前端。`POST /agents/{id}/invoke` 调 `RuntimeAPI.run(agent_id, task)`（指定 agent 直调）。Plan(DAG) 通过 `Task.plan` 字段 + `GraphUpdate` 事件回传展示。后端订阅 EventBus **只用 subscribe**，不 publish（事件由 Agent 产生）。
+- **可调**：`aegisos_agents.api`（5 接口：AgentRegistryAPI · RuntimeAPI · MemoryAPI · ExecutionAPI · EventBusAPI）、`infrastructure.api`（NodeRegistry/Deployment）、`observability.api`（Monitor/Trace/Replay/Benchmark/Evaluation/Visualization）、`data.api`、`tooling.api`、`protocol`。
+- **禁止**：调 `backend.api`（逆向）；直连 `aegisos_agents`/`infrastructure` 内部子包（须经 `api/`）。
+- 后端编排：`TaskAPI.create_task` 调 `RuntimeAPI.submit(task)`（async，不指定 agent），agents 域内部完成 plan→route→schedule→execute→reflect，结果经事件流回推前端。`POST /aegisos_agents/{id}/invoke` 调 `RuntimeAPI.run(agent_id, task)`（指定 agent 直调）。Plan(DAG) 通过 `Task.plan` 字段 + `GraphUpdate` 事件回传展示。后端订阅 EventBus **只用 subscribe**，不 publish（事件由 Agent 产生）。
 
 ---
 
@@ -76,7 +76,7 @@
 
 Agent 域是执行核心：
 
-- **可调**：`agents.api`（5 外部接口 + DI 端口）、`infrastructure.api`（Communication/NodeRegistry/Sync）、`data.api`（Dataset）、`tooling.api`（Config）、`protocol`。规划（plan/route/schedule）与感知（reason/reflect）为域内部能力，不对外暴露。
+- **可调**：`aegisos_agents.api`（5 外部接口 + DI 端口）、`infrastructure.api`（Communication/NodeRegistry/Sync）、`data.api`（Dataset）、`tooling.api`（Config）、`protocol`。规划（plan/route/schedule）与感知（reason/reflect）为域内部能力，不对外暴露。
 - **禁止**：调 `backend.api`（逆向依赖）；直连他域内部子包。
 - Agent 间协作走 **EventBus + 低熵路由**，不直接互调内部。
 
@@ -88,9 +88,9 @@ Agent 域是执行核心：
 
 | 接口 | 内部使用者 |
 |------|-----------|
-| ~~`agents.api.PlanningAPI`~~ | 已收归 `agents/planning/engine/` 内部，不在 `api/` 暴露 |
-| ~~`agents.api.PerceptionAPI`~~ | 已收归 `agents/perception/` 内部，不在 `api/` 暴露 |
-| `agents.api.RuntimeAPI` | 后端编排 + Agent 域内 |
+| ~~`aegisos_agents.api.PlanningAPI`~~ | 已收归 `aegisos_agents/planning/engine/` 内部，不在 `api/` 暴露 |
+| ~~`aegisos_agents.api.PerceptionAPI`~~ | 已收归 `aegisos_agents/perception/` 内部，不在 `api/` 暴露 |
+| `aegisos_agents.api.RuntimeAPI` | 后端编排 + Agent 域内 |
 | `infrastructure.api.CommunicationAPI` | Agent 域 + infrastructure 内 |
 | `infrastructure.api.SyncAPI` | infrastructure 内 + Agent 域 |
 | `infrastructure.api.DeploymentAPI` | 后端 + infrastructure 内 |
@@ -98,9 +98,9 @@ Agent 域是执行核心：
 | `data.api` | 后端 + Agent 域 |
 | `tooling.api` | 后端 + Agent 域 |
 | gRPC 内部服务（Scheduler/Router/Memory/Tool） | 子系统间，不对外 |
-| **DI 端口（`agents.api.ports`）** | **后端实现 + 注入；Agent 域消费** |
+| **DI 端口（`aegisos_agents.api.ports`）** | **后端实现 + 注入；Agent 域消费** |
 
-> **反向 DI 端口（`PersistencePort`/`SessionPort`/`TaskUpdatePort`）**：定义在 `agents/api/ports.py`（agents 域内），由后端 `backend/services/agent/ports.py` 实现，组合根 `backend/composition.py` 注入。agents 消费端口（同域 import），后端实现端口（正向 import `agents.api.ports`），**不产生逆向依赖**。详见 `plans/13_FRONTEND_BACKEND_PLAN.md` §3.2、`05_API_SPEC.md` §2.15。约束：凡能走 EventBus 的交互不设端口。
+> **反向 DI 端口（`PersistencePort`/`SessionPort`/`TaskUpdatePort`）**：定义在 `aegisos_agents/api/ports.py`（agents 域内），由后端 `backend/services/agent/ports.py` 实现，组合根 `backend/composition.py` 注入。agents 消费端口（同域 import），后端实现端口（正向 import `aegisos_agents.api.ports`），**不产生逆向依赖**。详见 `plans/13_FRONTEND_BACKEND_PLAN.md` §3.2、`05_API_SPEC.md` §2.15。约束：凡能走 EventBus 的交互不设端口。
 
 ---
 
@@ -161,7 +161,7 @@ I/O 密集 / 长耗时 / 流式接口必须 `async`：
 
 - **契约冻结**：`protocol/` 类型 + 各域 `api/` 签名冻结后，三方并行。
 - **前端**：只依赖 `backend.api` 的对外接口契约（REST/WS/SSE 形状 + `protocol` 类型），不依赖后端实现。
-- **后端**：只依赖 `agents.api`/`infrastructure.api`/`observability.api` 的接口签名，不依赖其实现（DI 注入 + mock 测试）。
-- **Agent**：只依赖 `protocol/` + `agents.api` 内部契约（含 `agents.api.ports` DI 端口） + EventBus 事件契约，独立实现角色与引擎。
+- **后端**：只依赖 `aegisos_agents.api`/`infrastructure.api`/`observability.api` 的接口签名，不依赖其实现（DI 注入 + mock 测试）。
+- **Agent**：只依赖 `protocol/` + `aegisos_agents.api` 内部契约（含 `aegisos_agents.api.ports` DI 端口） + EventBus 事件契约，独立实现角色与引擎。
 - **集成**：三方对契约集成，不对实现集成；接口边界由本文件强约束，冲突在契约层解决。
-- **DI 端口**：智能体回调后端能力经 `agents.api.ports`（DIP），由后端实现并注入；不破坏 `agents` 禁止 import `backend` 的铁律。
+- **DI 端口**：智能体回调后端能力经 `aegisos_agents.api.ports`（DIP），由后端实现并注入；不破坏 `aegisos_agents` 禁止 import `backend` 的铁律。

@@ -48,12 +48,12 @@
 | GraphAPI.get_graph | — | Graph | code:UNAVAILABLE | 10s | 1 次 | v1 |
 | EventStreamAPI.stream_events | session_id: str, handler | Event 流 (SSE/WS) | code:STREAM_CLOSED | — | 自动重连 | v1 |
 
-> **Graph 数据来源**：后端通过 `EventBusAPI.subscribe("graph.update", handler)` 订阅 `GraphUpdate` 事件维护图缓存，`GraphAPI.get_graph` 返回缓存快照。不暴露 agents 内部 topology。
+> **Graph 数据来源**：后端通过 `EventBusAPI.subscribe("graph.update", handler)` 订阅 `GraphUpdate` 事件维护图缓存，`GraphAPI.get_graph` 返回缓存快照。不暴露 aegisos_agents 内部 topology。
 > **EventStreamAPI**：后端通过 `EventBusAPI.subscribe` 订阅事件流，经 SSE/WS 推送前端。后端**只用 subscribe**，不 publish（事件由 Agent 产生）。
 
-### 2.3 Agent（`agents.api`：AgentRegistryAPI · ExecutionAPI · RuntimeAPI）
+### 2.3 Agent（`aegisos_agents.api`：AgentRegistryAPI · ExecutionAPI · RuntimeAPI）
 
-> PlanningAPI（plan/route/schedule）和 PerceptionAPI（reason/reflect）已**收归 agents 域内部**，不再对外暴露。后端只调 `RuntimeAPI.submit(task)` 或 `RuntimeAPI.run(agent_id, task)`，agents 域内部自行 plan→route→schedule→execute→reflect。Plan(DAG) 通过 `Task.plan` 字段 + 事件流回传后端展示。
+> PlanningAPI（plan/route/schedule）和 PerceptionAPI（reason/reflect）已**收归 aegisos_agents 域内部**，不再对外暴露。后端只调 `RuntimeAPI.submit(task)` 或 `RuntimeAPI.run(agent_id, task)`，agents 域内部自行 plan→route→schedule→execute→reflect。Plan(DAG) 通过 `Task.plan` 字段 + 事件流回传后端展示。
 
 | API | Request | Response | Error | Timeout | Retry | Version |
 |-----|---------|----------|-------|---------|-------|---------|
@@ -66,11 +66,11 @@
 | RuntimeAPI.heartbeat | agent_id: str | Heartbeat | code:OFFLINE | 5s | 3 次 | v1 |
 
 > **submit vs run 分工**：
-> - `submit(task)`：不指定 agent，由 agents 域内部路由决定。用于 `POST /tasks`（用户只提供 goal）。
-> - `run(agent_id, task)`：指定 agent 直调。用于 `POST /agents/{id}/invoke`（IDE 直接调用特定 Agent）。
+> - `submit(task)`：不指定 agent，由 aegisos_agents 域内部路由决定。用于 `POST /tasks`（用户只提供 goal）。
+> - `run(agent_id, task)`：指定 agent 直调。用于 `POST /aegisos_agents/{id}/invoke`（IDE 直接调用特定 Agent）。
 > - `AgentRegistryAPI` 只管注册/查询，**不含 invoke**（执行统一走 RuntimeAPI）。
 
-### 2.4 Memory（`agents.api.MemoryAPI`）
+### 2.4 Memory（`aegisos_agents.api.MemoryAPI`）
 
 | API | Request | Response | Error | Timeout | Retry | Version |
 |-----|---------|----------|-------|---------|-------|---------|
@@ -80,17 +80,17 @@
 
 > 写入幂等（packet id 去重）；checkpoint/snapshot 恢复。
 
-> **Scheduler / Planner / Router 已收归 agents 域内部**（`agents/planning/engine/`），不作为公共 API 暴露。后端通过 `RuntimeAPI.run(task)` 触发，agents 域内部完成 plan→route→schedule。调度策略：多级优先级队列 + DAG 拓扑序 + 资源 + 信任度；抢占；指数退避；超时熔断；老化反饥饿。Plan/Route/Schedule 经 `Task.plan` 字段 + `GraphUpdate` 事件回传。
+> **Scheduler / Planner / Router 已收归 aegisos_agents 域内部**（`aegisos_agents/planning/engine/`），不作为公共 API 暴露。后端通过 `RuntimeAPI.run(task)` 触发，agents 域内部完成 plan→route→schedule。调度策略：多级优先级队列 + DAG 拓扑序 + 资源 + 信任度；抢占；指数退避；超时熔断；老化反饥饿。Plan/Route/Schedule 经 `Task.plan` 字段 + `GraphUpdate` 事件回传。
 
-### 2.5 Tool（`agents.api.ExecutionAPI` + `agents/action/execution/tools/`）
+### 2.5 Tool（`aegisos_agents.api.ExecutionAPI` + `aegisos_agents/action/execution/tools/`）
 
 | API | Request | Response | Error | Timeout | Retry | Version |
 |-----|---------|----------|-------|---------|-------|---------|
 | ExecutionAPI.execute | call: ToolCall | result: ToolResult | code:TOOL_FAILED / code:PERMISSION_DENIED | call.timeout (默认 30s) | 不重试（由上层 Task.retry 决定） | v1 |
 
-> **直调场景**：`POST /api/v1/tools/{name}/invoke` 供 IDE 用户直接调用工具（不经 Agent 编排），如执行代码、搜索文档。此为受限的辅助场景，**主流程仍经 RuntimeAPI.submit→Agent 内部调工具**。沙箱执行 + 权限校验 + 资源限制；每次调用发 `ToolCall`/`ToolFinish` 事件。`register_tool` 为内部操作（工具在 agents 域初始化时注册），不对外暴露。
+> **直调场景**：`POST /api/v1/tools/{name}/invoke` 供 IDE 用户直接调用工具（不经 Agent 编排），如执行代码、搜索文档。此为受限的辅助场景，**主流程仍经 RuntimeAPI.submit→Agent 内部调工具**。沙箱执行 + 权限校验 + 资源限制；每次调用发 `ToolCall`/`ToolFinish` 事件。`register_tool` 为内部操作（工具在 aegisos_agents 域初始化时注册），不对外暴露。
 
-### 2.6 Runtime（`agents.api.RuntimeAPI` + `agents/tools/runtime/`）
+### 2.6 Runtime（`aegisos_agents.api.RuntimeAPI` + `aegisos_agents/tools/runtime/`）
 
 > **核心入口**：后端通过 `RuntimeAPI.submit(task)`（不指定 agent）或 `RuntimeAPI.run(agent_id, task)`（指定 agent）触发智能体执行，agents 域内部完成 plan→route→schedule→receive→think→tool→reflect→respond 全流程。
 
@@ -101,7 +101,7 @@
 | RuntimeAPI.stop | agent_id: str | bool | code:NOT_RUNNING | 10s | 不重试 | v1 |
 | RuntimeAPI.heartbeat | agent_id: str | Heartbeat | code:OFFLINE | 5s | 3 次 | v1 |
 
-### 2.7 EventBus（`agents.api.EventBusAPI` + `agents/planning/engine/eventbus/`）
+### 2.7 EventBus（`aegisos_agents.api.EventBusAPI` + `aegisos_agents/planning/engine/eventbus/`）
 
 | API | Request | Response | Error | Timeout | Retry | Version |
 |-----|---------|----------|-------|---------|-------|---------|
@@ -147,9 +147,9 @@
 | ConfigAPI.get | key: str | value: Any | code:NOT_FOUND | 5s | 不重试 | v1 |
 | ScriptAPI.run | name: str, args | result: dict | code:SCRIPT_FAILED | 视脚本 | 不重试 | v1 |
 
-### 2.12 DI 端口（`agents.api.ports`：反向依赖反转，由后端实现并注入）
+### 2.12 DI 端口（`aegisos_agents.api.ports`：反向依赖反转，由后端实现并注入）
 
-> 智能体运行时回调后端能力的端口。定义在 `agents/api/ports.py`（agents 域内），由 `backend/services/agent/ports.py` 实现，组合根 `backend/composition.py` 注入。详见 `plans/13_FRONTEND_BACKEND_PLAN.md` §3.2、`10_INTERFACE_BOUNDARY_SPEC.md` §5。
+> 智能体运行时回调后端能力的端口。定义在 `aegisos_agents/api/ports.py`（agents 域内），由 `backend/services/agent/ports.py` 实现，组合根 `backend/composition.py` 注入。详见 `plans/13_FRONTEND_BACKEND_PLAN.md` §3.2、`10_INTERFACE_BOUNDARY_SPEC.md` §5。
 
 | 端口 | 方法 | Request | Response | Error | Version |
 |------|------|---------|----------|-------|---------|
@@ -176,8 +176,8 @@
 | GET | /api/v1/tasks/{id} | 查询任务状态 |
 | POST | /api/v1/tasks/{id}/cancel | 取消任务 |
 | GET | /api/v1/agents | Agent 列表 |
-| GET | /api/v1/agents/{id} | Agent 详情 |
-| POST | /api/v1/agents/{id}/invoke | 直调 Agent（→ RuntimeAPI.run，指定 agent） |
+| GET | /api/v1/aegisos_agents/{id} | Agent 详情 |
+| POST | /api/v1/aegisos_agents/{id}/invoke | 直调 Agent（→ RuntimeAPI.run，指定 agent） |
 | GET | /api/v1/memory/{session} | 读取记忆 |
 | POST | /api/v1/memory/{session} | 写入记忆 |
 | GET | /api/v1/graph | 获取动态图（EventBus 订阅缓存） |
@@ -185,7 +185,7 @@
 | GET | /api/v1/metrics | 指标 |
 | GET | /api/v1/replay/{session} | 回放时间线 |
 
-> **路径规范**：REST 路径不暴露内部目录结构（如 ~~`/agents/action/execution/tools/`~~ → `/tools/`，~~`/agents/memory/`~~ → `/memory/`，~~`/observability/inspect/replay/`~~ → `/replay/`）。
+> **路径规范**：REST 路径不暴露内部目录结构（如 ~~`/aegisos_agents/action/execution/tools/`~~ → `/tools/`，~~`/aegisos_agents/memory/`~~ → `/memory/`，~~`/observability/inspect/replay/`~~ → `/replay/`）。
 
 ---
 
@@ -193,7 +193,7 @@
 
 - **WebSocket**：`ws://host/ws/v1/stream?session=...`；消息为 `protocol/message.py` 的 `Message` 信封；事件类型见 `07_EVENT_SPEC.md`。
 - **SSE**：`GET /api/v1/events?stream=...` → `text/event-stream`；推送 AgentStart/Finish/ToolCall/MemoryUpdate/GraphUpdate。后端通过 `EventBusAPI.subscribe` 订阅事件并推送，**只用 subscribe，不 publish**。
-- **gRPC（内部，待 P5 后评估）**：Scheduler/Router 已收归 agents 域内部，不再作为跨域 gRPC 服务。若未来需要跨进程调用，仅保留 `MemoryService`/`ToolService`；`.proto` 由 `protocol/` 类型生成，单一可信源。
+- **gRPC（内部，待 P5 后评估）**：Scheduler/Router 已收归 aegisos_agents 域内部，不再作为跨域 gRPC 服务。若未来需要跨进程调用，仅保留 `MemoryService`/`ToolService`；`.proto` 由 `protocol/` 类型生成，单一可信源。
 
 ---
 

@@ -1,20 +1,20 @@
 # Agent: Researcher — AGENT.md
 
-> 本文件是 `agents/action/researcher/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/action/researcher/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 调研检索 Agent：检索知识/文档/记忆，聚合证据供其他 Agent 决策。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/memory/
-- agents/action/execution/tools/
-- agents/tools/prompts/roles/researcher/
+- aegisos_agents/memory/
+- aegisos_agents/action/execution/tools/
+- aegisos_agents/tools/prompts/roles/researcher/
 - tooling/configs/agents/researcher.yaml
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/
+- aegisos_agents/planning/engine/
 - protocol/ 类型定义
 
 ## 输出
@@ -22,21 +22,21 @@
 - MemoryUpdate 写入语义记忆
 
 ## 依赖
-- agents/memory/ retrieval
-- agents/action/execution/tools/ 检索工具
+- aegisos_agents/memory/ retrieval
+- aegisos_agents/action/execution/tools/ 检索工具
 - protocol/ Task
 
 ## 接口
 receive(query) -> think() -> tool() -> Evidence
 
 ## 测试方式
-`pytest tests/agents/action/researcher/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/action/researcher/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/action/researcher/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/action/researcher/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/roles/researcher/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/roles/researcher/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/agents/researcher.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -61,6 +61,6 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

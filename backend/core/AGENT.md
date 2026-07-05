@@ -12,7 +12,7 @@
 - backend/models/
 - backend/mocks/
 - backend/schemas/
-- agents/api/
+- aegisos_agents/api/
 - protocol/
 - tooling/configs/
 - developer/specs/05_API_SPEC.md
@@ -40,9 +40,9 @@
 - backend/repositories/database.py — DB 引擎/会话工厂
 - backend/repositories/repositories.py — 仓储实现
 - backend/routers/ — 路由实现
-- backend/mocks/ — agents.api 端口 mock 实现（开发/测试模式）
+- backend/mocks/ — aegisos_agents.api 端口 mock 实现（开发/测试模式）
 - backend/schemas/ — 请求/响应 Schema
-- agents/api/ — 智能体域公共接口（端口定义）
+- aegisos_agents/api/ — 智能体域公共接口（端口定义）
 - protocol/ — 数据契约
 - tooling/configs/ — 配置
 
@@ -63,5 +63,5 @@
 - **API 契约**：developer/specs/05_API_SPEC.md
 - **接口边界**：developer/specs/10_INTERFACE_BOUNDARY_SPEC.md
 - **DI 端口**：backend/services/di_ports.py（Protocol 接口定义）
-- **Mock 实现**：backend/mocks/（agents.api 端口 mock）
+- **Mock 实现**：backend/mocks/（aegisos_agents.api 端口 mock）
 - **路由层**：backend/routers/（路由实现）

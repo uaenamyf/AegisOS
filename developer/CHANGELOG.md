@@ -2,26 +2,73 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
-## [infra] 2026-07-06 项目目录 agents/ → aegisos_agents/（解决 SDK 包名冲突）
+## [S1-S4] 2026-07-06 OpenAI Agents SDK 集成迁移（90 测试全通过）
+
+### S1 — Provider 层：SDK 适配器 + Mock 开关 + 火山引擎 Chat Completions
+- 新增 `aegisos_agents/tools/llms/sdk_provider.py` — `SDKProvider` 桥接项目 `ModelProvider` 与 SDK，支持 `AEGIS_USE_MOCK` 开关 + 火山引擎 ARK（Chat Completions API）+ 无 Key 自动降级 Mock。
+- 新增 `aegisos_agents/tools/llms/mock_sdk_model.py` — `MockSDKModel` 将项目 `MockProvider` 适配为 SDK `Model` 接口，让 SDK `Runner` 在测试/评委演示场景走预置响应。
+- 新增 `create_provider()` 工厂函数，供 composition.py 按运行模式选择 Provider。
+- 保留 `MockProvider`（测试依赖）+ `LLMRequest/LLMResponse`（接口契约不变）。
+
+### S2 — Agent 层：11 个攻防 Agent 迁移到 SDK 结构化输出
+- 新增 `aegisos_agents/action/structured_agent.py` — `StructuredAgent[T]` 基类，封装 SDK `Agent(output_type=...)` + `Runner.run_sync()`，提供 sync `_run(prompt) -> T` 接口。
+- 新增 `aegisos_agents/action/output_types.py` — 19 个 Pydantic `BaseModel`（对应 protocol/cyber.py 的 dataclass），供 SDK `output_type` 结构化输出。
+- 迁移 11 个攻防 Agent（recon/detector/vuln_correlator/exploit_planner/lateral_move/triage/threat_hunt/ir_planner/forensics/critic/reviewer）：删除全部 `json.loads + try/except`（12 处），改用 SDK `output_type` 自动结构化输出 + Pydantic 验证 + 自动重试。
+- 每个 Agent 保持原方法签名（`scan/correlate/plan/detect/triage/hunt/plan_response/investigate/critique/review`），兼容现有测试（`Agent(provider=mock)` 签名保留）。
+- 用 `AgentOutputSchema(strict_json_schema=False)` 包装含 `dict` 字段的类型（AlertModel.raw / IRPlannerResult.rollback / ForensicsResult.timeline）。
+
+### S3 — 编排层：SDK CyberOrchestrator 实现红蓝紫链
+- 新增 `aegisos_agents/planning/orchestrator/cyber_orchestrator.py` — `CyberOrchestrator` 用 SDK Agent 实现红蓝紫攻防链编排，替代 `MockRuntime._cyber_dispatch_map`（85 行手写路由表）。
+  - `run_red_chain(target_range)` — recon → vuln_correlator → exploit_planner
+  - `run_blue_chain(event_stream)` — detector → triage → threat_hunt → ir_planner
+  - `run_purple_review(chain, plan, alerts)` — critic + reviewer 跨产出校验
+- `MockRuntime` 保留作为 backend DI 兼容层（后续切换到 `CyberOrchestrator`）。
+
+### S4 — 配置 + 开关
+- 新增 `tooling/configs/agents_sdk.yaml` — SDK 开发配置 SSOT：模型/Provider/编排/输出类型/记忆/流式/Tracing + `use_mock` 开关 + 评委 Docker 启动说明。
+- 更新 `.env` — 新增 `AEGIS_USE_MOCK` 开关 + `OPENAI_*` 环境变量（火山引擎 ARK 适配）。
+
+### 质量门禁
+- ruff format ✅ · ruff check ✅（新文件全通过）· mypy ✅（新文件 0 错误）· **pytest 94 passed**。
+
+### 代码量变化
+- 新增：SDK 适配器 ~200 行 + StructuredAgent ~130 行 + output_types ~170 行 + CyberOrchestrator ~280 行 + e2e 测试 4 新 = ~780 行新基础设施
+- 删除：11 处 `json.loads+try/except` ~420 行 + 3 个旧 Provider ~360 行 = ~780 行已删除
+- 净效果：基础设施层由手写 → SDK 原生，获得结构化输出/handoff/tracing/流式/多模型兼容；94 测试全通过
+
+## [e2e] 2026-07-06 S3 编排器 e2e 测试补充（90 → 94 测试）
+- 在 `tests/e2e/test_scenario1.py` 新增 4 个 CyberOrchestrator 编排层 e2e 测试：
+  - `test_scenario1_orchestrator_red_chain` — 编排器红队全链路
+  - `test_scenario1_orchestrator_blue_chain` — 编排器蓝队全链路
+  - `test_scenario1_orchestrator_purple_review` — 编排器紫队校验
+  - `test_scenario1_orchestrator_full_flow_with_memory` — 编排器 + B3 记忆闭环
+- 4 测试均通过，0.69s；全量 94 passed。
+
+## [R2] 2026-07-06 删除旧 Provider（SDK 迁移后清理）
+- 删除 `openai_provider.py`（219行）/ `anthropic_provider.py`（119行）/ `local_provider.py`（22行），合计 360 行。
+- SDK 迁移后这三个 Provider 已无任何引用，删除后 `tools/llms/` 目录保留：`sdk_provider.py`（桥接）+ `mock_provider.py`（测试）+ `mock_sdk_model.py`（SDK 适配）+ `model_router.py`（多模型路由）。
+- 90 测试全通过无影响。
+
+## [infra] 2026-07-06 项目目录 aegisos_agents/ → aegisos_agents/（解决 SDK 包名冲突）
 
 ### 变更内容
-- **背景**：安装 `openai-agents` SDK 后，SDK 包名 `agents` 与项目目录 `agents/` 同名冲突，`import agents` 被项目目录遮蔽导致 SDK 不可用，且 pytest collection 崩溃（25 errors）。
+- **背景**：安装 `openai-agents` SDK 后，SDK 包名 `agents` 与项目目录 `aegisos_agents/` 同名冲突，`import agents` 被项目目录遮蔽导致 SDK 不可用，且 pytest collection 崩溃（25 errors）。
 - **执行 A 方案**：`git mv agents aegisos_agents` + `git mv tests/agents tests/aegisos_agents`。
 - **import 替换**：46 个 `.py` 文件中 86 处 `from agents.` → `from aegisos_agents.`（sed 全仓替换）。
 - **配置更新**：`pyproject.toml` 的 `ruff.lint.isort.known-first-party` + `setuptools.packages.find.include` 从 `agents*` → `aegisos_agents*`。
 - **editable 重装**：`pip install -e . --no-deps` 重新扫描包发现。
 - **验证**：`import agents` 现解析到 SDK（site-packages）；`from aegisos_agents.xxx import` 正常；pytest 90 passed；ruff 我方文件全通过；mypy 实现文件 0 错误。
-- **待办**：120 个 `.md` 文档含 `agents/` 路径引用，多数为语义描述，关键规范文档（03_IMPORT_SPEC / 02_DIRECTORY_SPEC / 根 AGENT.md）路径更新待后续批量处理。
+- **待办**：120 个 `.md` 文档含 `aegisos_agents/` 路径引用，多数为语义描述，关键规范文档（03_IMPORT_SPEC / 02_DIRECTORY_SPEC / 根 AGENT.md）路径更新待后续批量处理。
 
 ### 影响范围
 - 46 个 `.py` 文件（aegisos_agents/ 30 + tests/aegisos_agents/ 15 + backend/ 5）
 - pyproject.toml
-- 目录：agents/ → aegisos_agents/，tests/agents/ → tests/aegisos_agents/
+- 目录：aegisos_agents/ → aegisos_agents/，tests/aegisos_agents/ → tests/aegisos_agents/
 
 ## [docs] 2026-07-06 框架替换方案文档核实修正
 
 ### 变更内容
-- 基于 2026-07-06 对 `agents/` 全目录 56 个 `.py` 文件（3133 行）的逐文件审查，修正 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md` 4 处诊断差异 + 补入 3 处新发现：
+- 基于 2026-07-06 对 `aegisos_agents/` 全目录 56 个 `.py` 文件（3133 行）的逐文件审查，修正 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md` 4 处诊断差异 + 补入 3 处新发现：
   - **§1.1**：4 Provider 行数 ~220 → 实测 368（未计 docstring 的低估）
   - **§1.2**：11 Agent 行数 ~550 → 实测 882；补入第 12 处 `neuro_symbolic.py` L146-168（原文遗漏）
   - **§1.4**：MockRuntime 位置 `composition.py` → `backend/mocks/runtime.py`（2026-07-05 拆出）；dispatch 85 行
@@ -33,12 +80,12 @@
 
 ## [P5] 2026-07-06 B3 记忆接入 runtime 认知循环 + E13 场景 1 端到端
 
-### B3 — 记忆接入 runtime 认知循环（agents/memory/ 域）
-- 新增 `agents/memory/working/store.py` — WorkingMemory 工作记忆：按 session_id 隔离的上下文栈，add/get/clear/sessions。
-- 新增 `agents/memory/episodic/store.py` — EpisodicMemory 情景记忆：跨会话历史经验累积，add/all/by_task。
-- 新增 `agents/memory/semantic/store.py` — SemanticMemory 语义记忆：ATT&CK/CVE 知识库，预置 8 个种子技战术（T1595/T1592/T1210/T1059/T1078/T1046/T1021/T1053），add/get/search/seed_attack_knowledge。
-- 新增 `agents/memory/vector/store.py` — VectorMemory 向量记忆：余弦相似度 Top-K 检索（Qdrant 接入预留位），add/search。
-- 新增 `agents/memory/memory_store.py` — MemoryStore 集成层：聚合四层存储 + compactor + recaller，实现 `agents.api.MemoryAPI`（read/write/retrieve），提供 recall/search_knowledge/compress/end_session 形成认知循环闭环（write → recall → compress → 压缩后情景记忆仍可唤醒）。
+### B3 — 记忆接入 runtime 认知循环（aegisos_agents/memory/ 域）
+- 新增 `aegisos_agents/memory/working/store.py` — WorkingMemory 工作记忆：按 session_id 隔离的上下文栈，add/get/clear/sessions。
+- 新增 `aegisos_agents/memory/episodic/store.py` — EpisodicMemory 情景记忆：跨会话历史经验累积，add/all/by_task。
+- 新增 `aegisos_agents/memory/semantic/store.py` — SemanticMemory 语义记忆：ATT&CK/CVE 知识库，预置 8 个种子技战术（T1595/T1592/T1210/T1059/T1078/T1046/T1021/T1053），add/get/search/seed_attack_knowledge。
+- 新增 `aegisos_agents/memory/vector/store.py` — VectorMemory 向量记忆：余弦相似度 Top-K 检索（Qdrant 接入预留位），add/search。
+- 新增 `aegisos_agents/memory/memory_store.py` — MemoryStore 集成层：聚合四层存储 + compactor + recaller，实现 `agents.api.MemoryAPI`（read/write/retrieve），提供 recall/search_knowledge/compress/end_session 形成认知循环闭环（write → recall → compress → 压缩后情景记忆仍可唤醒）。
 - 修复 `compress` 重填工作记忆时 digest 包 session_id 缺失问题：重填时给每个包盖上目标 session_id。
 - 新增测试 26 个：test_working(4) + test_episodic(3) + test_semantic(4) + test_vector(5) + test_memory_store(10)。
 
@@ -58,7 +105,7 @@
 
 ### 变更内容
 - 将根 `MODULE.md` 内容合并到根 `AGENT.md` 末尾「📋 模块实现总览」段。
-- 将 9 个域 `MODULE.md`（protocol/agents/backend/frontend/infrastructure/observability/data/tooling/developer）内容合并到对应 `AGENT.md` 末尾「📋 模块实现详解」段。
+- 将 9 个域 `MODULE.md`（protocol/aegisos_agents/backend/frontend/infrastructure/observability/data/tooling/developer）内容合并到对应 `AGENT.md` 末尾「📋 模块实现详解」段。
 - 删除全部 10 个 `MODULE.md` 文件（根 + 9 域）。
 - 更新全局引用：`docs/ARCHITECTURE.md`（总览仪表盘 + 9 处详细文档链接）、`README.md`（项目结构 + 模块文档索引表）、`CLAUDE.md`（根 + `.claude/`，L0 在哪找 + 维护段）、`developer/plan.md`（文档体系记录 + 维护提醒）。
 - 各 `AGENT.md` 合并段均以 `> 原 {domain}/MODULE.md 内容，已合并至此。` 标注来源。
@@ -84,14 +131,14 @@
 ### 文档同步
 - `developer/roadmap/README.md`：更新进度勾选（P1-P5 已完成，P6 部分完成）。
 - `CLAUDE.md`（根 + `.claude/`）：更新本机环境约束（macOS .venv Python 3.12.13）+ plans 段当前状态。
-- `README.md`：更新 agents/action 角色列表（红蓝紫 11 Agent）+ 快速开始命令 + 当前进度段。
-- `agents/action/AGENT.md`：更新输出段为红蓝紫角色列表。
+- `README.md`：更新 aegisos_agents/action 角色列表（红蓝紫 11 Agent）+ 快速开始命令 + 当前进度段。
+- `aegisos_agents/action/AGENT.md`：更新输出段为红蓝紫角色列表。
 - `developer/specs/04_PROTOCOL_SPEC.md`：登记 MemoryPacket.kind/recent（B1）+ GraphNode.status（C1）+ §18 Cyber 攻防类型 + §16 低熵路由/异构选举/端边云调度。
 - `developer/specs/06_SCHEMA_SPEC.md`：登记 MemoryPacketSchema.kind/recent + GraphNodeSchema.status + §14 CyberSchema 类型表 + §12 映射表更新。
 
 ### 验证
 - `pytest tests/ -v`：59 passed。
-- GET /agents 返回 14 个 Agent；POST /agents/recon/invoke 返回 2 资产；POST /agents/detector/invoke 返回 1 告警。
+- GET /agents 返回 14 个 Agent；POST /aegisos_agents/recon/invoke 返回 2 资产；POST /aegisos_agents/detector/invoke 返回 1 告警。
 - 前端 Chat 下拉框显示 14 个 Agent；Swagger UI 可访问。
 
 ## [P1-P5] 2026-07-04 Phase A-E：攻防核心引擎 TDD 实现
@@ -105,20 +152,20 @@
 
 ### Phase B — 超长程记忆压缩 + 唤醒 (B1+B2)
 - 扩展 `protocol/memory.py`：`MemoryPacket` 新增 `kind: str = "normal"` 和 `recent: bool = False`。
-- 新增 `agents/memory/compression/compactor.py`：`compress(context, budget)` 按 budget 压缩（decision 保留、recent 保留、其余折叠为 digest）。
-- 新增 `agents/memory/recall/recaller.py`：`recall(trigger, episodic, vector)` 按相关性 + kind 优先级唤醒 TOP_K=5 条记忆。
+- 新增 `aegisos_agents/memory/compression/compactor.py`：`compress(context, budget)` 按 budget 压缩（decision 保留、recent 保留、其余折叠为 digest）。
+- 新增 `aegisos_agents/memory/recall/recaller.py`：`recall(trigger, episodic, vector)` 按相关性 + kind 优先级唤醒 TOP_K=5 条记忆。
 - 测试：7 个（4 compactor + 3 recaller）。
 
 ### Phase C — 拓扑 + 低熵路由 + 异构选举 (C1+C2+C3)
 - 扩展 `protocol/graph.py`：`GraphNode` 新增 `status: str = "active"`（active | idle | degraded）。
-- 新增 `agents/planning/engine/topology/topology.py`：`active_subgraph(graph, required_capability)` 过滤活跃+能力匹配节点。
-- 新增 `agents/planning/engine/router/router.py`：`route(message, topology, required_capability) -> list[NodeRef]`，Top-K=3 稀疏路由（非全广播），按 success_rate - latency 排序。
-- 新增 `agents/planning/engine/router/election.py`：`elect(task_features, instances, capability_vectors) -> NodeRef`，任务特征向量与能力向量点积最大者当选。
+- 新增 `aegisos_agents/planning/engine/topology/topology.py`：`active_subgraph(graph, required_capability)` 过滤活跃+能力匹配节点。
+- 新增 `aegisos_agents/planning/engine/router/router.py`：`route(message, topology, required_capability) -> list[NodeRef]`，Top-K=3 稀疏路由（非全广播），按 success_rate - latency 排序。
+- 新增 `aegisos_agents/planning/engine/router/election.py`：`elect(task_features, instances, capability_vectors) -> NodeRef`，任务特征向量与能力向量点积最大者当选。
 - 测试：10 个（3 topology + 4 router + 3 election）。
 ### Phase D — 端边云三层调度 + 多模型兼容层 (D1+D2)
 - 扩展 `protocol/scheduler.py`：`Task` 新增 `privacy: str = "standard"` 和 `latency_budget: float = 10.0`。
-- 新增 `agents/planning/engine/scheduler/scheduler.py`：`schedule(task, models, required_capability) -> Model`，端边云三层卸载（device/edge/cloud），四规则 + 降级：privacy=local→device，latency<1s→device，latency<5s→edge，默认→cloud；缺失时逐级降级。
-- 新增 `agents/tools/llms/` 多模型兼容层：
+- 新增 `aegisos_agents/planning/engine/scheduler/scheduler.py`：`schedule(task, models, required_capability) -> Model`，端边云三层卸载（device/edge/cloud），四规则 + 降级：privacy=local→device，latency<1s→device，latency<5s→edge，默认→cloud；缺失时逐级降级。
+- 新增 `aegisos_agents/tools/llms/` 多模型兼容层：
   - `base.py`：`ModelProvider` Protocol + `LLMRequest` / `LLMResponse` dataclass。
   - `mock_provider.py`：确定性 Mock（测试/离线开发用）。
   - `openai_provider.py`：OpenAI API 兼容（httpx）。
@@ -130,21 +177,21 @@
 
 ### Phase E — 红蓝紫 Agent 角色 + 神经符号闭环 (E1-E12)
 - **红队 (E1-E4)**：
-  - `agents/action/recon/`：`ReconAgent.scan(target_range) -> list[Asset]`
-  - `agents/action/vuln_correlator/`：`VulnCorrelatorAgent.correlate(assets) -> list[VulnFinding]`
-  - `agents/action/exploit_planner/`：`ExploitPlannerAgent.plan(findings) -> AttackChain`
-  - `agents/action/lateral_move/`：`LateralMoveAgent.plan_moves(chain, topology) -> list[AttackStep]`
+  - `aegisos_agents/action/recon/`：`ReconAgent.scan(target_range) -> list[Asset]`
+  - `aegisos_agents/action/vuln_correlator/`：`VulnCorrelatorAgent.correlate(assets) -> list[VulnFinding]`
+  - `aegisos_agents/action/exploit_planner/`：`ExploitPlannerAgent.plan(findings) -> AttackChain`
+  - `aegisos_agents/action/lateral_move/`：`LateralMoveAgent.plan_moves(chain, topology) -> list[AttackStep]`
 - **蓝队 (E5-E9)**：
-  - `agents/action/detector/`：`DetectorAgent.detect(event_stream) -> list[Alert]`
-  - `agents/action/triage/`：`TriageAgent.triage(alerts) -> list[Alert]`（去噪 + 严重度排序）
-  - `agents/action/threat_hunt/`：`ThreatHuntAgent.hunt(alerts) -> list[dict]`（狩猎假设）
-  - `agents/action/ir_planner/`：`IRPlannerAgent.plan_response(hypotheses) -> ResponsePlan`
-  - `agents/action/forensics/`：`ForensicsAgent.investigate(plan) -> dict`（取证报告）
+  - `aegisos_agents/action/detector/`：`DetectorAgent.detect(event_stream) -> list[Alert]`
+  - `aegisos_agents/action/triage/`：`TriageAgent.triage(alerts) -> list[Alert]`（去噪 + 严重度排序）
+  - `aegisos_agents/action/threat_hunt/`：`ThreatHuntAgent.hunt(alerts) -> list[dict]`（狩猎假设）
+  - `aegisos_agents/action/ir_planner/`：`IRPlannerAgent.plan_response(hypotheses) -> ResponsePlan`
+  - `aegisos_agents/action/forensics/`：`ForensicsAgent.investigate(plan) -> dict`（取证报告）
 - **紫队 (E10-E11)**：
-  - `agents/action/critic/`：`CriticAgent.critique(target, side) -> dict`（对抗性校验）
-  - `agents/action/reviewer/`：`ReviewerAgent.review(artifacts) -> dict`（一致性审查）
+  - `aegisos_agents/action/critic/`：`CriticAgent.critique(target, side) -> dict`（对抗性校验）
+  - `aegisos_agents/action/reviewer/`：`ReviewerAgent.review(artifacts) -> dict`（一致性审查）
 - **神经符号闭环 (E12)**：
-  - `agents/perception/reasoning/neuro_symbolic.py`：`validate_chain(chain, rules)` 符号校验 + `NeuroSymbolicLoop.validate_and_fix(chain, rules, max_iterations)` LLM 生成→符号校验→反馈→修正循环。
+  - `aegisos_agents/perception/reasoning/neuro_symbolic.py`：`validate_chain(chain, rules)` 符号校验 + `NeuroSymbolicLoop.validate_and_fix(chain, rules, max_iterations)` LLM 生成→符号校验→反馈→修正循环。
 - 测试：23 个（6 red + 8 blue + 4 purple + 4 neuro-symbolic + 1 forensics）。
 
 ### 质量门禁
@@ -164,13 +211,13 @@
 ## [P0] 2026-06-26 重构：同域聚合分层
 - 将 37 个平铺顶层目录重组为 15 个分层域目录，同属一域的模块归到一起：
   - `backend/` 吸收 `gateway/`（`backend/gateway/`）。
-  - `agents/` 吸收智能体相关：`memory/`→`agents/memory/`、`llms/`→`agents/tools/llms/`、`prompts/`→`agents/tools/prompts/`、`reasoning/`、`reflection/`、`context/`、`runtime/`（其中 `agents/memory/semantic/` 即知识库）。
-  - `agents/planning/engine/` 聚合编排：`planner/`、`scheduler/`、`router/`、`workflow/`、`eventbus/`、`topology/`。
-  - `agents/action/execution/` 聚合 `executor/`、`tools/`。
+  - `aegisos_agents/` 吸收智能体相关：`memory/`→`aegisos_agents/memory/`、`llms/`→`aegisos_agents/tools/llms/`、`prompts/`→`aegisos_agents/tools/prompts/`、`reasoning/`、`reflection/`、`context/`、`runtime/`（其中 `aegisos_agents/memory/semantic/` 即知识库）。
+  - `aegisos_agents/planning/engine/` 聚合编排：`planner/`、`scheduler/`、`router/`、`workflow/`、`eventbus/`、`topology/`。
+  - `aegisos_agents/action/execution/` 聚合 `executor/`、`tools/`。
   - `infrastructure/` 聚合 `communication/`、`edge/`、`cloud/`、`deployment/`。
   - `observability/` 聚合 `monitor/`、`replay/`、`benchmark/`、`evaluation/`、`visualization/`。
   - `data/` 聚合 `datasets/`、`models/`。
-- 新增 7 个域根 AGENT.md（backend/agents/planning/engine/execution/infrastructure/observability/data）。
+- 新增 7 个域根 AGENT.md（backend/aegisos_agents/planning/engine/execution/infrastructure/observability/data）。
 - 重写全部 AGENT.md（路径引用更新为新分层路径）、memory 12 子模块 README、ROADMAP P0..P7。
 - 更新 developer/ 规范文档（DIRECTORY_GUIDE/ARCHITECTURE/ROADMAP 等）以反映分层。
 - AGENT.md 体系扩充至 55 个（含域根）。
@@ -184,29 +231,29 @@
 - 重写根 AGENT.md 分层、DIRECTORY_GUIDE、ARCHITECTURE 支撑行、developer/docs/tooling 域根 AGENT.md。
 - AGENT.md 体系现为 54 个（新增 tooling 域根）。
 
-## [P0] 2026-06-26 重构：agent 相关全部归入 agents/
-- 将编排引擎与执行能力（均与 agent 相关）移入 agents/ 域：
-  - `engine/` → `agents/planning/engine/`（planner/scheduler/router/workflow/eventbus/topology）
-  - `execution/` → `agents/action/execution/`（executor/tools）
-- 顶层目录从 13 收敛到 11：agents/ 现包含一切与 agent 相关的功能（角色 Agent + 认知 + 记忆 + 模型 + 提示词 + 运行时 + 编排引擎 + 执行能力）。
-- 批量更新所有 AGENT.md 与 developer 文档的路径引用（engine/→agents/planning/engine/、execution/→agents/action/execution/）。
-- 更新 agents/ 域根 AGENT.md（纳入 engine + execution 子模块）、根 AGENT.md 分层、DIRECTORY_GUIDE、ARCHITECTURE 分层图与设计原则。
+## [P0] 2026-06-26 重构：agent 相关全部归入 aegisos_agents/
+- 将编排引擎与执行能力（均与 agent 相关）移入 aegisos_agents/ 域：
+  - `engine/` → `aegisos_agents/planning/engine/`（planner/scheduler/router/workflow/eventbus/topology）
+  - `execution/` → `aegisos_agents/action/execution/`（executor/tools）
+- 顶层目录从 13 收敛到 11：aegisos_agents/ 现包含一切与 agent 相关的功能（角色 Agent + 认知 + 记忆 + 模型 + 提示词 + 运行时 + 编排引擎 + 执行能力）。
+- 批量更新所有 AGENT.md 与 developer 文档的路径引用（engine/→aegisos_agents/planning/engine/、execution/→aegisos_agents/action/execution/）。
+- 更新 aegisos_agents/ 域根 AGENT.md（纳入 engine + execution 子模块）、根 AGENT.md 分层、DIRECTORY_GUIDE、ARCHITECTURE 分层图与设计原则。
 - 与 agent/backend/frontend 三者不相干的模块（protocol/infrastructure/observability/data/tooling/docs/tests/developer）保持不动。
 
 ## [P0] 2026-06-26 重构：各域内部分类
 - 为每个大模块按其领域范式做内部分类，新增 19 个分类层 AGENT.md：
-  - **agents/ 感知-规划-行动-记忆-工具**（认知架构五层）：
-    - `agents/perception/`（感知）：context、reasoning、reflection
-    - `agents/planning/`（规划）：planner(角色)、orchestrator(角色)、engine/(编排引擎)
-    - `agents/action/`（行动）：coder/executor/tester/debugger/critic/reviewer/researcher/docwriter(角色) + execution/(沙箱+工具)
-    - `agents/memory/`（记忆）：12 子模块（不变）
-    - `agents/tools/`（工具）：llms、prompts、runtime
+  - **aegisos_agents/ 感知-规划-行动-记忆-工具**（认知架构五层）：
+    - `aegisos_agents/perception/`（感知）：context、reasoning、reflection
+    - `aegisos_agents/planning/`（规划）：planner(角色)、orchestrator(角色)、engine/(编排引擎)
+    - `aegisos_agents/action/`（行动）：coder/executor/tester/debugger/critic/reviewer/researcher/docwriter(角色) + execution/(沙箱+工具)
+    - `aegisos_agents/memory/`（记忆）：12 子模块（不变）
+    - `aegisos_agents/tools/`（工具）：llms、prompts、runtime
   - **backend/ DDD 四层**：domain/(核心域)、application/(应用层)、infrastructure/(基础设施:gateway)、interfaces/(接口层)
   - **frontend/ 功能特性**：canvas/、graph/、monitor/、replay/、shared/
   - **infrastructure/ 传输-节点-交付**：transport/、nodes/、delivery/
   - **observability/ 观测-度量-呈现**：inspect/、measure/、present/
 - 批量更新所有 AGENT.md 与 developer 文档的路径引用。
-- 更新全部域根 AGENT.md（agents/backend/frontend/infrastructure/observability）含分类表格。
+- 更新全部域根 AGENT.md（aegisos_agents/backend/frontend/infrastructure/observability）含分类表格。
 - 重写根 AGENT.md 分层、DIRECTORY_GUIDE、ARCHITECTURE 分层图与数据流。
 - AGENT.md 体系现为 73 个（域根 + 分类层 + 叶模块三级）。
 
@@ -229,7 +276,7 @@
 
 ## [P0] 2026-06-26 重构：模块间 API 解耦
 - 为每个域新增 `api/` 公共接口子包，其他模块只通过 `from {domain}.api import ...` 调用，不直接访问内部实现，实现解耦：
-  - `agents/api/` — 7 接口：AgentRegistryAPI · MemoryAPI · PlanningAPI · ExecutionAPI · PerceptionAPI · EventBusAPI · RuntimeAPI
+  - `aegisos_agents/api/` — 7 接口：AgentRegistryAPI · MemoryAPI · PlanningAPI · ExecutionAPI · PerceptionAPI · EventBusAPI · RuntimeAPI
   - `backend/api/` — 5 接口：SessionAPI · TaskAPI · MemoryGatewayAPI · GraphAPI · EventStreamAPI
   - `frontend/api/` — 3 接口：ViewAPI · InteractionAPI · ThemeAPI
   - `infrastructure/api/` — 4 接口：CommunicationAPI · NodeRegistryAPI · SyncAPI · DeploymentAPI
@@ -243,7 +290,7 @@
 
 ## [P0] 2026-06-26 动态 README
 - 新增 `tooling/scripts/gen_readme.py`：扫描仓库实际目录树、AGENT.md 计数、api 公共接口（解析各域 `api/__init__.py` 的 `__all__`）、文件统计，自动生成根 `README.md`。
-- README 含：项目介绍、核心特性、架构总览、顶层目录表、agents/backend/frontend 内部分层、模块间 API 解耦表、数据流、通信协议、开发流程、快速开始、自动生成的目录树与仓库统计、关键文档索引。
+- README 含：项目介绍、核心特性、架构总览、顶层目录表、aegisos_agents/backend/frontend 内部分层、模块间 API 解耦表、数据流、通信协议、开发流程、快速开始、自动生成的目录树与仓库统计、关键文档索引。
 - 「实际目录结构」与「仓库统计」段为自动生成，勿手改；结构/api 变动后运行 `python3 tooling/scripts/gen_readme.py` 刷新。
 - 更新 tooling/scripts/AGENT.md（登记 gen_readme.py + 动态维护说明）、根 AGENT.md（README 动态维护段）、DEVELOPER_GUIDE（流程加入 README 刷新步骤）。
 
@@ -252,7 +299,7 @@
 > 触发：根 `AGENT.md` 与 `developer/specs/README.md` 声明 `developer/specs/`（00–13）为唯一真相源（SSOT）并"取代" `developer/` 根旧指南，但 77/78 个模块 `AGENT.md` 与 `README` 仍引用旧文档——本次把全仓对齐到 SSOT。
 
 - **删除旧指南**：删除 `developer/` 根下 20 个被 `developer/specs/` 取代的旧指南（`AGENT_GUIDE`/`API_SPEC`/`ARCHITECTURE`/`BACKEND_GUIDE`/`CODING_RULES`/`DEPLOY_GUIDE`/`DESIGN`/`DEVELOPER_GUIDE`/`DEVELOPMENT_PLAN`/`DIRECTORY_GUIDE`/`EVENT_SPEC`/`FRONTEND_GUIDE`/`MEMORY_GUIDE`/`MESSAGE_PROTOCOL`/`PROJECT_BOOTSTRAP`/`PROMPT_GUIDE`/`PYTHON_STYLE`/`ROUTER_GUIDE`/`TEST_GUIDE`/`TOOL_SPEC`）；保留 `developer/AGENT.md`、`CHANGELOG.md`、`roadmap/`、`specs/`。
-- **全量 AGENT.md 引用重定向**：新增 `tooling/scripts/realign_agent_docs.py`（带 `@aegis-gen` 头），把 77 个模块 `AGENT.md` 中 346 处旧文档引用按映射重定向到 `developer/specs/`（ARCHITECTURE→01、DIRECTORY_GUIDE→02、MESSAGE_PROTOCOL→04、API_SPEC→05、EVENT_SPEC→07、CODING_RULES→11、PYTHON_STYLE→12、ROUTER_GUIDE→04 等）；同步修正 12 个 `agents/memory/*/README.md`、`roadmap/P1`、`specs/08`（PROMPT_GUIDE/TOOL_SPEC 并入本文件）、`protocol/__init__.py` 的残留引用。
+- **全量 AGENT.md 引用重定向**：新增 `tooling/scripts/realign_agent_docs.py`（带 `@aegis-gen` 头），把 77 个模块 `AGENT.md` 中 346 处旧文档引用按映射重定向到 `developer/specs/`（ARCHITECTURE→01、DIRECTORY_GUIDE→02、MESSAGE_PROTOCOL→04、API_SPEC→05、EVENT_SPEC→07、CODING_RULES→11、PYTHON_STYLE→12、ROUTER_GUIDE→04 等）；同步修正 12 个 `aegisos_agents/memory/*/README.md`、`roadmap/P1`、`specs/08`（PROMPT_GUIDE/TOOL_SPEC 并入本文件）、`protocol/__init__.py` 的残留引用。
 - **根规范更新**：根 `AGENT.md`、`developer/specs/README.md`、`developer/AGENT.md`（删除无效 `补充.md`/`开发.md` 引用、下辖子模块改指 specs/）的"取代/历史参考"表述改为"已删除"。
 - **README 重生成**：修正 `gen_readme.py`（关键文档/通信协议/开发流程段改指 specs/、计数排除 `.venv`/`.claude`/`node_modules`/`__pycache__`/`*.egg-info` 等噪声、顶层域排除 egg-info）；手动同步 `README.md`（doc-ref 段 + 统计刷新：78 AGENT.md / 56 py / 116 md / 232 文件 / 123 目录）。
 - **frontend 代码结构重构**：删除重复编译配置 `vite.config.js`/`playwright.config.js`（保留 `.ts`）；重构 `gen_ts_types.py` 剥离硬编码前端类型块（生成器只产出 protocol 契约类型，职责分离）；重建 `frontend/src/protocol/frontend-types.ts` 为前端本地类型唯一手维护来源（修正 `ViewName` 缺 `'chat'` 的分叉、统一 `Record<string, unknown>`）；10 处导入重定向（前端本地类型→`@/protocol/frontend-types`，protocol 类型→`@/protocol/types`）。验收：`tsc -b` 与 `vite build` 均通过（69 模块）。
@@ -277,8 +324,8 @@
 > 对齐用户需求：全仓 AGENT.md 复核（职责边界 + 交叉引用，让 agent 快速定位去哪里）+ 生成 `.claude/CLAUDE.md`（渐进式披露工程总览）。
 
 - **根 `AGENT.md`**：规范表补 `plans/14`、`plans/15` 行；「00–12」→「00–15」（2 处 + 表格），与 `specs/README.md` 索引一致。
-- **77 个模块 AGENT.md**：新增 `tooling/scripts/add_agent_crossrefs.pl`（带 `@aegis-gen` 头，UTF-8 安全，幂等：已存在则跳过），为每个模块 AGENT.md 追加标准化 `## 交叉引用（去哪里找）` 段——本模块规范（域派生 + 子路径微调：router/topology 补 `04 §16` 低熵、action/execution 补 `11` 沙箱、memory 补 `B1-B3` 压缩/唤醒）、API 边界（有 api/ 的 7 域）、数据契约、相关计划（backend/frontend→13+15；agents/protocol/infra/observability/data/tooling→14+15）。域根插入在「下辖子模块」前，叶模块追加末尾。验收：77/77 覆盖（grep 校验）、抽查 router/backend/protocol UTF-8 与插入位置正确。
-- **单一职责**：经跨域抽样（根/agents/protocol/backend/agents/memory + router/frontend-views 等 8 份）核验，各 AGENT.md 仅描述本模块事务、无越界；脚本仅追加未删改原文。
+- **77 个模块 AGENT.md**：新增 `tooling/scripts/add_agent_crossrefs.pl`（带 `@aegis-gen` 头，UTF-8 安全，幂等：已存在则跳过），为每个模块 AGENT.md 追加标准化 `## 交叉引用（去哪里找）` 段——本模块规范（域派生 + 子路径微调：router/topology 补 `04 §16` 低熵、action/execution 补 `11` 沙箱、memory 补 `B1-B3` 压缩/唤醒）、API 边界（有 api/ 的 7 域）、数据契约、相关计划（backend/frontend→13+15；aegisos_agents/protocol/infra/observability/data/tooling→14+15）。域根插入在「下辖子模块」前，叶模块追加末尾。验收：77/77 覆盖（grep 校验）、抽查 router/backend/protocol UTF-8 与插入位置正确。
+- **单一职责**：经跨域抽样（根/aegisos_agents/protocol/backend/aegisos_agents/memory + router/frontend-views 等 8 份）核验，各 AGENT.md 仅描述本模块事务、无越界；脚本仅追加未删改原文。
 - **`.claude/CLAUDE.md`**：渐进式披露工程总览——L0 30 秒上手（定位+铁律+在哪找）、L1 项目与 8 域分层+工作流+铁律、L2 模块地图（域→职责→规范→计划→api）、L3 深指针（specs 00–15 索引、roadmap P0–P7、22 skills 分组、plans 13–15）+ 本机环境约束（无 Python / protocol dataclass 现状）。
 - **注意**：`.claude/` 已被 `.gitignore`（第 2 行）→ `.claude/CLAUDE.md` 不提交、不自动加载；根 `CLAUDE.md` 未被忽略且为 Claude Code 默认自动加载位置——是否复制到根待用户确认。
 - **子代理说明**：原计划 7 组并行子代理审计，但本 token 对子代理执行模型 `deepseek-v4-flash` 无访问权（403，model 覆盖无效），子代理整条路不通；改用 perl 脚本一次性完成，结果已校验。
@@ -329,7 +376,7 @@
 
 ### composition.py 拆分
 - 原文 813 行内联全部 Mock 类定义 → 精简至 ~170 行，Mock 类移至 `backend/mocks/` 6 个独立文件。
-- `agents/tools/llms/mock_provider.py` 新增 `responses` property（修复私有属性 `_responses` 封装泄漏）。
+- `aegisos_agents/tools/llms/mock_provider.py` 新增 `responses` property（修复私有属性 `_responses` 封装泄漏）。
 - 新增 `backend/services/di_ports.py`（DI 端口 Protocol 定义，供 core/composition.py 实现）。
 
 ### Import 路径映射（48 处 .py 更新）

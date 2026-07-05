@@ -1,43 +1,43 @@
 # Agents/Runtime 运行时 — AGENT.md
 
-> 本文件是 `agents/tools/runtime/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/tools/runtime/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 Agent 运行时与生命周期管理：上下文注入、心跳、挂起/恢复、资源隔离。托管各角色 Agent 生命周期。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/
-- agents/memory/
+- aegisos_agents/
+- aegisos_agents/memory/
 - tooling/configs/
 - developer/specs/08_AGENT_SPEC.md
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/ 编排逻辑
+- aegisos_agents/planning/engine/ 编排逻辑
 - protocol/ 类型定义
 
 ## 输出
-- agents/tools/runtime/contexts/
-- agents/tools/runtime/hooks/
-- agents/tools/runtime/lifecycle/
+- aegisos_agents/tools/runtime/contexts/
+- aegisos_agents/tools/runtime/hooks/
+- aegisos_agents/tools/runtime/lifecycle/
 
 ## 依赖
-- agents/ 角色定义
-- agents/memory/ 状态
+- aegisos_agents/ 角色定义
+- aegisos_agents/memory/ 状态
 - protocol/ Heartbeat
 
 ## 接口
 run(agent, task) -> Result；管理 Initialize->...->Finish 生命周期。
 
 ## 测试方式
-`pytest tests/agents/tools/runtime/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/tools/runtime/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/tools/runtime/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/tools/runtime/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/runtime/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/runtime/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/runtime.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -52,6 +52,6 @@ run(agent, task) -> Result；管理 Initialize->...->Finish 生命周期。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

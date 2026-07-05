@@ -18,7 +18,7 @@
 - observability/ 内部实现（inspect/measure/present）
 - frontend/
 - backend/
-- agents/
+- aegisos_agents/
 - protocol/ 类型定义
 
 ## 输出

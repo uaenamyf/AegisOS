@@ -11,7 +11,7 @@
 ## 读取目录（允许读）
 - protocol/
 - infrastructure/transport/
-- agents/tools/runtime/
+- aegisos_agents/tools/runtime/
 - tooling/configs/
 
 ## 禁止修改目录
@@ -24,7 +24,7 @@
 
 ## 依赖
 - infrastructure/transport/ 通道
-- agents/tools/runtime/ 执行
+- aegisos_agents/tools/runtime/ 执行
 - protocol/ Sync
 
 ## 接口
@@ -37,7 +37,7 @@
 `logs/infrastructure/nodes/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/nodes/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/nodes/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/nodes.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

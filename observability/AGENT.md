@@ -14,8 +14,8 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/
-- agents/
+- aegisos_agents/planning/engine/
+- aegisos_agents/
 - tooling/configs/
 - developer/
 
@@ -32,7 +32,7 @@
 - observability/present/visualization/ 可视化
 
 ## 依赖
-- agents/planning/engine/eventbus/ 事件
+- aegisos_agents/planning/engine/eventbus/ 事件
 - protocol/ Heartbeat/Event
 
 ## 接口
@@ -45,7 +45,7 @@ collect/evaluate/replay；对齐赛题评分维度。
 `logs/observability/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/observability/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/observability/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/observability.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

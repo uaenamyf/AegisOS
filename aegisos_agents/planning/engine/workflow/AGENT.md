@@ -1,43 +1,43 @@
 # Engine/Workflow 工作流引擎 — AGENT.md
 
-> 本文件是 `agents/planning/engine/workflow/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/planning/engine/workflow/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 DAG 工作流引擎：节点编排、状态机推进、条件分支、并行与汇聚。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/planner/
-- agents/planning/engine/scheduler/
+- aegisos_agents/planning/engine/planner/
+- aegisos_agents/planning/engine/scheduler/
 - tooling/configs/
 - developer/
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/router/
+- aegisos_agents/planning/engine/router/
 - protocol/ 类型定义
 
 ## 输出
-- agents/planning/engine/workflow/dags/
-- agents/planning/engine/workflow/nodes/
-- agents/planning/engine/workflow/agents/planning/engine/
+- aegisos_agents/planning/engine/workflow/dags/
+- aegisos_agents/planning/engine/workflow/nodes/
+- aegisos_agents/planning/engine/workflow/aegisos_agents/planning/engine/
 
 ## 依赖
-- agents/planning/engine/planner/ 计划
-- agents/planning/engine/scheduler/ 调度
+- aegisos_agents/planning/engine/planner/ 计划
+- aegisos_agents/planning/engine/scheduler/ 调度
 - protocol/ Event
 
 ## 接口
 run_workflow(dag) -> WorkflowResult；事件驱动推进。
 
 ## 测试方式
-`pytest tests/agents/planning/engine/workflow/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/planning/engine/workflow/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/planning/engine/workflow/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/planning/engine/workflow/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/workflow/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/workflow/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/workflow.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -52,6 +52,6 @@ run_workflow(dag) -> WorkflowResult；事件驱动推进。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

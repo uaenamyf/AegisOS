@@ -40,7 +40,7 @@
    - `FRONTEND_GUIDE.md` → `specs/plans/13_FRONTEND_BACKEND_PLAN.md`
    - 其余 `*_GUIDE` → 对应 `specs/`；`CHANGELOG.md` 引用保持不变。
    - 头注「再阅读 `developer/ARCHITECTURE.md` 相关章节」→ `specs/01_ARCHITECTURE_SPEC.md`。
-   运行后抽样人工核验（`protocol/`、`backend/`、`agents/action/coder/`、`agents/planning/engine/router/` 等）。
+   运行后抽样人工核验（`protocol/`、`backend/`、`aegisos_agents/action/coder/`、`aegisos_agents/planning/engine/router/` 等）。
 
 ### 阶段 D — README 生成器修正与重生成（tooling 域）
 8. 修正 `tooling/scripts/gen_readme.py`：
@@ -59,11 +59,11 @@
 
 ### 阶段 F — 收尾
 15. 更新 `developer/CHANGELOG.md`：记录本次"规范整体改造"。
-16. 质量门禁：Python 侧 `ruff format && ruff check --fix && mypy protocol agents backend`；TS 侧 `tsc -b && vite build`。
+16. 质量门禁：Python 侧 `ruff format && ruff check --fix && mypy protocol aegisos_agents backend`；TS 侧 `tsc -b && vite build`。
 
 ## 不在本次范围
 - `tests/` 补齐（roadmap P6）。
-- `agents/perception|planning|memory|tools` 等空骨架的实现（roadmap 后续阶段）。
+- `aegisos_agents/perception|planning|memory|tools` 等空骨架的实现（roadmap 后续阶段）。
 - `.claude/skills/` 为本地 gitignored 工具，不并入 checked-in specs；其方法论（计划→审查→收尾）已用于本任务执行。
 
 ## 风险与缓解

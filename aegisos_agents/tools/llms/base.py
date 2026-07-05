@@ -11,6 +11,7 @@
 - LLMResponse：封装一次推理结果（文本、成功标志、用量统计）
 - ModelProvider：所有具体 Provider（OpenAI / Anthropic / Local / Mock）的统一接口
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

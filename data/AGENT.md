@@ -32,7 +32,7 @@ load/register；单一可信数据源。
 `logs/data/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/data/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/data/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/data.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

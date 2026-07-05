@@ -279,3 +279,129 @@ def test_scenario1_memory_recall_informs_reasoning():
     knowledge = memory.search_knowledge("lateral")
     assert len(knowledge) >= 1
     assert any(k.task_id in ("T1210", "T1021") for k in knowledge)
+
+
+# =============================================================================
+# S3 CyberOrchestrator 编排层 e2e
+# =============================================================================
+
+
+def test_scenario1_orchestrator_red_chain():
+    """S3 编排器：run_red_chain 一步走完侦察→漏洞→利用链全链路。"""
+    from aegisos_agents.planning.orchestrator import CyberOrchestrator
+
+    orchestrator = CyberOrchestrator(mock=_CyberMockProvider())
+
+    result = orchestrator.run_red_chain(TARGET_RANGE)
+
+    assets = result["assets"]
+    findings = result["findings"]
+    chain = result["chain"]
+
+    # 侦察应产出 ≥2 个资产
+    assert len(assets) >= 2
+    # 漏洞关联应产出 ≥1 个发现
+    assert len(findings) >= 1
+    # 攻击链应是完整 AttackChain
+    assert isinstance(chain, AttackChain)
+    assert chain.chain_id == "chain-1"
+    assert len(chain.steps) >= 1
+    assert chain.status == "planned"
+
+
+def test_scenario1_orchestrator_blue_chain():
+    """S3 编排器：run_blue_chain 一步走完检测→分诊→狩猎→响应规划。"""
+    from aegisos_agents.planning.orchestrator import CyberOrchestrator
+
+    orchestrator = CyberOrchestrator(mock=_CyberMockProvider())
+    event_stream = [{"event": "ssh-brute-force", "src": "10.0.0.99", "dst": "10.0.0.5"}]
+
+    result = orchestrator.run_blue_chain(event_stream)
+
+    alerts = result["alerts"]
+    plan = result["plan"]
+
+    assert len(alerts) >= 1
+    assert alerts[0].severity == "high"
+    assert isinstance(plan, ResponsePlan)
+    assert plan.plan_id == "rp-1"
+    assert len(plan.actions) >= 1
+    assert plan.confidence > 0.0
+
+
+def test_scenario1_orchestrator_purple_review():
+    """S3 编排器：run_purple_review 校验攻击链 + 跨产出一致性审查。"""
+    from aegisos_agents.planning.orchestrator import CyberOrchestrator
+
+    orchestrator = CyberOrchestrator(mock=_CyberMockProvider())
+
+    # 先跑红蓝链拿到产物
+    red = orchestrator.run_red_chain(TARGET_RANGE)
+    blue = orchestrator.run_blue_chain(
+        [{"event": "brute-force", "src": "10.0.0.99", "dst": "10.0.0.5"}]
+    )
+
+    purple = orchestrator.run_purple_review(
+        chain=red["chain"],
+        plan=blue["plan"],
+        alerts=blue["alerts"],
+    )
+
+    critique = purple["critique"]
+    review = purple["review"]
+
+    assert critique["valid"] is True
+    assert "severity" in critique
+    assert review["consistent"] is True
+    assert "overall_assessment" in review
+
+
+def test_scenario1_orchestrator_full_flow_with_memory():
+    """S3 编排器 + B3 记忆：完整红→蓝→紫链路 + 记忆认知循环。"""
+    from aegisos_agents.planning.orchestrator import CyberOrchestrator
+
+    orchestrator = CyberOrchestrator(mock=_CyberMockProvider())
+    memory = MemoryStore()
+
+    # 红队全链路
+    red = orchestrator.run_red_chain(TARGET_RANGE)
+    memory.write(
+        MemoryPacket(
+            session_id=SESSION_ID,
+            task_id="orchestrator_red",
+            kind="decision",
+            summary=f"red chain {red['chain'].chain_id} completed",
+        )
+    )
+    assert red["chain"].chain_id == "chain-1"
+
+    # 蓝队全链路
+    blue = orchestrator.run_blue_chain(
+        [{"event": "brute-force", "src": "10.0.0.99", "dst": "10.0.0.5"}]
+    )
+    memory.write(
+        MemoryPacket(
+            session_id=SESSION_ID,
+            task_id="orchestrator_blue",
+            kind="decision",
+            summary=f"blue plan {blue['plan'].plan_id} completed",
+        )
+    )
+    assert blue["plan"].plan_id == "rp-1"
+
+    # 紫队校验
+    purple = orchestrator.run_purple_review(
+        chain=red["chain"], plan=blue["plan"], alerts=blue["alerts"]
+    )
+    assert purple["critique"]["valid"] is True
+    assert purple["review"]["consistent"] is True
+
+    # B3 记忆闭环
+    recalled = memory.recall("red chain")
+    assert any(m.task_id == "orchestrator_red" for m in recalled)
+    compressed = memory.compress(SESSION_ID, budget=1)
+    assert len(compressed) >= 1
+    post_compress = memory.recall("red chain")
+    assert any(m.task_id == "orchestrator_red" for m in post_compress), (
+        "编排器产物经压缩后情景记忆仍可唤醒"
+    )

@@ -12,9 +12,9 @@
 
 | # | 目标 | 验收含义 |
 |---|------|----------|
-| G1 | **动态异构群体智能**（Dynamic Heterogeneous Topology） | 拓扑随任务/能力/信任度自适应重构（`agents/planning/engine/topology/`） |
-| G2 | **长期记忆**（Long-term Memory，含知识库） | 12 子模块记忆可读写、压缩、检索、跨会话沉淀（`agents/memory/`） |
-| G3 | **低熵通信**（Low Entropy Communication） | 按需链式稀疏路由，禁止全广播（`agents/planning/engine/router/`） |
+| G1 | **动态异构群体智能**（Dynamic Heterogeneous Topology） | 拓扑随任务/能力/信任度自适应重构（`aegisos_agents/planning/engine/topology/`） |
+| G2 | **长期记忆**（Long-term Memory，含知识库） | 12 子模块记忆可读写、压缩、检索、跨会话沉淀（`aegisos_agents/memory/`） |
+| G3 | **低熵通信**（Low Entropy Communication） | 按需链式稀疏路由，禁止全广播（`aegisos_agents/planning/engine/router/`） |
 | G4 | **端边云协同**（Edge-Cloud Collaboration） | 离线优先，向量时钟按需同步（`infrastructure/nodes/`、`protocol/sync.py`） |
 | G5 | **可运行系统**（Runnable System） | 开箱可 `make setup/test/build/deploy`，可部署 |
 | G6 | **AI 可自主开发**（Developer Operating System） | 全仓库 `AGENT.md` + 本规范体系，Agent 按边界精准读写、自主开发 |
@@ -28,7 +28,7 @@
 | # | 非目标 | 理由 |
 |---|--------|------|
 | NG1 | 不做通用操作系统内核 | AegisOS 的「OS」指 Agent 协同操作系统，非 Linux 内核替代 |
-| NG2 | 不做单体大模型训练 | 复用外部 LLM（`agents/tools/llms/`），不自训练基座模型 |
+| NG2 | 不做单体大模型训练 | 复用外部 LLM（`aegisos_agents/tools/llms/`），不自训练基座模型 |
 | NG3 | 不做无边界全广播通信 | 与 G3 低熵原则冲突 |
 | NG4 | 不做无规范自由扫描式 AI 开发 | 与 G6 边界式开发冲突 |
 | NG5 | 不承诺跨大版本（≥v2）零破坏兼容 | 仅保证同一 major 内向后兼容（见 §11） |
@@ -47,7 +47,7 @@
 │  backend/gateway/  ← 所有外部请求唯一入口（鉴权+限流）  │
 ├────────────────────────────────────────────────────┤
 │  系统内部（AegisOS）                                  │
-│   frontend · backend · agents · infrastructure      │
+│   frontend · backend · aegisos_agents · infrastructure      │
 │   observability · data · tooling                    │
 ├────────────────────────────────────────────────────┤
 │  protocol/  ← 所有跨模块数据的唯一契约（系统边界内）     │
@@ -55,7 +55,7 @@
 ```
 
 - **入站边界**：一切外部请求经 `backend/core/`；前端只调 `backend.api` 暴露的 REST/WS/SSE。
-- **出站边界**：对外 LLM 调用集中在 `agents/tools/llms/`；对外部署集中在 `infrastructure/delivery/`。
+- **出站边界**：对外 LLM 调用集中在 `aegisos_agents/tools/llms/`；对外部署集中在 `infrastructure/delivery/`。
 - **数据边界**：跨模块数据结构 = `protocol/` 的 26 个契约类型；禁止裸 JSON 跨模块。
 - **开发边界**：`developer/` 纵切所有层，是规范大脑，不参与运行时。
 
@@ -64,7 +64,7 @@
 ## 4. 核心设计原则（Design Principles）
 
 1. **契约先行（Contract First）**：`protocol/` 是唯一数据契约；所有跨模块通信走 `protocol/message.py` 的 `Message` 信封。
-2. **同域聚合 + 域内分类**：Agent 相关归 `agents/`（认知架构五层：感知-规划-行动-记忆-工具）；后端归 `backend/`（Router-Service-Repository-Model + Core）；前端归 `frontend/`（Controller-Service-Lib + Views）。
+2. **同域聚合 + 域内分类**：Agent 相关归 `aegisos_agents/`（认知架构五层：感知-规划-行动-记忆-工具）；后端归 `backend/`（Router-Service-Repository-Model + Core）；前端归 `frontend/`（Controller-Service-Lib + Views）。
 3. **API 解耦（Dependency Inversion）**：每个域通过 `api/` 子包暴露 `typing.Protocol` 接口；其他模块只 `from {domain}.api import XxxAPI`，禁止导入内部实现。实现由各域内部注入，便于 mock。
 4. **模块边界（Boundary）**：每个模块的 `AGENT.md` 规定「读取目录 / 禁止修改目录」；Agent 不得越界。
 5. **低熵稀疏通信（Low Entropy）**：路由按需链式（Agent→Planner→Memory→Coder→Reviewer→Executor），禁止全广播。
@@ -86,7 +86,7 @@
 | 契约层 | `protocol/` | 唯一数据契约（26 类型） | 本身即全局契约 |
 | 表现层 | `frontend/` | Controller-Service-Lib + Views | `frontend/src/`（纯 SPA，无 Python API） |
 | 应用层 | `backend/` | Router-Service-Repository-Model + Core | `backend/api.py`（5 接口） |
-| 智能体域 | `agents/` | 认知架构五层：感知-规划-行动-记忆-工具 | `agents/api/`（5 接口；规划/感知内聚不暴露） |
+| 智能体域 | `aegisos_agents/` | 认知架构五层：感知-规划-行动-记忆-工具 | `aegisos_agents/api/`（5 接口；规划/感知内聚不暴露） |
 | 基础设施层 | `infrastructure/` | 传输-节点-交付 | `infrastructure/api/`（4 接口） |
 | 可观测层 | `observability/` | 观测-度量-呈现 | `observability/api/`（6 接口） |
 | 数据层 | `data/` | 数据集 + 模型 | `data/api/`（2 接口） |
@@ -102,11 +102,11 @@
 
 | 域 | 核心职责 | 关键产物 |
 |----|----------|----------|
-| `agents/perception/` | 感知：上下文管理、推理、反思评估 | context / reasoning / reflection |
-| `agents/planning/` | 规划：planner、orchestrator、engine（planner·scheduler·router·workflow·eventbus·topology） | Plan(DAG)、Route、Schedule |
-| `agents/action/` | 行动：8 角色（coder·executor·tester·debugger·critic·reviewer·researcher·docwriter）+ execution（沙箱+工具） | 执行结果、ToolResult |
-| `agents/memory/` | 记忆：12 子模块（含 semantic 知识库） | MemoryPacket |
-| `agents/tools/` | 工具：llms、prompts、runtime | LLM 调用、Prompt 模板、生命周期托管 |
+| `aegisos_agents/perception/` | 感知：上下文管理、推理、反思评估 | context / reasoning / reflection |
+| `aegisos_agents/planning/` | 规划：planner、orchestrator、engine（planner·scheduler·router·workflow·eventbus·topology） | Plan(DAG)、Route、Schedule |
+| `aegisos_agents/action/` | 行动：8 角色（coder·executor·tester·debugger·critic·reviewer·researcher·docwriter）+ execution（沙箱+工具） | 执行结果、ToolResult |
+| `aegisos_agents/memory/` | 记忆：12 子模块（含 semantic 知识库） | MemoryPacket |
+| `aegisos_agents/tools/` | 工具：llms、prompts、runtime | LLM 调用、Prompt 模板、生命周期托管 |
 | `backend/` | gateway→controllers→services→mappers | REST/WS/SSE 端点、会话/任务/记忆/图桥接 |
 | `frontend/` | controllers→services→mappers→views | canvas/graph/monitor/replay 可视化 |
 | `infrastructure/` | transport·nodes(edge·cloud)·delivery | 低熵通信、端边云同步、部署 |
@@ -148,7 +148,7 @@ P7 Deployment     （部署：Docker/K8s/CI、端边云、开箱可部署）
 依赖方向**严格自上而下**，禁止逆向与跨层穿透：
 
 ```
-frontend  →  backend  →  agents  →  protocol
+frontend  →  backend  →  aegisos_agents  →  protocol
                        ↘          ↗
    observability  →  infrastructure  →  protocol
    data / tooling  →  protocol
@@ -158,7 +158,7 @@ frontend  →  backend  →  agents  →  protocol
 铁律：
 - `protocol/` **不依赖任何业务域**（零反向依赖），仅依赖标准库。
 - 任何域只通过 `from {domain}.api import XxxAPI` 调用他域，**禁止**直接导入他域内部子包。
-- `frontend` 不直接调用 `agents`/`infrastructure`，须经 `backend`。
+- `frontend` 不直接调用 `aegisos_agents`/`infrastructure`，须经 `backend`。
 - `developer/` 不被任何运行时代码依赖。
 - 禁止循环依赖（详见 `03_IMPORT_SPEC.md`）。
 
@@ -166,8 +166,8 @@ frontend  →  backend  →  agents  →  protocol
 
 ## 9. 可扩展性原则（Extensibility）
 
-- **新增 Agent**：在 `agents/action/{role}/` 新建模块 + `AGENT.md` + 在 `agents/api` 注册；不影响他域。
-- **新增工具**：在 `agents/action/execution/tools/` 注册 `ToolSpec`；沙箱执行；无需改协议。
+- **新增 Agent**：在 `aegisos_agents/action/{role}/` 新建模块 + `AGENT.md` + 在 `aegisos_agents/api` 注册；不影响他域。
+- **新增工具**：在 `aegisos_agents/action/execution/tools/` 注册 `ToolSpec`；沙箱执行；无需改协议。
 - **新增事件**：在 `protocol/event.py` 的 `EventType` 登记 + `07_EVENT_SPEC.md` 登记 + CHANGELOG。
 - **新增 API**：在域 `api/` 增加 `Protocol` 方法（可选方法用默认实现/拆新接口，避免破坏既有实现）。
 - **新增节点**：在 `infrastructure/nodes/{edge,cloud}/` 注册，发 `Heartbeat`。
@@ -180,8 +180,8 @@ frontend  →  backend  →  agents  →  protocol
 - **稳定层**：`protocol/`、各域 `api/`（签名冻结，变更属破坏性）。
 - **不稳定层**：各域 `api/` 之外的内部实现（可自由重构，只要 api 签名不变）。
 - **关键路径**（scheduler/router/memory/eventbus/planner）测试覆盖率 ≥ 90%；整体 ≥ 80%。
-- **容错**：Task `retry` + `rollback` + `agents/memory/checkpoint` + `snapshot` + 事件回放。
-- **降级**：LLM 调用回退（`agents/tools/llms/`）；节点失联后离线优先 + 同步。
+- **容错**：Task `retry` + `rollback` + `aegisos_agents/memory/checkpoint` + `snapshot` + 事件回放。
+- **降级**：LLM 调用回退（`aegisos_agents/tools/llms/`）；节点失联后离线优先 + 同步。
 - **质量门禁**：`ruff format && ruff check --fix && mypy && pytest` 全绿方可提交。
 
 ---
@@ -225,7 +225,7 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 
 ### 12.6 Workflow 生命周期
 `Created(goal) → Planned(DAG) → Routed → Scheduled → Running → Checkpointed → (Retry|Rollback) → Succeeded|Failed|Cancelled`
-- DAG 工作流引擎：`agents/planning/engine/workflow/`。
+- DAG 工作流引擎：`aegisos_agents/planning/engine/workflow/`。
 
 ### 12.7 Task 生命周期
 `Pending → Running → (Retry→Running)* → Succeeded | Failed → (RolledBack) | Cancelled`
@@ -249,7 +249,7 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 | spec | 规范变更（本目录） |
 | break! | 破坏性变更（须 bump major + CHANGELOG + 通知依赖方） |
 
-- `scope` = 受影响域（agents/backend/frontend/protocol/infra/observ/…）。
+- `scope` = 受影响域（aegisos_agents/backend/frontend/protocol/infra/observ/…）。
 - subject 祈使句、小写、≤72 字符。
 - **提交前**：运行质量门禁（`ruff format && ruff check --fix && mypy && pytest`）+ 更新 `developer/CHANGELOG.md`。
 - **新增/变更 API** 同步更新 `05_API_SPEC.md`；**新增/变更事件**同步更新 `07_EVENT_SPEC.md`；**变更协议**同步更新 `04_PROTOCOL_SPEC.md`。

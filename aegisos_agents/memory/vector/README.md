@@ -1,6 +1,6 @@
-# agents/memory/vector — 向量存储
+# aegisos_agents/memory/vector — 向量存储
 
-> 记忆子系统的 `向量存储` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
+> 记忆子系统的 `向量存储` 子模块（隶属 aegisos_agents/ 智能体域）。开发前阅读 `aegisos_agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 嵌入索引与相似度检索：支撑记忆的多路召回。
@@ -18,4 +18,4 @@
 - `protocol/`、`tooling/configs/` 索引与淘汰策略配置。
 
 ## 测试
-`pytest tests/agents/memory/vector/`。
+`pytest tests/aegisos_agents/memory/vector/`。

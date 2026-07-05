@@ -7,7 +7,7 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/eventbus/
+- aegisos_agents/planning/engine/eventbus/
 - tooling/configs/
 - developer/
 
@@ -23,7 +23,7 @@
 - observability/inspect/monitor/dashboard/
 
 ## 依赖
-- agents/planning/engine/eventbus/ 事件
+- aegisos_agents/planning/engine/eventbus/ 事件
 - protocol/ Heartbeat
 
 ## 接口
@@ -36,7 +36,7 @@ collect/alert(metric)；对接可视化。
 `logs/observability/inspect/monitor/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/monitor/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/monitor/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/monitor.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

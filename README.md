@@ -35,7 +35,7 @@ AegisOS 是一个**可由 AI Agent 自主开发与运行**的群体智能系统�
 ├─────────────────────────────────────────────────────────┤
 │  backend/    应用层  FastAPI + SQLAlchemy + WebSocket      │
 ├─────────────────────────────────────────────────────────┤
-│  agents/     智能体域  感知 → 规划 → 行动 → 记忆 → 工具     │
+│  aegisos_agents/     智能体域  感知 → 规划 → 行动 → 记忆 → 工具     │
 ├─────────────────────────────────────────────────────────┤
 │  protocol/   契约层  Message 信封 + 强类型 Payload（唯一）  │
 ├─────────────────────────────────────────────────────────┤
@@ -47,7 +47,7 @@ AegisOS 是一个**可由 AI Agent 自主开发与运行**的群体智能系统�
 ### 智能体域 — 认知架构五层
 
 ```
-agents/
+aegisos_agents/
 ├── perception/   感知 — context · reasoning · reflection
 ├── planning/      规划 — topology · router · scheduler · planner · orchestrator
 ├── action/        行动 — 11 个红蓝紫攻防 Agent（见下表）
@@ -156,7 +156,7 @@ Message
 ```
 AegisOS/
 ├── protocol/          # 契约层（Message/Event/Task/Graph/cyber.py）
-├── agents/            # 智能体域
+├── aegisos_agents/            # 智能体域
 │   ├── action/        #   11 个红蓝紫攻防 Agent
 │   ├── memory/        #   压缩 + 唤醒 + 10 子模块
 │   ├── planning/      #   拓扑/路由/调度/选举
@@ -178,7 +178,7 @@ AegisOS/
 <summary>📖 完整目录树（点击展开）</summary>
 
 ```
-agents/
+aegisos_agents/
 ├── action/
 │   ├── recon/  vuln_correlator/  exploit_planner/  lateral_move/
 │   ├── detector/  triage/  threat_hunt/  ir_planner/  forensics/
@@ -215,7 +215,7 @@ developer/
 
 | 域 | 接口数 | 公共 API |
 |----|--------|----------|
-| `agents/` | 5 | RuntimeAPI · AgentRegistry · Memory · Planning · EventBus |
+| `aegisos_agents/` | 5 | RuntimeAPI · AgentRegistry · Memory · Planning · EventBus |
 | `backend/` | 5 | Session · Task · MemoryGateway · Graph · EventStream |
 | `infrastructure/` | 4 | Communication · NodeRegistry · Sync · Deployment |
 | `observability/` | 6 | Monitor · Trace · Replay · Benchmark · Evaluation · Visualization |
@@ -259,7 +259,7 @@ developer/
 | [`AGENT.md`](AGENT.md) | **仓库总规范**：全局铁律 + AI 开发流程 + 模块实现总览（10 大模块「是什么、做了什么、子模块有哪些」逐一介绍） |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构仪表盘：全 10 域代码文件数/测试数/实现状态一览 |
 | [`protocol/AGENT.md`](protocol/AGENT.md) | 契约层 10 个 .py 文件详解 |
-| [`agents/AGENT.md`](agents/AGENT.md) | 智能体域五层架构 + 11 Agent 角色表 |
+| [`aegisos_agents/AGENT.md`](aegisos_agents/AGENT.md) | 智能体域五层架构 + 11 Agent 角色表 |
 | [`backend/AGENT.md`](backend/AGENT.md) | FastAPI 全链路：10 REST 端点 + SSE/WS + DI |
 | [`frontend/AGENT.md`](frontend/AGENT.md) | React+Vite 架构 + ChatView 实现 |
 | [`infrastructure/AGENT.md`](infrastructure/AGENT.md) | 基建层 4 API 协议 + 传输/节点/交付计划 |

@@ -1,6 +1,9 @@
 # @aegis-gen
 # date: 2026-07-06
 # dev: myf
+# changelog: 新增 use_mock 开关（评委本地零配置演示）+ 火山引擎 Chat Completions 模式 + 包名冲突已解决说明
+# date: 2026-07-06
+# dev: myf
 # change: 新建 OpenAI Agents SDK 开发配置——API Key / 模型 / Provider / 编排策略的唯一入口
 # =============================================================================
 # OpenAI Agents SDK (openai-agents) 开发配置
@@ -16,17 +19,24 @@
 #   3. 确认 provider 策略（openai / litellm / custom）
 # =============================================================================
 
+# --- 运行模式开关 ---
+# mock=true:  使用预置 Mock 响应，无需 API Key（评委本地演示 / CI / 测试）
+# mock=false: 使用真实 LLM API（需配 OPENAI_API_KEY，见下方 provider 段）
+# 环境变量 AEGIS_USE_MOCK 覆盖此值（Docker 评委用 -e AEGIS_USE_MOCK=true）
+use_mock: false
+
 # --- SDK 版本约束 ---
 sdk:
   name: openai-agents
   version: ">=0.17"
-  # 包名冲突说明：SDK 包名 `agents` 与项目目录 `agents/` 同名
-  # 解决方案：项目目录重命名为 aegisos_agents/（待执行，见迁移计划）
+  # 包名冲突已解决：项目目录已从 agents/ 重命名为 aegisos_agents/
+  # import agents → SDK；from aegisos_agents.xxx import → 项目代码
 
 # --- 模型配置 ---
 model:
   # 默认模型（SDK 默认 gpt-5.4-mini，可按需调整）
   # 选项: gpt-5.5 / gpt-5.4-mini / gpt-5-mini / gpt-4o-mini / gpt-4.1 等
+  # 火山引擎用户：填你的推理接入点 endpoint ID（如 ep-2026xxxxxx-xxxxx）
   default: "gpt-5.4-mini"
 
   # 模型设置（对应 SDK ModelSettings）
@@ -37,7 +47,7 @@ model:
     # verbosity: low           # GPT-5 系列可选: low / medium / high
 
   # 端边云 tier → 模型映射（项目特有调度，保留）
-  # 对应 agents/planning/engine/scheduler/ 的端边云三层
+  # 对应 aegisos_agents/planning/engine/scheduler/ 的端边云三层
   tier_map:
     device: "gpt-5-mini"       # 端侧：小模型低延迟
     edge: "gpt-5.4-mini"       # 边侧：中等模型
@@ -46,13 +56,15 @@ model:
 # --- Provider 策略 ---
 provider:
   # 策略: openai（默认，用 OpenAI Responses API） / litellm（多模型兼容） / custom（自建）
+  # 火山引擎（ARK）用户：用 openai + api: chat_completions（ARK 不支持 Responses API）
   strategy: openai
 
-  # OpenAI 直连
+  # OpenAI 直连 / OpenAI 兼容端点（火山引擎 ARK）
   openai:
     # API Key 走环境变量 OPENAI_API_KEY（见下方环境变量段）
-    api: responses             # responses（默认，推荐） / chat_completions
-    base_url: ""               # 留空用默认；自建代理时填 https://your-proxy/v1
+    # 火山引擎用户：api 必须用 chat_completions（ARK 仅支持 Chat Completions API）
+    api: chat_completions       # responses（OpenAI 原生，推荐） / chat_completions（兼容火山引擎等）
+    base_url: ""               # 留空用 OpenAI 默认；火山引擎填 https://ark.cn-beijing.volces.com/api/v3
     tracing: true              # 是否上传 trace 到 OpenAI（无 Key 时设 false）
 
   # LiteLLM 多模型兼容（替代手写 4 个 Provider）
@@ -146,10 +158,14 @@ tracing:
 # =============================================================================
 # 环境变量（请在 tooling/configs/.env 中补充）
 # =============================================================================
+# # --- 运行模式（评委本地演示用 mock，真实调用用 false）---
+# AEGIS_USE_MOCK=false        # true=Mock 模式（无需 Key）/ false=真实 API
+#
 # # --- OpenAI Agents SDK ---
-# OPENAI_API_KEY=sk-...                              # 必填：OpenAI API Key
-# OPENAI_DEFAULT_MODEL=gpt-5.4-mini                  # 可选：覆盖默认模型
-# OPENAI_BASE_URL=https://api.openai.com/v1          # 可选：自建代理时改
+# OPENAI_API_KEY=sk-...                              # 必填：OpenAI / 火山引擎 API Key
+# OPENAI_DEFAULT_MODEL=gpt-5.4-mini                  # 可选：覆盖默认模型（火山引擎填 endpoint ID）
+# OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3   # 火山引擎填此；OpenAI 留空
+# OPENAI_AGENTS_DISABLE_TRACING=true                 # 火山引擎/无 OpenAI Key 时设 true（避免 401）
 #
 # # --- LiteLLM（若 provider.strategy = litellm）---
 # ANTHROPIC_API_KEY=sk-ant-...                       # Claude 系列
@@ -157,7 +173,9 @@ tracing:
 #
 # # --- 自建端点（若 provider.strategy = custom）---
 # CUSTOM_LLM_API_KEY=...
+# =============================================================================
 #
-# # --- Tracing（无 OpenAI Key 时禁用）---
-# OPENAI_AGENTS_DISABLE_TRACING=true                 # 可选：禁用 trace 上传
+# 评委 Docker 启动方式:
+#   真实 API:  docker run -p 8000:8000 -e OPENAI_API_KEY=xxx aegisos:latest
+#   Mock 模式: docker run -p 8000:8000 -e AEGIS_USE_MOCK=true aegisos:latest
 # =============================================================================

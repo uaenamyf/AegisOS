@@ -1,43 +1,43 @@
 # Agents/Reflection 反思 — AGENT.md
 
-> 本文件是 `agents/perception/reflection/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/perception/reflection/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 反思、批判与反馈评分：对推理与执行结果自评，沉淀经验到反思记忆，并反馈更新路由信任度。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/memory/
-- agents/perception/reasoning/
+- aegisos_agents/memory/
+- aegisos_agents/perception/reasoning/
 - tooling/configs/
 - developer/
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/
+- aegisos_agents/planning/engine/
 - protocol/ 类型定义
 
 ## 输出
-- agents/perception/reflection/critics/
-- agents/perception/reflection/feedback/
-- agents/perception/reflection/scoring/
+- aegisos_agents/perception/reflection/critics/
+- aegisos_agents/perception/reflection/feedback/
+- aegisos_agents/perception/reflection/scoring/
 
 ## 依赖
-- agents/memory/ reflection
-- agents/perception/reasoning/ trace
+- aegisos_agents/memory/ reflection
+- aegisos_agents/perception/reasoning/ trace
 - protocol/ Event
 
 ## 接口
-reflect(result) -> Feedback；写入 agents/memory/reflection。
+reflect(result) -> Feedback；写入 aegisos_agents/memory/reflection。
 
 ## 测试方式
-`pytest tests/agents/perception/reflection/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/perception/reflection/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/perception/reflection/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/perception/reflection/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/reflection/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/reflection/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/reflection.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -52,6 +52,6 @@ reflect(result) -> Feedback；写入 agents/memory/reflection。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

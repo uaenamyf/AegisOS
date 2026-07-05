@@ -7,7 +7,7 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/memory/
+- aegisos_agents/memory/
 - observability/measure/benchmark/
 - tooling/configs/
 - developer/
@@ -15,7 +15,7 @@
 ## 禁止修改目录
 - frontend/
 - protocol/ 类型定义
-- agents/planning/engine/router/ 路由实现
+- aegisos_agents/planning/engine/router/ 路由实现
 
 ## 输出
 - observability/measure/evaluation/metrics/
@@ -24,7 +24,7 @@
 
 ## 依赖
 - observability/measure/benchmark/ 结果
-- agents/memory/ 反思
+- aegisos_agents/memory/ 反思
 - protocol/ Event
 
 ## 接口
@@ -37,7 +37,7 @@ evaluate(run) -> Report；对齐赛题评分维度。
 `logs/observability/measure/evaluation/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/evaluation/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/evaluation/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/evaluation.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

@@ -18,7 +18,7 @@
 ## 读取目录（允许读）
 - protocol/
 - infrastructure/transport/communication/
-- agents/tools/runtime/
+- aegisos_agents/tools/runtime/
 - tooling/configs/
 - developer/
 
@@ -35,7 +35,7 @@
 
 ## 依赖
 - infrastructure/transport/communication/ 通道
-- agents/tools/runtime/ 执行
+- aegisos_agents/tools/runtime/ 执行
 - protocol/ Sync
 
 ## 接口
@@ -48,7 +48,7 @@
 `logs/infrastructure/nodes/edge/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/edge/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/edge/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/edge.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -65,5 +65,5 @@
 - **本模块规范**：developer/specs/01_ARCHITECTURE_SPEC.md + 12_TECH_STACK_SPEC.md
 - **API 边界**：infrastructure/api/ — from infrastructure.api import ...
 - **数据契约**：protocol/message.py / protocol/sync.py
-- **调度算法**：agents/planning/engine/scheduler/ — tier="edge" 对应本层
+- **调度算法**：aegisos_agents/planning/engine/scheduler/ — tier="edge" 对应本层
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（H1 沙箱靶场/端边云）

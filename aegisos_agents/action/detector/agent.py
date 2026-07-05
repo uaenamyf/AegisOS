@@ -1,3 +1,6 @@
+# date: 2026-07-06
+# dev: myf
+# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + DetectorResult 替代 json.loads+try/except（~78 行→~52 行）
 # date: 2026-07-04
 # dev: myf
 # changelog: 蓝队入侵检测 Agent
@@ -5,14 +8,18 @@ from __future__ import annotations
 
 import json
 
-from aegisos_agents.tools.llms.base import LLMRequest, ModelProvider
+from aegisos_agents.action.output_types import DetectorResult
+from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert
 
-"""蓝队入侵检测 Agent 模块。
+"""蓝队入侵检测 Agent 模块（SDK 结构化输出版）。
 
 本模块接收事件流（以 dict 列表形式），利用大语言模型检测其中的
 异常行为并生成告警（``Alert``），标注严重级别、源/目的资产及
-关联的 ATT&CK 技术编号。
+关联的 ATT&CK 技术编号。使用 openai-agents SDK 的 ``output_type``
+结构化输出，由 SDK 自动处理 JSON 解析与 Pydantic 验证，无需手写
+``json.loads + try/except``。
 """
 
 SYSTEM_PROMPT = (
@@ -22,57 +29,61 @@ SYSTEM_PROMPT = (
 )
 
 
-class DetectorAgent:
-    """蓝队入侵检测 Agent。
+class DetectorAgent(StructuredAgent[DetectorResult]):
+    """蓝队入侵检测 Agent（SDK 结构化输出）。
 
     接收事件流，利用大语言模型识别异常行为并生成结构化告警。
-    输出 ``Alert`` 列表，每条告警包含严重级别、源/目的资产、
-    ATT&CK 技术编号和原始数据。
+    SDK 的 ``output_type`` 机制自动将返回 JSON 解析为 :class:`DetectorResult`
+    （Pydantic 验证 + 自动重试），再转为 ``Alert`` 列表返回。
+
+    Attributes:
+        SYSTEM_PROMPT: 系统提示词，描述 Agent 角色与输出格式。
+        OUTPUT_TYPE: SDK 结构化输出类型 :class:`DetectorResult`。
+        TEMPERATURE: 采样温度，0.2 保证检测结果稳定。
     """
 
-    def __init__(self, provider: ModelProvider):
+    SYSTEM_PROMPT = SYSTEM_PROMPT
+    OUTPUT_TYPE = DetectorResult
+    TEMPERATURE = 0.2
+
+    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
         """初始化入侵检测 Agent。
 
+        兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
+        保持现有测试（``DetectorAgent(provider=mock)``）无需改动。
+
         Args:
-            provider: LLM 模型提供者，用于发送补全请求。
+            provider: 旧版 ``ModelProvider``（MockProvider），兼容现有测试签名。
+            mock: :class:`MockProvider` 实例，显式传入时用于 Mock 模式。
         """
-        self._provider = provider
+        # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
+        if provider is not None and mock is None:
+            mock = provider
+        super().__init__(mock=mock)
 
     def detect(self, event_stream: list[dict]) -> list[Alert]:
         """对事件流进行异常检测，生成告警列表。
 
-        将事件流序列化为 JSON 交给 LLM，模型返回 alerts 数组，
-        逐条解析为 ``Alert`` 对象。若模型调用失败或 JSON 解析
-        失败，返回空列表。
+        SDK 自动处理 LLM 调用 → JSON 解析 → Pydantic 验证，失败时 SDK 内部
+        自动重试。最终将 :class:`AlertModel` 转为 ``Alert``（protocol dataclass）
+        返回，保持接口兼容。
 
         Args:
             event_stream: 原始事件流，每个元素为描述一条事件的 dict。
 
         Returns:
-            检测出的告警列表；调用失败或解析异常时返回空列表。
+            检测出的告警列表；LLM 失败时返回空列表。
         """
-        resp = self._provider.complete(
-            LLMRequest(
-                prompt=f"Detect anomalies in: {json.dumps(event_stream)}",  # 事件流直接序列化
-                model_id="detector",
-                system_prompt=SYSTEM_PROMPT,
-                temperature=0.2,  # 低温度保证检测结果的稳定性
+        result = self._run(f"Detect anomalies in: {json.dumps(event_stream)}")
+        # Pydantic Model → protocol dataclass 转换
+        return [
+            Alert(
+                alert_id=a.alert_id,
+                severity=a.severity,
+                src=a.src,
+                dst=a.dst,
+                technique=a.technique,
+                raw=a.raw,
             )
-        )
-        if not resp.ok:
-            return []  # 模型调用失败，返回空列表
-        try:
-            data = json.loads(resp.text)  # 解析模型返回的 JSON
-            return [
-                Alert(
-                    alert_id=a.get("alert_id", ""),
-                    severity=a.get("severity", "low"),  # 默认严重级别为 low
-                    src=a.get("src", ""),
-                    dst=a.get("dst", ""),
-                    technique=a.get("technique", ""),
-                    raw=a.get("raw", {}),  # 原始数据默认为空 dict
-                )
-                for a in data.get("alerts", [])  # 遍历 alerts 数组
-            ]
-        except (json.JSONDecodeError, KeyError):
-            return []  # JSON 解析失败或字段缺失，返回空列表
+            for a in result.alerts
+        ]

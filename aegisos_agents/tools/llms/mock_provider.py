@@ -7,6 +7,7 @@
 保证测试结果可复现。当未配置响应映射时，返回带 ``[mock]``
 前缀的 prompt 片段作为占位输出。
 """
+
 from __future__ import annotations
 
 from .base import LLMRequest, LLMResponse

@@ -33,7 +33,7 @@ AI Native IDE 与群体智能可视化交互层。采用与后端对称的 **Con
 ## 禁止修改目录
 - backend/
 - protocol/ 类型定义
-- agents/
+- aegisos_agents/
 
 ## 输出
 - frontend/src/controllers/ 控制器（交互/事件处理）
@@ -55,7 +55,7 @@ REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
 `logs/frontend/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/frontend/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/frontend/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/frontend.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -158,7 +158,7 @@ frontend/
 
 | 文件 | Store 字段 |
 |------|-----------|
-| [`lib/store/index.ts`](src/lib/store/index.ts) | `currentSession` · `agents` · `selectedAgentId` · `chatMessages` · `isSending` · `graphData` |
+| [`lib/store/index.ts`](src/lib/store/index.ts) | `currentSession` · `aegisos_agents` · `selectedAgentId` · `chatMessages` · `isSending` · `graphData` |
 
 **ChatMessage 类型**：`id` · `role`(user/agent) · `content` · `agentId` · `taskId` · `status`
 

@@ -8,7 +8,7 @@
 
 **Goal:** 从零构建 AegisOS 智能体域核心算法层（protocol 攻防类型扩展 + 超长程记忆压缩/唤醒 + 动态异构拓扑/低熵路由 + 端边云调度 + 多模型兼容层 + 红蓝紫 Agent 角色），每阶段可独立测试，为赛事核心评分项（技术创新 20 + 性能 15 = 35 分）奠定可运行基础。
 
-**Architecture:** 复用 AegisOS 8 域分层。`protocol/` 扩展 `cyber.py` 攻防类型 + 给现有 dataclass 补齐压缩/拓扑所需字段；`agents/memory/` 实现上下文压缩与唤醒；`agents/planning/engine/` 实现活跃子图计算、低熵稀疏路由、异构选举、端边云调度；`agents/tools/llms/` 实现多模型兼容层（OpenAI/Anthropic/本地/Mock）；`agents/action/` 实现红蓝紫 11 个角色 + 神经-符号闭环。全程 TDD。
+**Architecture:** 复用 AegisOS 8 域分层。`protocol/` 扩展 `cyber.py` 攻防类型 + 给现有 dataclass 补齐压缩/拓扑所需字段；`aegisos_agents/memory/` 实现上下文压缩与唤醒；`aegisos_agents/planning/engine/` 实现活跃子图计算、低熵稀疏路由、异构选举、端边云调度；`aegisos_agents/tools/llms/` 实现多模型兼容层（OpenAI/Anthropic/本地/Mock）；`aegisos_agents/action/` 实现红蓝紫 11 个角色 + 神经-符号闭环。全程 TDD。
 
 **Tech Stack:** Python 3.11+ / pytest / ruff / mypy / httpx（LLM 调用）/ 无外部依赖（Phase A-E 不需要 Redis/Neo4j/Qdrant，纯算法层）。
 
@@ -33,7 +33,7 @@
 protocol/
   cyber.py                          # A1: 攻防 8 类型
 
-agents/
+aegisos_agents/
   memory/
     compression/
       __init__.py                   # B1
@@ -105,7 +105,7 @@ tests/
   protocol/
     __init__.py
     test_cyber.py                    # A1
-  agents/
+  aegisos_agents/
     __init__.py
     memory/
       __init__.py
@@ -146,7 +146,7 @@ protocol/
   graph.py           # C1: GraphNode 扩 status 字段
   scheduler.py       # D1: Task 扩 privacy/latency_budget 字段
   __init__.py        # A1: 导出 cyber 类型
-agents/
+aegisos_agents/
   tools/
     runtime/         # B3: 接入压缩/唤醒到认知循环（待 runtime 目录有代码后）
   api/
@@ -385,11 +385,11 @@ git commit -m "feat(protocol): add cyber attack/defense dataclasses (A1)"
 > 协议变更：现有 `MemoryPacket`（`protocol/memory.py`）无「决策点/最近步」标记，无法表达压缩策略。Step 1 先给 `MemoryPacket` 扩展 `kind:str="normal"` 与 `recent:bool=False` 两字段（dataclass，向后兼容默认值）。
 
 **Files:**
-- Create: `agents/memory/compression/__init__.py`
-- Create: `agents/memory/compression/compactor.py`
+- Create: `aegisos_agents/memory/compression/__init__.py`
+- Create: `aegisos_agents/memory/compression/compactor.py`
 - Modify: `protocol/memory.py`（扩 `kind`/`recent` 字段）
 - Modify: `developer/specs/04_PROTOCOL_SPEC.md` + `06_SCHEMA_SPEC.md`
-- Test: `tests/agents/memory/test_compactor.py`
+- Test: `tests/aegisos_agents/memory/test_compactor.py`
 
 **Interfaces:**
 - Consumes: `protocol/memory.py`（`MemoryPacket`：`working`/`semantic`/`episodic`/`archive`/`embedding`/`summary`/`compression`/`session_id`/`task_id` + 新 `kind`/`recent`）
@@ -418,7 +418,7 @@ class MemoryPacket:
 - [ ] **Step 2: 写失败测试**
 
 ```python
-# tests/agents/memory/test_compactor.py
+# tests/aegisos_agents/memory/test_compactor.py
 from protocol.memory import MemoryPacket
 from agents.memory.compression.compactor import compress
 
@@ -467,19 +467,19 @@ def test_digest_summary_contains_folded_content():
 
 - [ ] **Step 3: 跑测试确认失败**
 
-Run: `pytest tests/agents/memory/test_compactor.py -v`
+Run: `pytest tests/aegisos_agents/memory/test_compactor.py -v`
 Expected: FAIL - `ModuleNotFoundError: No module named 'agents.memory.compression'`
 
 - [ ] **Step 4: 实现 compactor.py**
 
 ```python
-# agents/memory/compression/__init__.py
+# aegisos_agents/memory/compression/__init__.py
 from .compactor import compress
 __all__ = ["compress"]
 ```
 
 ```python
-# agents/memory/compression/compactor.py
+# aegisos_agents/memory/compression/compactor.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -519,13 +519,13 @@ def compress(context: list[MemoryPacket], budget: int) -> list[MemoryPacket]:
 
 - [ ] **Step 6: 跑测试确认通过**
 
-Run: `pytest tests/agents/memory/test_compactor.py -v`
+Run: `pytest tests/aegisos_agents/memory/test_compactor.py -v`
 Expected: 4 passed
 
 - [ ] **Step 7: 提交**
 
 ```bash
-git add protocol/memory.py agents/memory/compression/ tests/agents/memory/test_compactor.py \
+git add protocol/memory.py aegisos_agents/memory/compression/ tests/aegisos_agents/memory/test_compactor.py \
   developer/specs/04_PROTOCOL_SPEC.md developer/specs/06_SCHEMA_SPEC.md
 git commit -m "feat(memory): long-context compression + MemoryPacket kind/recent (B1)"
 ```
@@ -537,9 +537,9 @@ git commit -m "feat(memory): long-context compression + MemoryPacket kind/recent
 > `MemoryPacket` 已在 B1 扩 `kind`/`recent`；recall 复用 `episodic`/`embedding` 字段。
 
 **Files:**
-- Create: `agents/memory/recall/__init__.py`
-- Create: `agents/memory/recall/recaller.py`
-- Test: `tests/agents/memory/test_recaller.py`
+- Create: `aegisos_agents/memory/recall/__init__.py`
+- Create: `aegisos_agents/memory/recall/recaller.py`
+- Test: `tests/aegisos_agents/memory/test_recaller.py`
 
 **Interfaces:**
 - Consumes: `protocol/memory.py`（`MemoryPacket`）
@@ -548,7 +548,7 @@ git commit -m "feat(memory): long-context compression + MemoryPacket kind/recent
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/memory/test_recaller.py
+# tests/aegisos_agents/memory/test_recaller.py
 from protocol.memory import MemoryPacket
 from agents.memory.recall.recaller import recall
 
@@ -588,19 +588,19 @@ def test_recall_empty_when_no_match():
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `pytest tests/agents/memory/test_recaller.py -v`
+Run: `pytest tests/aegisos_agents/memory/test_recaller.py -v`
 Expected: FAIL - `ModuleNotFoundError: No module named 'agents.memory.recall'`
 
 - [ ] **Step 3: 实现 recaller.py**
 
 ```python
-# agents/memory/recall/__init__.py
+# aegisos_agents/memory/recall/__init__.py
 from .recaller import recall
 __all__ = ["recall"]
 ```
 
 ```python
-# agents/memory/recall/recaller.py
+# aegisos_agents/memory/recall/recaller.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -635,13 +635,13 @@ def recall(
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `pytest tests/agents/memory/test_recaller.py -v`
+Run: `pytest tests/aegisos_agents/memory/test_recaller.py -v`
 Expected: 3 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/memory/recall/ tests/agents/memory/test_recaller.py
+git add aegisos_agents/memory/recall/ tests/aegisos_agents/memory/test_recaller.py
 git commit -m "feat(memory): recall mechanism (B2)"
 ```
 
@@ -654,11 +654,11 @@ git commit -m "feat(memory): recall mechanism (B2)"
 > 协议变更：现有 `GraphNode`（`protocol/graph.py`）无 `status`，无法表达 active/idle。Step 1 扩 `status:str="active"`（默认值向后兼容）。注意 `Graph.nodes` 为 dict，`NodeKind` 枚举为 `NodeKind.Agent`（驼峰）。
 
 **Files:**
-- Create: `agents/planning/engine/topology/__init__.py`
-- Create: `agents/planning/engine/topology/topology.py`
+- Create: `aegisos_agents/planning/engine/topology/__init__.py`
+- Create: `aegisos_agents/planning/engine/topology/topology.py`
 - Modify: `protocol/graph.py`（`GraphNode` 扩 `status` 字段）
 - Modify: `developer/specs/04_PROTOCOL_SPEC.md` + `06_SCHEMA_SPEC.md`
-- Test: `tests/agents/planning/test_topology.py`
+- Test: `tests/aegisos_agents/planning/test_topology.py`
 
 **Interfaces:**
 - Consumes: `protocol/graph.py`（`Graph`/`GraphNode`/`NodeKind`；`Graph.nodes` 为 dict）
@@ -684,7 +684,7 @@ class GraphNode:
 - [ ] **Step 2: 写失败测试**
 
 ```python
-# tests/agents/planning/test_topology.py
+# tests/aegisos_agents/planning/test_topology.py
 from protocol.graph import Graph, GraphNode, NodeKind
 from agents.planning.engine.topology.topology import active_subgraph
 
@@ -719,19 +719,19 @@ def test_active_subgraph_empty_when_no_match():
 
 - [ ] **Step 3: 跑确认失败**
 
-Run: `pytest tests/agents/planning/test_topology.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_topology.py -v`
 Expected: FAIL - `ModuleNotFoundError`
 
 - [ ] **Step 4: 实现 topology.py**
 
 ```python
-# agents/planning/engine/topology/__init__.py
+# aegisos_agents/planning/engine/topology/__init__.py
 from .topology import active_subgraph
 __all__ = ["active_subgraph"]
 ```
 
 ```python
-# agents/planning/engine/topology/topology.py
+# aegisos_agents/planning/engine/topology/topology.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -756,13 +756,13 @@ def active_subgraph(graph: Graph, required_capability: str) -> Graph:
 
 - [ ] **Step 6: 跑确认通过**
 
-Run: `pytest tests/agents/planning/test_topology.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_topology.py -v`
 Expected: 3 passed
 
 - [ ] **Step 7: 提交**
 
 ```bash
-git add protocol/graph.py agents/planning/engine/topology/ tests/agents/planning/test_topology.py \
+git add protocol/graph.py aegisos_agents/planning/engine/topology/ tests/aegisos_agents/planning/test_topology.py \
   developer/specs/04_PROTOCOL_SPEC.md developer/specs/06_SCHEMA_SPEC.md
 git commit -m "feat(planning): active subgraph computation + GraphNode.status (C1)"
 ```
@@ -774,9 +774,9 @@ git commit -m "feat(planning): active subgraph computation + GraphNode.status (C
 > `Message`（`protocol/message.py`）无 `required_capability` 字段。`route()` 改为显式参数 `required_capability`（不扩 Message）。返回 `NodeRef`（匹配 `message.py` 的 `NodeRef(node_id=..., node_type=...)`）。
 
 **Files:**
-- Create: `agents/planning/engine/router/__init__.py`
-- Create: `agents/planning/engine/router/router.py`
-- Test: `tests/agents/planning/test_router.py`
+- Create: `aegisos_agents/planning/engine/router/__init__.py`
+- Create: `aegisos_agents/planning/engine/router/router.py`
+- Test: `tests/aegisos_agents/planning/test_router.py`
 
 **Interfaces:**
 - Consumes: C1 `active_subgraph`、`protocol/message.py`（`Message`/`NodeRef`）、`protocol/graph.py`（`Graph`）
@@ -785,7 +785,7 @@ git commit -m "feat(planning): active subgraph computation + GraphNode.status (C
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/planning/test_router.py
+# tests/aegisos_agents/planning/test_router.py
 from protocol.message import Message, NodeRef
 from protocol.graph import Graph, GraphNode, NodeKind
 from agents.planning.engine.router.router import route, TOP_K
@@ -827,19 +827,19 @@ def test_route_returns_empty_on_empty_graph():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/planning/test_router.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_router.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现 router.py**
 
 ```python
-# agents/planning/engine/router/__init__.py
+# aegisos_agents/planning/engine/router/__init__.py
 from .router import route, TOP_K
 __all__ = ["route", "TOP_K"]
 ```
 
 ```python
-# agents/planning/engine/router/router.py
+# aegisos_agents/planning/engine/router/router.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -882,14 +882,14 @@ def _load_penalty(n) -> float:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/planning/test_router.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_router.py -v`
 Expected: 4 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/planning/engine/router/router.py agents/planning/engine/router/__init__.py \
-  tests/agents/planning/test_router.py
+git add aegisos_agents/planning/engine/router/router.py aegisos_agents/planning/engine/router/__init__.py \
+  tests/aegisos_agents/planning/test_router.py
 git commit -m "feat(planning): low-entropy sparse router (C2)"
 ```
 
@@ -898,8 +898,8 @@ git commit -m "feat(planning): low-entropy sparse router (C2)"
 ### Task C3: 异构选举
 
 **Files:**
-- Create: `agents/planning/engine/router/election.py`
-- Test: `tests/agents/planning/test_election.py`
+- Create: `aegisos_agents/planning/engine/router/election.py`
+- Test: `tests/aegisos_agents/planning/test_election.py`
 
 **Interfaces:**
 - Consumes: `protocol/graph.py`（`GraphNode.capabilities`）、`protocol/message.py`（`NodeRef`）
@@ -908,7 +908,7 @@ git commit -m "feat(planning): low-entropy sparse router (C2)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/planning/test_election.py
+# tests/aegisos_agents/planning/test_election.py
 from protocol.graph import GraphNode, NodeKind
 from agents.planning.engine.router.election import elect
 
@@ -946,13 +946,13 @@ def test_elect_single_instance():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/planning/test_election.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_election.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现 election.py**
 
 ```python
-# agents/planning/engine/router/election.py
+# aegisos_agents/planning/engine/router/election.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -989,13 +989,13 @@ def elect(
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/planning/test_election.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_election.py -v`
 Expected: 3 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/planning/engine/router/election.py tests/agents/planning/test_election.py
+git add aegisos_agents/planning/engine/router/election.py tests/aegisos_agents/planning/test_election.py
 git commit -m "feat(planning): heterogeneous election (C3)"
 ```
 
@@ -1008,11 +1008,11 @@ git commit -m "feat(planning): heterogeneous election (C3)"
 > 协议变更：现有 `Task`（`protocol/scheduler.py`）无 `privacy`/`latency_budget`。Step 1 扩两字段（默认值向后兼容）。
 
 **Files:**
-- Create: `agents/planning/engine/scheduler/__init__.py`
-- Create: `agents/planning/engine/scheduler/scheduler.py`
+- Create: `aegisos_agents/planning/engine/scheduler/__init__.py`
+- Create: `aegisos_agents/planning/engine/scheduler/scheduler.py`
 - Modify: `protocol/scheduler.py`（`Task` 扩 `privacy`/`latency_budget`）
 - Modify: `developer/specs/04_PROTOCOL_SPEC.md` + `06_SCHEMA_SPEC.md`
-- Test: `tests/agents/planning/test_scheduler.py`
+- Test: `tests/aegisos_agents/planning/test_scheduler.py`
 
 **Interfaces:**
 - Consumes: `protocol/scheduler.py`（`Task`：新增 `privacy`/`latency_budget`）、`Model`（本任务定义）
@@ -1033,7 +1033,7 @@ class Task:
 - [ ] **Step 2: 写失败测试**
 
 ```python
-# tests/agents/planning/test_scheduler.py
+# tests/aegisos_agents/planning/test_scheduler.py
 import pytest
 from protocol.scheduler import Task
 from agents.planning.engine.scheduler.scheduler import schedule, Model, EDGE_THRESHOLD
@@ -1081,19 +1081,19 @@ def test_filters_by_required_capability():
 
 - [ ] **Step 3: 跑确认失败**
 
-Run: `pytest tests/agents/planning/test_scheduler.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_scheduler.py -v`
 Expected: FAIL
 
 - [ ] **Step 4: 实现 scheduler.py**
 
 ```python
-# agents/planning/engine/scheduler/__init__.py
+# aegisos_agents/planning/engine/scheduler/__init__.py
 from .scheduler import schedule, Model, EDGE_THRESHOLD
 __all__ = ["schedule", "Model", "EDGE_THRESHOLD"]
 ```
 
 ```python
-# agents/planning/engine/scheduler/scheduler.py
+# aegisos_agents/planning/engine/scheduler/scheduler.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1144,13 +1144,13 @@ def schedule(
 
 - [ ] **Step 6: 跑确认通过**
 
-Run: `pytest tests/agents/planning/test_scheduler.py -v`
+Run: `pytest tests/aegisos_agents/planning/test_scheduler.py -v`
 Expected: 4 passed
 
 - [ ] **Step 7: 提交**
 
 ```bash
-git add protocol/scheduler.py agents/planning/engine/scheduler/ tests/agents/planning/test_scheduler.py \
+git add protocol/scheduler.py aegisos_agents/planning/engine/scheduler/ tests/aegisos_agents/planning/test_scheduler.py \
   developer/specs/04_PROTOCOL_SPEC.md developer/specs/06_SCHEMA_SPEC.md
 git commit -m "feat(planning): edge-cloud scheduling (D1)"
 ```
@@ -1162,14 +1162,14 @@ git commit -m "feat(planning): edge-cloud scheduling (D1)"
 > 设计目标：支持 OpenAI API、Anthropic API、本地部署模型、Mock stub 四种方案，通过统一 `ModelProvider` 接口切换。用户可按需配置。
 
 **Files:**
-- Create: `agents/tools/llms/__init__.py`
-- Create: `agents/tools/llms/base.py`
-- Create: `agents/tools/llms/openai_provider.py`
-- Create: `agents/tools/llms/anthropic_provider.py`
-- Create: `agents/tools/llms/local_provider.py`
-- Create: `agents/tools/llms/mock_provider.py`
-- Create: `agents/tools/llms/model_router.py`
-- Test: `tests/agents/tools/test_model_router.py`
+- Create: `aegisos_agents/tools/llms/__init__.py`
+- Create: `aegisos_agents/tools/llms/base.py`
+- Create: `aegisos_agents/tools/llms/openai_provider.py`
+- Create: `aegisos_agents/tools/llms/anthropic_provider.py`
+- Create: `aegisos_agents/tools/llms/local_provider.py`
+- Create: `aegisos_agents/tools/llms/mock_provider.py`
+- Create: `aegisos_agents/tools/llms/model_router.py`
+- Test: `tests/aegisos_agents/tools/test_model_router.py`
 
 **Interfaces:**
 - Consumes: D1 `schedule`/`Model`
@@ -1178,7 +1178,7 @@ git commit -m "feat(planning): edge-cloud scheduling (D1)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/tools/test_model_router.py
+# tests/aegisos_agents/tools/test_model_router.py
 import pytest
 from agents.tools.llms.base import ModelProvider, LLMRequest, LLMResponse
 from agents.tools.llms.mock_provider import MockProvider
@@ -1249,13 +1249,13 @@ def test_router_uses_scheduler_result():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/tools/test_model_router.py -v`
+Run: `pytest tests/aegisos_agents/tools/test_model_router.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现 base.py**
 
 ```python
-# agents/tools/llms/__init__.py
+# aegisos_agents/tools/llms/__init__.py
 from .base import ModelProvider, LLMRequest, LLMResponse
 from .mock_provider import MockProvider
 from .model_router import ModelRouter
@@ -1264,7 +1264,7 @@ __all__ = ["ModelProvider", "LLMRequest", "LLMResponse",
 ```
 
 ```python
-# agents/tools/llms/base.py
+# aegisos_agents/tools/llms/base.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1302,7 +1302,7 @@ class ModelProvider(Protocol):
 - [ ] **Step 4: 实现 mock_provider.py**
 
 ```python
-# agents/tools/llms/mock_provider.py
+# aegisos_agents/tools/llms/mock_provider.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1333,7 +1333,7 @@ class MockProvider:
 - [ ] **Step 5: 实现 openai_provider.py**
 
 ```python
-# agents/tools/llms/openai_provider.py
+# aegisos_agents/tools/llms/openai_provider.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1398,7 +1398,7 @@ class OpenAIProvider:
 - [ ] **Step 6: 实现 anthropic_provider.py**
 
 ```python
-# agents/tools/llms/anthropic_provider.py
+# aegisos_agents/tools/llms/anthropic_provider.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1465,7 +1465,7 @@ class AnthropicProvider:
 - [ ] **Step 7: 实现 local_provider.py**
 
 ```python
-# agents/tools/llms/local_provider.py
+# aegisos_agents/tools/llms/local_provider.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1519,7 +1519,7 @@ class LocalProvider:
 - [ ] **Step 8: 实现 model_router.py**
 
 ```python
-# agents/tools/llms/model_router.py
+# aegisos_agents/tools/llms/model_router.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1610,13 +1610,13 @@ class ModelRouter:
 
 - [ ] **Step 9: 跑确认通过**
 
-Run: `pytest tests/agents/tools/test_model_router.py -v`
+Run: `pytest tests/aegisos_agents/tools/test_model_router.py -v`
 Expected: 5 passed
 
 - [ ] **Step 10: 提交**
 
 ```bash
-git add agents/tools/llms/ tests/agents/tools/test_model_router.py
+git add aegisos_agents/tools/llms/ tests/aegisos_agents/tools/test_model_router.py
 git commit -m "feat(tools): multi-model compatibility layer (D2)"
 ```
 
@@ -1631,18 +1631,18 @@ git commit -m "feat(tools): multi-model compatibility layer (D2)"
 ### Task E1: recon Agent（红队-侦察）
 
 **Files:**
-- Create: `agents/action/recon/__init__.py`
-- Create: `agents/action/recon/agent.py`
-- Test: `tests/agents/action/test_recon.py`
+- Create: `aegisos_agents/action/recon/__init__.py`
+- Create: `aegisos_agents/action/recon/agent.py`
+- Test: `tests/aegisos_agents/action/test_recon.py`
 
 **Interfaces:**
-- Consumes: `protocol/cyber.py`（`Asset`）、`agents/tools/llms/`（`ModelProvider`/`LLMRequest`）
+- Consumes: `protocol/cyber.py`（`Asset`）、`aegisos_agents/tools/llms/`（`ModelProvider`/`LLMRequest`）
 - Produces: `ReconAgent.scan(target_range: str) -> list[Asset]`
 
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_recon.py
+# tests/aegisos_agents/action/test_recon.py
 from agents.action.recon.agent import ReconAgent
 from agents.tools.llms.mock_provider import MockProvider
 from agents.tools.llms.base import LLMRequest
@@ -1668,19 +1668,19 @@ def test_recon_returns_empty_on_no_response():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_recon.py -v`
+Run: `pytest tests/aegisos_agents/action/test_recon.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现 agent.py**
 
 ```python
-# agents/action/recon/__init__.py
+# aegisos_agents/action/recon/__init__.py
 from .agent import ReconAgent
 __all__ = ["ReconAgent"]
 ```
 
 ```python
-# agents/action/recon/agent.py
+# aegisos_agents/action/recon/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1732,13 +1732,13 @@ class ReconAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_recon.py -v`
+Run: `pytest tests/aegisos_agents/action/test_recon.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/recon/ tests/agents/action/test_recon.py
+git add aegisos_agents/action/recon/ tests/aegisos_agents/action/test_recon.py
 git commit -m "feat(action): recon agent (E1)"
 ```
 
@@ -1747,9 +1747,9 @@ git commit -m "feat(action): recon agent (E1)"
 ### Task E2: vuln_correlator Agent（红队-漏洞关联）
 
 **Files:**
-- Create: `agents/action/vuln_correlator/__init__.py`
-- Create: `agents/action/vuln_correlator/agent.py`
-- Test: `tests/agents/action/test_vuln_correlator.py`
+- Create: `aegisos_agents/action/vuln_correlator/__init__.py`
+- Create: `aegisos_agents/action/vuln_correlator/agent.py`
+- Test: `tests/aegisos_agents/action/test_vuln_correlator.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`Asset`/`VulnFinding`）、`ModelProvider`
@@ -1758,7 +1758,7 @@ git commit -m "feat(action): recon agent (E1)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_vuln_correlator.py
+# tests/aegisos_agents/action/test_vuln_correlator.py
 from protocol.cyber import Asset
 from agents.action.vuln_correlator.agent import VulnCorrelatorAgent
 from agents.tools.llms.mock_provider import MockProvider
@@ -1784,19 +1784,19 @@ def test_correlate_empty_on_no_vulns():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_vuln_correlator.py -v`
+Run: `pytest tests/aegisos_agents/action/test_vuln_correlator.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/vuln_correlator/__init__.py
+# aegisos_agents/action/vuln_correlator/__init__.py
 from .agent import VulnCorrelatorAgent
 __all__ = ["VulnCorrelatorAgent"]
 ```
 
 ```python
-# agents/action/vuln_correlator/agent.py
+# aegisos_agents/action/vuln_correlator/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1850,13 +1850,13 @@ class VulnCorrelatorAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_vuln_correlator.py -v`
+Run: `pytest tests/aegisos_agents/action/test_vuln_correlator.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/vuln_correlator/ tests/agents/action/test_vuln_correlator.py
+git add aegisos_agents/action/vuln_correlator/ tests/aegisos_agents/action/test_vuln_correlator.py
 git commit -m "feat(action): vuln correlator agent (E2)"
 ```
 
@@ -1865,9 +1865,9 @@ git commit -m "feat(action): vuln correlator agent (E2)"
 ### Task E3: exploit_planner Agent（红队-利用链规划）
 
 **Files:**
-- Create: `agents/action/exploit_planner/__init__.py`
-- Create: `agents/action/exploit_planner/agent.py`
-- Test: `tests/agents/action/test_exploit_planner.py`
+- Create: `aegisos_agents/action/exploit_planner/__init__.py`
+- Create: `aegisos_agents/action/exploit_planner/agent.py`
+- Test: `tests/aegisos_agents/action/test_exploit_planner.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`VulnFinding`/`AttackStep`/`AttackChain`）、`ModelProvider`
@@ -1876,7 +1876,7 @@ git commit -m "feat(action): vuln correlator agent (E2)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_exploit_planner.py
+# tests/aegisos_agents/action/test_exploit_planner.py
 from protocol.cyber import VulnFinding
 from agents.action.exploit_planner.agent import ExploitPlannerAgent
 from agents.tools.llms.mock_provider import MockProvider
@@ -1895,19 +1895,19 @@ def test_plan_returns_attack_chain():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_exploit_planner.py -v`
+Run: `pytest tests/aegisos_agents/action/test_exploit_planner.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/exploit_planner/__init__.py
+# aegisos_agents/action/exploit_planner/__init__.py
 from .agent import ExploitPlannerAgent
 __all__ = ["ExploitPlannerAgent"]
 ```
 
 ```python
-# agents/action/exploit_planner/agent.py
+# aegisos_agents/action/exploit_planner/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -1967,13 +1967,13 @@ class ExploitPlannerAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_exploit_planner.py -v`
+Run: `pytest tests/aegisos_agents/action/test_exploit_planner.py -v`
 Expected: 1 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/exploit_planner/ tests/agents/action/test_exploit_planner.py
+git add aegisos_agents/action/exploit_planner/ tests/aegisos_agents/action/test_exploit_planner.py
 git commit -m "feat(action): exploit planner agent (E3)"
 ```
 
@@ -1982,9 +1982,9 @@ git commit -m "feat(action): exploit planner agent (E3)"
 ### Task E4: lateral_move Agent（红队-横向移动）
 
 **Files:**
-- Create: `agents/action/lateral_move/__init__.py`
-- Create: `agents/action/lateral_move/agent.py`
-- Test: `tests/agents/action/test_lateral_move.py`
+- Create: `aegisos_agents/action/lateral_move/__init__.py`
+- Create: `aegisos_agents/action/lateral_move/agent.py`
+- Test: `tests/aegisos_agents/action/test_lateral_move.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`AttackChain`/`AttackStep`）、`ModelProvider`
@@ -1993,7 +1993,7 @@ git commit -m "feat(action): exploit planner agent (E3)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_lateral_move.py
+# tests/aegisos_agents/action/test_lateral_move.py
 from protocol.cyber import AttackChain, AttackStep
 from protocol.graph import Graph, GraphNode, NodeKind
 from agents.action.lateral_move.agent import LateralMoveAgent
@@ -2019,19 +2019,19 @@ def test_plan_moves_returns_lateral_steps():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_lateral_move.py -v`
+Run: `pytest tests/aegisos_agents/action/test_lateral_move.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/lateral_move/__init__.py
+# aegisos_agents/action/lateral_move/__init__.py
 from .agent import LateralMoveAgent
 __all__ = ["LateralMoveAgent"]
 ```
 
 ```python
-# agents/action/lateral_move/agent.py
+# aegisos_agents/action/lateral_move/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2094,13 +2094,13 @@ class LateralMoveAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_lateral_move.py -v`
+Run: `pytest tests/aegisos_agents/action/test_lateral_move.py -v`
 Expected: 1 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/lateral_move/ tests/agents/action/test_lateral_move.py
+git add aegisos_agents/action/lateral_move/ tests/aegisos_agents/action/test_lateral_move.py
 git commit -m "feat(action): lateral move agent (E4)"
 ```
 
@@ -2109,9 +2109,9 @@ git commit -m "feat(action): lateral move agent (E4)"
 ### Task E5: detector Agent（蓝队-入侵检测）
 
 **Files:**
-- Create: `agents/action/detector/__init__.py`
-- Create: `agents/action/detector/agent.py`
-- Test: `tests/agents/action/test_detector.py`
+- Create: `aegisos_agents/action/detector/__init__.py`
+- Create: `aegisos_agents/action/detector/agent.py`
+- Test: `tests/aegisos_agents/action/test_detector.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`Alert`）、`ModelProvider`
@@ -2120,7 +2120,7 @@ git commit -m "feat(action): lateral move agent (E4)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_detector.py
+# tests/aegisos_agents/action/test_detector.py
 from agents.action.detector.agent import DetectorAgent
 from agents.tools.llms.mock_provider import MockProvider
 
@@ -2146,19 +2146,19 @@ def test_detect_returns_empty_on_no_anomaly():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_detector.py -v`
+Run: `pytest tests/aegisos_agents/action/test_detector.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/detector/__init__.py
+# aegisos_agents/action/detector/__init__.py
 from .agent import DetectorAgent
 __all__ = ["DetectorAgent"]
 ```
 
 ```python
-# agents/action/detector/agent.py
+# aegisos_agents/action/detector/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2209,13 +2209,13 @@ class DetectorAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_detector.py -v`
+Run: `pytest tests/aegisos_agents/action/test_detector.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/detector/ tests/agents/action/test_detector.py
+git add aegisos_agents/action/detector/ tests/aegisos_agents/action/test_detector.py
 git commit -m "feat(action): detector agent (E5)"
 ```
 
@@ -2224,9 +2224,9 @@ git commit -m "feat(action): detector agent (E5)"
 ### Task E6: triage Agent（蓝队-告警分诊）
 
 **Files:**
-- Create: `agents/action/triage/__init__.py`
-- Create: `agents/action/triage/agent.py`
-- Test: `tests/agents/action/test_triage.py`
+- Create: `aegisos_agents/action/triage/__init__.py`
+- Create: `aegisos_agents/action/triage/agent.py`
+- Test: `tests/aegisos_agents/action/test_triage.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`Alert`）、`ModelProvider`
@@ -2235,7 +2235,7 @@ git commit -m "feat(action): detector agent (E5)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_triage.py
+# tests/aegisos_agents/action/test_triage.py
 from protocol.cyber import Alert
 from agents.action.triage.agent import TriageAgent
 from agents.tools.llms.mock_provider import MockProvider
@@ -2268,19 +2268,19 @@ def test_triage_deduplicates():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_triage.py -v`
+Run: `pytest tests/aegisos_agents/action/test_triage.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/triage/__init__.py
+# aegisos_agents/action/triage/__init__.py
 from .agent import TriageAgent
 __all__ = ["TriageAgent"]
 ```
 
 ```python
-# agents/action/triage/agent.py
+# aegisos_agents/action/triage/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2330,13 +2330,13 @@ class TriageAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_triage.py -v`
+Run: `pytest tests/aegisos_agents/action/test_triage.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/triage/ tests/agents/action/test_triage.py
+git add aegisos_agents/action/triage/ tests/aegisos_agents/action/test_triage.py
 git commit -m "feat(action): triage agent (E6)"
 ```
 
@@ -2345,9 +2345,9 @@ git commit -m "feat(action): triage agent (E6)"
 ### Task E7: threat_hunt Agent（蓝队-威胁狩猎）
 
 **Files:**
-- Create: `agents/action/threat_hunt/__init__.py`
-- Create: `agents/action/threat_hunt/agent.py`
-- Test: `tests/agents/action/test_threat_hunt.py`
+- Create: `aegisos_agents/action/threat_hunt/__init__.py`
+- Create: `aegisos_agents/action/threat_hunt/agent.py`
+- Test: `tests/aegisos_agents/action/test_threat_hunt.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`Alert`）、`ModelProvider`
@@ -2356,7 +2356,7 @@ git commit -m "feat(action): triage agent (E6)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_threat_hunt.py
+# tests/aegisos_agents/action/test_threat_hunt.py
 from protocol.cyber import Alert
 from agents.action.threat_hunt.agent import ThreatHuntAgent
 from agents.tools.llms.mock_provider import MockProvider
@@ -2382,19 +2382,19 @@ def test_hunt_returns_empty_on_no_threat():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_threat_hunt.py -v`
+Run: `pytest tests/aegisos_agents/action/test_threat_hunt.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/threat_hunt/__init__.py
+# aegisos_agents/action/threat_hunt/__init__.py
 from .agent import ThreatHuntAgent
 __all__ = ["ThreatHuntAgent"]
 ```
 
 ```python
-# agents/action/threat_hunt/agent.py
+# aegisos_agents/action/threat_hunt/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2439,13 +2439,13 @@ class ThreatHuntAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_threat_hunt.py -v`
+Run: `pytest tests/aegisos_agents/action/test_threat_hunt.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/threat_hunt/ tests/agents/action/test_threat_hunt.py
+git add aegisos_agents/action/threat_hunt/ tests/aegisos_agents/action/test_threat_hunt.py
 git commit -m "feat(action): threat hunt agent (E7)"
 ```
 
@@ -2454,9 +2454,9 @@ git commit -m "feat(action): threat hunt agent (E7)"
 ### Task E8: ir_planner Agent（蓝队-响应规划）
 
 **Files:**
-- Create: `agents/action/ir_planner/__init__.py`
-- Create: `agents/action/ir_planner/agent.py`
-- Test: `tests/agents/action/test_ir_planner.py`
+- Create: `aegisos_agents/action/ir_planner/__init__.py`
+- Create: `aegisos_agents/action/ir_planner/agent.py`
+- Test: `tests/aegisos_agents/action/test_ir_planner.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`DefenseAction`/`ResponsePlan`）、`ModelProvider`
@@ -2465,7 +2465,7 @@ git commit -m "feat(action): threat hunt agent (E7)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_ir_planner.py
+# tests/aegisos_agents/action/test_ir_planner.py
 from agents.action.ir_planner.agent import IRPlannerAgent
 from agents.tools.llms.mock_provider import MockProvider
 
@@ -2495,19 +2495,19 @@ def test_plan_response_has_empty_actions_on_no_hypotheses():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_ir_planner.py -v`
+Run: `pytest tests/aegisos_agents/action/test_ir_planner.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/ir_planner/__init__.py
+# aegisos_agents/action/ir_planner/__init__.py
 from .agent import IRPlannerAgent
 __all__ = ["IRPlannerAgent"]
 ```
 
 ```python
-# agents/action/ir_planner/agent.py
+# aegisos_agents/action/ir_planner/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2554,13 +2554,13 @@ class IRPlannerAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_ir_planner.py -v`
+Run: `pytest tests/aegisos_agents/action/test_ir_planner.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/ir_planner/ tests/agents/action/test_ir_planner.py
+git add aegisos_agents/action/ir_planner/ tests/aegisos_agents/action/test_ir_planner.py
 git commit -m "feat(action): ir planner agent (E8)"
 ```
 
@@ -2569,9 +2569,9 @@ git commit -m "feat(action): ir planner agent (E8)"
 ### Task E9: forensics Agent（蓝队-取证）
 
 **Files:**
-- Create: `agents/action/forensics/__init__.py`
-- Create: `agents/action/forensics/agent.py`
-- Test: `tests/agents/action/test_forensics.py`
+- Create: `aegisos_agents/action/forensics/__init__.py`
+- Create: `aegisos_agents/action/forensics/agent.py`
+- Test: `tests/aegisos_agents/action/test_forensics.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`ResponsePlan`）、`ModelProvider`
@@ -2580,7 +2580,7 @@ git commit -m "feat(action): ir planner agent (E8)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_forensics.py
+# tests/aegisos_agents/action/test_forensics.py
 from protocol.cyber import ResponsePlan
 from agents.action.forensics.agent import ForensicsAgent
 from agents.tools.llms.mock_provider import MockProvider
@@ -2601,19 +2601,19 @@ def test_investigate_returns_report():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_forensics.py -v`
+Run: `pytest tests/aegisos_agents/action/test_forensics.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/forensics/__init__.py
+# aegisos_agents/action/forensics/__init__.py
 from .agent import ForensicsAgent
 __all__ = ["ForensicsAgent"]
 ```
 
 ```python
-# agents/action/forensics/agent.py
+# aegisos_agents/action/forensics/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2658,13 +2658,13 @@ class ForensicsAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_forensics.py -v`
+Run: `pytest tests/aegisos_agents/action/test_forensics.py -v`
 Expected: 1 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/forensics/ tests/agents/action/test_forensics.py
+git add aegisos_agents/action/forensics/ tests/aegisos_agents/action/test_forensics.py
 git commit -m "feat(action): forensics agent (E9)"
 ```
 
@@ -2673,9 +2673,9 @@ git commit -m "feat(action): forensics agent (E9)"
 ### Task E10: critic Agent（紫队-对抗性批判）
 
 **Files:**
-- Create: `agents/action/critic/__init__.py`
-- Create: `agents/action/critic/agent.py`
-- Test: `tests/agents/action/test_critic.py`
+- Create: `aegisos_agents/action/critic/__init__.py`
+- Create: `aegisos_agents/action/critic/agent.py`
+- Test: `tests/aegisos_agents/action/test_critic.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`AttackChain`/`ResponsePlan`）、`ModelProvider`
@@ -2684,7 +2684,7 @@ git commit -m "feat(action): forensics agent (E9)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_critic.py
+# tests/aegisos_agents/action/test_critic.py
 from agents.action.critic.agent import CriticAgent
 from agents.tools.llms.mock_provider import MockProvider
 
@@ -2712,19 +2712,19 @@ def test_critique_blue_plan_passes():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_critic.py -v`
+Run: `pytest tests/aegisos_agents/action/test_critic.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/critic/__init__.py
+# aegisos_agents/action/critic/__init__.py
 from .agent import CriticAgent
 __all__ = ["CriticAgent"]
 ```
 
 ```python
-# agents/action/critic/agent.py
+# aegisos_agents/action/critic/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2769,13 +2769,13 @@ class CriticAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_critic.py -v`
+Run: `pytest tests/aegisos_agents/action/test_critic.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/critic/ tests/agents/action/test_critic.py
+git add aegisos_agents/action/critic/ tests/aegisos_agents/action/test_critic.py
 git commit -m "feat(action): critic agent (E10)"
 ```
 
@@ -2784,9 +2784,9 @@ git commit -m "feat(action): critic agent (E10)"
 ### Task E11: reviewer Agent（紫队-一致性审查）
 
 **Files:**
-- Create: `agents/action/reviewer/__init__.py`
-- Create: `agents/action/reviewer/agent.py`
-- Test: `tests/agents/action/test_reviewer.py`
+- Create: `aegisos_agents/action/reviewer/__init__.py`
+- Create: `aegisos_agents/action/reviewer/agent.py`
+- Test: `tests/aegisos_agents/action/test_reviewer.py`
 
 **Interfaces:**
 - Consumes: `ModelProvider`
@@ -2795,7 +2795,7 @@ git commit -m "feat(action): critic agent (E10)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/action/test_reviewer.py
+# tests/aegisos_agents/action/test_reviewer.py
 from agents.action.reviewer.agent import ReviewerAgent
 from agents.tools.llms.mock_provider import MockProvider
 
@@ -2822,19 +2822,19 @@ def test_review_flags_inconsistency():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/action/test_reviewer.py -v`
+Run: `pytest tests/aegisos_agents/action/test_reviewer.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/action/reviewer/__init__.py
+# aegisos_agents/action/reviewer/__init__.py
 from .agent import ReviewerAgent
 __all__ = ["ReviewerAgent"]
 ```
 
 ```python
-# agents/action/reviewer/agent.py
+# aegisos_agents/action/reviewer/agent.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -2874,13 +2874,13 @@ class ReviewerAgent:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/action/test_reviewer.py -v`
+Run: `pytest tests/aegisos_agents/action/test_reviewer.py -v`
 Expected: 2 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/action/reviewer/ tests/agents/action/test_reviewer.py
+git add aegisos_agents/action/reviewer/ tests/aegisos_agents/action/test_reviewer.py
 git commit -m "feat(action): reviewer agent (E11)"
 ```
 
@@ -2891,9 +2891,9 @@ git commit -m "feat(action): reviewer agent (E11)"
 > 神经侧（LLM）生成攻击链假设 -> 符号侧用 ATT&CK 规则校验 -> 不通过则反馈约束 -> LLM 修正 -> 再校验，直至一致或预算耗尽（14 S7）。
 
 **Files:**
-- Create: `agents/perception/reasoning/__init__.py`
-- Create: `agents/perception/reasoning/neuro_symbolic.py`
-- Test: `tests/agents/perception/test_neuro_symbolic.py`
+- Create: `aegisos_agents/perception/reasoning/__init__.py`
+- Create: `aegisos_agents/perception/reasoning/neuro_symbolic.py`
+- Test: `tests/aegisos_agents/perception/test_neuro_symbolic.py`
 
 **Interfaces:**
 - Consumes: `protocol/cyber.py`（`AttackChain`/`AttackStep`）、`ModelProvider`（LLM 生成假设）
@@ -2902,7 +2902,7 @@ git commit -m "feat(action): reviewer agent (E11)"
 - [ ] **Step 1: 写失败测试**
 
 ```python
-# tests/agents/perception/test_neuro_symbolic.py
+# tests/aegisos_agents/perception/test_neuro_symbolic.py
 from protocol.cyber import AttackChain, AttackStep
 from agents.perception.reasoning.neuro_symbolic import NeuroSymbolicLoop, validate_chain
 from agents.tools.llms.mock_provider import MockProvider
@@ -2955,19 +2955,19 @@ def test_loop_returns_original_after_max_iterations():
 
 - [ ] **Step 2: 跑确认失败**
 
-Run: `pytest tests/agents/perception/test_neuro_symbolic.py -v`
+Run: `pytest tests/aegisos_agents/perception/test_neuro_symbolic.py -v`
 Expected: FAIL
 
 - [ ] **Step 3: 实现**
 
 ```python
-# agents/perception/reasoning/__init__.py
+# aegisos_agents/perception/reasoning/__init__.py
 from .neuro_symbolic import NeuroSymbolicLoop, validate_chain
 __all__ = ["NeuroSymbolicLoop", "validate_chain"]
 ```
 
 ```python
-# agents/perception/reasoning/neuro_symbolic.py
+# aegisos_agents/perception/reasoning/neuro_symbolic.py
 # @aegis-gen
 # date: 2026-07-04
 # dev: Claude Code (glm-5.2)
@@ -3064,13 +3064,13 @@ class NeuroSymbolicLoop:
 
 - [ ] **Step 4: 跑确认通过**
 
-Run: `pytest tests/agents/perception/test_neuro_symbolic.py -v`
+Run: `pytest tests/aegisos_agents/perception/test_neuro_symbolic.py -v`
 Expected: 4 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add agents/perception/reasoning/ tests/agents/perception/test_neuro_symbolic.py
+git add aegisos_agents/perception/reasoning/ tests/aegisos_agents/perception/test_neuro_symbolic.py
 git commit -m "feat(perception): neuro-symbolic loop (E12)"
 ```
 
@@ -3159,7 +3159,7 @@ C1 (topology) ← 无依赖 (仅 protocol/graph.py)
 C2 (router) ← C1 (使用活跃子图)
 C3 (election) ← C1 (使用 GraphNode)
 D1 (scheduler) ← 无依赖 (仅 protocol/scheduler.py)
-D2 (model layer) ← 无依赖 (agents/tools/llms/)
+D2 (model layer) ← 无依赖 (aegisos_agents/tools/llms/)
 E1-E4 (red) ← A1 (cyber types) + D2 (ModelProvider)
 E5-E9 (blue) ← A1 + D2
 E10-E11 (purple) ← A1 + D2

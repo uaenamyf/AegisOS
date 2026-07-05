@@ -10,20 +10,20 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/topology/
+- aegisos_agents/planning/engine/topology/
 - observability/inspect/monitor/
 - tooling/configs/
 
 ## 禁止修改目录
 - backend/
 - protocol/ 类型定义
-- agents/planning/engine/router/ 路由实现
+- aegisos_agents/planning/engine/router/ 路由实现
 
 ## 输出
 - observability/present/visualization/ 可视化
 
 ## 依赖
-- agents/planning/engine/topology/ 图
+- aegisos_agents/planning/engine/topology/ 图
 - observability/inspect/monitor/ 指标
 - protocol/ Graph
 
@@ -37,7 +37,7 @@ render(data) -> View；服务前端可视化。
 `logs/observability/present/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/present/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/present/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/present.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

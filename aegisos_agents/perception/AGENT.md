@@ -1,6 +1,6 @@
 # Agents/Perception 感知层 — AGENT.md
 
-> 本文件是 `agents/perception/` 分类的开发规范，隶属 `agents/` 域。AI 开发本分类下模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/perception/` 分类的开发规范，隶属 `aegisos_agents/` 域。AI 开发本分类下模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 分类范式
 认知架构·感知（Perception）：接收、理解输入与评估结果
@@ -10,37 +10,37 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/memory/
-- agents/tools/llms/
-- agents/tools/prompts/
+- aegisos_agents/memory/
+- aegisos_agents/tools/llms/
+- aegisos_agents/tools/prompts/
 - tooling/configs/
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/
+- aegisos_agents/planning/
 - protocol/ 类型定义
 
 ## 输出
-- agents/perception/context/ 上下文管理
-- agents/perception/reasoning/ 推理
-- agents/perception/reflection/ 反思
+- aegisos_agents/perception/context/ 上下文管理
+- aegisos_agents/perception/reasoning/ 推理
+- aegisos_agents/perception/reflection/ 反思
 
 ## 依赖
 - protocol/ Task/Session
-- agents/memory/ 检索
-- agents/tools/llms/ 模型
+- aegisos_agents/memory/ 检索
+- aegisos_agents/tools/llms/ 模型
 
 ## 接口
 perceive(input) -> Understanding；产出可追溯推理与反思。
 
 ## 测试方式
-`pytest tests/agents/perception/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/perception/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/perception/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/perception/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/perception/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/perception/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/perception.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -56,11 +56,26 @@ perceive(input) -> Understanding；产出可追溯推理与反思。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
 
 ## 下辖子模块
-- agents/perception/context/ — 上下文窗口与会话管理（Token 预算、裁剪、隔离）
-- agents/perception/reasoning/ — 推理链/树与策略（CoT/ToT/ReAct）
-- agents/perception/reflection/ — 反思、批判与反馈评分（区别于 agents/memory/reflection/ 反思记忆存储）
+- aegisos_agents/perception/context/ — 上下文窗口与会话管理（Token 预算、裁剪、隔离）
+- aegisos_agents/perception/reasoning/ — 推理链/树与策略（CoT/ToT/ReAct）
+- aegisos_agents/perception/reflection/ — 反思、批判与反馈评分（区别于 aegisos_agents/memory/reflection/ 反思记忆存储）
+
+---
+
+### 🔧 SDK 集成状态
+
+> 2026-07-06 全量排查。🔲 **neuro_symbolic.py 是 SDK 重构 P0 优先项**。
+
+| 文件 | 当前实现 | SDK 重构方案 | 优先级 |
+|------|---------|-------------|--------|
+| `reasoning/neuro_symbolic.py` | 旧 `ModelProvider.complete()` + `json.loads` + `try/except` 手写解析 | 迁移到 `StructuredAgent[ExploitPlannerResult]`，用 SDK `output_type` 替代手写解析；`validate_chain` 符号侧保留 | **P0** |
+| `context/` | 未实现 | 无 LLM 调用，不需要 SDK | — |
+| `reflection/` | 未实现 | 无 LLM 调用，不需要 SDK | — |
+
+> 这是 `aegisos_agents/` 中**唯一**仍用旧 `ModelProvider.complete()` + `json.loads` 的 LLM 调用点。
+> 详见 `aegisos_agents/AGENT.md`「openai-agents SDK 集成状态」段 + `developer/plan.md`。

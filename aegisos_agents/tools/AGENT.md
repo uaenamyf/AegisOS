@@ -1,6 +1,6 @@
 # Agents/Tools 工具层 — AGENT.md
 
-> 本文件是 `agents/tools/` 分类的开发规范，隶属 `agents/` 域。AI 开发本分类下模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/tools/` 分类的开发规范，隶属 `aegisos_agents/` 域。AI 开发本分类下模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 分类范式
 认知架构·工具（Tools）：能力支撑
@@ -15,13 +15,13 @@
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/ 编排逻辑
+- aegisos_agents/planning/ 编排逻辑
 - protocol/ 类型定义
 
 ## 输出
-- agents/tools/llms/ 模型调用
-- agents/tools/prompts/ 提示词
-- agents/tools/runtime/ 运行时
+- aegisos_agents/tools/llms/ 模型调用
+- aegisos_agents/tools/prompts/ 提示词
+- aegisos_agents/tools/runtime/ 运行时
 
 ## 依赖
 - protocol/ Task/Payload
@@ -31,13 +31,13 @@
 complete(prompt) -> Response；render(template,vars) -> prompt；run(agent,task) -> Result。
 
 ## 测试方式
-`pytest tests/agents/tools/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/tools/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/tools/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/tools/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/tools/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/tools/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/tools.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -53,11 +53,27 @@ complete(prompt) -> Response；render(template,vars) -> prompt；run(agent,task)
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
 
 ## 下辖子模块
-- agents/tools/llms/ — LLM 提供方适配与路由（统一调用接口、成本/延迟路由）
-- agents/tools/prompts/ — Prompt 模板库与版本管理（含 roles/ 各角色模板）
-- agents/tools/runtime/ — Agent 运行时与生命周期管理（上下文注入、心跳、挂起/恢复）
+- aegisos_agents/tools/llms/ — LLM 提供方适配与路由（统一调用接口、成本/延迟路由）
+- aegisos_agents/tools/prompts/ — Prompt 模板库与版本管理（含 roles/ 各角色模板）
+- aegisos_agents/tools/runtime/ — Agent 运行时与生命周期管理（上下文注入、心跳、挂起/恢复）
+
+---
+
+### 🔧 SDK 集成状态
+
+> 2026-07-06 全量排查。✅ **openai-agents SDK 适配已就位**。
+
+| 文件 | SDK 能力 | 状态 |
+|------|---------|------|
+| `llms/sdk_provider.py` | `OpenAIChatCompletionsModel` + `set_default_openai_api("chat_completions")`；双模式（Mock / 火山引擎 ARK 真实 API） | ✅ |
+| `llms/mock_sdk_model.py` | SDK `Model` 接口实现（将 `MockProvider` 适配为 SDK `ModelResponse`） | ✅ |
+| `llms/base.py` | 旧 `LLMRequest`/`LLMResponse`/`ModelProvider`（Protocol） | ⚠️ R5 清理目标 |
+| `llms/model_router.py` | 手写 `MODEL_PREFIX_MAP` + `TIER_PROVIDER_MAP` | ⚠️ 可简化（R5） |
+| `llms/mock_provider.py` | 测试用 Mock 实现 | ✅ 保留 |
+
+> 详见 `aegisos_agents/AGENT.md`「openai-agents SDK 集成状态」段 + `developer/plan.md`。

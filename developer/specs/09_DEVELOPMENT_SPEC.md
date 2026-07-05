@@ -59,7 +59,7 @@ ruff format && ruff check --fix && mypy && pytest
 4. git add <仅相关文件> → commit（不提交密钥）
 ```
 
-- scope = 受影响域（agents/backend/frontend/protocol/infra/observ/...）。
+- scope = 受影响域（aegisos_agents/backend/frontend/protocol/infra/observ/...）。
 - 破坏性变更：`break!(scope): ...` + major bump + 通知依赖方。
 - 不提交密钥/凭据；不在 commit message 写敏感信息。
 - 目录结构/api 变动后运行 `python3 tooling/scripts/gen_readme.py` 刷新根 README。
@@ -154,12 +154,12 @@ ruff format && ruff check --fix && mypy && pytest
 
 ---
 
-## 11. Agent 开发流程（agents/）
+## 11. Agent 开发流程（aegisos_agents/）
 
 ```
 1. 读 developer/specs/00..11 + roadmap 定位阶段
 2. 读目标模块 AGENT.md（职责/读取目录/禁止修改目录）
-3. 读 protocol/ 契约（Agent/Task/MemoryPacket/ToolCall/...）+ agents/api 接口
+3. 读 protocol/ 契约（Agent/Task/MemoryPacket/ToolCall/...）+ aegisos_agents/api 接口
 4. 读 tooling/configs/agents/*.yaml 配置
 5. 实现：按统一生命周期 + 统一接口（receive→think→tool→reflect→respond）
 6. 经 EventBus 发事件（AgentStart/Finish/ToolCall/...）
@@ -175,7 +175,7 @@ ruff format && ruff check --fix && mypy && pytest
 1. 读 specs + 目标 AGENT.md + protocol/ + backend/api 接口
 2. gateway → controllers → services → mappers 分层实现
 3. 对外 /api/v1/... 经 gateway；透传 X-Trace-Id/X-Session-Id/X-Task-Id
-4. 跨域只经 agents.api/infrastructure.api/observability.api/data.api
+4. 跨域只经 aegisos_agents.api/infrastructure.api/observability.api/data.api
 5. 质量门禁 → 测试 → 文档 → commit
 ```
 
@@ -186,7 +186,7 @@ ruff format && ruff check --fix && mypy && pytest
 ```
 1. 读 specs + 目标 AGENT.md + backend/api.py 接口（前端契约来源）
 2. controllers → services → mappers → views 分层实现
-3. 只调 backend.api（REST/WS/SSE），不直连 agents/infrastructure
+3. 只调 backend.api（REST/WS/SSE），不直连 aegisos_agents/infrastructure
 4. 实时：WebSocket（双向）+ SSE（单向事件流）
 5. 质量门禁（tsc/lint/test）→ 文档 → commit
 ```

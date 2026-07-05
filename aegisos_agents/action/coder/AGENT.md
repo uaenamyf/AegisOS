@@ -1,20 +1,20 @@
 # Agent: Coder — AGENT.md
 
-> 本文件是 `agents/action/coder/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/action/coder/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 代码生成 Agent：按计划节点生成代码、补全实现、遵循编码规范。
 
 ## 读取目录（允许读）
 - protocol/
-- agents/action/execution/tools/
-- agents/tools/prompts/roles/coder/
+- aegisos_agents/action/execution/tools/
+- aegisos_agents/tools/prompts/roles/coder/
 - tooling/configs/agents/coder.yaml
 - developer/specs/11_AI_CODING_SPEC.md
 
 ## 禁止修改目录
 - frontend/
-- agents/planning/engine/
+- aegisos_agents/planning/engine/
 - protocol/ 类型定义
 
 ## 输出
@@ -22,21 +22,21 @@
 - ToolCall 代码工具调用
 
 ## 依赖
-- agents/action/execution/tools/ 代码工具
-- agents/memory/ 上下文
+- aegisos_agents/action/execution/tools/ 代码工具
+- aegisos_agents/memory/ 上下文
 - protocol/ Task
 
 ## 接口
 receive(node) -> think() -> tool() -> Code
 
 ## 测试方式
-`pytest tests/agents/action/coder/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/action/coder/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/action/coder/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/action/coder/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/roles/coder/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/roles/coder/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/agents/coder.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -61,6 +61,6 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

@@ -13,8 +13,8 @@
 ## 禁止修改目录
 - frontend/
 - backend/
-- agents/
-- agents/planning/engine/ 业务逻辑
+- aegisos_agents/
+- aegisos_agents/planning/engine/ 业务逻辑
 
 ## 输出
 - protocol/*.py 数据类
@@ -34,7 +34,7 @@ Message 信封 + 强类型 Payload；详见 developer/specs/04_PROTOCOL_SPEC.md�
 `logs/protocol/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/protocol/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/protocol/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/protocol.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

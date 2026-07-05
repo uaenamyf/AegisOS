@@ -9,6 +9,7 @@
 主要导出：
     - active_subgraph: 依据能力与状态裁剪出活跃子图。
 """
+
 from __future__ import annotations
 
 from protocol.graph import Graph

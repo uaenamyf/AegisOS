@@ -18,7 +18,7 @@
 - infrastructure/ 内部实现（transport/nodes/delivery）
 - frontend/
 - backend/
-- agents/
+- aegisos_agents/
 - protocol/ 类型定义
 
 ## 输出

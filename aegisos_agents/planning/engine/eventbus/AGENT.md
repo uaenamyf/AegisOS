@@ -1,6 +1,6 @@
 # Engine/EventBus 事件总线 — AGENT.md
 
-> 本文件是 `agents/planning/engine/eventbus/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
+> 本文件是 `aegisos_agents/planning/engine/eventbus/` 模块的开发规范。AI 开发本模块前**必须先阅读本文件**，再阅读 `developer/specs/01_ARCHITECTURE_SPEC.md` 相关章节。
 
 ## 职责
 发布订阅事件总线：解耦子系统，支持 topic 路由、顺序保证、死信处理。
@@ -16,8 +16,8 @@
 - protocol/ 类型定义
 
 ## 输出
-- agents/planning/engine/eventbus/handlers/
-- agents/planning/engine/eventbus/topics/
+- aegisos_agents/planning/engine/eventbus/handlers/
+- aegisos_agents/planning/engine/eventbus/topics/
 
 ## 依赖
 - protocol/ Event
@@ -26,13 +26,13 @@
 publish(event)/subscribe(topic)；详见 developer/specs/07_EVENT_SPEC.md。
 
 ## 测试方式
-`pytest tests/agents/planning/engine/eventbus/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+`pytest tests/aegisos_agents/planning/engine/eventbus/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
 
 ## 日志位置
-`logs/agents/planning/engine/eventbus/`（结构化 JSON 日志，按 session/task 切分）。
+`logs/aegisos_agents/planning/engine/eventbus/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/eventbus/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/eventbus/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/eventbus.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
@@ -47,6 +47,6 @@ publish(event)/subscribe(topic)；详见 developer/specs/07_EVENT_SPEC.md。
 
 ## 交叉引用（去哪里找）
 - **本模块规范**：developer/specs/08_AGENT_SPEC.md + 03_IMPORT_SPEC.md
-- **API 边界**：agents/api/ — from agents.api import ...
+- **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）

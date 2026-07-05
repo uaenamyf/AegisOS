@@ -14,14 +14,14 @@
 
 ## 读取目录（允许读）
 - protocol/
-- agents/planning/engine/
+- aegisos_agents/planning/engine/
 - tooling/configs/
 - developer/specs/09_DEVELOPMENT_SPEC.md
 
 ## 禁止修改目录
 - frontend/
 - protocol/ 类型定义
-- agents/ 业务逻辑
+- aegisos_agents/ 业务逻辑
 
 ## 输出
 - infrastructure/transport/communication/ 通信
@@ -31,7 +31,7 @@
 - infrastructure/delivery/deployment/ 部署
 
 ## 依赖
-- agents/planning/engine/ 拓扑/事件
+- aegisos_agents/planning/engine/ 拓扑/事件
 - protocol/ Message/Sync
 
 ## 接口
@@ -44,7 +44,7 @@
 `logs/infrastructure/`（结构化 JSON 日志，按 session/task 切分）。
 
 ## Prompt 位置
-`agents/tools/prompts/infrastructure/`（版本化管理，变更需经 agents/perception/reflection 评估）。
+`aegisos_agents/tools/prompts/infrastructure/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
 `tooling/configs/infrastructure.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。

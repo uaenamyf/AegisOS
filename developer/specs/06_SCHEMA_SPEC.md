@@ -300,7 +300,7 @@ class StateSchema(BaseModel):
 
 ## 10. ContextSchema（上下文）— 新增
 
-> Agent 运行上下文，由 `agents/perception/context/` 管理（Token 预算/裁剪/会话隔离）。
+> Agent 运行上下文，由 `aegisos_agents/perception/context/` 管理（Token 预算/裁剪/会话隔离）。
 
 ```python
 class ContextSchema(BaseModel):

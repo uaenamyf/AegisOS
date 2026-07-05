@@ -1,6 +1,6 @@
-# agents/memory/episodic — 情景记忆
+# aegisos_agents/memory/episodic — 情景记忆
 
-> 记忆子系统的 `情景记忆` 子模块（隶属 agents/ 智能体域）。开发前阅读 `agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
+> 记忆子系统的 `情景记忆` 子模块（隶属 aegisos_agents/ 智能体域）。开发前阅读 `aegisos_agents/memory/AGENT.md` 与 `developer/specs/08_AGENT_SPEC.md`。
 
 ## 职责
 历史任务执行记录与事件序列：按时间线组织，支持回放与经验复用。
@@ -18,4 +18,4 @@
 - `protocol/`、`tooling/configs/` 索引与淘汰策略配置。
 
 ## 测试
-`pytest tests/agents/memory/episodic/`。
+`pytest tests/aegisos_agents/memory/episodic/`。
