@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-06 · 94 测试全通过 · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅
+> 最后更新：2026-07-06 · 94 测试全通过 · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅
 
 ---
 
@@ -19,10 +19,10 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 SDK 深化进行中 + 赛事 Phase F-H 待启动 |
+| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + 赛事 Phase F-H 待启动 |
 | **测试** | 94 passed（protocol 6 + memory 33 + planning 18 + tools 5 + action 19 + perception 4 + e2e 9） |
 | **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ |
-| **待完成 Phase** | R4 SDK 编排深化 · R5 旧接口清理 · F · G · H |
+| **待完成 Phase** | R4 SDK 编排深化（8 项详细计划） · R5 旧接口清理+流式+事件总线（5 项） · F · G · H |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -154,20 +154,121 @@
 
 **阶段 4: SDK 编排器深化**（≤6 文件）
 > 当前 `cyber_orchestrator.py` 已用 SDK Agent，但编排是手动 `_run()` 串联，未用 SDK 原生 handoffs/guardrails/tracing。
-- [ ] R4.1 `neuro_symbolic.py` 迁移到 SDK — 仍用旧 `ModelProvider.complete()` + `json.loads`，是唯一未迁移的 LLM 调用
-- [ ] R4.2 `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动 `_run()` 串联（红队链 recon→vuln→exploit→lateral）
-- [ ] R4.3 `cyber_orchestrator.py` 用 SDK `Agent.guardrails` 实现紫队校验闭环（critic 校验失败 → 回退重试）
-- [ ] R4.4 `cyber_orchestrator.py` 用 SDK `tracing` 替代手动日志（可视化编排流程）
-- [ ] R4.5 `backend/mocks/runtime.py` MockRuntime 的 85 行 dispatch map 替换为 cyber_orchestrator 调用
-- [ ] R4.6 `backend/core/composition.py` 注入 CyberOrchestrator 替代 MockRuntime
-- [ ] R4.7 94 测试全通过
+>
+> **执行路线图**（R4 8 项 → R5 5 项，共 13 项，预估 7 天）：
+> ```
+> R4.1 neuro_symbolic→SDK(P0) ──┐
+>                               ├→ R4.2 handoffs ──┬→ R4.3 guardrails ──→ R4.4 tracing ──→ R4.5 FunctionTool
+>                               │                    │                                      │
+>                               │                    └→ R4.6 MockRuntime ──→ R4.7 composition ──→ R4.8 测试
+>                               │
+>                               └→ R5.1 base.py 清理 ──→ R5.2 model_router 简化 ──→ R5.3 流式输出 ──→ R5.4 事件总线 ──→ R5.5 测试
+> ```
 
-**阶段 5: 旧接口层清理 + 事件总线**（≤4 文件）
-- [ ] R5.1 `aegisos_agents/tools/llms/base.py` — 清理 `LLMRequest`/`LLMResponse`/`ModelProvider` 旧接口（SDK 迁移后仅 MockProvider 和 neuro_symbolic 使用）
-- [ ] R5.2 `aegisos_agents/tools/llms/model_router.py` — 简化或删除（SDK Provider 已内置模型路由）
-- [ ] R5.3 新建 `aegisos_agents/planning/engine/eventbus/impl.py`（基于 SDK `RunHooks` 或 `blinker`）
-- [ ] R5.4 SDK `Runner.run_streamed()` → SSE → 前端 `EventSource`
-- [ ] R5.5 94 测试全通过
+> **SDK 能力点对照**（本阶段使用的 SDK API）：
+> | SDK API | 用途 | 当前替代物 |
+> |---------|------|-----------|
+> | `Agent.handoffs: list[Agent]` | 声明式 Agent 链式调用，SDK 自动管理状态传递+对话历史 | 手动 `_run()` + `json.dumps()` 串联 |
+> | `handoff(agent, on_handoff=callback, input_type=Pydantic)` | 配置 handoff 回调 + 结构化输入类型 | 无 |
+> | `Agent.input_guardrails: list[InputGuardrail]` | 输入校验（在 LLM 调用前拦截不合规输入） | 无 |
+> | `Agent.output_guardrails: list[OutputGuardrail]` | 输出校验（LLM 返回后自动校验，失败触发重试） | 手动 `if critique.valid == False` |
+> | `input_guardrail(func)` / `output_guardrail(func)` | 装饰器创建 guardrail，返回 `GuardrailFunctionOutput(tripwire=bool)` | 无 |
+> | `Agent.hooks: AgentHooks` | 生命周期回调（`on_start`/`on_end`/`on_tool_start`/`on_tool_end`/`on_handoff`/`on_llm_start`/`on_llm_end`） | 手动 `print` / 日志 |
+> | `trace(workflow_name, metadata)` | 上下文管理器，创建 trace span 包裹整个编排流程 | 无 |
+> | `RunConfig(tracing=...)` / `set_trace_processors([...])` | 配置 tracing 输出到自定义 processor（可转 JSON / 可视化） | 无 |
+> | `Runner.run_streamed(agent, input)` | 异步流式执行，返回 `RunResultStreaming`，可迭代 `stream_events()` | `Runner.run_sync()` 同步 |
+> | `FunctionTool(name, params_json_schema, on_invoke_tool)` | 将 Python 函数注册为 SDK 工具，LLM 可自动调用 | 无 |
+> | `AgentOutputSchema(type, strict_json_schema=False)` | 包装含 `dict` 字段的 Pydantic 类型通过 SDK 校验 | 已在 `StructuredAgent` 中使用 |
+
+- [ ] **R4.1** `perception/reasoning/neuro_symbolic.py` 迁移到 SDK（**P0**，0.5 天）
+  - 当前：旧 `ModelProvider.complete()` + `json.loads` + `try/except` 手写解析
+  - 迁移方案：继承 `StructuredAgent[ExploitPlannerResult]`，用 SDK `output_type`（Pydantic `ExploitPlannerResult`）替代手写 JSON 解析
+  - 符号侧 `validate_chain()` 保留（纯规则校验，不涉及 LLM）
+  - 闭环用 SDK `output_guardrail`：将 `validate_chain` 包装为 `output_guardrail`，LLM 返回后自动校验，失败时 SDK 自动重试（替代手写 `max_iterations` 循环）
+  - 关键代码：`@output_guardrail` 装饰 `validate_chain` → 返回 `GuardrailFunctionOutput(tripwire=has_issues)` → SDK 自动触发重试
+  - 删除 `LLMRequest`/`LLMResponse` 依赖 + `json.loads` + `try/except`
+  - 测试：4 个既有测试全通过（改 mock 适配 `StructuredAgent` 构造）
+
+- [ ] **R4.2** `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动串联（1 天）
+  - 当前：`run_red_chain()` 手动 `recon._run() → json.dumps → vuln._run() → json.dumps → exploit._run()`，手动管理状态传递
+  - 迁移方案：构造 SDK `Agent(handoffs=[vuln_agent, exploit_agent, lateral_agent])`，SDK 自动管理 Agent 间状态传递+对话历史
+  - 红队链：`recon_agent.handoffs = [vuln_correlator_agent]`，`vuln_correlator_agent.handoffs = [exploit_planner_agent]`，`exploit_planner_agent.handoffs = [lateral_move_agent]`
+  - 蓝队链：`detector_agent.handoffs = [triage_agent]`，`triage_agent.handoffs = [threat_hunt_agent]`，`threat_hunt_agent.handoffs = [ir_planner_agent]`
+  - 用 `handoff(target_agent, on_handoff=callback)` 配置 handoff 回调，在回调中做 Pydantic→protocol dataclass 转换
+  - 用 `RunConfig(handoff_input_filter=...)` 控制上下文传递（避免历史过长，低熵通信 §16）
+  - 删除手动 `json.dumps()` / `json.loads()` 序列化反序列化
+  - 测试：e2e `test_scenario1.py` 全通过
+
+- [ ] **R4.3** `cyber_orchestrator.py` 用 SDK `output_guardrails` 实现紫队校验闭环（0.5 天）
+  - 当前：`run_purple_review()` 手动调用 `critic._run()` → `if critique.valid == False` 一次性判断
+  - 迁移方案：将 `CriticAgent` 包装为 `output_guardrail`，注入红/蓝队链末端 Agent 的 `output_guardrails` 列表
+  - `@output_guardrail` 装饰 critic 校验逻辑 → 返回 `GuardrailFunctionOutput(tripwire=not valid, output_info=feedback)`
+  - SDK 自动处理：guardrail tripwire 触发 → SDK 自动重试 LLM → 将 feedback 注入 prompt → 重试（最多 `max_retries` 次）
+  - 紫队 `reviewer` 同理作为第二个 `output_guardrail`（一致性校验）
+  - 替代手写 `max_iterations` 循环 + 手动 feedback 注入
+  - 测试：新增 guardrail 触发重试的单元测试
+
+- [ ] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）
+  - 当前：无 tracing，手动 `print` 或无日志
+  - 迁移方案：
+    - 用 `trace(workflow_name="cyber_red_chain", metadata={"scenario": "s1"})` 上下文管理器包裹编排调用
+    - 实现 `AgentHooks` 子类：`on_start`/`on_end`/`on_tool_start`/`on_tool_end`/`on_handoff` → 写入 `observability/inspect/monitor/` 结构化日志
+    - 用 `set_trace_processors([custom_processor])` 将 `RunTrace` 导出为 JSON，供 `observability/inspect/replay/` 时序回放消费
+    - `RunConfig(tracing=TracingConfig(enabled=True))` 全局开启
+  - 替代手写日志 + 为 H5.2 回放功能提供数据源
+  - 测试：验证 trace JSON 输出结构正确
+
+- [ ] **R4.5** `cyber_orchestrator.py` 用 SDK `FunctionTool` 注册攻防工具（0.5 天）
+  - 当前：Agent 无工具调用能力，所有输入来自编排器手动传参
+  - 迁移方案：用 `FunctionTool(name="nmap_scan", params_json_schema={...}, on_invoke_tool=callback)` 将沙箱工具注册为 SDK 工具
+  - Agent 的 `tools=[nmap_tool, ...]` 属性配置，SDK 自动处理 LLM tool_call → 函数调用 → 结果返回
+  - 红队工具：`nmap_scan`/`metasploit_exploit`/`lateral_move_exec`（Docker 沙箱内执行）
+  - 蓝队工具：`query_attck_kb`/`query_cve_db`/`correlate_alerts`（查知识库）
+  - `tool_use_behavior='stop_on_first_tool'`：工具返回即作为最终输出（适合 recon 类 Agent）
+  - 安全约束：`needs_approval=True` 用于高危操作（exploit），编排器审批后才执行
+  - 测试：Mock 工具调用链路
+
+- [ ] **R4.6** `backend/mocks/runtime.py` MockRuntime 替换为 CyberOrchestrator 调用（0.5 天）
+  - 当前：85 行 `_cyber_dispatch_map()` 手写 handler + 类型转换
+  - 迁移方案：MockRuntime 内部委托 `CyberOrchestrator.run_red_chain()` / `run_blue_chain()` / `run_purple_review()`
+  - 删除 dispatch map，保留 RuntimeAPI 接口签名不变（向后兼容）
+  - 测试：既有 e2e 测试全通过
+
+- [ ] **R4.7** `backend/core/composition.py` 注入 CyberOrchestrator（0.5 天）
+  - 当前：注入 MockRuntime（含手写 dispatch）
+  - 迁移方案：DI 组合根注入 `CyberOrchestrator(mock=MockProvider())`，Mock 模式下走预置响应
+  - 真实模式：`CyberOrchestrator(model=SDKProvider().get_sdk_model())`
+  - 测试：后端集成测试全通过
+
+- [ ] **R4.8** 94 测试全通过
+
+**阶段 5: 旧接口层清理 + 流式输出 + 事件总线**（≤4 文件）
+> SDK 迁移后旧接口仅被 MockProvider 残留使用，可安全清理。
+
+- [ ] **R5.1** `aegisos_agents/tools/llms/base.py` 清理旧接口（0.5 天）
+  - 删除 `LLMRequest`/`LLMResponse`/`ModelProvider` Protocol（R4.1 完成后无消费者）
+  - 保留 `MockProvider`（测试依赖，`MockSDKModel` 内部委托）
+  - `MockProvider` 改为直接返回 dict（不再包装为 `LLMResponse`）
+
+- [ ] **R5.2** `aegisos_agents/tools/llms/model_router.py` 简化（0.5 天）
+  - 当前：手写 `MODEL_PREFIX_MAP` + `TIER_PROVIDER_MAP` 三层映射
+  - 简化方案：SDK `ModelProvider` 已内置模型路由，`model_router` 降级为配置层（仅保留 tier→model_id 映射，不再创建 Provider 实例）
+  - 或直接删除，模型选择由 `RunConfig(model=...)` 或 `Agent(model=...)` 指定
+
+- [ ] **R5.3** SDK `Runner.run_streamed()` → SSE → 前端实时展示（1 天）
+  - 后端：`backend/routers/stream.py` 用 `Runner.run_streamed()` 替代 `Runner.run_sync()`
+  - `RunResultStreaming.stream_events()` → 逐事件 yield → SSE `EventSource` 推送前端
+  - 前端：`frontend/views/chat/ChatView.tsx` 订阅 SSE，实时展示 Agent 思考过程 + handoff 过程 + tool 调用
+  - 评委演示效果：实时看到 Agent 编排流程逐步展开
+  - SDK 能力：`AgentUpdatedStreamEvent` / `AgentToolStreamEvent` / `HandoffOutputItem` 事件类型
+
+- [ ] **R5.4** 事件总线实现（0.5 天）
+  - 新建 `aegisos_agents/planning/engine/eventbus/impl.py`
+  - 基于 SDK `AgentHooks`（`on_start`/`on_end`/`on_handoff`）发布事件到 `protocol/event.py` 的 8 种事件类型
+  - 或用 `blinker` 库实现发布/订阅，`AgentHooks` 作为事件源
+  - 替代 MockRuntime 中的手动事件分发
+
+- [ ] **R5.5** 94 测试全通过
 
 #### openai-agents SDK 重构排查（2026-07-06 全量排查 aegisos_agents/）
 
@@ -196,22 +297,23 @@
 
 **🔲 待 SDK 重构（5 项，按优先级排序）**
 
-| # | 文件 | 当前实现 | SDK 重构方案 | 优先级 | 预估 |
-|---|------|---------|-------------|--------|------|
-| 1 | `perception/reasoning/neuro_symbolic.py` | 旧 `ModelProvider.complete()` + `json.loads` + `try/except` 手写解析 | 迁移到 `StructuredAgent[ExploitPlannerResult]`，用 SDK `output_type` 替代手写解析；`validate_chain` 符号侧保留，闭环用 SDK `Runner` 重试 | **P0** | 0.5 天 |
-| 2 | `planning/orchestrator/cyber_orchestrator.py` | 手动 `_run()` 串联 9 个 Agent，手动 JSON 序列化/反序列化传递 | 用 SDK `Agent.handoffs` 声明式串联（recon→vuln→exploit→lateral），SDK 自动管理状态传递与对话历史 | **P1** | 1 天 |
-| 3 | `planning/orchestrator/cyber_orchestrator.py` | 紫队校验是手动 `if critique.valid == False` 一次性判断 | 用 SDK `guardrails`（input/output guardrail）实现 critic 自动校验 + 回退重试循环 | **P1** | 0.5 天 |
-| 4 | `planning/orchestrator/cyber_orchestrator.py` | 无 tracing，手动 `print` 或日志 | 用 SDK `tracing`（`RunTrace`）自动记录编排流程，可视化 Agent 调用链 | **P2** | 0.5 天 |
-| 5 | `backend/mocks/runtime.py` MockRuntime | 85 行 `_cyber_dispatch_map()` 手写 handler + 类型转换 | 替换为 `CyberOrchestrator` 调用（`run_red_chain` / `run_blue_chain` / `run_purple_review`），删除 dispatch map | **P1** | 0.5 天 |
+| # | 文件 | 当前实现 | SDK 重构方案 | 优先级 | 预估 | 对应任务 |
+|---|------|---------|-------------|--------|------|---------|
+| 1 | `perception/reasoning/neuro_symbolic.py` | 旧 `ModelProvider.complete()` + `json.loads` + `try/except` 手写解析 | 迁移到 `StructuredAgent[ExploitPlannerResult]`，用 SDK `output_type` 替代手写解析；`validate_chain` 用 `output_guardrail` 包装 | **P0** | 0.5 天 | → R4.1 |
+| 2 | `planning/orchestrator/cyber_orchestrator.py` | 手动 `_run()` 串联 9 个 Agent，手动 JSON 序列化/反序列化传递 | 用 SDK `Agent.handoffs` 声明式串联（recon→vuln→exploit→lateral），SDK 自动管理状态传递与对话历史 | **P1** | 1 天 | → R4.2 |
+| 3 | `planning/orchestrator/cyber_orchestrator.py` | 紫队校验是手动 `if critique.valid == False` 一次性判断 | 用 SDK `output_guardrails`（`@output_guardrail` 装饰器）实现 critic 自动校验 + SDK 自动重试循环 | **P1** | 0.5 天 | → R4.3 |
+| 4 | `planning/orchestrator/cyber_orchestrator.py` | 无 tracing，手动 `print` 或日志 | 用 SDK `trace()` + `AgentHooks` + `set_trace_processors()` 自动记录编排流程，为回放功能提供数据源 | **P2** | 0.5 天 | → R4.4 |
+| 5 | `backend/mocks/runtime.py` MockRuntime | 85 行 `_cyber_dispatch_map()` 手写 handler + 类型转换 | 替换为 `CyberOrchestrator` 调用（`run_red_chain` / `run_blue_chain` / `run_purple_review`），删除 dispatch map | **P1** | 0.5 天 | → R4.6 |
 
 **🔍 可选 SDK 增强（非阻塞，赛事加分项）**
 
-| # | 文件 | 当前实现 | SDK 增强方案 | 收益 |
-|---|------|---------|-------------|------|
-| A | `tools/llms/sdk_provider.py` | `asyncio.run()` 同步包装 | 用 SDK 原生 `Runner.run()`（async），编排器全链路异步 | 流式输出 + 并发 |
-| B | `cyber_orchestrator.py` | `Runner.run_sync()` 同步 | 用 `Runner.run_streamed()` → SSE → 前端实时展示编排进度 | 评委演示效果 |
-| C | `action/critic/agent.py` | 手动 `side` 参数切换红/蓝 Agent | 用 SDK `Agent.handoffs` 将 critic 作为 guardrail Agent 注入红/蓝链 | 架构更清晰 |
-| D | `tools/llms/model_router.py` | 手写 `MODEL_PREFIX_MAP` + `TIER_PROVIDER_MAP` | SDK `ModelProvider` 接口可统一路由，或保留作为 SDK 之上的业务路由层 | 代码量减少 |
+| # | 文件 | 当前实现 | SDK 增强方案 | 收益 | 对应任务 |
+|---|------|---------|-------------|------|---------|
+| A | `tools/llms/sdk_provider.py` | `asyncio.run()` 同步包装 | 用 SDK 原生 `Runner.run()`（async），编排器全链路异步 | 流式输出 + 并发 | → R5.3 流式 |
+| B | `cyber_orchestrator.py` | `Runner.run_sync()` 同步 | 用 `Runner.run_streamed()` → SSE → 前端实时展示编排进度 | 评委演示效果 | → R5.3 流式 |
+| C | `action/critic/agent.py` | 手动 `side` 参数切换红/蓝 Agent | 用 SDK `Agent.handoffs` 将 critic 作为 guardrail Agent 注入红/蓝链 | 架构更清晰 | → R4.3 guardrails |
+| D | `tools/llms/model_router.py` | 手写 `MODEL_PREFIX_MAP` + `TIER_PROVIDER_MAP` | SDK `ModelProvider` 接口可统一路由，或保留作为 SDK 之上的业务路由层 | 代码量减少 | → R5.2 简化 |
+| E | `aegisos_agents/action/*/agent.py` | Agent 无工具调用能力 | 用 SDK `FunctionTool` 注册沙箱工具（nmap/metasploit/zeek），LLM 自主调用 | Agent 自主性 | → R4.5 工具 |
 
 **📊 排查结论**
 
