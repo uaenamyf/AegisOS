@@ -31,7 +31,7 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 ## 仓库分层（同域聚合 + 域内分类，目录导航详见 developer/specs/02_DIRECTORY_SPEC.md）
 1. **developer/** — 规范层（项目大脑）。含 `developer/specs/`（编号规范 SSOT，`00`–`15`）+ `developer/roadmap/`（P0..P7）。
 2. **protocol/** — 契约层，唯一数据契约。
-3. **frontend/** — 表现层。Controller-Service-Mapper + Views：`controllers/`(交互/事件) · `services/`(API/实时/状态) · `mappers/`(数据转换/全局状态/共享) · `views/`(canvas·graph·monitor·replay)。
+3. **frontend/** — 表现层。Controller-Service-Lib + Views：`controllers/`(交互/事件) · `services/`(API/实时/状态) · `lib/`(HTTP 客户端/全局状态) · `views/`(chat·canvas·graph·monitor·replay)。
 4. **backend/** — 应用层。Router-Service-Repository-Model + Core：`core/`(组合根DI/鉴权/中间件/路由聚合) · `routers/`(路由层) · `services/`(业务逻辑) · `repositories/`(数据访问) · `models/`(ORM实体) · `schemas/`(契约) · `mocks/`(端口mock)。
 5. **agents/** — 智能体域。认知架构五层：
    - `agents/perception/` 感知：context · reasoning · reflection

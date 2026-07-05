@@ -165,7 +165,7 @@
 
 ## frontend/ — 表现层（React + Vite）
 
-**定位**：AI Native IDE 前端，Controller-Service-Mapper 模式 + 5 视图。
+**定位**：AI Native IDE 前端，Controller-Service-Lib + Views 模式 + 5 视图。
 
 ### 已实现
 
@@ -173,8 +173,8 @@
 |----|---------|------|
 | **类型** | [`src/protocol/types.ts`](../frontend/src/protocol/types.ts) | 自动生成（`gen_ts_types.py`），36 个 TS 类型映射 protocol/*.py |
 | | `src/protocol/frontend-types.ts` | `ViewName` · 路由类型 |
-| **Store** | `mappers/store/index.ts` | Zustand 全局状态：session/agents/chatMessages/graph/isSending |
-| **API Client** | `mappers/apimappers/client.ts` | 统一 HTTP 客户端（baseURL + X-API-Key） |
+| **Store** | `lib/store/index.ts` | Zustand 全局状态：session/agents/chatMessages/graph/isSending |
+| **API Client** | `lib/api-client/client.ts` | 统一 HTTP 客户端（baseURL + X-API-Key） |
 | **Services** | `services/api/agents.ts` · `sessions.ts` · `tasks.ts` · `memory.ts` · `graph.ts` | REST API 调用封装 |
 | | `services/graph/index.ts` | 图数据服务 |
 | | `services/realtime/sse.ts` · `ws.ts` | SSE + WebSocket 实时通信 |

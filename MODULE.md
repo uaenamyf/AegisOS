@@ -164,7 +164,7 @@ frontend/services ← 调用 backend REST API
 ## 3. `backend/` — 应用层（FastAPI）
 
 ### 是什么
-后端应用层，采用 Controller-Service-Mapper 三层架构 + Gateway 网关，对外提供 REST API + WebSocket + SSE 实时通信，并通过 SQLAlchemy async + aiosqlite 做数据持久化。是前后端联调的桥梁。
+后端应用层，采用 **Router-Service-Repository-Model** 四层架构 + Core 网关入口，对外提供 REST API + WebSocket + SSE 实时通信，并通过 SQLAlchemy async + aiosqlite 做数据持久化。是前后端联调的桥梁。
 
 ### 做了什么
 - **FastAPI 应用**：完整的 app 创建 + CORS + 请求追踪中间件 + lifespan 数据库初始化
@@ -178,16 +178,17 @@ frontend/services ← 调用 backend REST API
 
 | 子模块 | 路径 | 功能 |
 |--------|------|------|
-| **入口** | `src/main.py` | FastAPI app + CORS + TraceMiddleware + lifespan(DB init) |
-| **网关** | `src/gateway/routes.py` | `/api/v1` 前缀 + `verify_api_key` 鉴权 |
-| | `src/gateway/auth.py` | X-API-Key header 校验 |
-| | `src/gateway/middleware.py` | TraceMiddleware（请求追踪 ID） |
-| **REST 端点** | `src/controllers/api/` | 10 个端点文件：health.py · sessions.py · tasks.py · agents.py · graph.py · memory.py · tools.py · metrics.py · replay.py |
-| **SSE** | `src/controllers/sse/events.py` | `GET /api/v1/events/stream` 服务器推送 |
-| **WebSocket** | `src/controllers/ws/stream.py` | `WS /ws/v1/stream` 双向流 |
-| **Service** | `src/services/` | 业务逻辑层：session.py · task.py · agent.py · graph.py · memory.py · ports.py |
-| **Mapper** | `src/mappers/` | 数据映射：database.py(AsyncEngine) · entities.py(Base/SessionEntity/TaskEntity) · repositories.py · converters.py |
-| **DI** | `src/composition.py` | 组合根：装配 DB + 仓储 + 服务 + 14 Agent 注册 + MockRuntime |
+| **入口** | `main.py` | FastAPI app + CORS + TraceMiddleware + lifespan(DB init) |
+| **网关** | `core/routes.py` | `/api/v1` 前缀 + `verify_api_key` 路由聚合 |
+| | `core/auth.py` | X-API-Key header 校验 |
+| | `core/middleware.py` | TraceMiddleware（请求追踪 ID） |
+| **REST 端点** | `routers/` | 11 个端点文件：health.py · sessions.py · tasks.py · agents.py · graph.py · memory.py · tools.py · metrics.py · replay.py · sse.py · ws.py |
+| **Service** | `services/` | 业务逻辑层：session_service.py · task_service.py · agent_service.py · graph_service.py · memory_service.py · di_ports.py |
+| **Repository** | `repositories/` | 数据访问：database.py(AsyncEngine) · repositories.py(Session/Task 仓储) |
+| **Model** | `models/` | ORM 实体：entities.py(Base/SessionEntity/TaskEntity) · converters.py(Domain↔Entity) |
+| **Schema** | `schemas/` | Pydantic v2 请求/响应 Schema |
+| **DI** | `core/composition.py` | 组合根：装配 DB + 仓储 + 服务 + 14 Agent 注册 + MockRuntime |
+| **Mocks** | `mocks/` | agents.api 端口 mock 实现：agent_registry · runtime · cyber_provider · memory · execution · event_bus |
 
 ### API 鉴权
 所有 `/api/v1/*` 端点需要 `X-API-Key: aegis-dev-key` header（`/health` 除外）。
@@ -202,7 +203,7 @@ frontend/services ← 调用 backend REST API
 ## 4. `frontend/` — 表现层（React + Vite）
 
 ### 是什么
-AI Native IDE 前端，采用 Controller-Service-Mapper 模式 + 5 个视图（Chat / Canvas / Graph / Monitor / Replay），使用 React 18 + Vite 5 + Zustand + TypeScript 技术栈。提供与后端实时交互的用户界面。
+AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视图（Chat / Canvas / Graph / Monitor / Replay），使用 React 18 + Vite 5 + Zustand + TypeScript 技术栈。提供与后端实时交互的用户界面。
 
 ### 做了什么
 - **类型系统**：`gen_ts_types.py` 自动生成的 36 个 TS 类型，映射 `protocol/*.py`
@@ -219,8 +220,8 @@ AI Native IDE 前端，采用 Controller-Service-Mapper 模式 + 5 个视图（C
 |--------|------|------|
 | **类型** | `src/protocol/types.ts` | 自动生成，36 个 TS 类型映射 protocol/*.py |
 | | `src/protocol/frontend-types.ts` | `ViewName` · 路由类型 |
-| **Store** | `mappers/store/index.ts` | Zustand 全局状态：session/agents/chatMessages/graph/isSending |
-| **API Client** | `mappers/apimappers/client.ts` | 统一 HTTP 客户端（baseURL + X-API-Key） |
+| **Store** | `lib/store/index.ts` | Zustand 全局状态：session/agents/chatMessages/graph/isSending |
+| **API Client** | `lib/api-client/client.ts` | 统一 HTTP 客户端（baseURL + X-API-Key） |
 | **REST Services** | `services/api/` | 5 个服务：agents.ts · sessions.ts · tasks.ts · memory.ts · graph.ts |
 | **图服务** | `services/graph/index.ts` | 图数据服务 |
 | **实时通信** | `services/realtime/sse.ts` · `ws.ts` | SSE + WebSocket 封装 |

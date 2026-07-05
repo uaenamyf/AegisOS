@@ -34,7 +34,7 @@
 | `protocol/` | 契约层，唯一数据契约 | `protocol/AGENT.md` | — |
 | `agents/` | 智能体域：感知-规划-行动-记忆-工具五层 | `agents/AGENT.md` | `agents/api/` |
 | `backend/` | 应用层：Router-Service-Repository-Model + Core | `backend/AGENT.md` | `backend/api.py` |
-| `frontend/` | 表现层：Controller-Service-Mapper + Views | `frontend/AGENT.md` | — |
+| `frontend/` | 表现层：Controller-Service-Lib + Views | `frontend/AGENT.md` | — |
 | `infrastructure/` | 基建：transport / nodes(端·云) / delivery | `infrastructure/AGENT.md` | `infrastructure/api/` |
 | `observability/` | 可观测：inspect / measure / present | `observability/AGENT.md` | `observability/api/` |
 | `data/` | 数据：datasets / models（Neo4j · Qdrant 接入） | `data/AGENT.md` | `data/api/` |

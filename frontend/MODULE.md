@@ -1,6 +1,6 @@
 # frontend/ 模块实现文档
 
-> 表现层 — React + Vite 5.4 + Zustand + TypeScript，Controller-Service-Mapper 模式 + 5 视图。
+> 表现层 — React + Vite 5.4 + Zustand + TypeScript，Controller-Service-Lib + Views 模式 + 5 视图。
 
 📁 模块规范：[`AGENT.md`](AGENT.md) · 前后端计划：[`13_FRONTEND_BACKEND_PLAN.md`](../developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md)
 
@@ -25,36 +25,34 @@ frontend/
 │   ├── protocol/         类型定义（自动生成 + 前端专用）
 │   │   ├── types.ts         ← gen_ts_types.py 从 protocol/*.py 生成（36 个类型）
 │   │   └── frontend-types.ts   ViewName · 路由类型
-│   ├── mappers/
+│   ├── lib/               基础设施层
 │   │   ├── store/           Zustand 全局状态
-│   │   ├── apimappers/      API 客户端
-│   │   ├── components/     共享组件
-│   │   ├── viewmodels/      视图模型
-│   │   ├── styles/          样式
-│   │   └── utils/           工具函数
-├── controllers/           交互控制层
-│   ├── interaction.ts      用户交互控制
-│   ├── events.ts           事件控制（SSE/WS）
-│   └── routes.ts           路由定义（5 个 ViewName）
-├── services/              服务层
-│   ├── api/                REST API 封装
-│   │   ├── agents.ts       Agent API（list / invoke）
-│   │   ├── sessions.ts     Session API（create / list）
-│   │   ├── tasks.ts        Task API（create / cancel）
-│   │   ├── memory.ts      Memory API（read / write）
-│   │   └── graph.ts        Graph API（get）
-│   ├── graph/              图数据服务
-│   ├── realtime/           实时通信
-│   │   ├── sse.ts          SSE 处理器
-│   │   └── ws.ts           WebSocket 处理器
-│   └── session/            会话管理
-└── views/                 视图
-    ├── chat/               ✅ 完整实现
-    ├── canvas/             🔲 占位
-    ├── graph/              🔲 占位
-    ├── monitor/            🔲 占位
-    ├── replay/             🔲 占位
-    └── layout/             布局组件
+│   │   ├── api-client/      HTTP 客户端
+│   │   └── index.ts         barrel 导出
+│   ├── config/            配置入口（环境变量）
+│   ├── controllers/       交互控制层
+│   │   ├── interaction.ts      用户交互控制
+│   │   ├── events.ts           事件控制（SSE/WS）
+│   │   └── routes.ts           路由定义（5 个 ViewName）
+│   ├── services/          服务层
+│   │   ├── api/                REST API 封装
+│   │   │   ├── agents.ts       Agent API（list / invoke）
+│   │   │   ├── sessions.ts     Session API（create / list）
+│   │   │   ├── tasks.ts        Task API（create / cancel）
+│   │   │   ├── memory.ts      Memory API（read / write）
+│   │   │   └── graph.ts        Graph API（get）
+│   │   ├── graph/              图数据服务
+│   │   ├── realtime/           实时通信
+│   │   │   ├── sse.ts          SSE 处理器
+│   │   │   └── ws.ts           WebSocket 处理器
+│   │   └── session/            会话管理
+│   └── views/             视图
+│       ├── chat/               ✅ 完整实现
+│       ├── canvas/             🔲 占位
+│       ├── graph/              🔲 占位
+│       ├── monitor/            🔲 占位
+│       ├── replay/             🔲 占位
+│       └── layout/             布局组件
 ```
 
 ---
@@ -74,7 +72,7 @@ frontend/
 
 | 文件 | Store 字段 |
 |------|-----------|
-| [`mappers/store/index.ts`](src/mappers/store/index.ts) | `currentSession` · `agents` · `selectedAgentId` · `chatMessages` · `isSending` · `graphData` |
+| [`lib/store/index.ts`](src/lib/store/index.ts) | `currentSession` · `agents` · `selectedAgentId` · `chatMessages` · `isSending` · `graphData` |
 
 **ChatMessage 类型**：`id` · `role`(user/agent) · `content` · `agentId` · `taskId` · `status`
 
@@ -82,7 +80,7 @@ frontend/
 
 | 文件 | 功能 |
 |------|------|
-| [`mappers/apimappers/client.ts`](src/mappers/apimappers/client.ts) | 统一 HTTP 客户端：baseURL(`http://localhost:8000`) + `X-API-Key: aegis-dev-key` header + 错误处理 |
+| [`lib/api-client/client.ts`](src/lib/api-client/client.ts) | 统一 HTTP 客户端：baseURL(`http://localhost:8000`) + `X-API-Key: aegis-dev-key` header + 错误处理 |
 
 ### REST API 服务
 

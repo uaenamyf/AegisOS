@@ -195,9 +195,9 @@ agents/
 └── tools/
     └── llms/  prompts/  runtime/
 backend/
-└── controllers/  services/  mappers/  gateway/  api/
+└── routers/  services/  repositories/  models/  core/  schemas/  mocks/
 frontend/
-└── controllers/  services/  mappers/  views/  protocol/
+└── controllers/  services/  lib/  views/  config/
 infrastructure/
 └── transport/  nodes/(edge·cloud)  delivery/
 observability/

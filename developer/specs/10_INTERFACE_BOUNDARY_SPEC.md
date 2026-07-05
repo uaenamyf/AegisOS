@@ -57,7 +57,7 @@
 - 前端直接读写 `protocol/` 跨域结构（须经 backend 序列化）。
 - 前端直连数据库 / LLM。
 
-前端为纯 SPA，不对外暴露 Python API。前端内部架构（Controller-Service-Mapper + Views）位于 `frontend/src/`。
+前端为纯 SPA，不对外暴露 Python API。前端内部架构（Controller-Service-Lib + Views）位于 `frontend/src/`。
 
 ---
 

@@ -8,7 +8,7 @@
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│  frontend/   表现层  Controller-Service-Mapper + Views     │
+│  frontend/   表现层  Controller-Service-Lib + Views        │
 │   controllers · services · mappers · views                │
 │    (canvas · graph · monitor · replay)                    │
 ├───────────────────────────────────────────────────────────┤
@@ -141,7 +141,7 @@ AegisOS 以「微内核 + 插件」组织稳定核心与可变扩展：
 ## 12. Frontend（前端）
 
 - 技术栈：React + TypeScript + Vite；轻量 store；WebGL/Canvas 图渲染。
-- 结构：`controllers`（interaction/events/routes）→ `services`（api/realtime/session/graph）→ `mappers`（viewmodels/apimappers/store/utils/styles/assets）→ `views`（canvas/graph/monitor/replay）。
+- 结构：`controllers`（interaction/events/routes）→ `services`（api/realtime/session/graph）→ `lib`（api-client/store）→ `views`（chat/canvas/graph/monitor/replay）。
 - 实时：WebSocket（双向）+ SSE（单向事件流）。
 - 边界：只调 `backend.api` 暴露的 REST/WS/SSE，不直连 `agents`/`infrastructure`。
 

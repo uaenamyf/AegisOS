@@ -157,7 +157,7 @@ Plan(DAG) 通过 Task.plan 字段 + GraphUpdate 事件回传后端展示
 | 阶段 | 任务 | 产物 | 依赖 |
 |------|------|------|------|
 | **F0 工程骨架** | `package.json`（React18/TS5/Vite5/Zustand/Vitest/Playwright）、`tsconfig.json`、`vite.config.ts`、eslint/prettier、`tooling/scripts/gen_ts_types.py`（Pydantic→TS）+ npm script `gen:types`、`src/`入口、`public/` | 可启动空壳 | protocol P1 |
-| **F1 Mappers** | `apimappers/`（REST 客户端封装，经 gateway）、`viewmodels/`（protocol→VM）、`store/`（Zustand 全局状态）、`utils/`·`styles/`·`assets/`；TS 类型用 `gen_ts_types.py` 生成结果 | 数据层 | F0 |
+| **F1 Lib** | `api-client/`（REST 客户端封装，经 core）、`store/`（Zustand 全局状态）；TS 类型用 `gen_ts_types.py` 生成结果 | 基础设施层 | F0 |
 | **F2 Services** | `api/`（REST 经 gateway）·`realtime/`（WS+SSE 管理 + 自动重连）·`session/`（会话/任务状态）·`graph/`（图数据 + 订阅 GraphUpdate） | 业务逻辑 | F1 |
 | **F3 Controllers** | `interaction/`（用户交互）·`events/`（后端事件分发）·`routes/`（页面路由）；调 service → 分发 views | 交互层 | F2 |
 | **F4 Views** | `canvas/`（DAG 画布）·`graph/`（WebGL/Canvas 动态图增量渲染）·`monitor/`（Agent 监控面板）·`replay/`（回放时间线）；暗色主题 + 键盘可达 | UI | F3 |
@@ -168,8 +168,8 @@ Plan(DAG) 通过 Task.plan 字段 + GraphUpdate 事件回传后端展示
 | 层 | 目录 | 职责 |
 |----|------|------|
 | Controllers | `frontend/src/controllers/` | 交互/事件处理 + 调 service + 分发 views，不含业务逻辑 |
-| Services | `frontend/src/services/` | API 调用（经 gateway）、WS/SSE 管理、状态编排 |
-| Mappers | `frontend/src/mappers/` | protocol→VM 转换、REST 客户端、全局 store、工具/样式/资产 |
+| Services | `frontend/src/services/` | API 调用（经 core）、WS/SSE 管理、状态编排 |
+| Lib | `frontend/src/lib/` | HTTP 客户端（api-client）、全局 store，对应后端 core/ + repositories/ |
 | Views | `frontend/src/views/` | canvas/graph/monitor/replay UI 渲染，不含业务逻辑 |
 
 ### 6.1 TS 类型生成（`gen_ts_types.py`）

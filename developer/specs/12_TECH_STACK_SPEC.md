@@ -59,7 +59,7 @@
 | React | **>=18** | UI 框架 | `frontend/src/views/` |
 | TypeScript | **>=5.0** | 类型系统 | 全前端 |
 | Vite | **>=5.0** | 构建/开发服务器 | 前端工程 |
-| 状态管理 | Zustand **>=4.5** | 轻量全局状态 | `frontend/src/mappers/store/` |
+| 状态管理 | Zustand **>=4.5** | 轻量全局状态 | `frontend/src/lib/store/` |
 | 图渲染 | WebGL / Canvas | 动态图可视化 | `frontend/src/views/graph/`、`canvas/` |
 | 实时通信 | 原生 WebSocket + EventSource(SSE) | Agent 状态/事件流 | `frontend/src/services/realtime/` |
 | **Vitest** | **>=1.6** | 前端单元测试 | `tests/frontend/` |

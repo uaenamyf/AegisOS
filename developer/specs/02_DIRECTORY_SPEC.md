@@ -73,15 +73,15 @@
 
 | 项 | 值 |
 |----|-----|
-| 职责 | React+TS+Vite；Controller-Service-Mapper + Views；canvas/graph/monitor/replay 可视化 |
+| 职责 | React+TS+Vite；Controller-Service-Lib + Views；canvas/graph/monitor/replay 可视化 |
 | 输入 | 用户交互、`backend.api` 实时数据（WS/SSE） |
 | 输出 | UI 视图、交互事件 |
-| API | 无 Python API（纯 SPA）；内部架构 Controller-Service-Mapper + Views |
+| API | 无 Python API（纯 SPA）；内部架构 Controller-Service-Lib + Views |
 | 被引用 | 前端为纯 SPA，不被他域 import；仅通过 REST/WS/SSE 调用后端 |
 | 跨域调用 | **只调 `backend.api`**；禁止直连 `agents`/`infrastructure` |
 | 谁可改 | 前端团队 / 前端 AI |
 | 谁不可改 | 后端/Agent 团队不得改前端内部 |
-| 子目录 | `src/`（含 `controllers/`(interaction·events·routes) · `services/`(api·realtime·session·graph) · `mappers/`(viewmodels·apimappers·store·utils·styles·assets) · `views/`(canvas·graph·monitor·replay)） · `public/` |
+| 子目录 | `src/`（含 `controllers/`(interaction·events·routes) · `services/`(api·realtime·session·graph) · `lib/`(api-client·store) · `protocol/`(types·frontend-types) · `config/` · `views/`(chat·canvas·graph·monitor·replay·layout)） · `public/` |
 
 ---
 
@@ -97,7 +97,7 @@
 | 跨域调用 | 调 `agents.api`/`infrastructure.api`/`observability.api`/`data.api`/`protocol` |
 | 谁可改 | 后端团队 / 后端 AI |
 | 谁不可改 | 前端/Agent 团队不得改后端内部 |
-| 子目录 | `gateway/`(routes·auth·middleware·adapters) · `controllers/`(api·ws·sse·schemas·middleware) · `services/`(session·task·agent·memory·graph) · `mappers/`(entities·dto·repositories·converters) |
+| 子目录 | `routers/`(health·sessions·tasks·agents·graph·memory·tools·metrics·replay·sse·ws) · `services/`(session·task·agent·memory·graph·di_ports) · `repositories/`(database·repositories) · `models/`(entities·converters) · `core/`(composition·routes·auth·middleware) · `schemas/` · `mocks/`(agent_registry·runtime·cyber_provider·memory·execution·event_bus) |
 
 ---
 

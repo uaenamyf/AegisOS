@@ -64,7 +64,7 @@
 ## 4. 核心设计原则（Design Principles）
 
 1. **契约先行（Contract First）**：`protocol/` 是唯一数据契约；所有跨模块通信走 `protocol/message.py` 的 `Message` 信封。
-2. **同域聚合 + 域内分类**：Agent 相关归 `agents/`（认知架构五层：感知-规划-行动-记忆-工具）；后端归 `backend/`（Router-Service-Repository-Model + Core）；前端归 `frontend/`（Controller-Service-Mapper + Views）。
+2. **同域聚合 + 域内分类**：Agent 相关归 `agents/`（认知架构五层：感知-规划-行动-记忆-工具）；后端归 `backend/`（Router-Service-Repository-Model + Core）；前端归 `frontend/`（Controller-Service-Lib + Views）。
 3. **API 解耦（Dependency Inversion）**：每个域通过 `api/` 子包暴露 `typing.Protocol` 接口；其他模块只 `from {domain}.api import XxxAPI`，禁止导入内部实现。实现由各域内部注入，便于 mock。
 4. **模块边界（Boundary）**：每个模块的 `AGENT.md` 规定「读取目录 / 禁止修改目录」；Agent 不得越界。
 5. **低熵稀疏通信（Low Entropy）**：路由按需链式（Agent→Planner→Memory→Coder→Reviewer→Executor），禁止全广播。
@@ -84,7 +84,7 @@
 |----|------|------|----------|
 | 规范层 | `developer/`（含 `specs/`、`roadmap/`） | 项目大脑，纵切所有层，不参与运行时 | — |
 | 契约层 | `protocol/` | 唯一数据契约（26 类型） | 本身即全局契约 |
-| 表现层 | `frontend/` | Controller-Service-Mapper + Views | `frontend/src/`（纯 SPA，无 Python API） |
+| 表现层 | `frontend/` | Controller-Service-Lib + Views | `frontend/src/`（纯 SPA，无 Python API） |
 | 应用层 | `backend/` | Router-Service-Repository-Model + Core | `backend/api.py`（5 接口） |
 | 智能体域 | `agents/` | 认知架构五层：感知-规划-行动-记忆-工具 | `agents/api/`（5 接口；规划/感知内聚不暴露） |
 | 基础设施层 | `infrastructure/` | 传输-节点-交付 | `infrastructure/api/`（4 接口） |
