@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: Orchestrator 单元测试——execute 红队链/execute_plan 紫队并行/事件发布/上游产出传递
 """Orchestrator 单元测试。
 
 覆盖：一站式 execute（红队链）、execute_plan（紫队并行）、上游产出注入、

@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: CyberRuntime 单元测试——红蓝紫链调用 + submit/stop/heartbeat
 """CyberRuntime 单元测试。
 
 覆盖：run_red_chain / run_blue_chain / run_purple_review 路由、submit 状态变更、

@@ -1,9 +1,12 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + CritiqueResult 替代 json.loads+try/except；__init__ 预建红/蓝双 SDK Agent，critique 按 side 切换（~85 行→~72 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 紫队对抗性批判 Agent
+"""紫队对抗性批判 Agent 模块（SDK 结构化输出版）。
+
+本模块实现紫队批判角色，对红队攻击链或蓝队响应方案进行自动化校验，
+依据 ATT&CK 规则与防御完整性原则输出结构化评估结果，用于支撑
+紫队闭环中的"对抗性校验"环节。SDK 的 ``output_type`` 结构化输出
+自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
+"""
 from __future__ import annotations
 
 import json
@@ -13,14 +16,6 @@ from agents import Agent, AgentOutputSchema, ModelSettings
 from aegisos_agents.action.output_types import CritiqueResult
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
-
-"""紫队对抗性批判 Agent 模块（SDK 结构化输出版）。
-
-本模块实现紫队批判角色，对红队攻击链或蓝队响应方案进行自动化校验，
-依据 ATT&CK 规则与防御完整性原则输出结构化评估结果，用于支撑
-紫队闭环中的"对抗性校验"环节。SDK 的 ``output_type`` 结构化输出
-自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
-"""
 
 # 红队批判系统提示词：校验攻击链是否符合 ATT&CK 规则
 SYSTEM_PROMPT_RED = (

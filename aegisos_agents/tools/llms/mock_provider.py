@@ -1,6 +1,5 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: Mock LLM provider for testing
 """Mock LLM Provider：用于测试和离线开发的确定性桩件。
 
 不发起任何网络请求，根据预设的响应表返回固定文本，

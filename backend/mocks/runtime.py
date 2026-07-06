@@ -1,6 +1,5 @@
 # date: 2026-07-05
 # dev: myf
-# changelog: 从 composition.py 拆出 MockRuntime（含攻防 Agent 分发表）
 """MockRuntime — agents.api.RuntimeAPI 的占位实现，将攻防 Agent 路由到真实逻辑。"""
 
 from __future__ import annotations

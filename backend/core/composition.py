@@ -1,6 +1,5 @@
 # date: 2026-07-05
 # dev: myf
-# changelog: 重构为四层架构——Mock 实现移至 backend.mocks，import 路径更新为 routers/services/repositories/models
 """依赖注入（DI）组合根。
 
 本模块是 AegisOS 后端的组合根（composition root），负责装配所有运行时依赖：

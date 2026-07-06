@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 Planner——将 goal 分解为 DAG Plan（红/蓝/紫攻防场景模板 + 通用模板）
 """任务规划器 —— 将高层目标分解为可执行 DAG 计划。
 
 本模块实现 :class:`Planner`，将一个 ``goal`` 字符串分解为 :class:`protocol.scheduler.Plan`

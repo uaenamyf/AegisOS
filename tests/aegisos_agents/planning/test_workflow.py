@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: WorkflowEngine 单元测试——线性链/并行汇聚/条件跳过/失败传播/循环检测/事件发布
 """WorkflowEngine 单元测试。
 
 覆盖：线性链顺序执行、并行汇聚、条件分支跳过、失败传播、循环依赖检测、

@@ -1,17 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + ReviewResult 替代 json.loads+try/except（~78 行→~56 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 紫队一致性审查 Agent
-from __future__ import annotations
-
-import json
-
-from aegisos_agents.action.output_types import ReviewResult
-from aegisos_agents.action.structured_agent import StructuredAgent
-from aegisos_agents.tools.llms.mock_provider import MockProvider
-
 """紫队一致性审查 Agent 模块（SDK 结构化输出版）。
 
 本模块实现紫队审查角色，对多份异构产出（攻击链、响应方案、取证报告等）
@@ -20,6 +8,13 @@ from aegisos_agents.tools.llms.mock_provider import MockProvider
 结构化输出自动处理 JSON 解析与 Pydantic 验证，无需手写
 ``json.loads + try/except``。
 """
+from __future__ import annotations
+
+import json
+
+from aegisos_agents.action.output_types import ReviewResult
+from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.tools.llms.mock_provider import MockProvider
 
 # 一致性审查系统提示词：校验多份产出之间是否相互一致
 SYSTEM_PROMPT = (

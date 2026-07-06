@@ -1,12 +1,10 @@
+# date: 2026-07-03
+# dev: myf
 """AegisOS protocol layer — the single source of truth for data contracts.
 
 All cross-module communication must use the types defined here. See
 developer/specs/04_PROTOCOL_SPEC.md for the specification.
 """
-
-# date: 2026-07-03
-# dev: myf
-# changelog: docstring 引用从 developer/MESSAGE_PROTOCOL.md 改指 developer/specs/04_PROTOCOL_SPEC.md（SSOT 对齐）
 
 # ---- Agent 身份与状态 ----
 from .agent import Agent, AgentStatus

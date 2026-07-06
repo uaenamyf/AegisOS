@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 replay 控制器 GET /replay/{session}（回放事件时间线）
 """会话回放控制器。
 
 提供 ``GET /replay/{session_id}`` 端点，回放指定会话的事件时间线，

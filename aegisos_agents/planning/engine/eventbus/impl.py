@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 EventBus 实现——基于 topic 的发布/订阅，支持顺序保证、异常隔离、死信队列、历史记录
 """事件总线实现 —— 基于 topic 的发布/订阅消息总线。
 
 本模块实现 :class:`EventBus`，提供进程内的发布/订阅能力，解耦 planning 域

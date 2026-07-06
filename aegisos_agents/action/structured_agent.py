@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 2026-07-06 修复 _run 在 FastAPI 事件循环中调用 Runner.run_sync 的 RuntimeError——自动检测事件循环并投递到线程池隔离执行
 """结构化 Agent 基类 —— 封装 openai-agents SDK 的 Agent + Runner + output_type。
 
 本模块提供 :class:`StructuredAgent`，将 SDK 的 ``Agent(output_type=Pydantic)``

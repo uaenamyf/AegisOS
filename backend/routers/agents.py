@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 agents 控制器 GET /agents、GET /agents/{id}、POST /agents/{id}/invoke
 """Agent 控制器。
 
 提供 Agent 能力发现与调用的 REST 端点，包括列出所有 Agent、

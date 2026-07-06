@@ -1,10 +1,7 @@
 # @aegis-gen
 # date: 2026-07-06
 # dev: myf
-# changelog: 全文核实修正——基于 2026-07-06 对 aegisos_agents/ 56 文件 3133 行的逐文件审查，修正 4 处诊断差异 + 补入 3 处文档未覆盖的新发现
-# date: 2026-07-04
-# dev: Claude Code (glm-5.2)
-# change: 新建 Agent 框架替换/规范化方案——逐模块分析可替换性 + 分层架构 + 迁移路线
+# intro: Agent 框架规范化与替换方案——逐模块分析可替换性 + 分层架构 + 迁移路线
 
 # Agent 框架规范化与替换方案
 

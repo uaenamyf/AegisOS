@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 实现 MemoryStore 集成层——整合 working/episodic/semantic/vector + compactor + recaller，实现 MemoryAPI 形成认知循环闭环
 """记忆集成存储 —— 认知循环的记忆中枢。
 
 :class:`MemoryStore` 是 Agent 认知循环的记忆入口：聚合工作记忆、情景记忆、

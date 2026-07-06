@@ -1,6 +1,5 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: Scheduler adapter for LLM routing
 """调度器适配器：为 LLM 路由层暴露调度能力。
 
 本模块提供一个薄封装函数 :func:`schedule_for_llm`，将

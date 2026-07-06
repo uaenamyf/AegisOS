@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 SQLAlchemy 2.0 ORM 实体——SessionEntity / TaskEntity
 """ORM 实体模块：定义 SQLAlchemy 2.0 风格的声明式实体类。"""
 
 from __future__ import annotations

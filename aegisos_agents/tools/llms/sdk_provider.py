@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 SDK Provider 适配器——桥接项目 ModelProvider 与 openai-agents SDK，支持 Mock 开关 + 火山引擎 Chat Completions
 """SDK Provider 适配器 —— 桥接项目 ModelProvider 与 openai-agents SDK。
 
 本模块提供统一的 LLM 调用入口，根据 ``AEGIS_USE_MOCK`` 环境变量在两种模式间切换：

@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 SessionService（实现 backend.api.SessionAPI）
 """Session 服务层：实现会话的创建、查询与关闭。"""
 
 from __future__ import annotations

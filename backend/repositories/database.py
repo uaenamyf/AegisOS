@@ -1,6 +1,5 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: 接入统一配置——database URL/echo 改从 tooling.configs.settings 读取
 """数据库基础设施模块：提供异步 SQLAlchemy 引擎、会话工厂与初始化。"""
 
 from __future__ import annotations

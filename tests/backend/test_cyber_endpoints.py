@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: Claude Code (glm-5.2)
-# changelog: 新建攻防端点集成测试（F6）——range/attack/defense/threat/purple-review
 """攻防端点集成测试。
 
 覆盖 Phase F 全部 REST 端点：

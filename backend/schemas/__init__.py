@@ -1,6 +1,6 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 Pydantic v2 请求/响应 Schema（CreateSessionRequest 等）
+"""Pydantic v2 请求/响应 Schema 包。"""
 from __future__ import annotations
 
 from typing import Any

@@ -1,6 +1,5 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: 新建 settings.py——统一配置加载器（环境变量 > .env > defaults.yaml > 代码默认值）
 """
 AegisOS 统一配置加载器。
 

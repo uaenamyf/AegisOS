@@ -1,9 +1,12 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + ForensicsResult 替代 json.loads+try/except（~74 行→~54 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 蓝队取证 Agent
+"""蓝队取证 Agent 模块（SDK 结构化输出版）。
+
+本模块接收响应计划，利用大语言模型进行数字化取证分析，
+输出取证报告（包含报告 ID、根因、事件时间线、整改建议），
+为事后分析与防御改进提供依据。SDK 的 ``output_type`` 结构化输出
+自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
+"""
 from __future__ import annotations
 
 import json
@@ -12,14 +15,6 @@ from aegisos_agents.action.output_types import ForensicsResult
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import ResponsePlan
-
-"""蓝队取证 Agent 模块（SDK 结构化输出版）。
-
-本模块接收响应计划，利用大语言模型进行数字化取证分析，
-输出取证报告（包含报告 ID、根因、事件时间线、整改建议），
-为事后分析与防御改进提供依据。SDK 的 ``output_type`` 结构化输出
-自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
-"""
 
 SYSTEM_PROMPT = (
     "You are a digital forensics agent. Given a response plan, return JSON "

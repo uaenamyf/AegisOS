@@ -1,9 +1,12 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + TriageResult 替代 json.loads+try/except（~81 行→~62 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 蓝队告警分诊 Agent
+"""蓝队告警分诊 Agent 模块（SDK 结构化输出版）。
+
+本模块接收入侵检测阶段产出的告警列表，利用大语言模型进行去重和
+按严重级别排序，输出优先级排序后的告警列表，为后续威胁狩猎和
+响应规划提供高优先级输入。SDK 的 ``output_type`` 结构化输出自动
+处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
+"""
 from __future__ import annotations
 
 import json
@@ -12,14 +15,6 @@ from aegisos_agents.action.output_types import TriageResult
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert
-
-"""蓝队告警分诊 Agent 模块（SDK 结构化输出版）。
-
-本模块接收入侵检测阶段产出的告警列表，利用大语言模型进行去重和
-按严重级别排序，输出优先级排序后的告警列表，为后续威胁狩猎和
-响应规划提供高优先级输入。SDK 的 ``output_type`` 结构化输出自动
-处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
-"""
 
 # 告警严重级别排序权重：数值越小优先级越高
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}

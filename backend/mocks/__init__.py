@@ -1,6 +1,5 @@
 # date: 2026-07-05
 # dev: myf
-# changelog: 新建 mocks 包——从 composition.py 拆分出 Mock 实现层（AgentRegistry/Runtime/Memory/Execution/EventBus）
 """Mock 实现层。
 
 从 ``backend/core/composition.py`` 拆分而来，集中放置 ``agents.api`` 各端口的

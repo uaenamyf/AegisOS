@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 CyberRuntime——实现 RuntimeAPI，内部委托 CyberOrchestrator 的红蓝紫链，替代 MockRuntime dispatch map
 """CyberRuntime —— 攻防场景运行时，实现 ``agents.api.RuntimeAPI``。
 
 本模块提供 :class:`CyberRuntime`，作为 :class:`MockRuntime` 的替代实现。

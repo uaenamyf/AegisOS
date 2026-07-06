@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 sessions 控制器 POST/GET/DELETE /sessions
 """会话控制器。
 
 提供会话生命周期的 REST 端点，包括创建会话、查询会话详情

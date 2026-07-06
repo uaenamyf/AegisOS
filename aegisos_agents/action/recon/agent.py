@@ -1,22 +1,17 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + output_type 替代 json.loads+try/except（~77 行→~45 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 红队侦察 Agent
-from __future__ import annotations
-
-from aegisos_agents.action.output_types import ReconResult
-from aegisos_agents.action.structured_agent import StructuredAgent
-from aegisos_agents.tools.llms.mock_provider import MockProvider
-from protocol.cyber import Asset
-
 """红队侦察 Agent 模块（SDK 结构化输出版）。
 
 本模块负责对目标网络范围进行侦察扫描，识别存活资产及其暴露面信息。
 使用 openai-agents SDK 的 ``output_type`` 结构化输出，由 SDK 自动处理
 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
 """
+from __future__ import annotations
+
+from aegisos_agents.action.output_types import ReconResult
+from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.tools.llms.mock_provider import MockProvider
+from protocol.cyber import Asset
 
 SYSTEM_PROMPT = (
     "You are a network reconnaissance agent. Given a target range, "

@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建仓储类——SessionRepository / TaskRepository（CRUD，SQLAlchemy AsyncSession）
 """仓储模块：基于 SQLAlchemy AsyncSession 实现会话与任务的 CRUD 操作。"""
 
 from __future__ import annotations

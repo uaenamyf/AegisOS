@@ -1,6 +1,5 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: 接入统一配置——Trace header 改从 tooling.configs.settings 读取
 """网关中间件：Trace ID 注入与请求日志。
 
 本模块实现 ``TraceMiddleware``，为每个请求生成或复用追踪 ID，并将其附加到

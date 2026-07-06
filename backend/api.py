@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 修复接口签名与 05_API_SPEC 对齐——create_session 补 user_id→session_id；close_session 补 REST；TaskAPI.create_task 补 session_id；GraphAPI 注释来源
 """Backend domain public API.
 
 Other modules import from `backend.api` only — never from internal

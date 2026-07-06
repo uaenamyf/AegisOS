@@ -1,18 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + VulnCorrelatorResult 替代 json.loads+try/except（~82 行→~58 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 红队漏洞关联 Agent
-from __future__ import annotations
-
-import json
-
-from aegisos_agents.action.output_types import VulnCorrelatorResult
-from aegisos_agents.action.structured_agent import StructuredAgent
-from aegisos_agents.tools.llms.mock_provider import MockProvider
-from protocol.cyber import Asset, VulnFinding
-
 """红队漏洞关联 Agent 模块（SDK 结构化输出版）。
 
 本模块接收侦察阶段发现的资产清单，将其交给大语言模型进行
@@ -21,6 +8,14 @@ CVSS 评分、攻击面），为利用链规划提供输入。SDK 的 ``output_t
 结构化输出自动处理 JSON 解析与 Pydantic 验证，无需手写
 ``json.loads + try/except``。
 """
+from __future__ import annotations
+
+import json
+
+from aegisos_agents.action.output_types import VulnCorrelatorResult
+from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.tools.llms.mock_provider import MockProvider
+from protocol.cyber import Asset, VulnFinding
 
 SYSTEM_PROMPT = (
     "You are a vulnerability correlation agent. Given a list of assets, "

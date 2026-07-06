@@ -1,6 +1,6 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: 测试更新为端边云三层调度（device → edge → cloud）
+"""Scheduler 端边云三层调度测试。"""
 from aegisos_agents.planning.engine.scheduler.scheduler import (
     DEVICE_THRESHOLD,
     EDGE_THRESHOLD,

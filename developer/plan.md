@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + **赛事 Phase F ✅ · G ✅** · 功能实现推进中 |
-| **测试** | **151 passed**（protocol 6 + memory 33 + planning 54 + tools 5 + action 19 + perception 4 + e2e 9 + backend cyber 11 + frontend cyber 21） |
-| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ · P1 编排器 ✅ · **F ✅ · G ✅** |
-| **待完成 Phase** | **P1**：R4 SDK 编排深化（8 项）· R5 旧接口清理+流式+事件总线（5 项）· AP1 Plan 范式 · **P2**：H2 数据层 · H5 可观测评测 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
+| **测试** | **151 passed**（protocol 6 + memory 33 + planning 54+9+5 + tools 5 + action 19 + perception 4 + e2e 9 + backend cyber 11 + frontend cyber 21） |
+| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ · P1 编排器 ✅ · **F ✅ · G ✅** · **R4.1-R4.3 ✅** |
+| **待完成 Phase** | **P1**：R4 SDK 编排深化（R4.4-R4.8 剩 5 项）· R5 旧接口清理+流式+事件总线（5 项）· AP1 Plan 范式 · **P2**：H2 数据层 · H5 可观测评测 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -47,10 +47,11 @@
 > ✅ B3 + E13 + 编排器 + F + G 全部完成（2026-07-06）。**计划调整（2026-07-06）**：容器化/部署相关任务（H1 沙箱靶场、H7 部署交付、AP2 ReAct 范式）全部后移至 P3，先集中精力完成功能实现。
 >
 > **下一步优先顺序**：
-> 1. **R4.1** neuro_symbolic→SDK（P0 阻塞项，唯一未迁移的 LLM 调用点）
-> 2. **R4.2-R4.8** SDK 编排器深化（handoffs/guardrails/tracing/FunctionTool/MockRuntime/composition/测试）
-> 3. **R5.1-R5.5** 旧接口清理 + 流式输出 + 事件总线
-> 4. **AP1** Plan 范式（与 R4 并行，纯 LLM 推理增强，不依赖容器化）
+> 1. ~~**R4.1** neuro_symbolic→SDK（P0 阻塞项，唯一未迁移的 LLM 调用点）~~ ✅ 完成
+> 2. ~~**R4.2-R4.3** SDK 编排器深化（handoffs/guardrails）~~ ✅ 完成
+> 3. **R4.4-R4.8** SDK 编排器深化（tracing/FunctionTool/MockRuntime/composition/测试）
+> 4. **R5.1-R5.5** 旧接口清理 + 流式输出 + 事件总线
+> 5. **AP1** Plan 范式（与 R4 并行，纯 LLM 推理增强，不依赖容器化）
 
 ### ⚡ P1 — 短期（1-2 周）
 
@@ -93,7 +94,7 @@
 - [x] G6 前端测试：cyber API service 单元测试（12）+ 视图组件渲染测试（9）= 21 测试全通过
 
 #### R4 — SDK 编排器深化（功能优先）
-> **优先级**：P1 · **预估**：5 天 · **状态**：🔲 待做（功能优先，不依赖容器化）
+> **优先级**：P1 · **预估**：5 天 · **状态**：� 进行中（R4.1-R4.3 ✅ 完成 2026-07-08，R4.4-R4.8 待做）
 > 当前 `cyber_orchestrator.py` 已用 SDK Agent，但编排是手动 `_run()` 串联，未用 SDK 原生 handoffs/guardrails/tracing。
 >
 > **执行路线图**（R4 8 项，预估 5 天）：
@@ -104,10 +105,15 @@
 >                               │                    └→ R4.6 MockRuntime ──→ R4.7 composition ──→ R4.8 测试
 > ```
 > (*) R4.5 FunctionTool 的沙箱执行依赖 H1，但工具注册接口可先实现
+>
+> **进度（2026-07-08）**：✅ R4.1 · ✅ R4.2 · ✅ R4.3 · 🔲 R4.4-R4.8
+> - R4.1：`NeuroSymbolicAgent(StructuredAgent[ExploitPlannerResult])`，`_run()` 替代 `provider.complete()`，`validate_chain()` 保留纯函数，未用 guardrail（SDK 抛异常不自动重试，保留手动 `validate_and_fix` 循环）。4 测试通过。
+> - R4.2：添加 `ChainContext` 共享上下文 + `run_red_chain_via_handoffs` / `run_blue_chain_via_handoffs` + `on_handoff` 回调 + handoff 声明式链（mock 回退手动链）。保留手动链为默认路径（固定管道正确架构）。9 测试通过。
+> - R4.3：`create_attack_chain_guardrail()` 返回 `@output_guardrail` + `run_red_chain_with_guardrail()` 手动捕获 `OutputGuardrailTripwireTriggered` + 重试循环 + 反馈注入。SDK guardrail 抛异常不自动重试→手动重试。5 测试通过。
 
-- [ ] **R4.1** `perception/reasoning/neuro_symbolic.py` 迁移到 SDK（**P0**，0.5 天）
-- [ ] **R4.2** `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动串联（1 天）
-- [ ] **R4.3** `cyber_orchestrator.py` 用 SDK `output_guardrails` 实现紫队校验闭环（0.5 天）
+- [x] **R4.1** `perception/reasoning/neuro_symbolic.py` 迁移到 SDK（**P0**，0.5 天）✅ 2026-07-08
+- [x] **R4.2** `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动串联（1 天）✅ 2026-07-08
+- [x] **R4.3** `cyber_orchestrator.py` 用 SDK `output_guardrails` 实现紫队校验闭环（0.5 天）✅ 2026-07-08
 - [ ] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）
 - [ ] **R4.5** `cyber_orchestrator.py` 用 SDK `FunctionTool` 注册攻防工具（0.5 天）
 - [ ] **R4.6** `backend/mocks/runtime.py` MockRuntime 替换为 CyberOrchestrator 调用（0.5 天）
@@ -144,33 +150,41 @@
 > | `FunctionTool(name, params_json_schema, on_invoke_tool)` | 将 Python 函数注册为 SDK 工具，LLM 可自动调用 | 无 |
 > | `AgentOutputSchema(type, strict_json_schema=False)` | 包装含 `dict` 字段的 Pydantic 类型通过 SDK 校验 | 已在 `StructuredAgent` 中使用 |
 
-- [ ] **R4.1** `perception/reasoning/neuro_symbolic.py` 迁移到 SDK（**P0**，0.5 天）
+- [x] **R4.1** `perception/reasoning/neuro_symbolic.py` 迁移到 SDK（**P0**，0.5 天）✅ 2026-07-08
   - 当前：旧 `ModelProvider.complete()` + `json.loads` + `try/except` 手写解析
   - 迁移方案：继承 `StructuredAgent[ExploitPlannerResult]`，用 SDK `output_type`（Pydantic `ExploitPlannerResult`）替代手写 JSON 解析
   - 符号侧 `validate_chain()` 保留（纯规则校验，不涉及 LLM）
-  - 闭环用 SDK `output_guardrail`：将 `validate_chain` 包装为 `output_guardrail`，LLM 返回后自动校验，失败时 SDK 自动重试（替代手写 `max_iterations` 循环）
-  - 关键代码：`@output_guardrail` 装饰 `validate_chain` → 返回 `GuardrailFunctionOutput(tripwire=has_issues)` → SDK 自动触发重试
-  - 删除 `LLMRequest`/`LLMResponse` 依赖 + `json.loads` + `try/except`
-  - 测试：4 个既有测试全通过（改 mock 适配 `StructuredAgent` 构造）
+  - ⚠️ **未用 SDK `output_guardrail`**：SDK guardrail 抛 `OutputGuardrailTripwireTriggered` 异常后不自动重试，保留手动 `validate_and_fix()` 循环（`max_iterations`）+ `_run()` 调用
+  - 关键代码：`NeuroSymbolicAgent(StructuredAgent[ExploitPlannerResult])` + `_regenerate()` 用 `self._run()` + `_result_to_chain()` 转换
+  - 删除 `LLMRequest`/`LLMResponse`/`ModelProvider` 依赖 + `json.loads` + `try/except`
+  - `NeuroSymbolicLoop = NeuroSymbolicAgent` 别名向后兼容
+  - 测试：4 个既有测试全通过（`test_validate_chain_*` / `test_loop_*`）
+  - **变更文件**：`aegisos_agents/perception/reasoning/neuro_symbolic.py`
 
-- [ ] **R4.2** `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动串联（1 天）
+- [x] **R4.2** `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动串联（1 天）✅ 2026-07-08
   - 当前：`run_red_chain()` 手动 `recon._run() → json.dumps → vuln._run() → json.dumps → exploit._run()`，手动管理状态传递
-  - 迁移方案：构造 SDK `Agent(handoffs=[vuln_agent, exploit_agent, lateral_agent])`，SDK 自动管理 Agent 间状态传递+对话历史
-  - 红队链：`recon_agent.handoffs = [vuln_correlator_agent]`，`vuln_correlator_agent.handoffs = [exploit_planner_agent]`，`exploit_planner_agent.handoffs = [lateral_move_agent]`
-  - 蓝队链：`detector_agent.handoffs = [triage_agent]`，`triage_agent.handoffs = [threat_hunt_agent]`，`threat_hunt_agent.handoffs = [ir_planner_agent]`
-  - 用 `handoff(target_agent, on_handoff=callback)` 配置 handoff 回调，在回调中做 Pydantic→protocol dataclass 转换
-  - 用 `RunConfig(handoff_input_filter=...)` 控制上下文传递（避免历史过长，低熵通信 §16）
-  - 删除手动 `json.dumps()` / `json.loads()` 序列化反序列化
-  - 测试：e2e `test_scenario1.py` 全通过
+  - **实现决策**：SDK handoffs 是 LLM 驱动动态路由（LLM 决定是否 `transfer_to_*`），非固定顺序管道。对红蓝固定链，手动顺序执行是正确架构。采用**混合方案**：
+    - 保留手动链 `run_red_chain()` / `run_blue_chain()` 为默认路径
+    - 新增 `run_red_chain_via_handoffs()` / `run_blue_chain_via_handoffs()` 声明式链（mock 回退手动链）
+    - `ChainContext` dataclass 跨 handoff 共享上下文，累积各步产出
+    - `on_handoff` 回调（1 参数版本，不配 `input_type`）标记各步完成
+    - SDK `handoff(target, on_handoff=cb)` 声明式串联
+  - SDK handoff 规则发现：不配 `input_type` 时 `on_handoff` 只接收 1 参数 (context)；配 `input_type` 时接收 2 参数 (context, input)
+  - Mock 模式下 `MockSDKModel` 返回纯文本（非工具调用），LLM 不触发 handoff → 自动回退手动链
+  - 测试：9 测试通过（`test_cyber_handoffs.py`）
+  - **变更文件**：`cyber_orchestrator.py` + `__init__.py`（导出 `ChainContext`）+ 新增 `test_cyber_handoffs.py`
 
-- [ ] **R4.3** `cyber_orchestrator.py` 用 SDK `output_guardrails` 实现紫队校验闭环（0.5 天）
+- [x] **R4.3** `cyber_orchestrator.py` 用 SDK `output_guardrails` 实现紫队校验闭环（0.5 天）✅ 2026-07-08
   - 当前：`run_purple_review()` 手动调用 `critic._run()` → `if critique.valid == False` 一次性判断
-  - 迁移方案：将 `CriticAgent` 包装为 `output_guardrail`，注入红/蓝队链末端 Agent 的 `output_guardrails` 列表
-  - `@output_guardrail` 装饰 critic 校验逻辑 → 返回 `GuardrailFunctionOutput(tripwire=not valid, output_info=feedback)`
-  - SDK 自动处理：guardrail tripwire 触发 → SDK 自动重试 LLM → 将 feedback 注入 prompt → 重试（最多 `max_retries` 次）
-  - 紫队 `reviewer` 同理作为第二个 `output_guardrail`（一致性校验）
-  - 替代手写 `max_iterations` 循环 + 手动 feedback 注入
-  - 测试：新增 guardrail 触发重试的单元测试
+  - **实现决策**：SDK guardrail 触发 `tripwire_triggered=True` 后抛 `OutputGuardrailTripwireTriggered` 异常，**不自动重试**。需手动捕获 + 重试循环：
+    - `create_attack_chain_guardrail()` 返回 `@output_guardrail(name="attack_chain_validator")` 装饰的 `OutputGuardrail`
+    - `run_red_chain_with_guardrail()` 注入 guardrail 到 `exploit_planner._sdk_agent.output_guardrails`
+    - 捕获 `OutputGuardrailTripwireTriggered` → 从 `e.guardrail_result.output.output_info` 提取反馈 → 重新调用 `_run()` 注入反馈 prompt
+    - 最多重试 `max_retries` 次，完成后清理 `output_guardrails = []`
+    - 返回 `guardrail_passed: bool` + `guardrail_feedback: str`
+  - 校验逻辑：chain_id 非空 + steps 非空 + 每步有 technique
+  - 测试：5 测试通过（`test_cyber_guardrails.py`）
+  - **变更文件**：`cyber_orchestrator.py` + 新增 `test_cyber_guardrails.py`
 
 - [ ] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）
   - 当前：无 tracing，手动 `print` 或无日志

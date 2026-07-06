@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建转换器——protocol Task <-> TaskEntity、session dict <-> SessionEntity
 """转换器模块：在 protocol 层对象与 ORM 实体之间进行双向转换。"""
 
 from __future__ import annotations

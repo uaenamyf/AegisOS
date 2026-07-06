@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 DI 端口实现——PersistencePortImpl / SessionPortImpl / TaskUpdatePortImpl，委托仓储
 """DI 端口实现层：将 agents 定义的端口接口委托到后端仓储实现。"""
 
 from __future__ import annotations

@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: Claude Code (glm-5.2)
-# changelog: 新建红队攻击路由（/api/v1/attack + /api/v1/attack/chain）
 """红队攻击路由。
 
 提供红队攻击链执行端点，对应 Phase F 的 F3。

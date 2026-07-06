@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 SDK 结构化输出 Pydantic 类型——11 个攻防 Agent 的 output_type 定义，对应 protocol/cyber.py 的 dataclass
 """SDK 结构化输出 Pydantic 类型 —— 11 个攻防 Agent 的 ``output_type`` 定义。
 
 本模块定义与 ``protocol/cyber.py`` 的 dataclass 对应的 Pydantic ``BaseModel``，

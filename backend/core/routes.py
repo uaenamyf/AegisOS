@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建网关路由聚合器——/api/v1 前缀 + 鉴权依赖，挂载 REST 与 SSE 控制器
 """网关路由聚合器。
 
 本模块创建带 ``/api/v1`` 前缀的 :class:`fastapi.APIRouter`，并对所有子路由

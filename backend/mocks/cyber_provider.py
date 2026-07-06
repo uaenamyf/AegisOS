@@ -1,6 +1,5 @@
 # date: 2026-07-05
 # dev: myf
-# changelog: 从 composition.py 拆出 _CyberMockProvider + _build_cyber_mock_responses
 """攻防场景的 MockProvider 包装。
 
 攻防 Agent 会把动态内容（JSON payload）嵌入到 prompt 中，导致精确匹配经常

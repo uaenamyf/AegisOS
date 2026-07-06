@@ -1,6 +1,5 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: 接入统一配置——API Key/header 改从 tooling.configs.settings 读取
 """网关 API Key 鉴权依赖。
 
 本模块为 FastAPI 路由提供基于 API Key 的鉴权依赖。鉴权凭据可来自请求头

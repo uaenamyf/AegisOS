@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: Claude Code (glm-5.2)
-# changelog: 新建靶场管理路由（/api/v1/range/* + /api/v1/topology）
 """靶场管理路由。
 
 提供靶场会话的启动、拓扑查询端点，对应 Phase F 的 F1/F2。

@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 WebSocket 流端点 /ws/v1/stream（双向实时，Message 信封）
 """WebSocket 实时流控制器。
 
 提供 ``/ws/v1/stream`` WebSocket 端点，支持双向实时通信：

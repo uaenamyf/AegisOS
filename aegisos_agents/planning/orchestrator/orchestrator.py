@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建通用 Orchestrator——整合 Planner + WorkflowEngine + EventBus，将 Plan 转 WorkflowNode 执行
 """通用编排器 —— 整合 Planner + WorkflowEngine + EventBus。
 
 本模块实现 :class:`Orchestrator`，将规划-执行闭环串联：

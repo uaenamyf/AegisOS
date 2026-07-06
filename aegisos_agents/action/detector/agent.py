@@ -1,18 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + DetectorResult 替代 json.loads+try/except（~78 行→~52 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 蓝队入侵检测 Agent
-from __future__ import annotations
-
-import json
-
-from aegisos_agents.action.output_types import DetectorResult
-from aegisos_agents.action.structured_agent import StructuredAgent
-from aegisos_agents.tools.llms.mock_provider import MockProvider
-from protocol.cyber import Alert
-
 """蓝队入侵检测 Agent 模块（SDK 结构化输出版）。
 
 本模块接收事件流（以 dict 列表形式），利用大语言模型检测其中的
@@ -21,6 +8,14 @@ from protocol.cyber import Alert
 结构化输出，由 SDK 自动处理 JSON 解析与 Pydantic 验证，无需手写
 ``json.loads + try/except``。
 """
+from __future__ import annotations
+
+import json
+
+from aegisos_agents.action.output_types import DetectorResult
+from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.tools.llms.mock_provider import MockProvider
+from protocol.cyber import Alert
 
 SYSTEM_PROMPT = (
     "You are an intrusion detection agent. Given an event stream, "

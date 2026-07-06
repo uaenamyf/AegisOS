@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: Claude Code (glm-5.2)
-# changelog: 新建威胁情报路由（/api/v1/threat/attack-techniques）
 """威胁情报路由。
 
 提供 ATT&CK 威胁情报查询端点，对应 Phase F 的 F5（端点部分）。

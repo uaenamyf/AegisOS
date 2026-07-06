@@ -1,6 +1,5 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: 2026-07-06 扩展 ThreatIntel ATT&CK 映射字段（technique_id/sub_technique/detection/risk_level/asset_ids）
 """攻防演练协议类型。
 
 定义网络安全攻防演练场景中使用的数据契约，包括资产、漏洞、

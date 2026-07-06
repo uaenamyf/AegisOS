@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 tasks 控制器 POST/GET /tasks、POST /tasks/{id}/cancel
 """任务控制器。
 
 提供任务创建、查询、列表与取消的 REST 端点。任务是 Agent 调度的

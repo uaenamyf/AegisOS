@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: Claude Code (glm-5.2)
-# changelog: 新建蓝队防御路由（/api/v1/defense + /api/v1/defense/{range_id}）
 """蓝队防御路由。
 
 提供蓝队防御链执行端点，对应 Phase F 的 F4。

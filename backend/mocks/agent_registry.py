@@ -1,6 +1,5 @@
 # date: 2026-07-05
 # dev: myf
-# changelog: 从 composition.py 拆出 MockAgentRegistry + _CYBER_AGENT_SPECS + _make_cyber_agent
 """MockAgentRegistry — agents.api.AgentRegistryAPI 的内存占位实现。"""
 
 from __future__ import annotations

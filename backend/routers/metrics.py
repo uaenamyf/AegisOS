@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 metrics 控制器 GET /metrics
 """运行指标控制器。
 
 提供 ``GET /metrics`` 端点，返回后端运行时的关键指标快照，

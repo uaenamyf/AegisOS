@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # date: 2026-07-03
 # dev: myf
-# changelog: 剥离硬编码的前端本地类型块——生成器只产出 protocol 契约类型；前端本地类型改由 frontend/src/protocol/frontend-types.ts 手维护
 """从 protocol/ Python dataclass 生成 TypeScript 类型定义。
 
 读取 `protocol` 包中所有导出类型，内省 dataclass 字段与枚举值，

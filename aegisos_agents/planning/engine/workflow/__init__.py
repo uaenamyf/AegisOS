@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 workflow 包——导出 WorkflowEngine/WorkflowNode/WorkflowStatus/WorkflowResult
 """DAG 工作流引擎包。
 
 导出 :class:`WorkflowEngine` 及相关类型，供 orchestrator 编排多 Agent 协作。

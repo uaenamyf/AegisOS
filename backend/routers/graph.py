@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 graph 控制器 GET /graph
 """拓扑图控制器。
 
 提供 ``GET /graph`` 端点，返回当前 Agent 协作拓扑图的节点与边，

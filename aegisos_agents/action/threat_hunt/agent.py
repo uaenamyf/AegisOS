@@ -1,9 +1,12 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + ThreatHuntResult 替代 json.loads+try/except（~73 行→~52 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 蓝队威胁狩猎 Agent
+"""蓝队威胁狩猎 Agent 模块（SDK 结构化输出版）。
+
+本模块接收优先排序后的告警列表，利用大语言模型生成威胁狩猎假设
+（hypotheses），每条假设包含假说描述、置信度和关联的 ATT&CK 技术
+编号，为后续响应规划提供决策依据。SDK 的 ``output_type`` 结构化输出
+自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
+"""
 from __future__ import annotations
 
 import json
@@ -12,14 +15,6 @@ from aegisos_agents.action.output_types import ThreatHuntResult
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert
-
-"""蓝队威胁狩猎 Agent 模块（SDK 结构化输出版）。
-
-本模块接收优先排序后的告警列表，利用大语言模型生成威胁狩猎假设
-（hypotheses），每条假设包含假说描述、置信度和关联的 ATT&CK 技术
-编号，为后续响应规划提供决策依据。SDK 的 ``output_type`` 结构化输出
-自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
-"""
 
 SYSTEM_PROMPT = (
     "You are a threat hunting agent. Given prioritized alerts, generate "

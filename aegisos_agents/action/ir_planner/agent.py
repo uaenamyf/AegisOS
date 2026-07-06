@@ -1,9 +1,12 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + IRPlannerResult 替代 json.loads+try/except（~73 行→~56 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 蓝队响应规划 Agent
+"""蓝队响应规划 Agent 模块（SDK 结构化输出版）。
+
+本模块接收威胁狩猎阶段产出的假设列表，利用大语言模型生成
+事件响应计划（``ResponsePlan``），包含隔离/阻断/誘饵/监控等
+响应动作、整体置信度和回滚方案。SDK 的 ``output_type`` 结构化输出
+自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
+"""
 from __future__ import annotations
 
 import json
@@ -12,14 +15,6 @@ from aegisos_agents.action.output_types import IRPlannerResult
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import ResponsePlan
-
-"""蓝队响应规划 Agent 模块（SDK 结构化输出版）。
-
-本模块接收威胁狩猎阶段产出的假设列表，利用大语言模型生成
-事件响应计划（``ResponsePlan``），包含隔离/阻断/誘饵/监控等
-响应动作、整体置信度和回滚方案。SDK 的 ``output_type`` 结构化输出
-自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
-"""
 
 SYSTEM_PROMPT = (
     "You are an incident response planner. Given threat hypotheses, "

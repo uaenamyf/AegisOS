@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 2026-07-06 修复 Mock 模式下占位文本导致 SDK output_type 校验失败——自动生成 output_type 默认 JSON 实例
 """Mock SDK Model —— 将项目 MockProvider 适配为 openai-agents SDK 的 Model 接口。
 
 SDK 的 ``Runner.run()`` 需要一个 ``Model`` 实例发起 LLM 调用。本模块将项目的

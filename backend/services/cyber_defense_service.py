@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: Claude Code (glm-5.2)
-# changelog: 新建 CyberDefenseService——攻防场景业务编排（靶场/攻击/防御/威胁情报）
 """攻防演练服务层。
 
 本模块提供网络安全攻防演练场景的业务编排能力，包括：

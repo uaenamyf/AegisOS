@@ -1,10 +1,7 @@
 # @aegis-gen
 # date: 2026-07-06
 # dev: myf
-# changelog: 新增 use_mock 开关（评委本地零配置演示）+ 火山引擎 Chat Completions 模式 + 包名冲突已解决说明
-# date: 2026-07-06
-# dev: myf
-# change: 新建 OpenAI Agents SDK 开发配置——API Key / 模型 / Provider / 编排策略的唯一入口
+# intro: OpenAI Agents SDK 开发配置——API Key / 模型 / Provider / 编排策略的唯一入口
 # =============================================================================
 # OpenAI Agents SDK (openai-agents) 开发配置
 # =============================================================================

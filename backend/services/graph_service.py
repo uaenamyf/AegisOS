@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 GraphService（实现 backend.api.GraphAPI，订阅 graph.update 维护图缓存）
 """Graph 服务层：维护内存中的图缓存，并订阅事件总线刷新缓存。"""
 
 from __future__ import annotations

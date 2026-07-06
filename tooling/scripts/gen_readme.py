@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # date: 2026-07-03
 # dev: myf
-# changelog: 修正生成器引用——关键文档/通信协议/开发流程段从旧 developer/*.md 改指 developer/specs/ SSOT
+
 """动态生成根目录 README.md 的脚本。
 
 本脚本扫描 AegisOS 仓库的真实结构，统计目录/文件/AGENT.md/API 接口等

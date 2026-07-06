@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 tools 控制器 POST /tools/{name}/invoke（直调工具，不经 Agent 编排）
 """工具直调控制器。
 
 提供 ``POST /tools/{name}/invoke`` 端点，允许直接调用已注册的工具，

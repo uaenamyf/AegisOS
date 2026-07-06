@@ -1,9 +1,12 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 迁移到 SDK 结构化输出——用 StructuredAgent + LateralMoveResult 替代 json.loads+try/except（~88 行→~60 行）
-# date: 2026-07-04
-# dev: myf
-# changelog: 红队横向移动 Agent
+"""红队横向移动 Agent 模块（SDK 结构化输出版）。
+
+本模块接收已有的攻击利用链和网络拓扑图，利用大语言模型规划
+从已攻陷资产向更多内部资产横向移动的路径，输出额外的攻击步骤
+（``AttackStep``）列表。SDK 的 ``output_type`` 结构化输出自动处理
+JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
+"""
 from __future__ import annotations
 
 import json
@@ -13,14 +16,6 @@ from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import AttackChain, AttackStep
 from protocol.graph import Graph
-
-"""红队横向移动 Agent 模块（SDK 结构化输出版）。
-
-本模块接收已有的攻击利用链和网络拓扑图，利用大语言模型规划
-从已攻陷资产向更多内部资产横向移动的路径，输出额外的攻击步骤
-（``AttackStep``）列表。SDK 的 ``output_type`` 结构化输出自动处理
-JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
-"""
 
 SYSTEM_PROMPT = (
     "You are a lateral movement planner. Given an attack chain and network "

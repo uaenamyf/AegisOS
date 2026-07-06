@@ -2,6 +2,35 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [R4.1-R4.3] 2026-07-08 SDK 编排深化（neuro_symbolic 迁移 + handoffs + guardrails，18 测试通过）
+
+### R4.1 — neuro_symbolic 迁移到 SDK StructuredAgent（P0 完成）
+- `NeuroSymbolicLoop` → `NeuroSymbolicAgent(StructuredAgent[ExploitPlannerResult])`，用 SDK `output_type`（Pydantic）替代手写 `json.loads` + `try/except`。
+- `_regenerate()` 改用 `self._run()`，新增 `_result_to_chain()` 转换 `ExploitPlannerResult` → `AttackChain`。
+- `validate_chain()` 保留为纯函数（不涉及 LLM），闭环用手动 `validate_and_fix()` 循环。
+- ⚠️ 未用 SDK `output_guardrail`：SDK guardrail 抛 `OutputGuardrailTripwireTriggered` 异常后不自动重试，保留手动 `max_iterations` 循环。
+- `NeuroSymbolicLoop = NeuroSymbolicAgent` 别名向后兼容。
+- **变更文件**：`aegisos_agents/perception/reasoning/neuro_symbolic.py`（4 测试通过）
+
+### R4.2 — SDK Agent.handoffs 声明式链（混合方案）
+- **架构决策**：SDK handoffs 是 LLM 驱动动态路由（LLM 决定是否 `transfer_to_*`），非固定顺序管道。对红蓝固定链，手动顺序执行是正确架构。采用混合方案：保留手动链为默认路径 + 新增 handoff 链为声明式替代。
+- 新增 `ChainContext` dataclass：跨 handoff 共享上下文，累积各步产出（recon/vuln/exploit/detector/triage/hunt/ir_output）。
+- 新增 `run_red_chain_via_handoffs()` / `run_blue_chain_via_handoffs()`：SDK `Agent.handoffs` 声明式串联，`on_handoff` 回调标记各步完成。
+- SDK handoff 规则发现：不配 `input_type` 时 `on_handoff` 只接收 1 参数 (context)；配 `input_type` 时接收 2 参数 (context, input)。
+- Mock 模式下 `MockSDKModel` 返回纯文本（非工具调用），LLM 不触发 handoff → 自动回退手动链。
+- **变更文件**：`cyber_orchestrator.py` + `__init__.py`（导出 `ChainContext`）+ 新增 `test_cyber_handoffs.py`（9 测试通过）
+
+### R4.3 — SDK output_guardrails 紫队校验闭环
+- **实现决策**：SDK guardrail 触发 `tripwire_triggered=True` 后抛 `OutputGuardrailTripwireTriggered` 异常，**不自动重试**。需手动捕获 + 重试循环。
+- 新增 `create_attack_chain_guardrail()`：`@output_guardrail(name="attack_chain_validator")` 装饰，校验 chain_id 非空 + steps 非空 + 每步有 technique。
+- 新增 `run_red_chain_with_guardrail()`：注入 guardrail 到 `exploit_planner._sdk_agent.output_guardrails`，捕获异常后从 `output_info` 提取反馈 → 重新调用 `_run()` 注入反馈 prompt → 最多重试 `max_retries` 次 → 完成后清理 guardrails。
+- 返回 `guardrail_passed: bool` + `guardrail_feedback: str`。
+- **变更文件**：`cyber_orchestrator.py` + 新增 `test_cyber_guardrails.py`（5 测试通过）
+
+### 当前测试基线
+- **aegisos_agents 测试**：124 passed（含 R4.1-R4.3 新增 18 测试）
+- **全量测试**：128 passed, 5 failed（backend cyber endpoints 预存失败——`CyberDefenseService` 未注入 `_CyberMockProvider`，将在 R4.7 修复）
+
 ## [计划] 2026-07-06 计划优先级调整 — 容器化后移，功能优先
 
 - **调整原因**：用户要求「有关容器化部署的都往后靠，前面先把功能实现完」。

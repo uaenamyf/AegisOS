@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 SSE 事件流控制器 GET /events（text/event-stream）
 """SSE 事件流控制器。
 
 提供 ``GET /events`` 端点，以 Server-Sent Events（SSE）方式

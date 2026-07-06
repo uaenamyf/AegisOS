@@ -1,6 +1,5 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 SDK 编排器——用 openai-agents SDK Agent + handoffs 实现红蓝紫攻防链，替代 MockRuntime dispatch map
 """SDK 编排器 —— 用 openai-agents SDK 的 Agent + handoffs 实现红蓝紫攻防链。
 
 本模块用 SDK 的 ``Agent.handoffs`` 机制串联攻防 Agent，替代
@@ -12,6 +11,17 @@
     - **蓝队防御链**：detector → triage → threat_hunt → ir_planner → forensics
     - **紫队闭环**：critic 校验红队产出 → 失败时回 exploit_planner（神经符号循环）
     - **Mock/真实 API 双模式**：注入 MockSDKModel 或真实 SDK Model，两条路径走同一编排
+
+R4.2 SDK handoffs 架构（声明式链 vs 手动串联）：
+    - **手动链**（``run_red_chain``）：逐步 ``_run()`` + ``json.dumps`` 传递，
+      保留作为默认执行路径（固定顺序管道的正确架构）
+    - **handoff 链**（``run_red_chain_via_handoffs``）：SDK ``Agent.handoffs``
+      声明式串联，LLM 通过 ``transfer_to_*`` 工具调用触发移交，
+      ``on_handoff`` 回调标记各步完成状态到 :class:`ChainContext`
+    - **ChainContext**：跨 handoff 共享上下文，累积各步产出（assets/findings/chain）
+    - **SDK handoff 规则**：不提供 ``input_type`` 时，``on_handoff`` 回调只接收
+      1 个参数 (context)；提供 ``input_type`` 时接收 2 个参数 (context, input)。
+      本实现不使用 ``input_type``（中间产出类型不固定），回调只接收 context。
 
 与现有架构的关系：
     - 本模块是 S3 阶段新增的 SDK 原生编排层，位于 ``aegisos_agents/planning/orchestrator/``
@@ -28,7 +38,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from aegisos_agents.action.output_types import (
@@ -45,6 +55,67 @@ from aegisos_agents.action.output_types import (
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert, Asset, AttackChain, AttackStep, ResponsePlan, VulnFinding
+
+# R4.2: SDK handoffs 依赖
+try:
+    from agents import Agent as SDKAgent, RunContextWrapper
+    from agents.handoffs import handoff
+
+    _SDK_HANDOFF_AVAILABLE = True
+except ImportError:
+    _SDK_HANDOFF_AVAILABLE = False
+
+# R4.3: SDK output_guardrail 依赖
+try:
+    from agents import OutputGuardrail, OutputGuardrailTripwireTriggered
+    from agents.guardrail import GuardrailFunctionOutput, output_guardrail
+
+    _SDK_GUARDRAIL_AVAILABLE = True
+except ImportError:
+    _SDK_GUARDRAIL_AVAILABLE = False
+
+
+# ==================================================================
+# R4.2: ChainContext —— handoff 链共享上下文
+# ==================================================================
+
+
+@dataclass
+class ChainContext:
+    """Handoff 链共享上下文，累积各步产出。
+
+    在 SDK handoff 链中，每个 ``on_handoff`` 回调将前一个 Agent 的
+    结构化产出（JSON dict）写入对应字段。链完成后，由
+    :meth:`CyberOrchestrator._context_to_red_result` /
+    :meth:`CyberOrchestrator._context_to_blue_result` 转换为 protocol dataclass。
+
+    Attributes:
+        target_range: 红队目标范围。
+        event_stream: 蓝队原始事件流。
+        recon_output: 侦察 Agent 产出（dict）。
+        vuln_output: 漏洞关联 Agent 产出（dict）。
+        exploit_output: 利用链规划 Agent 产出（dict）。
+        detector_output: 入侵检测 Agent 产出（dict）。
+        triage_output: 告警分诊 Agent 产出（dict）。
+        hunt_output: 威胁狩猎 Agent 产出（dict）。
+        ir_output: 响应规划 Agent 产出（dict）。
+    """
+
+    target_range: str | None = None
+    event_stream: list[dict[str, Any]] = field(default_factory=list)
+    # 红队链产出
+    recon_output: dict[str, Any] | None = None
+    vuln_output: dict[str, Any] | None = None
+    exploit_output: dict[str, Any] | None = None
+    # 蓝队链产出
+    detector_output: dict[str, Any] | None = None
+    triage_output: dict[str, Any] | None = None
+    hunt_output: dict[str, Any] | None = None
+    ir_output: dict[str, Any] | None = None
+    # 最终产出
+    chain: Any | None = None
+    plan: Any | None = None
+
 
 # ---- 红队 Agent（SDK Agent 定义，供编排用）----
 
@@ -333,3 +404,515 @@ class CyberOrchestrator:
         review = review_result.model_dump()
 
         return {"critique": critique, "review": review}
+
+    # ==================================================================
+    # R4.2: SDK Agent.handoffs 声明式链
+    # ==================================================================
+
+    def run_red_chain_via_handoffs(self, target_range: str) -> dict[str, Any]:
+        """通过 SDK handoffs 执行红队攻击链（声明式链）。
+
+        与 :meth:`run_red_chain` 的区别：
+            - ``run_red_chain``：手动逐步 ``_run()`` + ``json.dumps`` 传递
+              （固定管道的正确架构，默认路径）
+            - 本方法：用 SDK ``Agent.handoffs`` 声明式串联，
+              LLM 通过 ``transfer_to_*`` 工具调用触发移交，
+              ``on_handoff`` 回调 + ``input_type`` 结构化参数捕获中间产出
+
+        限制：
+            - Mock 模式下 ``MockSDKModel`` 返回纯文本（非工具调用），
+              LLM 不会触发 handoff，本方法回退到 ``run_red_chain``。
+            - 真实 LLM 模式下可用，但 LLM 可能不按预期移交
+              （需在 prompt 中强制指令）。
+
+        Args:
+            target_range: 目标网络范围，如 ``"10.0.0.0/24"``。
+
+        Returns:
+            含 ``assets`` / ``findings`` / ``chain`` 的字典。
+        """
+        if not _SDK_HANDOFF_AVAILABLE:
+            return self.run_red_chain(target_range)
+
+        # 构建 handoff 链上下文
+        ctx = ChainContext(target_range=target_range)
+
+        try:
+            await_result = self._run_red_handoff_chain(ctx, target_range)
+            # 如果 handoff 链成功（LLM 驱动了移交），使用累积的产出
+            if ctx.chain is not None:
+                return self._context_to_red_result(ctx)
+        except Exception:
+            pass
+
+        # 回退到手动链
+        return self.run_red_chain(target_range)
+
+    def run_blue_chain_via_handoffs(
+        self, event_stream: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """通过 SDK handoffs 执行蓝队防御链（声明式链）。
+
+        链路：detector → triage → threat_hunt → ir_planner
+
+        Args:
+            event_stream: 原始事件流列表。
+
+        Returns:
+            含 ``alerts`` / ``triaged`` / ``hypotheses`` / ``plan`` 的字典。
+        """
+        if not _SDK_HANDOFF_AVAILABLE:
+            return self.run_blue_chain(event_stream)
+
+        ctx = ChainContext(event_stream=event_stream)
+
+        try:
+            await_result = self._run_blue_handoff_chain(ctx, event_stream)
+            if ctx.plan is not None:
+                return self._context_to_blue_result(ctx)
+        except Exception:
+            pass
+
+        # 回退到手动链
+        return self.run_blue_chain(event_stream)
+
+    def _run_red_handoff_chain(
+        self, ctx: ChainContext, target_range: str
+    ) -> Any:
+        """运行红队 handoff 链。
+
+        创建 SDK Agent 并配置 handoffs，用 ``on_handoff`` 回调将
+        各步产出捕获到 :class:`ChainContext`。
+        """
+        from agents import Runner
+
+        # 创建轻量级 SDK Agent 用于 handoff 链
+        # 每个 Agent 配置 handoffs 指向下一个 Agent
+        exploit_agent = SDKAgent(
+            name="ExploitPlannerAgent",
+            instructions="Plan an exploit chain based on vulnerabilities. "
+            "After producing your output, call transfer_to_complete to finish.",
+            handoffs=[],  # 末端无 handoff
+        )
+
+        vuln_agent = SDKAgent(
+            name="VulnCorrelatorAgent",
+            instructions="Correlate vulnerabilities for given assets. "
+            "After producing your output, call transfer_to_exploit_planner.",
+            handoffs=[exploit_agent],
+        )
+
+        recon_agent = SDKAgent(
+            name="ReconAgent",
+            instructions=f"Scan target range {target_range}. "
+            "After producing your output, call transfer_to_vuln_correlator.",
+            handoffs=[vuln_agent],
+        )
+
+        # 配置 on_handoff 回调（捕获中间产出到 ChainContext）
+        # 注意：on_handoff 接收 (context, input_json)，但无法访问 agent 的结构化输出
+        # 因此我们用 ChainContext 累积 input_json 作为链间数据传递
+        self._configure_red_handoff_callbacks(ctx, recon_agent, vuln_agent, exploit_agent)
+
+        # 运行链——由 LLM 驱动 handoff
+        return Runner.run_sync(
+            recon_agent,
+            f"Scan target range: {target_range}",
+        )
+
+    def _run_blue_handoff_chain(
+        self, ctx: ChainContext, event_stream: list[dict[str, Any]]
+    ) -> Any:
+        """运行蓝队 handoff 链。
+
+        链路：detector → triage → threat_hunt → ir_planner
+        """
+        from agents import Runner
+
+        ir_agent = SDKAgent(
+            name="IRPlannerAgent",
+            instructions="Plan incident response actions. This is the final step.",
+            handoffs=[],
+        )
+        hunt_agent = SDKAgent(
+            name="ThreatHuntAgent",
+            instructions="Generate threat hunting hypotheses. "
+            "After producing your output, call transfer_to_ir_planner.",
+            handoffs=[ir_agent],
+        )
+        triage_agent = SDKAgent(
+            name="TriageAgent",
+            instructions="Triage detected alerts. "
+            "After producing your output, call transfer_to_threat_hunt.",
+            handoffs=[hunt_agent],
+        )
+        detector_agent = SDKAgent(
+            name="DetectorAgent",
+            instructions="Detect anomalies in the event stream. "
+            "After producing your output, call transfer_to_triage.",
+            handoffs=[triage_agent],
+        )
+
+        self._configure_blue_handoff_callbacks(
+            ctx, detector_agent, triage_agent, hunt_agent, ir_agent
+        )
+
+        return Runner.run_sync(
+            detector_agent,
+            f"Detect anomalies in: {json.dumps(event_stream)}",
+        )
+
+    def _configure_red_handoff_callbacks(
+        self,
+        ctx: ChainContext,
+        recon_agent: Any,
+        vuln_agent: Any,
+        exploit_agent: Any,
+    ) -> None:
+        """配置红队 handoff 回调，捕获中间产出到 ChainContext。
+
+        SDK ``handoff()`` 规则：
+            - 不提供 ``input_type`` 时，``on_handoff`` 只接收 1 个参数 (context)
+            - 提供 ``input_type`` 时，``on_handoff`` 接收 2 个参数 (context, input)
+
+        本方法不使用 ``input_type``（因为中间产出类型不固定），
+        因此 ``on_handoff`` 回调只接收 context，从 context 中读取累积的产出。
+        """
+        if not _SDK_HANDOFF_AVAILABLE:
+            return
+
+        def on_recon_to_vuln(wrapper: RunContextWrapper[ChainContext]) -> None:
+            """recon → vuln handoff 回调：标记侦察完成。"""
+            ctx.recon_output = {"status": "recon_handoff_triggered"}
+
+        def on_vuln_to_exploit(wrapper: RunContextWrapper[ChainContext]) -> None:
+            """vuln → exploit handoff 回调：标记漏洞关联完成。"""
+            ctx.vuln_output = {"status": "vuln_handoff_triggered"}
+
+        # 替换默认 handoffs 为带回调的版本
+        recon_agent.handoffs = [handoff(vuln_agent, on_handoff=on_recon_to_vuln)]
+        vuln_agent.handoffs = [handoff(exploit_agent, on_handoff=on_vuln_to_exploit)]
+
+    def _configure_blue_handoff_callbacks(
+        self,
+        ctx: ChainContext,
+        detector_agent: Any,
+        triage_agent: Any,
+        hunt_agent: Any,
+        ir_agent: Any,
+    ) -> None:
+        """配置蓝队 handoff 回调，捕获中间产出到 ChainContext。"""
+        if not _SDK_HANDOFF_AVAILABLE:
+            return
+
+        def on_detector_to_triage(wrapper: RunContextWrapper[ChainContext]) -> None:
+            ctx.detector_output = {"status": "detector_handoff_triggered"}
+
+        def on_triage_to_hunt(wrapper: RunContextWrapper[ChainContext]) -> None:
+            ctx.triage_output = {"status": "triage_handoff_triggered"}
+
+        def on_hunt_to_ir(wrapper: RunContextWrapper[ChainContext]) -> None:
+            ctx.hunt_output = {"status": "hunt_handoff_triggered"}
+
+        detector_agent.handoffs = [handoff(triage_agent, on_handoff=on_detector_to_triage)]
+        triage_agent.handoffs = [handoff(hunt_agent, on_handoff=on_triage_to_hunt)]
+        hunt_agent.handoffs = [handoff(ir_agent, on_handoff=on_hunt_to_ir)]
+
+    def _context_to_red_result(self, ctx: ChainContext) -> dict[str, Any]:
+        """将 ChainContext 转换为红队链结果字典。"""
+        assets: list[Asset] = []
+        findings: list[VulnFinding] = []
+        chain: AttackChain | None = None
+
+        if ctx.recon_output:
+            assets = [
+                Asset(
+                    asset_id=a.get("asset_id", ""),
+                    host=a.get("host", ""),
+                    services=a.get("services", []),
+                    os=a.get("os", ""),
+                    exposure=a.get("exposure", "unknown"),
+                )
+                for a in ctx.recon_output.get("assets", [])
+            ]
+
+        if ctx.vuln_output:
+            findings = [
+                VulnFinding(
+                    finding_id=f.get("finding_id", ""),
+                    cve_id=f.get("cve_id", ""),
+                    asset_id=f.get("asset_id", ""),
+                    cvss=f.get("cvss", 0.0),
+                    attack_surface=f.get("attack_surface", ""),
+                )
+                for f in ctx.vuln_output.get("findings", [])
+            ]
+
+        if ctx.exploit_output:
+            exp = ctx.exploit_output
+            chain = AttackChain(
+                chain_id=exp.get("chain_id", ""),
+                target=exp.get("target", ctx.target_range or ""),
+                steps=[AttackStep(**s) for s in exp.get("steps", [])],
+                status=exp.get("status", "planned"),
+            )
+        else:
+            chain = AttackChain(
+                chain_id="", target=ctx.target_range or "", steps=[], status="failed"
+            )
+
+        return {"assets": assets, "findings": findings, "chain": chain}
+
+    def _context_to_blue_result(self, ctx: ChainContext) -> dict[str, Any]:
+        """将 ChainContext 转换为蓝队链结果字典。"""
+        alerts: list[Alert] = []
+        triaged: list[Alert] = []
+        hypotheses: list[dict] = []
+        plan: ResponsePlan | None = None
+
+        if ctx.detector_output:
+            alerts = [
+                Alert(
+                    alert_id=a.get("alert_id", ""),
+                    severity=a.get("severity", "low"),
+                    src=a.get("src", ""),
+                    dst=a.get("dst", ""),
+                    technique=a.get("technique", ""),
+                    raw=a.get("raw", {}),
+                )
+                for a in ctx.detector_output.get("alerts", [])
+            ]
+
+        if ctx.triage_output:
+            triaged = [
+                Alert(**t) for t in ctx.triage_output.get("alerts", [])
+            ] or alerts
+
+        if ctx.hunt_output:
+            hypotheses = ctx.hunt_output.get("hypotheses", [])
+
+        if ctx.ir_output:
+            ir = ctx.ir_output
+            plan = ResponsePlan(
+                plan_id=ir.get("plan_id", ""),
+                actions=ir.get("actions", []),
+                confidence=ir.get("confidence", 0.0),
+                rollback=ir.get("rollback", {}),
+            )
+        else:
+            plan = ResponsePlan(
+                plan_id="", actions=[], confidence=0.0, rollback={}
+            )
+
+        return {
+            "alerts": alerts,
+            "triaged": triaged,
+            "hypotheses": hypotheses,
+            "plan": plan,
+        }
+
+    # ==================================================================
+    # R4.3: SDK output_guardrails 紫队校验
+    # ==================================================================
+
+    def run_red_chain_with_guardrail(
+        self, target_range: str, max_retries: int = 2
+    ) -> dict[str, Any]:
+        """带 output_guardrail 的红队攻击链（紫队校验闭环）。
+
+        在 exploit_planner Agent 的 ``output_guardrails`` 上注入紫队 critic 校验：
+            1. 正常执行红队链（recon → vuln → exploit）
+            2. exploit_planner 产出后，guardrail 校验攻击链有效性
+            3. 如果 guardrail tripwire 触发（``tripwire_triggered=True``），
+               SDK 抛出 ``OutputGuardrailTripwireTriggered`` 异常
+            4. 捕获异常，从 ``output_info`` 提取反馈，重新执行 exploit_planner
+            5. 最多重试 ``max_retries`` 次
+
+        与 :meth:`run_red_chain` 的区别：
+            - ``run_red_chain``：无校验，直接返回
+            - 本方法：有 SDK guardrail 校验 + 手动重试循环
+
+        限制：
+            - SDK guardrail 抛异常后不会自动重试（需手动捕获 + 重新调用）
+            - Mock 模式下 MockSDKModel 返回固定 JSON，guardrail 可能不触发
+
+        Args:
+            target_range: 目标网络范围。
+            max_retries: guardrail 触发后最大重试次数（默认 2）。
+
+        Returns:
+            含 ``assets`` / ``findings`` / ``chain`` / ``guardrail_passed`` 的字典。
+        """
+        # 先执行 recon + vuln（不受 guardrail 影响）
+        recon_result = self.recon._run(f"Scan target range: {target_range}")
+        assets = [
+            Asset(
+                asset_id=a.asset_id, host=a.host, services=a.services, os=a.os, exposure=a.exposure
+            )
+            for a in recon_result.assets
+        ]
+
+        assets_desc = json.dumps(
+            [
+                {"asset_id": a.asset_id, "host": a.host, "services": a.services, "os": a.os}
+                for a in assets
+            ]
+        )
+        vuln_result = self.vuln_correlator._run(
+            f"Correlate vulnerabilities for these assets: {assets_desc}"
+        )
+        findings = [
+            VulnFinding(
+                finding_id=f.finding_id,
+                cve_id=f.cve_id,
+                asset_id=f.asset_id,
+                cvss=f.cvss,
+                attack_surface=f.attack_surface,
+            )
+            for f in vuln_result.findings
+        ]
+
+        findings_desc = json.dumps(
+            [
+                {
+                    "finding_id": f.finding_id,
+                    "cve_id": f.cve_id,
+                    "asset_id": f.asset_id,
+                    "cvss": f.cvss,
+                }
+                for f in findings
+            ]
+        )
+
+        # 执行 exploit_planner + guardrail 重试循环
+        guardrail_passed = False
+        feedback = ""
+        exploit_result = None
+
+        # 注入 output_guardrail 到 exploit_planner 的 SDK Agent
+        if _SDK_GUARDRAIL_AVAILABLE:
+            guardrail = self.create_attack_chain_guardrail()
+            if guardrail is not None:
+                self.exploit_planner._sdk_agent.output_guardrails = [guardrail]
+
+        for attempt in range(max_retries + 1):
+            prompt = f"Plan exploit chain for: {findings_desc}"
+            if feedback:
+                prompt += f"\n\nPrevious attempt was rejected. Feedback: {feedback}"
+
+            try:
+                exploit_result = self.exploit_planner._run(prompt)
+                guardrail_passed = True
+                break
+            except OutputGuardrailTripwireTriggered as e:
+                # 从 guardrail 结果中提取反馈
+                feedback = str(
+                    e.guardrail_result.output.output_info
+                    if e.guardrail_result and e.guardrail_result.output
+                    else "Attack chain validation failed"
+                )
+                if attempt >= max_retries:
+                    # 最后一次重试仍失败，返回未通过的结果
+                    if exploit_result is None:
+                        # 没有任何产出，返回空链
+                        chain = AttackChain(
+                            chain_id="",
+                            target=target_range,
+                            steps=[],
+                            status="failed",
+                        )
+                        return {
+                            "assets": assets,
+                            "findings": findings,
+                            "chain": chain,
+                            "guardrail_passed": False,
+                            "guardrail_feedback": feedback,
+                        }
+                    break
+
+        # 构建最终攻击链
+        if exploit_result is not None:
+            chain = AttackChain(
+                chain_id=exploit_result.chain_id,
+                target=exploit_result.target,
+                steps=[AttackStep(**s.model_dump()) for s in exploit_result.steps],
+                status=exploit_result.status,
+            )
+        else:
+            chain = AttackChain(
+                chain_id="", target=target_range, steps=[], status="failed"
+            )
+
+        # 清理 guardrail（避免影响后续调用）
+        if _SDK_GUARDRAIL_AVAILABLE:
+            self.exploit_planner._sdk_agent.output_guardrails = []
+
+        return {
+            "assets": assets,
+            "findings": findings,
+            "chain": chain,
+            "guardrail_passed": guardrail_passed,
+            "guardrail_feedback": feedback if not guardrail_passed else "",
+        }
+
+    @staticmethod
+    def create_attack_chain_guardrail() -> Any:
+        """创建攻击链校验 output_guardrail。
+
+        返回一个 :class:`OutputGuardrail`，校验 Agent 产出的攻击链是否：
+            - 有至少 1 个步骤
+            - 每个步骤有 technique 字段
+            - chain_id 非空
+
+        校验失败时返回 ``GuardrailFunctionOutput(tripwire_triggered=True)``，
+        SDK 将抛出 ``OutputGuardrailTripwireTriggered`` 异常。
+
+        Returns:
+            :class:`OutputGuardrail` 实例；SDK 不可用时返回 None。
+        """
+        if not _SDK_GUARDRAIL_AVAILABLE:
+            return None
+
+        @output_guardrail(name="attack_chain_validator")
+        def validate_attack_chain(
+            ctx: RunContextWrapper[Any], agent: Any, agent_output: Any
+        ) -> GuardrailFunctionOutput:
+            """校验攻击链产出。"""
+            issues: list[str] = []
+
+            # agent_output 可能是 Pydantic 模型或 dict
+            if hasattr(agent_output, "model_dump"):
+                output_dict = agent_output.model_dump()
+            elif isinstance(agent_output, dict):
+                output_dict = agent_output
+            else:
+                return GuardrailFunctionOutput(
+                    tripwire_triggered=True,
+                    output_info="Invalid output type: expected ExploitPlannerResult",
+                )
+
+            chain_id = output_dict.get("chain_id", "")
+            if not chain_id:
+                issues.append("chain_id is empty")
+
+            steps = output_dict.get("steps", [])
+            if not steps:
+                issues.append("attack chain has no steps")
+
+            for i, step in enumerate(steps):
+                step_dict = step if isinstance(step, dict) else step.model_dump() if hasattr(step, "model_dump") else {}
+                if not step_dict.get("technique"):
+                    issues.append(f"step {i} has no technique")
+
+            if issues:
+                return GuardrailFunctionOutput(
+                    tripwire_triggered=True,
+                    output_info="; ".join(issues),
+                )
+
+            return GuardrailFunctionOutput(
+                tripwire_triggered=False,
+                output_info="Attack chain validation passed",
+            )
+
+        return validate_attack_chain

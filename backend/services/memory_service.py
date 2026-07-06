@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 MemoryService（实现 backend.api.MemoryGatewayAPI，委托 agents.api.MemoryAPI mock）
 """Memory 服务层：委托 agents 的 MemoryAPI 实现记忆读写网关。"""
 
 from __future__ import annotations

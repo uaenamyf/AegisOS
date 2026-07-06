@@ -1,6 +1,6 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 2026-07-06 新增攻防端点路由（range/attack/defense/threat）
+"""Backend 路由聚合包——挂载所有 REST/SSE/WS 控制器。"""
 from __future__ import annotations
 
 from fastapi import APIRouter

@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 memory 控制器 GET/POST /memory/{session}
 """记忆控制器。
 
 提供按会话读写 Agent 记忆包的 REST 端点，覆盖工作记忆、语义记忆、

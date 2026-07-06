@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 AgentService（list/get/invoke，委托 agents.api mock 实现）
 """Agent 服务层：封装 agent 注册中心与运行时，提供面向 agent 的操作。"""
 
 from __future__ import annotations

@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 health 控制器 GET /health
 """健康检查控制器。
 
 提供 ``GET /health`` 端点，用于探活与版本探测，供负载均衡器、

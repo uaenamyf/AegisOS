@@ -1,6 +1,5 @@
 # date: 2026-06-27
 # dev: myf
-# changelog: 新建 TaskService（实现 backend.api.TaskAPI，调用 agents.api.RuntimeAPI mock）
 """Task 服务层：实现任务的创建、查询、列表与取消，委托运行时执行。"""
 
 from __future__ import annotations
