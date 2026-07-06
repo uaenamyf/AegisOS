@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-06 · **151 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅ · P1 编排器实现 ✅ · **F 后端端点 ✅ · G 前端视图 ✅**
+> 最后更新：2026-07-06 · **151 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅ · P1 编排器实现 ✅ · **F 后端端点 ✅ · G 前端视图 ✅** · **计划优先级调整 ✅（容器化后移 P3）**
 
 ---
 
@@ -19,10 +19,10 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + **赛事 Phase F ✅ · G ✅** · H 待启动 |
+| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + **赛事 Phase F ✅ · G ✅** · 功能实现推进中 |
 | **测试** | **151 passed**（protocol 6 + memory 33 + planning 54 + tools 5 + action 19 + perception 4 + e2e 9 + backend cyber 11 + frontend cyber 21） |
 | **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ · P1 编排器 ✅ · **F ✅ · G ✅** |
-| **待完成 Phase** | R4 SDK 编排深化（8 项详细计划） · R5 旧接口清理+流式+事件总线（5 项） · H |
+| **待完成 Phase** | **P1**：R4 SDK 编排深化（8 项）· R5 旧接口清理+流式+事件总线（5 项）· AP1 Plan 范式 · **P2**：H2 数据层 · H5 可观测评测 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -39,16 +39,24 @@
 | 场景 | 描述 | 依赖 | 状态 |
 |------|------|------|------|
 | 场景 1 | 网络防御（红→蓝→紫完整链路） | B3 + E13 + 编排器 + F + G | ✅ 可演示 |
-| 场景 2 | 超长程攻击链（多步横向移动） | 场景 1 + H1 靶场 | 🔲 待做 |
-| 场景 3 | 端-边-云协同防御 | 场景 1 + H7 端边云 | 🔲 待做 |
+| 场景 2 | 超长程攻击链（多步横向移动） | 场景 1 + R4 handoffs + Plan 范式 | 🔲 待做（功能优先） |
+| 场景 3 | 端-边-云协同防御 | 场景 1 + H7 端边云（后移 P3） | 🔲 待做（容器化后） |
 
 ### 🔥 P0 — 立即执行（本周）
 
-> ✅ B3 + E13 已于 2026-07-06 完成。✅ P1 编排器实现已于 2026-07-06 完成。✅ F 后端端点 + G 前端视图已于 2026-07-06 完成（11 后端测试 + 21 前端测试全通过）。下一步：R4 SDK 深化 + H 靶场/数据/部署。
+> ✅ B3 + E13 + 编排器 + F + G 全部完成（2026-07-06）。**计划调整（2026-07-06）**：容器化/部署相关任务（H1 沙箱靶场、H7 部署交付、AP2 ReAct 范式）全部后移至 P3，先集中精力完成功能实现。
+>
+> **下一步优先顺序**：
+> 1. **R4.1** neuro_symbolic→SDK（P0 阻塞项，唯一未迁移的 LLM 调用点）
+> 2. **R4.2-R4.8** SDK 编排器深化（handoffs/guardrails/tracing/FunctionTool/MockRuntime/composition/测试）
+> 3. **R5.1-R5.5** 旧接口清理 + 流式输出 + 事件总线
+> 4. **AP1** Plan 范式（与 R4 并行，纯 LLM 推理增强，不依赖容器化）
 
 ### ⚡ P1 — 短期（1-2 周）
 
-#### 编排器实现（P5 收尾）
+> **功能优先策略（2026-07-06 调整）**：以下任务均为纯功能实现，不依赖容器化，优先完成。
+
+#### 编排器实现（P5 收尾）✅
 > **优先级**：P1 · **预估**：2-3 天 · **阻塞**：E13、F · **状态**：✅ 已完成（2026-07-06）
 - [x] `aegisos_agents/planning/planner/` Planner 实现（任务分解 → 子任务 DAG）— `planner.py`：4 场景模板（cyber_red/blue/purple/generic），纯算法不调 LLM，输出 `protocol.Plan`
 - [x] `aegisos_agents/planning/orchestrator/` Orchestrator 实现（多 Agent 编排调度）— `orchestrator.py`：整合 Planner + WorkflowEngine + EventBus，`execute(goal, runtime)` 一站式编排
@@ -84,90 +92,42 @@
 - [x] G5 `frontend/src/protocol/types.ts` 补充 cyber 类型映射（ThreatIntel 扩展 + RangeResponse/RedAttackResponse/BlueDefenseResponse/PurpleReviewResponse/TopologyResponse）
 - [x] G6 前端测试：cyber API service 单元测试（12）+ 视图组件渲染测试（9）= 21 测试全通过
 
-### 📅 P2 — 中期（赛事前）
-
-#### H1 — Docker 沙箱靶场
-> **优先级**：P2 · **预估**：3-5 天
-- [ ] H1.1 `infrastructure/delivery/deployment/` Docker Compose 靶场编排
-- [ ] H1.2 攻防工具容器化（nmap/metasploit/zeek/splunk 等）
-- [ ] H1.3 `infrastructure/transport/communication/` 容器间通信
-- [ ] H1.4 靶场安全隔离（永不触真实网络）
-
-#### H2 — 数据层接入
-> **优先级**：P2 · **预估**：2-3 天
-- [ ] H2.1 `data/models/` Neo4j 拓扑图 + ATT&CK 图接入
-- [ ] H2.2 `data/models/` Qdrant 向量库接入
-- [ ] H2.3 `aegisos_agents/memory/vector/` 对接 Qdrant
-- [ ] H2.4 `aegisos_agents/memory/semantic/` 对接 Neo4j ATT&CK 图
-
-#### H5 — 可观测与评测
-> **优先级**：P2 · **预估**：2-3 天
-- [ ] H5.1 `observability/inspect/monitor/` 实时监控实现
-- [ ] H5.2 `observability/inspect/replay/` 攻击链回放实现
-- [ ] H5.3 `observability/measure/benchmark/` 性能基准测试
-- [ ] H5.4 `observability/measure/evaluation/` 5 维度评测（准确率/召回率/延迟/资源/鲁棒性）
-- [ ] H5.5 `observability/present/visualization/` 数据可视化
-
-#### H7 — 部署交付
-> **优先级**：P2 · **预估**：3-5 天
-- [ ] H7.1 `infrastructure/delivery/deployment/docker/Dockerfile.backend` — 后端镜像
-- [ ] H7.2 `infrastructure/delivery/deployment/docker/Dockerfile.frontend` — 前端镜像（多阶段构建：node build → nginx serve）
-- [ ] H7.3 `infrastructure/delivery/deployment/docker/docker-compose.yml` — 一键编排（backend + frontend + nginx + db）
-- [ ] H7.4 `infrastructure/delivery/deployment/nginx/nginx.conf` — Nginx 反向代理配置
-  - 前端静态文件服务（`dist/`）
-  - `/api/` → backend:8000 REST 代理
-  - `/ws/` → backend:8000 WebSocket 升级代理
-  - gzip 压缩 + 连接超时
-- [ ] H7.5 `infrastructure/delivery/deployment/nginx/conf.d/aegisos.conf` — 站点配置
-- [ ] H7.6 `infrastructure/nodes/edge/` 端侧节点实现
-- [ ] H7.7 `infrastructure/nodes/cloud/` 云侧节点实现
-- [ ] H7.8 端边云协同联调
-- [ ] H7.9 `tooling/scripts/` 靶场编排脚本
-
-### 📋 P3 — 长期 / 技术债
-
-#### Agent 框架规范化与替换（详见 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md`）
-> **优先级**：P3 · **预估**：5-7 天 · **收益**：代码量 -70%，新增 checkpoint/流式/100+模型兼容
-
-**阶段 1: Protocol → Pydantic**（1 域 / ≤8 文件）
-- [ ] R1.1 `protocol/cyber.py` → Pydantic BaseModel（删除手写 `to_dict()` / `from_dict()`）
-- [ ] R1.2 `protocol/message.py` → Pydantic
-- [ ] R1.3 `protocol/graph.py` → Pydantic
-- [ ] R1.4 `protocol/agent.py` / `event.py` / `scheduler.py` / `memory.py` → Pydantic
-- [ ] R1.5 `protocol/tool.py` / `heartbeat.py` / `sync.py` → Pydantic
-- [ ] R1.6 更新所有引用：`asdict()` → `model_dump()` / `from_dict()` → `model_validate()`
-- [ ] R1.7 59 测试全通过
-
-> **路线变更（2026-07-06）**：原计划用 litellm + instructor + LangGraph，实际已选用 **openai-agents SDK**（S1-S4 ✅ 已完成 11 Agent 结构化输出 + SDK Provider + MockSDKModel + cyber_orchestrator）。以下 R2-R5 更新为基于 SDK 的剩余重构任务。
-
-**阶段 2: LLM Provider 清理 → SDK 单一 Provider**（≤4 文件）✅ 已完成
-- [x] R2.1 ~~安装 `litellm` + `instructor`~~ → 改用 `openai-agents` SDK（已安装）
-- [x] R2.2 `aegisos_agents/tools/llms/sdk_provider.py` — SDK Provider 适配器（实现 `ModelProvider` Protocol + `get_sdk_model()`）
-- [x] R2.3 `aegisos_agents/tools/llms/mock_sdk_model.py` — MockSDKModel（将 MockProvider 适配为 SDK `Model` 接口）
-- [x] R2.4 MockProvider 保留（测试依赖 + MockSDKModel 内部委托）
-- [x] R2.5 ~~删除 openai/anthropic/local Provider~~ → 已由 SDKProvider + MockProvider 双模式替代
-- [x] R2.6 94 测试全通过
-
-**阶段 3: Agent 结构化输出 → SDK output_type**（≤8 文件/批）✅ 已完成
-- [x] R3.1 `aegisos_agents/action/structured_agent.py` — StructuredAgent 基类（封装 SDK Agent + Runner.run_sync + output_type）
-- [x] R3.2 `aegisos_agents/action/output_types.py` — 11 个 Agent 的 Pydantic output_type 定义
-- [x] R3.3 批 1（红队 4 Agent）：recon / vuln_correlator / exploit_planner / lateral_move → 全部迁移到 StructuredAgent
-- [x] R3.4 批 2（蓝队 5 + 紫队 2 Agent）：detector / triage / threat_hunt / ir_planner / forensics / critic / reviewer → 全部迁移
-- [x] R3.5 每个 Agent 的 `json.loads` + `try/except` 已全部删除，由 SDK output_type 替代
-- [x] R3.6 94 测试全通过
-
-**阶段 4: SDK 编排器深化**（≤6 文件）
+#### R4 — SDK 编排器深化（功能优先）
+> **优先级**：P1 · **预估**：5 天 · **状态**：🔲 待做（功能优先，不依赖容器化）
 > 当前 `cyber_orchestrator.py` 已用 SDK Agent，但编排是手动 `_run()` 串联，未用 SDK 原生 handoffs/guardrails/tracing。
 >
-> **执行路线图**（R4 8 项 → R5 5 项，共 13 项，预估 7 天）：
+> **执行路线图**（R4 8 项，预估 5 天）：
 > ```
 > R4.1 neuro_symbolic→SDK(P0) ──┐
->                               ├→ R4.2 handoffs ──┬→ R4.3 guardrails ──→ R4.4 tracing ──→ R4.5 FunctionTool
->                               │                    │                                      │
+>                               ├→ R4.2 handoffs ──┬→ R4.3 guardrails ──→ R4.4 tracing ──→ R4.5 FunctionTool(*)
+>                               │                    │
 >                               │                    └→ R4.6 MockRuntime ──→ R4.7 composition ──→ R4.8 测试
->                               │
->                               └→ R5.1 base.py 清理 ──→ R5.2 model_router 简化 ──→ R5.3 流式输出 ──→ R5.4 事件总线 ──→ R5.5 测试
 > ```
+> (*) R4.5 FunctionTool 的沙箱执行依赖 H1，但工具注册接口可先实现
+
+- [ ] **R4.1** `perception/reasoning/neuro_symbolic.py` 迁移到 SDK（**P0**，0.5 天）
+- [ ] **R4.2** `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动串联（1 天）
+- [ ] **R4.3** `cyber_orchestrator.py` 用 SDK `output_guardrails` 实现紫队校验闭环（0.5 天）
+- [ ] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）
+- [ ] **R4.5** `cyber_orchestrator.py` 用 SDK `FunctionTool` 注册攻防工具（0.5 天）
+- [ ] **R4.6** `backend/mocks/runtime.py` MockRuntime 替换为 CyberOrchestrator 调用（0.5 天）
+- [ ] **R4.7** `backend/core/composition.py` 注入 CyberOrchestrator（0.5 天）
+- [ ] **R4.8** 测试全通过
+
+#### R5 — 旧接口清理 + 流式输出 + 事件总线（功能优先）
+> **优先级**：P1 · **预估**：3 天 · **状态**：🔲 待做（功能优先，不依赖容器化）
+> SDK 迁移后旧接口仅被 MockProvider 残留使用，可安全清理。
+
+- [ ] **R5.1** `aegisos_agents/tools/llms/base.py` 清理旧接口（0.5 天）
+- [ ] **R5.2** `aegisos_agents/tools/llms/model_router.py` 简化（0.5 天）
+- [ ] **R5.3** SDK `Runner.run_streamed()` → SSE → 前端实时展示（1 天）
+- [ ] **R5.4** 事件总线实现（0.5 天）
+- [ ] **R5.5** 测试全通过
+
+<details>
+<summary>📖 R4-R5 详细方案（点击展开）</summary>
+
+**阶段 4: SDK 编排器深化**（≤6 文件）
 
 > **SDK 能力点对照**（本阶段使用的 SDK API）：
 > | SDK API | 用途 | 当前替代物 |
@@ -244,10 +204,9 @@
   - 真实模式：`CyberOrchestrator(model=SDKProvider().get_sdk_model())`
   - 测试：后端集成测试全通过
 
-- [ ] **R4.8** 94 测试全通过
+- [ ] **R4.8** 测试全通过
 
 **阶段 5: 旧接口层清理 + 流式输出 + 事件总线**（≤4 文件）
-> SDK 迁移后旧接口仅被 MockProvider 残留使用，可安全清理。
 
 - [ ] **R5.1** `aegisos_agents/tools/llms/base.py` 清理旧接口（0.5 天）
   - 删除 `LLMRequest`/`LLMResponse`/`ModelProvider` Protocol（R4.1 完成后无消费者）
@@ -272,7 +231,120 @@
   - 或用 `blinker` 库实现发布/订阅，`AgentHooks` 作为事件源
   - 替代 MockRuntime 中的手动事件分发
 
-- [ ] **R5.5** 94 测试全通过
+- [ ] **R5.5** 测试全通过
+
+</details>
+
+#### AP1 — Plan 范式（功能优先，不依赖容器化）
+> **优先级**：P1 · **预估**：2-3 天 · **依赖**：R4（可并行）· **状态**：🔲 待做
+> Plan 范式为纯 LLM 推理增强，不依赖 Docker 沙箱，可独立实现。
+
+- [ ] AP1.1 `perception/reasoning/strategies/plan_mode.py` — Plan 行动模式实现
+  - 接口：`plan(task, context) -> PlanResult`（高层策略 + 步骤分解）
+  - 用 SDK `Agent` + 两阶段 prompt：阶段 1「分析目标 + 生成策略」，阶段 2「按策略逐步生成详细产出」
+  - 可复用 `StructuredAgent` 基类，阶段 1 output_type 为 `PlanResult`（策略 + 步骤列表），阶段 2 output_type 为各 Agent 原有 output_type
+- [ ] AP1.2 `exploit_planner` 接入 Plan 范式 — 先规划攻击策略（入口资产、攻击路径、目标），再生成详细 AttackChain
+- [ ] AP1.3 `ir_planner` 接入 Plan 范式 — 先规划多阶段响应策略（隔离→阻断→诱饵→监控），再生成详细 DefenseAction 列表
+- [ ] AP1.4 `lateral_move` 接入 Plan 范式 — 先规划移动策略（可达性分析 + 优先路径），再生成 AttackStep 列表
+- [ ] AP1.5 测试：Plan 范式模式下 3 个 Agent 输出质量提升验证
+
+### 📅 P2 — 中期（赛事前）
+
+> **功能优先策略（2026-07-06 调整）**：以下任务均为功能实现，不依赖容器化。容器化/部署任务（H1 沙箱靶场、H7 部署交付、ReAct 范式）已后移至 P3。
+
+#### H2 — 数据层接入
+> **优先级**：P2 · **预估**：2-3 天 · **状态**：🔲 待做（功能优先）
+- [ ] H2.1 `data/models/` Neo4j 拓扑图 + ATT&CK 图接入
+- [ ] H2.2 `data/models/` Qdrant 向量库接入
+- [ ] H2.3 `aegisos_agents/memory/vector/` 对接 Qdrant
+- [ ] H2.4 `aegisos_agents/memory/semantic/` 对接 Neo4j ATT&CK 图
+
+#### H5 — 可观测与评测
+> **优先级**：P2 · **预估**：2-3 天 · **状态**：🔲 待做（功能优先）
+- [ ] H5.1 `observability/inspect/monitor/` 实时监控实现
+- [ ] H5.2 `observability/inspect/replay/` 攻击链回放实现
+- [ ] H5.3 `observability/measure/benchmark/` 性能基准测试
+- [ ] H5.4 `observability/measure/evaluation/` 5 维度评测（准确率/召回率/延迟/资源/鲁棒性）
+- [ ] H5.5 `observability/present/visualization/` 数据可视化
+
+#### 记忆子系统补全（7 个空模块）
+> **优先级**：P2 · **预估**：2 天 · **状态**：🔲 待做（功能优先）
+- [ ] `aegisos_agents/memory/archive/` 归档记忆
+- [ ] `aegisos_agents/memory/cache/` 缓存记忆
+- [ ] `aegisos_agents/memory/checkpoint/` 检查点
+- [ ] `aegisos_agents/memory/reflection/` 反思记忆
+- [ ] `aegisos_agents/memory/retrieval/` 检索
+- [ ] `aegisos_agents/memory/snapshot/` 快照
+- [ ] `aegisos_agents/memory/sync/` 同步
+
+#### 感知层补全
+> **优先级**：P2 · **预估**：1-2 天 · **状态**：🔲 待做（功能优先）
+- [ ] `aegisos_agents/perception/context/` 上下文管理
+- [ ] `aegisos_agents/perception/reflection/` 反思
+
+#### 工具层补全
+> **优先级**：P2 · **预估**：1 天 · **状态**：🔲 待做（功能优先）
+- [ ] `aegisos_agents/tools/prompts/` Prompt 管理
+- [ ] `aegisos_agents/tools/runtime/` 工具运行时
+
+### 📋 P3 — 长期 / 容器化与部署
+
+> **容器化后移策略（2026-07-06 调整）**：所有容器化/部署相关任务后移至此处，等功能实现全部完成后再进行。
+
+#### H1 — Docker 沙箱靶场
+> **优先级**：P3 · **预估**：3-5 天 · **状态**：🔲 后移（原 P2）
+- [ ] H1.1 `infrastructure/delivery/deployment/` Docker Compose 靶场编排
+- [ ] H1.2 攻防工具容器化（nmap/metasploit/zeek/splunk 等）
+- [ ] H1.3 `infrastructure/transport/communication/` 容器间通信
+- [ ] H1.4 靶场安全隔离（永不触真实网络）
+
+#### H7 — 部署交付
+> **优先级**：P3 · **预估**：3-5 天 · **状态**：🔲 后移（原 P2）
+- [ ] H7.1 `infrastructure/delivery/deployment/docker/Dockerfile.backend` — 后端镜像
+- [ ] H7.2 `infrastructure/delivery/deployment/docker/Dockerfile.frontend` — 前端镜像（多阶段构建：node build → nginx serve）
+- [ ] H7.3 `infrastructure/delivery/deployment/docker/docker-compose.yml` — 一键编排（backend + frontend + nginx + db）
+- [ ] H7.4 `infrastructure/delivery/deployment/nginx/nginx.conf` — Nginx 反向代理配置
+  - 前端静态文件服务（`dist/`）
+  - `/api/` → backend:8000 REST 代理
+  - `/ws/` → backend:8000 WebSocket 升级代理
+  - gzip 压缩 + 连接超时
+- [ ] H7.5 `infrastructure/delivery/deployment/nginx/conf.d/aegisos.conf` — 站点配置
+- [ ] H7.6 `infrastructure/nodes/edge/` 端侧节点实现
+- [ ] H7.7 `infrastructure/nodes/cloud/` 云侧节点实现
+- [ ] H7.8 端边云协同联调
+- [ ] H7.9 `tooling/scripts/` 靶场编排脚本
+
+#### Agent 框架规范化与替换（详见 `docs/RESEARCH_AGENT_FRAMEWORK_REFACTOR.md`）
+> **优先级**：P3 · **预估**：5-7 天 · **收益**：代码量 -70%，新增 checkpoint/流式/100+模型兼容
+
+**阶段 1: Protocol → Pydantic**（1 域 / ≤8 文件）
+- [ ] R1.1 `protocol/cyber.py` → Pydantic BaseModel（删除手写 `to_dict()` / `from_dict()`）
+- [ ] R1.2 `protocol/message.py` → Pydantic
+- [ ] R1.3 `protocol/graph.py` → Pydantic
+- [ ] R1.4 `protocol/agent.py` / `event.py` / `scheduler.py` / `memory.py` → Pydantic
+- [ ] R1.5 `protocol/tool.py` / `heartbeat.py` / `sync.py` → Pydantic
+- [ ] R1.6 更新所有引用：`asdict()` → `model_dump()` / `from_dict()` → `model_validate()`
+- [ ] R1.7 59 测试全通过
+
+> **路线变更（2026-07-06）**：原计划用 litellm + instructor + LangGraph，实际已选用 **openai-agents SDK**（S1-S4 ✅ 已完成 11 Agent 结构化输出 + SDK Provider + MockSDKModel + cyber_orchestrator）。以下 R2-R5 更新为基于 SDK 的剩余重构任务。
+
+**阶段 2: LLM Provider 清理 → SDK 单一 Provider**（≤4 文件）✅ 已完成
+- [x] R2.1 ~~安装 `litellm` + `instructor`~~ → 改用 `openai-agents` SDK（已安装）
+- [x] R2.2 `aegisos_agents/tools/llms/sdk_provider.py` — SDK Provider 适配器（实现 `ModelProvider` Protocol + `get_sdk_model()`）
+- [x] R2.3 `aegisos_agents/tools/llms/mock_sdk_model.py` — MockSDKModel（将 MockProvider 适配为 SDK `Model` 接口）
+- [x] R2.4 MockProvider 保留（测试依赖 + MockSDKModel 内部委托）
+- [x] R2.5 ~~删除 openai/anthropic/local Provider~~ → 已由 SDKProvider + MockProvider 双模式替代
+- [x] R2.6 94 测试全通过
+
+**阶段 3: Agent 结构化输出 → SDK output_type**（≤8 文件/批）✅ 已完成
+- [x] R3.1 `aegisos_agents/action/structured_agent.py` — StructuredAgent 基类（封装 SDK Agent + Runner.run_sync + output_type）
+- [x] R3.2 `aegisos_agents/action/output_types.py` — 11 个 Agent 的 Pydantic output_type 定义
+- [x] R3.3 批 1（红队 4 Agent）：recon / vuln_correlator / exploit_planner / lateral_move → 全部迁移到 StructuredAgent
+- [x] R3.4 批 2（蓝队 5 + 紫队 2 Agent）：detector / triage / threat_hunt / ir_planner / forensics / critic / reviewer → 全部迁移
+- [x] R3.5 每个 Agent 的 `json.loads` + `try/except` 已全部删除，由 SDK output_type 替代
+- [x] R3.6 94 测试全通过
+
+> **阶段 4-5（R4-R5）已上移至 P1**（功能优先，详见 P1 R4/R5 段）
 
 #### openai-agents SDK 重构排查（2026-07-06 全量排查 aegisos_agents/）
 
@@ -407,18 +479,18 @@
 
 **实现优先级与路线图**
 
-> 依赖关系：ReAct 依赖 H1（Docker 沙箱靶场 + 工具注册）先落地；Plan 可独立于 H1 实现（纯 LLM 推理增强）；Ask 依赖前端交互通道（F/G 端点）；Goal 依赖编排器重构（R4.2 handoffs）完成。
+> 依赖关系（2026-07-06 更新）：ReAct 依赖 H1（Docker 沙箱靶场 + 工具注册）先落地，**H1 已后移至 P3**；Plan 可独立于 H1 实现（纯 LLM 推理增强），**已上移至 P1**；Ask 依赖前端交互通道（F/G 端点 ✅ 已完成），**已上移至 P2**；Goal 依赖编排器重构（R4.2 handoffs）完成，**已上移至 P2**。
 
 ```mermaid
 graph LR
-    P[Plan 范式<br/>exploit_planner + ir_planner<br/>+ lateral_move] --> R4[R4.2 handoffs]
-    H1[H1 沙箱靶场] --> R[ReAct 范式<br/>recon + vuln_correlator<br/>+ detector + threat_hunt + forensics]
-    R4 --> G[Goal 范式<br/>CyberOrchestrator 递归分解]
-    F[F 端点] --> A[Ask 范式<br/>ir_planner HITL]
+    P[Plan 范式 P1<br/>exploit_planner + ir_planner<br/>+ lateral_move] --> R4[R4.2 handoffs P1]
+    R4 --> G[Goal 范式 P2<br/>CyberOrchestrator 递归分解]
+    F[F/G 端点 ✅] --> A[Ask 范式 P2<br/>ir_planner HITL]
     G --> A
+    H1[H1 沙箱靶场 P3] --> R[ReAct 范式 P3<br/>recon + vuln_correlator<br/>+ detector + threat_hunt + forensics]
 ```
 
-**P1 — Plan 范式**（与 R4 并行，2-3 天）
+**P1 — Plan 范式**（与 R4 并行，2-3 天）✅ 已上移至 P1 段
 - [ ] AP1.1 `perception/reasoning/strategies/plan_mode.py` — Plan 行动模式实现
   - 接口：`plan(task, context) -> PlanResult`（高层策略 + 步骤分解）
   - 用 SDK `Agent` + 两阶段 prompt：阶段 1「分析目标 + 生成策略」，阶段 2「按策略逐步生成详细产出」
@@ -428,7 +500,7 @@ graph LR
 - [ ] AP1.4 `lateral_move` 接入 Plan 范式 — 先规划移动策略（可达性分析 + 优先路径），再生成 AttackStep 列表
 - [ ] AP1.5 测试：Plan 范式模式下 3 个 Agent 输出质量提升验证
 
-**P2 — ReAct 范式**（依赖 H1 沙箱完成，3-4 天）
+**P3 — ReAct 范式**（依赖 H1 沙箱完成，3-4 天）· **已后移至 P3**（容器化后）
 - [ ] AP2.1 `perception/reasoning/strategies/react_mode.py` — ReAct 行动模式实现
   - 接口：`react(task, tools, max_iterations) -> ReActResult`
   - 循环：`think(prompt) → act(ToolCall) → observe(ToolResult) → think(...)` 直到完成或达 max_iterations
@@ -441,7 +513,7 @@ graph LR
 - [ ] AP2.6 `forensics` 接入 ReAct — LLM 自主调用取证工具（内存分析/磁盘分析/日志关联），迭代构建取证报告
 - [ ] AP2.7 测试：ReAct 模式下 5 个 Agent 工具调用循环验证
 
-**P2 — Goal 范式**（依赖 R4.2 handoffs 完成，2 天）
+**P2 — Goal 范式**（依赖 R4.2 handoffs 完成，2 天）· **功能优先，不依赖容器化**
 - [ ] AP3.1 `perception/reasoning/strategies/goal_mode.py` — Goal 行动模式实现
   - 接口：`decompose(goal, depth) -> list[SubGoal]`，`solve(subgoal) -> Result`，失败时 `retry(alternative)`
   - 递归分解：高层目标 → 子目标列表 → 每个子目标递归分解或直接执行
@@ -451,7 +523,7 @@ graph LR
 - [ ] AP3.3 `exploit_planner` 支持 Goal 递归 — 复杂攻击目标分解为多阶段子目标
 - [ ] AP3.4 测试：Goal 范式下编排器递归分解 + 失败重试验证
 
-**P2 — Ask 范式**（依赖 F/G 端点 + 前端交互通道，1-2 天）
+**P2 — Ask 范式**（依赖 F/G 端点 ✅ + 前端交互通道，1-2 天）· **功能优先，不依赖容器化**
 - [ ] AP4.1 `perception/reasoning/strategies/ask_mode.py` — Ask 行动模式实现
   - 接口：`ask(question, options) -> HumanResponse`
   - Agent 检测到不确定/需人工决策时暂停，经 EventBus 发布 `HumanInputRequired` 事件
@@ -475,24 +547,7 @@ graph LR
 
 > **实现策略**：4 种范式统一放在 `aegisos_agents/perception/reasoning/strategies/` 目录（当前仅 AGENT.md 规划，无代码）。每个范式为独立模块，各 Agent 通过 `StructuredAgent` 的子类 mixin 或装饰器模式接入。范式之间可组合（如 exploit_planner 可同时用 Plan + ReAct：先规划策略，再 ReAct 逐步执行工具调用）。
 
-#### 记忆子系统补全（10 个空模块）
-- [ ] `aegisos_agents/memory/archive/` 归档记忆
-- [ ] `aegisos_agents/memory/cache/` 缓存记忆
-- [ ] `aegisos_agents/memory/checkpoint/` 检查点
-- [ ] `aegisos_agents/memory/reflection/` 反思记忆
-- [ ] `aegisos_agents/memory/retrieval/` 检索
-- [ ] `aegisos_agents/memory/snapshot/` 快照
-- [ ] `aegisos_agents/memory/sync/` 同步
-
-#### 感知层补全
-- [ ] `aegisos_agents/perception/context/` 上下文管理
-- [ ] `aegisos_agents/perception/reflection/` 反思
-
-#### 工具层补全
-- [ ] `aegisos_agents/tools/prompts/` Prompt 管理
-- [ ] `aegisos_agents/tools/runtime/` 工具运行时
-
-#### 工程支撑
+#### 工程支撑（部署相关，P3）
 - [ ] `tooling/scripts/check_no_broadcast.py` 低熵全广播检测（C4）
 - [ ] CI/CD 流水线（GitHub Actions）
 - [ ] `tooling/configs/environments/` 多环境覆盖（dev/staging/prod）
@@ -831,6 +886,7 @@ P0 项目初始化 → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler 
 
 | 日期 | 变更 | 提交 |
 |------|------|------|
+| 2026-07-06 | **计划优先级调整**：容器化/部署任务（H1 沙箱靶场、H7 部署交付、AP2 ReAct 范式）全部后移至 P3；功能实现任务（R4-R5 SDK 深化、AP1 Plan 范式）上移至 P1；H2/H5/AP3 Goal/AP4 Ask/记忆感知工具补全上移至 P2 | （本次提交） |
 | 2026-07-06 | 全量排查 `aegisos_agents/` SDK 重构点：11 Agent ✅ 已迁移 · `neuro_symbolic.py` P0 待迁移 · R4 编排器深化（handoffs/guardrails/tracing）· R5 旧接口清理 · 更新 R2-R5 路线为 SDK 方案 | （本次提交） |
 | 2026-07-06 | B3 记忆接入 runtime（4 存储 + MemoryStore 闭环，+26 测试）+ E13 场景 1 端到端（+5 测试），90 passed | （本次提交） |
 | 2026-07-05 | 整合 `developer/roadmap/`（P0-P7 阶段详情 + 进度 + 赛事对齐）到 plan.md 附录 D | （本次提交） |

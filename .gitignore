@@ -42,4 +42,5 @@ frontend/test-results/
 # --- Environment files（保留 .env.example，忽略实际 .env）---
 .env
 tooling/configs/.env
+frontend/.env
 frontend/.env.local

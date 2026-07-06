@@ -1,6 +1,6 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 MockSDKModel——将项目 MockProvider 适配为 SDK Model 接口，让 Runner.run 在测试中走预置响应
+# changelog: 2026-07-06 修复 Mock 模式下占位文本导致 SDK output_type 校验失败——自动生成 output_type 默认 JSON 实例
 """Mock SDK Model —— 将项目 MockProvider 适配为 openai-agents SDK 的 Model 接口。
 
 SDK 的 ``Runner.run()`` 需要一个 ``Model`` 实例发起 LLM 调用。本模块将项目的
@@ -112,12 +112,30 @@ class MockSDKModel(Model):
                 system_prompt=system_instructions or "",
             )
         )
+
+        # 当 Mock 返回占位文本（如 "[mock] ..."）且有结构化输出 schema 时，
+        # 自动生成 output_type 的默认 JSON 实例，避免 SDK validate_json 失败。
+        response_text = llm_resp.text
+        if response_text.startswith("[mock]") and output_schema is not None and not output_schema.is_plain_text():
+            try:
+                output_type = output_schema.output_type
+                # 构造 output_type 的默认实例（使用 model_construct 跳过验证）
+                if hasattr(output_type, "model_construct"):
+                    instance = output_type.model_construct()
+                else:
+                    instance = output_type()
+                # 生成符合 output_schema 包装格式的 JSON
+                json_str = output_schema._type_adapter.dump_json(instance).decode("utf-8")
+                response_text = json_str
+            except Exception:
+                # 回退：生成最小有效 JSON（空对象）
+                response_text = "{}"
         # 构造合法的 SDK ModelResponse：output 为 ResponseOutputMessage
         # 含 id/content/role/status/type 字段（SDK 严格校验）
         import uuid
 
         text_output = ResponseOutputText(
-            text=llm_resp.text,
+            text=response_text,
             type="output_text",
             annotations=[],  # SDK 要求字段
         )
@@ -132,7 +150,7 @@ class MockSDKModel(Model):
 
         return ModelResponse(
             output=[message],
-            usage=Usage(input_tokens=len(prompt_text) // 4, output_tokens=len(llm_resp.text) // 4),
+            usage=Usage(input_tokens=len(prompt_text) // 4, output_tokens=len(response_text) // 4),
             response_id=f"resp_{uuid.uuid4().hex[:24]}",
         )
 

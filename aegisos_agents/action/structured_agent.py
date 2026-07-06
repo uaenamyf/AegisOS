@@ -1,6 +1,6 @@
 # date: 2026-07-06
 # dev: myf
-# changelog: 新建 StructuredAgent 基类——封装 SDK Agent + Runner.run_sync + output_type，统一 Mock/真实 API 双模式结构化输出
+# changelog: 2026-07-06 修复 _run 在 FastAPI 事件循环中调用 Runner.run_sync 的 RuntimeError——自动检测事件循环并投递到线程池隔离执行
 """结构化 Agent 基类 —— 封装 openai-agents SDK 的 Agent + Runner + output_type。
 
 本模块提供 :class:`StructuredAgent`，将 SDK 的 ``Agent(output_type=Pydantic)``
@@ -29,6 +29,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from typing import Generic, TypeVar
 
 from agents import Agent, Model, ModelProvider, Runner
@@ -83,7 +85,7 @@ class StructuredAgent(Generic[T]):
             model_settings=ModelSettings(temperature=self.TEMPERATURE),
         )
 
-    def _run(self, prompt: str) -> T:
+    def _run(self, prompt: str, timeout: float = 120.0) -> T:
         """执行一次结构化 LLM 调用，返回 ``OUTPUT_TYPE`` 实例。
 
         封装 ``Runner.run_sync``，SDK 自动处理：
@@ -91,14 +93,40 @@ class StructuredAgent(Generic[T]):
             - 用 ``output_type``（Pydantic）解析响应
             - 失败时自动重试（可配置）
 
+        当检测到运行中的事件循环（如 FastAPI 异步上下文）时，
+        自动将 ``Runner.run_sync`` 投递到线程池执行，避免
+        ``asyncio.run()`` 嵌套冲突。
+
         Args:
             prompt: 用户 prompt 文本。
+            timeout: 线程池模式的超时秒数（仅在线程池模式下生效）。
 
         Returns:
             ``OUTPUT_TYPE`` 类型的结构化输出实例。
+
+        Raises:
+            RuntimeError: 在线程池模式下等待超时时抛出。
         """
-        result = Runner.run_sync(self._sdk_agent, prompt)
-        return result.final_output  # type: ignore[no-any-return]
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # 无运行中的事件循环 → 直接同步执行
+            result = Runner.run_sync(self._sdk_agent, prompt)
+            return result.final_output  # type: ignore[no-any-return]
+
+        # 事件循环已运行（FastAPI / uvicorn）→ 线程池隔离执行
+        def _sync_call() -> T:
+            result = Runner.run_sync(self._sdk_agent, prompt)
+            return result.final_output  # type: ignore[no-any-return]
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_sync_call)
+            try:
+                return future.result(timeout=timeout)
+            except FutureTimeoutError:
+                raise RuntimeError(
+                    f"StructuredAgent._run timed out after {timeout}s for prompt: {prompt[:200]}"
+                )
 
 
 def create_sdk_model_provider(
