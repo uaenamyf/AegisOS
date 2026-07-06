@@ -2,6 +2,83 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [R4.8] 2026-07-09 全量测试通过，R4 阶段完成（208 passed, 0 failed）
+
+### R4.8 — R4 阶段全部 8 项任务完成
+- R4.1 ✅ 神经符号 Agent SDK 迁移（4 测试）
+- R4.2 ✅ SDK Handoffs 链式编排（9 测试）
+- R4.3 ✅ SDK output_guardrails 紫队闭环（5 测试）
+- R4.4 ✅ SDK tracing + AgentHooks（22 测试）
+- R4.5 ✅ SDK FunctionTool 攻防工具注册（30 测试）
+- R4.6 ✅ MockRuntime 委托 CyberOrchestrator
+- R4.7 ✅ composition.py 注入共享编排器
+- R4.8 ✅ 全量 208 测试全通过
+
+**SDK 迁移完成度：11/11 Agent 全部走 SDK `StructuredAgent`，红蓝紫三条链全部走 SDK `Agent.handoffs` / `output_guardrails` / `tracing` / `AgentHooks` / `FunctionTool`。**
+
+## [R4.7] 2026-07-09 composition.py 注入共享 CyberOrchestrator（208 测试通过）
+
+### R4.7 — DI 组合根注入 CyberOrchestrator（完成）
+- `backend/core/composition.py` 重构：
+  - 新增 `_create_orchestrator()` 静态方法：根据 `AEGIS_USE_MOCK` / `OPENAI_API_KEY` 自动选择 Mock / 真实模式
+  - Mock 模式：`CyberOrchestrator(mock=_CyberMockProvider())` — SDK Agent 走预置响应表
+  - 真实模式：`CyberOrchestrator(model=SDKProvider().get_sdk_model())` — SDK Agent 调真实 LLM
+  - `Composition.orchestrator` 属性：全局共享编排器实例
+  - `MockRuntime(orchestrator=self.orchestrator)` — 注入共享实例，避免重复创建
+  - `CyberDefenseService(orchestrator=self.orchestrator)` — 同一编排器，保证一致性
+- `backend/mocks/runtime.py` 修改：
+  - `MockRuntime.__init__` 新增 `orchestrator` 可选参数，默认创建新实例
+  - 外部注入时使用传入实例，实现共享
+- 208 测试全通过（无回归）
+- **变更文件**：`backend/core/composition.py` + `backend/mocks/runtime.py`
+
+## [R4.6] 2026-07-09 MockRuntime 替换为 CyberOrchestrator（208 测试通过）
+
+### R4.6 — MockRuntime 委托 CyberOrchestrator（完成）
+- `backend/mocks/runtime.py` 重构：
+  - 删除 85 行手写 `_cyber_dispatch_map()` 中的链式 handler（red_chain/blue_chain/purple_review）
+  - `MockRuntime.__init__` 创建 `self._orchestrator = CyberOrchestrator(mock=self._provider)`，链式调用委托编排器
+  - 保留 `_single_agent_dispatch()` 用于非链式单 Agent 调用（recon/detector/vuln_correlator 等）
+  - 新增 `_wrap()` / `_serialize_red()` / `_serialize_blue()` 静态方法
+  - 接口签名不变（`submit` / `run` / `stop` / `heartbeat`），向后兼容
+- `backend/services/cyber_defense_service.py` 修复：
+  - `__init__` 默认创建 `CyberOrchestrator(mock=_CyberMockProvider())`，注入攻防 Mock 响应表
+  - 修复前：`CyberOrchestrator()` 无 Mock 注入，SDK Agent 返回空结果导致端点测试失败
+- 208 测试全通过（含 12 端点测试 + 22 tracing + 30 tools + 144 既有）
+- **变更文件**：`backend/mocks/runtime.py` + `backend/services/cyber_defense_service.py`
+
+## [R4.5] 2026-07-09 SDK FunctionTool 攻防工具注册（30 测试通过）
+
+### R4.5 — SDK FunctionTool 注册攻防工具（完成）
+- 新建 `aegisos_agents/tools/cyber_tools.py`：
+  - 6 个 SDK `FunctionTool`：红队（nmap_scan / metasploit_exploit / lateral_move_exec）+ 蓝队（query_attck_kb / query_cve_db / correlate_alerts）
+  - 6 个 async 回调函数返回 Mock 结构化数据
+  - 6 个 JSON Schema 定义参数结构
+  - 工厂函数：`create_red_team_tools()` / `create_blue_team_tools()` / `create_all_cyber_tools()`
+  - `needs_approval=True` 用于高危工具（metasploit_exploit, lateral_move_exec）
+- `CyberOrchestrator` 集成：
+  - `install_red/blue/all_tools()` — 将工具注册到 Agent 的 `Agent.tools`
+  - `uninstall_all_tools()` / `get_agent_tools()` / `get_high_risk_tools()`
+- 新建 `aegisos_agents/tools/__init__.py`（包初始化）
+- 30 测试通过（4 creation + 5 schema + 4 approval + 7 callback + 10 installation）
+- **变更文件**：`aegisos_agents/tools/cyber_tools.py` + `aegisos_agents/tools/__init__.py` + `aegisos_agents/planning/orchestrator/cyber_orchestrator.py` + 新增 `tests/aegisos_agents/planning/test_cyber_function_tools.py`
+
+## [R4.4] 2026-07-09 SDK tracing + AgentHooks（22 测试通过）
+
+### R4.4 — SDK tracing + AgentHooks 替代手动日志（完成）
+- 新建 `observability/inspect/monitor/tracing/` 包：
+  - `processor.py`：`CyberTraceProcessor(TracingProcessor)` — 采集 trace/span 数据到内存（`CyberTraceData` + `CyberSpanData`）
+  - `hooks.py`：`CyberAgentHooks(AgentHooksBase)` — 7 个 async 回调记录 Agent 生命周期事件（`HookEvent`）
+  - `__init__.py`：导出 5 个类
+- `CyberOrchestrator` 集成：
+  - `enable_tracing()` / `disable_tracing()` — 注册/移除 `CyberTraceProcessor`
+  - `install_hooks()` — 为 9 个 Agent 安装 `CyberAgentHooks`
+  - `get_trace_data()` / `get_trace_json()` / `get_hooks_events()` — 获取采集结果
+  - `run_red_chain_traced()` / `run_blue_chain_traced()` / `run_purple_review_traced()` — 在 `trace()` 上下文管理器中执行编排
+- 重要发现：SDK `Trace` 对象用 `.name` 而非 `.workflow_name` 获取 workflow 名称
+- 22 测试通过（6 processor + 5 hooks + 11 orchestrator）
+- **变更文件**：`observability/inspect/monitor/tracing/processor.py` + `hooks.py` + `__init__.py` + `aegisos_agents/planning/orchestrator/cyber_orchestrator.py` + 新增 `tests/aegisos_agents/planning/test_cyber_tracing.py`
+
 ## [R4.1-R4.3] 2026-07-08 SDK 编排深化（neuro_symbolic 迁移 + handoffs + guardrails，18 测试通过）
 
 ### R4.1 — neuro_symbolic 迁移到 SDK StructuredAgent（P0 完成）

@@ -20,6 +20,7 @@ from typing import Any
 
 from aegisos_agents.memory.memory_store import MemoryStore
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
+from backend.mocks.cyber_provider import _CyberMockProvider
 from protocol.cyber import AttackChain, ResponsePlan, ThreatIntel
 
 
@@ -48,7 +49,7 @@ class CyberDefenseService:
             orchestrator: 编排器实例；None 时创建默认 Mock 模式实例。
             memory: 记忆存储；None 时创建临时 MemoryStore。
         """
-        self._orchestrator = orchestrator or CyberOrchestrator()
+        self._orchestrator = orchestrator or CyberOrchestrator(mock=_CyberMockProvider())
         self._memory = memory or MemoryStore()
         self._ranges: dict[str, dict[str, Any]] = {}
         self._intel_db = self._seed_intel_db()

@@ -22,6 +22,7 @@ from backend.mocks import (
     MockMemoryAPI,
     MockRuntime,
 )
+from backend.mocks.cyber_provider import _CyberMockProvider
 from backend.repositories.database import (
     configure_session_factory,
     create_engine,
@@ -40,6 +41,7 @@ from backend.services.graph_service import GraphService
 from backend.services.memory_service import MemoryService
 from backend.services.session_service import SessionService
 from backend.services.task_service import TaskService
+from aegisos_agents.planning.orchestrator import CyberOrchestrator
 
 
 class Composition:
@@ -56,6 +58,7 @@ class Composition:
         task_repo: 任务仓储。
         agent_registry: Agent 注册表（mock）。
         runtime: Agent 运行时（mock，含攻防 Agent 调用）。
+        orchestrator: SDK 攻防编排器（红蓝紫三条链），Mock / 真实模式共享实例。
         memory_api: 记忆 API（mock）。
         execution_api: 工具执行 API（mock）。
         event_bus: 事件总线（mock）。
@@ -79,10 +82,15 @@ class Composition:
 
         # --- Mock agents.api 实现（agents P5 未就绪） ---
         self.agent_registry = MockAgentRegistry()
-        self.runtime = MockRuntime()
         self.memory_api = MockMemoryAPI()
         self.execution_api = MockExecutionAPI()
         self.event_bus = MockEventBusAPI()
+
+        # R4.7: 创建共享 CyberOrchestrator（Mock / 真实模式自动切换）
+        self.orchestrator = self._create_orchestrator()
+
+        # MockRuntime 注入共享 orchestrator，避免创建重复实例
+        self.runtime = MockRuntime(orchestrator=self.orchestrator)
 
         # --- 服务层 ---
         self.session_service = SessionService(self.session_repo)
@@ -90,13 +98,40 @@ class Composition:
         self.agent_service = AgentService(self.agent_registry, self.runtime)
         self.memory_service = MemoryService(self.memory_api)
         self.graph_service = GraphService(self.event_bus)
-        # date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 注入 CyberDefenseService
-        self.cyber_defense_service = CyberDefenseService()
+        # R4.7: CyberDefenseService 注入共享 orchestrator
+        self.cyber_defense_service = CyberDefenseService(orchestrator=self.orchestrator)
 
         # --- DI 端口（agents.api.ports）由后端实现 ---
         self.persistence_port = PersistencePortImpl(self.task_repo)
         self.session_port = SessionPortImpl(self.session_repo)
         self.task_update_port = TaskUpdatePortImpl(self.task_repo)
+
+    @staticmethod
+    def _create_orchestrator() -> CyberOrchestrator:
+        """创建 CyberOrchestrator 实例，根据运行模式自动选择 Mock / 真实 API。
+
+        - Mock 模式（默认）：注入 ``_CyberMockProvider``，SDK Agent 走预置响应表
+        - 真实 API 模式（``AEGIS_USE_MOCK=false`` + ``OPENAI_API_KEY``）：
+          通过 ``SDKProvider.get_sdk_model()`` 注入 SDK ``OpenAIChatCompletionsModel``
+
+        Returns:
+            装配好的 :class:`CyberOrchestrator` 实例。
+        """
+        import os
+
+        use_mock = os.getenv("AEGIS_USE_MOCK", "").lower()
+        has_key = bool(os.getenv("OPENAI_API_KEY"))
+        is_mock = use_mock in ("1", "true", "yes") or not has_key
+
+        if is_mock:
+            return CyberOrchestrator(mock=_CyberMockProvider())
+
+        # 真实 API 模式
+        from aegisos_agents.tools.llms.sdk_provider import SDKProvider
+
+        provider = SDKProvider()
+        model = provider.get_sdk_model()
+        return CyberOrchestrator(model=model)
 
     async def startup(self) -> None:
         """启动阶段：初始化数据库（建表）。"""

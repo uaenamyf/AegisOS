@@ -106,7 +106,7 @@
 > ```
 > (*) R4.5 FunctionTool 的沙箱执行依赖 H1，但工具注册接口可先实现
 >
-> **进度（2026-07-08）**：✅ R4.1 · ✅ R4.2 · ✅ R4.3 · 🔲 R4.4-R4.8
+> **进度（2026-07-09）**：✅ R4.1 · ✅ R4.2 · ✅ R4.3 · ✅ R4.4 · ✅ R4.5 · ✅ R4.6 · ✅ R4.7 · ✅ R4.8
 > - R4.1：`NeuroSymbolicAgent(StructuredAgent[ExploitPlannerResult])`，`_run()` 替代 `provider.complete()`，`validate_chain()` 保留纯函数，未用 guardrail（SDK 抛异常不自动重试，保留手动 `validate_and_fix` 循环）。4 测试通过。
 > - R4.2：添加 `ChainContext` 共享上下文 + `run_red_chain_via_handoffs` / `run_blue_chain_via_handoffs` + `on_handoff` 回调 + handoff 声明式链（mock 回退手动链）。保留手动链为默认路径（固定管道正确架构）。9 测试通过。
 > - R4.3：`create_attack_chain_guardrail()` 返回 `@output_guardrail` + `run_red_chain_with_guardrail()` 手动捕获 `OutputGuardrailTripwireTriggered` + 重试循环 + 反馈注入。SDK guardrail 抛异常不自动重试→手动重试。5 测试通过。
@@ -114,11 +114,11 @@
 - [x] **R4.1** `perception/reasoning/neuro_symbolic.py` 迁移到 SDK（**P0**，0.5 天）✅ 2026-07-08
 - [x] **R4.2** `cyber_orchestrator.py` 用 SDK `Agent.handoffs` 替代手动串联（1 天）✅ 2026-07-08
 - [x] **R4.3** `cyber_orchestrator.py` 用 SDK `output_guardrails` 实现紫队校验闭环（0.5 天）✅ 2026-07-08
-- [ ] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）
-- [ ] **R4.5** `cyber_orchestrator.py` 用 SDK `FunctionTool` 注册攻防工具（0.5 天）
-- [ ] **R4.6** `backend/mocks/runtime.py` MockRuntime 替换为 CyberOrchestrator 调用（0.5 天）
-- [ ] **R4.7** `backend/core/composition.py` 注入 CyberOrchestrator（0.5 天）
-- [ ] **R4.8** 测试全通过
+- [x] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）✅ 2026-07-09
+- [x] **R4.5** `cyber_orchestrator.py` 用 SDK `FunctionTool` 注册攻防工具（0.5 天）✅ 2026-07-09
+- [x] **R4.6** `backend/mocks/runtime.py` MockRuntime 替换为 CyberOrchestrator 调用（0.5 天）✅ 2026-07-09
+- [x] **R4.7** `backend/core/composition.py` 注入 CyberOrchestrator（0.5 天）✅ 2026-07-09
+- [x] **R4.8** 测试全通过 ✅ 2026-07-09（208 passed, 0 failed）
 
 #### R5 — 旧接口清理 + 流式输出 + 事件总线（功能优先）
 > **优先级**：P1 · **预估**：3 天 · **状态**：🔲 待做（功能优先，不依赖容器化）
@@ -186,37 +186,54 @@
   - 测试：5 测试通过（`test_cyber_guardrails.py`）
   - **变更文件**：`cyber_orchestrator.py` + 新增 `test_cyber_guardrails.py`
 
-- [ ] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）
+- [x] **R4.4** `cyber_orchestrator.py` 用 SDK `tracing` + `AgentHooks` 替代手动日志（0.5 天）✅ 2026-07-09
   - 当前：无 tracing，手动 `print` 或无日志
   - 迁移方案：
     - 用 `trace(workflow_name="cyber_red_chain", metadata={"scenario": "s1"})` 上下文管理器包裹编排调用
-    - 实现 `AgentHooks` 子类：`on_start`/`on_end`/`on_tool_start`/`on_tool_end`/`on_handoff` → 写入 `observability/inspect/monitor/` 结构化日志
-    - 用 `set_trace_processors([custom_processor])` 将 `RunTrace` 导出为 JSON，供 `observability/inspect/replay/` 时序回放消费
-    - `RunConfig(tracing=TracingConfig(enabled=True))` 全局开启
+    - 实现 `CyberAgentHooks(AgentHooksBase)` 子类：7 个 async 回调 `on_start`/`on_end`/`on_tool_start`/`on_tool_end`/`on_handoff`/`on_llm_start`/`on_llm_end` → 写入 `HookEvent` 列表
+    - 实现 `CyberTraceProcessor(TracingProcessor)` 子类：`on_trace_start`/`on_trace_end`/`on_span_start`/`on_span_end` → 采集 `CyberTraceData` + `CyberSpanData`
+    - `orchestrator.enable_tracing()` / `install_hooks()` / `run_red_chain_traced()` / `run_blue_chain_traced()` / `run_purple_review_traced()`
+    - `get_trace_data()` / `get_trace_json()` / `get_hooks_events()` 获取采集结果
+    - 重要发现：SDK `Trace` 对象用 `.name` 而非 `.workflow_name` 获取 workflow 名称
   - 替代手写日志 + 为 H5.2 回放功能提供数据源
-  - 测试：验证 trace JSON 输出结构正确
+  - 测试：22 测试通过（`test_cyber_tracing.py`）
+  - **变更文件**：`observability/inspect/monitor/tracing/processor.py` + `hooks.py` + `__init__.py` + `cyber_orchestrator.py` + 新增 `test_cyber_tracing.py`
 
-- [ ] **R4.5** `cyber_orchestrator.py` 用 SDK `FunctionTool` 注册攻防工具（0.5 天）
+- [x] **R4.5** `cyber_orchestrator.py` 用 SDK `FunctionTool` 注册攻防工具（0.5 天）✅ 2026-07-09
   - 当前：Agent 无工具调用能力，所有输入来自编排器手动传参
-  - 迁移方案：用 `FunctionTool(name="nmap_scan", params_json_schema={...}, on_invoke_tool=callback)` 将沙箱工具注册为 SDK 工具
-  - Agent 的 `tools=[nmap_tool, ...]` 属性配置，SDK 自动处理 LLM tool_call → 函数调用 → 结果返回
-  - 红队工具：`nmap_scan`/`metasploit_exploit`/`lateral_move_exec`（Docker 沙箱内执行）
-  - 蓝队工具：`query_attck_kb`/`query_cve_db`/`correlate_alerts`（查知识库）
-  - `tool_use_behavior='stop_on_first_tool'`：工具返回即作为最终输出（适合 recon 类 Agent）
-  - 安全约束：`needs_approval=True` 用于高危操作（exploit），编排器审批后才执行
-  - 测试：Mock 工具调用链路
+  - 实现：用 `FunctionTool(name, description, params_json_schema, on_invoke_tool)` 将攻防工具注册为 SDK 工具
+  - 新建 `aegisos_agents/tools/cyber_tools.py`：
+    - 红队工具：`nmap_scan`（扫描）/ `metasploit_exploit`（利用，`needs_approval=True`）/ `lateral_move_exec`（横向移动，`needs_approval=True`）
+    - 蓝队工具：`query_attck_kb`（ATT&CK 知识库）/ `query_cve_db`（CVE 库）/ `correlate_alerts`（告警关联）
+    - 6 个 async 回调函数返回 Mock 结构化数据（JSON 字符串）
+    - 6 个 JSON Schema 定义参数结构
+    - 工厂函数：`create_red_team_tools()` / `create_blue_team_tools()` / `create_all_cyber_tools()`
+  - `CyberOrchestrator` 集成：
+    - `get_red/blue/all_cyber_tools()` — 获取工具列表
+    - `install_red/blue/all_tools()` — 将工具注册到 Agent 的 `Agent.tools` 属性
+    - `uninstall_all_tools()` — 清空工具
+    - `get_agent_tools(name)` — 查询指定 Agent 已安装工具
+    - `get_high_risk_tools()` — 获取 `needs_approval=True` 的高危工具
+  - 工具映射：recon←nmap_scan, exploit_planner←metasploit+lateral, detector←correlate+attck, triage←correlate, vuln_correlator←cve, threat_hunt←attck
+  - 安全约束：`needs_approval=True` 用于高危操作（exploit, lateral_move），编排器审批后才执行
+  - 测试：30 测试通过（4 creation + 5 schema + 4 approval + 7 callback + 10 installation）
+  - **变更文件**：`aegisos_agents/tools/cyber_tools.py` + `aegisos_agents/tools/__init__.py`（新建）+ `cyber_orchestrator.py` + 新增 `test_cyber_function_tools.py`
 
-- [ ] **R4.6** `backend/mocks/runtime.py` MockRuntime 替换为 CyberOrchestrator 调用（0.5 天）
-  - 当前：85 行 `_cyber_dispatch_map()` 手写 handler + 类型转换
-  - 迁移方案：MockRuntime 内部委托 `CyberOrchestrator.run_red_chain()` / `run_blue_chain()` / `run_purple_review()`
-  - 删除 dispatch map，保留 RuntimeAPI 接口签名不变（向后兼容）
-  - 测试：既有 e2e 测试全通过
+- [x] **R4.6** `backend/mocks/runtime.py` MockRuntime 替换为 CyberOrchestrator 调用（0.5 天）✅ 2026-07-09
+  - 删除 85 行手写 `_cyber_dispatch_map()` 中的链式 handler（red_chain/blue_chain/purple_review）
+  - MockRuntime 内部创建 `self._orchestrator = CyberOrchestrator(mock=self._provider)`，链式调用委托编排器
+  - 保留单 Agent 路由（`_single_agent_dispatch()`）用于非链式调用（recon/detector/vuln_correlator 等）
+  - 修复 `CyberDefenseService.__init__` 未注入 `_CyberMockProvider` 导致 SDK Agent 返回空结果
+  - 测试：208 测试全通过（含 12 端点测试 + 22 tracing + 30 tools + 144 既有）
+  - **变更文件**：`backend/mocks/runtime.py` + `backend/services/cyber_defense_service.py`
 
-- [ ] **R4.7** `backend/core/composition.py` 注入 CyberOrchestrator（0.5 天）
-  - 当前：注入 MockRuntime（含手写 dispatch）
-  - 迁移方案：DI 组合根注入 `CyberOrchestrator(mock=MockProvider())`，Mock 模式下走预置响应
-  - 真实模式：`CyberOrchestrator(model=SDKProvider().get_sdk_model())`
-  - 测试：后端集成测试全通过
+- [x] **R4.7** `backend/core/composition.py` 注入 CyberOrchestrator（0.5 天）✅ 2026-07-09
+  - `Composition.__init__` 创建共享 `CyberOrchestrator` 实例（`self.orchestrator`），Mock / 真实模式自动切换
+  - `_create_orchestrator()` 静态方法：Mock 模式注入 `_CyberMockProvider()`，真实模式注入 `SDKProvider.get_sdk_model()`
+  - `MockRuntime(orchestrator=self.orchestrator)` 接受外部注入，避免创建重复实例
+  - `CyberDefenseService(orchestrator=self.orchestrator)` 共享同一编排器
+  - 测试：208 测试全通过（无回归）
+  - **变更文件**：`backend/core/composition.py` + `backend/mocks/runtime.py`
 
 - [ ] **R4.8** 测试全通过
 

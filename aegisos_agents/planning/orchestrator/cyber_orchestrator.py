@@ -74,6 +74,28 @@ try:
 except ImportError:
     _SDK_GUARDRAIL_AVAILABLE = False
 
+# R4.4: SDK tracing 依赖
+try:
+    from agents import add_trace_processor, set_trace_processors, trace
+
+    _SDK_TRACING_AVAILABLE = True
+except ImportError:
+    _SDK_TRACING_AVAILABLE = False
+
+from observability.inspect.monitor.tracing import (
+    CyberAgentHooks,
+    CyberTraceData,
+    CyberTraceProcessor,
+)
+
+# R4.5: SDK FunctionTool 依赖
+try:
+    from agents import FunctionTool as SDKFunctionTool
+
+    _SDK_FUNCTION_TOOL_AVAILABLE = True
+except ImportError:
+    _SDK_FUNCTION_TOOL_AVAILABLE = False
+
 
 # ==================================================================
 # R4.2: ChainContext —— handoff 链共享上下文
@@ -240,6 +262,8 @@ class CyberOrchestrator:
 
     Attributes:
         _mock: Mock Provider 实例（Mock 模式）；真实模式为 None。
+        _trace_processor: R4.4 tracing 处理器（enable_tracing 后非 None）。
+        _hooks: R4.4 AgentHooks 列表（install_hooks 后非空）。
     """
 
     def __init__(self, mock: MockProvider | None = None, model=None) -> None:
@@ -251,6 +275,9 @@ class CyberOrchestrator:
                 由 :meth:`SDKProvider.get_sdk_model` 创建。9 个 Agent 共享同一 Model。
         """
         self._mock = mock
+        # R4.4: tracing 状态
+        self._trace_processor: CyberTraceProcessor | None = None
+        self._hooks: list[CyberAgentHooks] = []
         # 红队
         self.recon = ReconSDKAgent(mock=mock, model=model)
         self.vuln_correlator = VulnCorrelatorSDKAgent(mock=mock, model=model)
@@ -916,3 +943,335 @@ class CyberOrchestrator:
             )
 
         return validate_attack_chain
+
+    # ==================================================================
+    # R4.4: SDK tracing + AgentHooks
+    # ==================================================================
+
+    def enable_tracing(self) -> CyberTraceProcessor:
+        """启用 SDK tracing，返回 trace 处理器。
+
+        创建 :class:`CyberTraceProcessor` 并注册到 SDK 全局。
+        之后调用 :meth:`run_red_chain_traced` / :meth:`run_blue_chain_traced` /
+        :meth:`run_purple_review_traced` 时，SDK 自动采集 trace/span 数据。
+
+        Returns:
+            :class:`CyberTraceProcessor` 实例（可通过 ``get_trace_data()`` 获取数据）。
+
+        Raises:
+            RuntimeError: SDK tracing 不可用时抛出。
+        """
+        if not _SDK_TRACING_AVAILABLE:
+            raise RuntimeError("SDK tracing is not available")
+        self._trace_processor = CyberTraceProcessor()
+        set_trace_processors([self._trace_processor])
+        return self._trace_processor
+
+    def disable_tracing(self) -> None:
+        """禁用 SDK tracing，清理处理器状态。"""
+        if self._trace_processor is not None:
+            self._trace_processor.shutdown()
+            self._trace_processor = None
+        # 恢复 SDK 默认 trace 处理器（空列表 = 禁用自定义处理器）
+        if _SDK_TRACING_AVAILABLE:
+            set_trace_processors([])
+
+    def install_hooks(self) -> list[CyberAgentHooks]:
+        """为所有 9 个 SDK Agent 安装生命周期钩子。
+
+        为每个 Agent 创建 :class:`CyberAgentHooks` 并设置到 ``agent.hooks`` 属性。
+        SDK Runner 执行 Agent 时自动触发回调，记录 ``on_start`` / ``on_end`` 等事件。
+
+        Returns:
+            安装的 :class:`CyberAgentHooks` 列表（9 个）。
+        """
+        agents = [
+            self.recon,
+            self.vuln_correlator,
+            self.exploit_planner,
+            self.detector,
+            self.triage,
+            self.threat_hunt,
+            self.ir_planner,
+            self.critic,
+            self.reviewer,
+        ]
+        self._hooks = []
+        for agent in agents:
+            hook = CyberAgentHooks(agent_name=agent.__class__.__name__)
+            agent._sdk_agent.hooks = hook
+            self._hooks.append(hook)
+        return self._hooks
+
+    def get_hooks_events(self) -> list[dict[str, Any]]:
+        """汇总所有 AgentHooks 采集的事件。
+
+        Returns:
+            事件字典列表（每个含 ``event_type`` / ``agent_name`` / ``timestamp`` / ``data``）。
+        """
+        events: list[dict[str, Any]] = []
+        for hook in self._hooks:
+            for evt in hook.events:
+                events.append(evt.to_dict())
+        return events
+
+    def get_trace_data(self) -> CyberTraceData | None:
+        """获取最近一次 trace 的采集数据。
+
+        Returns:
+            :class:`CyberTraceData` 实例；未启用 tracing 或无 trace 时返回 None。
+        """
+        if self._trace_processor is None:
+            return None
+        return self._trace_processor.get_trace_data()
+
+    def get_trace_json(self) -> str | None:
+        """获取最近一次 trace 的 JSON 字符串。
+
+        Returns:
+            JSON 字符串；未启用 tracing 或无 trace 时返回 None。
+        """
+        data = self.get_trace_data()
+        if data is None:
+            return None
+        return data.to_json()
+
+    def run_red_chain_traced(self, target_range: str) -> dict[str, Any]:
+        """带 SDK tracing 的红队攻击链。
+
+        用 ``trace(workflow_name="cyber_red_chain")`` 上下文管理器包裹
+        :meth:`run_red_chain`，SDK 自动采集 trace/span 数据。
+
+        Args:
+            target_range: 目标网络范围，如 ``"10.0.0.0/24"``。
+
+        Returns:
+            含 ``assets`` / ``findings`` / ``chain`` 的字典（同 :meth:`run_red_chain`）。
+        """
+        if not _SDK_TRACING_AVAILABLE:
+            return self.run_red_chain(target_range)
+
+        with trace(
+            workflow_name="cyber_red_chain",
+            metadata={"scenario": "red", "target": target_range},
+        ):
+            result = self.run_red_chain(target_range)
+        return result
+
+    def run_blue_chain_traced(
+        self, event_stream: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """带 SDK tracing 的蓝队防御链。
+
+        用 ``trace(workflow_name="cyber_blue_chain")`` 上下文管理器包裹
+        :meth:`run_blue_chain`。
+
+        Args:
+            event_stream: 原始事件流列表。
+
+        Returns:
+            含 ``alerts`` / ``triaged`` / ``hypotheses`` / ``plan`` 的字典。
+        """
+        if not _SDK_TRACING_AVAILABLE:
+            return self.run_blue_chain(event_stream)
+
+        with trace(
+            workflow_name="cyber_blue_chain",
+            metadata={"scenario": "blue", "events": len(event_stream)},
+        ):
+            result = self.run_blue_chain(event_stream)
+        return result
+
+    def run_purple_review_traced(
+        self, chain: AttackChain, plan: ResponsePlan, alerts: list[Alert]
+    ) -> dict[str, Any]:
+        """带 SDK tracing 的紫队校验。
+
+        用 ``trace(workflow_name="cyber_purple_review")`` 上下文管理器包裹
+        :meth:`run_purple_review`。
+
+        Args:
+            chain: 红队攻击链产出。
+            plan: 蓝队响应计划产出。
+            alerts: 蓝队告警列表。
+
+        Returns:
+            含 ``critique`` / ``review`` 的字典。
+        """
+        if not _SDK_TRACING_AVAILABLE:
+            return self.run_purple_review(chain, plan, alerts)
+
+        with trace(
+            workflow_name="cyber_purple_review",
+            metadata={
+                "scenario": "purple",
+                "chain_steps": len(chain.steps),
+                "alert_count": len(alerts),
+            },
+        ):
+            result = self.run_purple_review(chain, plan, alerts)
+        return result
+
+    # ==================================================================
+    # R4.5: SDK FunctionTool 注册攻防工具
+    # ==================================================================
+
+    def get_red_team_tools(self) -> list[Any]:
+        """获取红队 SDK FunctionTool 列表。
+
+        红队工具：
+            - ``nmap_scan``         — 网络扫描（低风险）
+            - ``metasploit_exploit`` — 漏洞利用（高危，needs_approval=True）
+            - ``lateral_move_exec``  — 横向移动（高危，needs_approval=True）
+
+        Returns:
+            SDK ``FunctionTool`` 实例列表。SDK 不可用时返回空列表。
+        """
+        from aegisos_agents.tools.cyber_tools import create_red_team_tools
+
+        return create_red_team_tools()
+
+    def get_blue_team_tools(self) -> list[Any]:
+        """获取蓝队 SDK FunctionTool 列表。
+
+        蓝队工具：
+            - ``query_attck_kb``    — 查询 ATT&CK 知识库
+            - ``query_cve_db``      — 查询 CVE 漏洞库
+            - ``correlate_alerts``  — 关联告警分析
+
+        Returns:
+            SDK ``FunctionTool`` 实例列表。SDK 不可用时返回空列表。
+        """
+        from aegisos_agents.tools.cyber_tools import create_blue_team_tools
+
+        return create_blue_team_tools()
+
+    def get_all_cyber_tools(self) -> list[Any]:
+        """获取全部攻防 SDK FunctionTool 列表（红队 + 蓝队）。
+
+        Returns:
+            SDK ``FunctionTool`` 实例列表。SDK 不可用时返回空列表。
+        """
+        from aegisos_agents.tools.cyber_tools import create_all_cyber_tools
+
+        return create_all_cyber_tools()
+
+    def install_red_team_tools(self) -> list[Any]:
+        """为红队 Agent 安装 FunctionTool。
+
+        将红队工具注册到对应 Agent 的 SDK ``Agent.tools`` 属性：
+            - ``recon`` ← ``nmap_scan``
+            - ``exploit_planner`` ← ``metasploit_exploit``
+            - ``exploit_planner`` ← ``lateral_move_exec``
+
+        Returns:
+            安装到 Agent 上的 FunctionTool 列表。
+        """
+        tools = self.get_red_team_tools()
+        if not tools:
+            return []
+
+        tool_map: dict[str, list[Any]] = {
+            "nmap_scan": [self.recon],
+            "metasploit_exploit": [self.exploit_planner],
+            "lateral_move_exec": [self.exploit_planner],
+        }
+
+        for tool in tools:
+            tool_name = getattr(tool, "name", "")
+            agents = tool_map.get(tool_name, [])
+            for agent in agents:
+                existing = list(agent._sdk_agent.tools)
+                existing.append(tool)
+                agent._sdk_agent.tools = existing
+
+        return tools
+
+    def install_blue_team_tools(self) -> list[Any]:
+        """为蓝队 Agent 安装 FunctionTool。
+
+        将蓝队工具注册到对应 Agent 的 SDK ``Agent.tools`` 属性：
+            - ``detector`` ← ``correlate_alerts``
+            - ``triage`` ← ``correlate_alerts``
+            - ``vuln_correlator`` ← ``query_cve_db``
+            - ``detector`` ← ``query_attck_kb``
+            - ``threat_hunt`` ← ``query_attck_kb``
+
+        Returns:
+            安装到 Agent 上的 FunctionTool 列表。
+        """
+        tools = self.get_blue_team_tools()
+        if not tools:
+            return []
+
+        tool_map: dict[str, list[Any]] = {
+            "correlate_alerts": [self.detector, self.triage],
+            "query_cve_db": [self.vuln_correlator],
+            "query_attck_kb": [self.detector, self.threat_hunt],
+        }
+
+        for tool in tools:
+            tool_name = getattr(tool, "name", "")
+            agents = tool_map.get(tool_name, [])
+            for agent in agents:
+                existing = list(agent._sdk_agent.tools)
+                existing.append(tool)
+                agent._sdk_agent.tools = existing
+
+        return tools
+
+    def install_all_tools(self) -> list[Any]:
+        """为所有 Agent 安装攻防 FunctionTool（红队 + 蓝队）。
+
+        Returns:
+            全部安装的 FunctionTool 列表。
+        """
+        red = self.install_red_team_tools()
+        blue = self.install_blue_team_tools()
+        return red + blue
+
+    def uninstall_all_tools(self) -> None:
+        """从所有 Agent 移除已安装的 FunctionTool。
+
+        将所有 Agent 的 ``Agent.tools`` 重置为空列表。
+        """
+        agents = [
+            self.recon,
+            self.vuln_correlator,
+            self.exploit_planner,
+            self.detector,
+            self.triage,
+            self.threat_hunt,
+            self.ir_planner,
+            self.critic,
+            self.reviewer,
+        ]
+        for agent in agents:
+            agent._sdk_agent.tools = []
+
+    def get_agent_tools(self, agent_name: str) -> list[Any]:
+        """获取指定 Agent 已安装的 FunctionTool 列表。
+
+        Args:
+            agent_name: Agent 属性名（如 ``"recon"`` / ``"detector"``）。
+
+        Returns:
+            该 Agent 上已安装的 FunctionTool 列表。
+        """
+        agent = getattr(self, agent_name, None)
+        if agent is None:
+            return []
+        return list(agent._sdk_agent.tools)
+
+    def get_high_risk_tools(self) -> list[Any]:
+        """获取需要审批的高危工具列表。
+
+        高危工具（``needs_approval=True``）：
+            - ``metasploit_exploit``
+            - ``lateral_move_exec``
+
+        Returns:
+            高危 FunctionTool 列表。
+        """
+        all_tools = self.get_all_cyber_tools()
+        return [t for t in all_tools if getattr(t, "needs_approval", False)]
