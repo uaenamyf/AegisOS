@@ -2,6 +2,64 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P1] 2026-07-06 编排器实现（P5 收尾，5 子任务全完成）
+
+### P1.1 — EventBus 事件总线
+- 新增 `aegisos_agents/planning/engine/eventbus/impl.py` — `EventBus` 类：基于 `EventType` 8 topic 的发布/订阅，FIFO 顺序保证、handler 异常隔离（死信队列）、历史记录（供回放）、`subscribe` 返回取消订阅闭包。
+- 新增 `aegisos_agents/planning/engine/eventbus/__init__.py` — 导出 `EventBus` + `HISTORY_LIMIT`。
+- 新增 `tests/aegisos_agents/planning/test_eventbus.py` — 8 个测试：订阅接收/多订阅顺序/主题过滤/取消订阅/异常隔离死信/历史过滤/历史截断/clear 重置。
+
+### P1.2 — Workflow DAG 工作流引擎
+- 新增 `aegisos_agents/planning/engine/workflow/engine.py` — `WorkflowEngine` + `WorkflowNode` + `WorkflowStatus` + `WorkflowResult`：
+  - Kahn 拓扑排序（分层 + 循环检测抛 ValueError）
+  - `ThreadPoolExecutor` 同层并行执行
+  - 条件分支（`condition` 谓词返回 False → Skipped）
+  - 失败传播（Failed 节点的下游标记 Skipped）
+  - 可选注入 `EventBus`，节点执行前后发布 `AgentStart`/`AgentFinish` 事件
+- 新增 `aegisos_agents/planning/engine/workflow/__init__.py` — 导出 4 个类型。
+- 新增 `tests/aegisos_agents/planning/test_workflow.py` — 8 个测试：线性链/并行汇聚/条件跳过/失败传播/循环检测/context 合并/事件发布/失败事件。
+
+### P1.3 — Planner 任务规划器
+- 新增 `aegisos_agents/planning/planner/planner.py` — `Planner` 类：4 场景模板（`cyber_red` 红队链 / `cyber_blue` 蓝队链 / `cyber_purple` 紫队并行 / `generic` 通用），纯算法分解不调 LLM，输出 `protocol.Plan`（dag + tasks）。
+- 新增 `aegisos_agents/planning/planner/__init__.py` — 导出 `Planner`。
+- 新增 `tests/aegisos_agents/planning/test_planner.py` — 7 个测试：红/蓝/紫场景分解 + 默认 generic + 未知场景报错 + task_id 唯一 + 场景列表。
+
+### P1.4 — Orchestrator 通用编排器
+- 新增 `aegisos_agents/planning/orchestrator/orchestrator.py` — `Orchestrator` 类：整合 Planner + WorkflowEngine + EventBus。`execute(goal, runtime, scenario)` 一站式编排；`execute_plan(plan, runtime)` 执行已构造 Plan；内部将 `Plan.dag` 转 `WorkflowNode`，executor 调用 `runtime.run(node_id, task)`，上游产出注入 `task.plan["upstream"]`。
+- 新增 `tests/aegisos_agents/planning/test_orchestrator.py` — 6 个测试：红队链执行/紫队并行/事件发布/上游传递/失败传播/plan 不一致报错。
+
+### P1.5 — CyberRuntime 真实运行时
+- 新增 `aegisos_agents/planning/orchestrator/runtime.py` — `CyberRuntime` 类：实现 `RuntimeAPI`（submit/run/stop/heartbeat），内部委托 `CyberOrchestrator` 红蓝紫三条链，替代 `MockRuntime` 的 85 行 `_cyber_dispatch_map()`。`run("red_chain", task)` → `run_red_chain()`，`run("blue_chain", task)` → `run_blue_chain()`，`run("purple_review", task)` → `run_purple_review()`。
+- 新增 `tests/aegisos_agents/planning/test_cyber_runtime.py` — 7 个测试：红蓝紫链调用 + submit/stop/heartbeat + 未知 agent_id 兜底。
+- `MockRuntime` 保留作为向后兼容层（94 既有测试依赖），`CyberRuntime` 作为 R4.6 替代实现。
+
+### 质量门禁
+- 本机 Windows Python 3.14.6 + openai-agents 0.17.7 验证：**130 passed**（94 既有 + 36 新增），0 failed，3.56s。
+- 修复 2 个 bug：workflow context 未合并到 upstream（已修）；planner cyber_purple 误链式依赖（已修，模板改为显式 deps 三元组）。
+- ruff format / mypy 未运行（本机未装 ruff/mypy，待 macOS/容器验证）。
+
+## [修复] 2026-07-06 真实 API 模式断链修复（11 Agent + CyberOrchestrator + CyberRuntime）
+
+### 问题
+- 11 个攻防 Agent（recon/detector/vuln_correlator/exploit_planner/lateral_move/triage/threat_hunt/ir_planner/forensics/critic/reviewer）的 `__init__` 重写时丢失了父类的 `model=` 参数，只接受 `provider=`（旧 MockProvider）。
+- `CyberOrchestrator.__init__` 同样只接受 `mock=`，无法注入 SDK `Model`。
+- 导致真实 API 模式下 SDK `Model` 无法注入到任何 Agent，`.env` 配置 `AEGIS_USE_MOCK=false` 后虽能创建 `AsyncOpenAI` 客户端，但 Agent 实例化时断链。
+
+### 修复
+- 11 个 Agent 的 `__init__` 统一加回 `model: Model | None = None` 参数，传递给 `super().__init__(model=model, mock=mock)`。
+- `CyberOrchestrator.__init__` 加 `model=None` 参数，9 个 SDK Agent 共享同一 Model。
+- `CyberRuntime.__init__` 加 `model=None` 参数，透传给 CyberOrchestrator。
+
+### 验证
+- 本机起 mock OpenAI HTTP 服务器（返回标准 ChatCompletions 响应），端到端验证：
+  - `SDKProvider.get_sdk_model()` → `ReconAgent(model=model)` → `agent.scan()` → SDK Runner → HTTP POST → 解析 ReconResult → 返回 2 个 Asset ✅
+  - `CyberRuntime(model=model)` → `run("red_chain", task)` → CyberOrchestrator 9 个 SDK Agent → 红队链执行 ✅
+- 130 测试全通过无破坏（3.18s）。
+
+### 影响
+- `.env` 配 `AEGIS_USE_MOCK=false` + `OPENAI_API_KEY` 后，可真实调用 OpenAI / 火山引擎 ARK API。
+- Mock 模式（默认）完全不受影响，`provider=mock` 旧接口签名保持兼容。
+
 ## [S1-S4] 2026-07-06 OpenAI Agents SDK 集成迁移（90 测试全通过）
 
 ### S1 — Provider 层：SDK 适配器 + Mock 开关 + 火山引擎 Chat Completions

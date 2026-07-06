@@ -168,16 +168,89 @@ def schedule(task: Task, models: list[Model], required_capability: str | None = 
 
 ---
 
+##### `engine/eventbus/impl.py` — 事件总线（P1 完成）
+
+```python
+class EventBus:
+    def subscribe(topic: EventType, handler) -> Callable[[], None]
+    def publish(event: Event) -> None
+    def history(topic=None, task_id=None) -> list[Event]
+    def dead_letters() -> list[tuple[Event, str]]
+```
+
+**逻辑**：基于 `EventType` 8 topic 的发布/订阅。FIFO 顺序保证；handler 异常隔离（捕获后入死信队列，不中断后续 handler）；历史记录 deque（上限 1000，供 `observability/inspect/replay/` 消费）；`subscribe` 返回取消订阅闭包。
+
+**测试**：8 个 — 订阅接收 · 多订阅顺序 · 主题过滤 · 取消订阅 · 异常隔离死信 · 历史过滤 · 历史截断 · clear 重置
+
+---
+
+##### `engine/workflow/engine.py` — DAG 工作流引擎（P1 完成）
+
+```python
+class WorkflowEngine:
+    def run(nodes: dict[str, WorkflowNode], context=None, task_id="") -> WorkflowResult
+```
+
+**逻辑**：Kahn 拓扑排序（分层 + 循环检测抛 ValueError）→ 同层 `ThreadPoolExecutor` 并行执行 → 条件分支（`condition` 谓词 False → Skipped）→ 失败传播（Failed 下游 Skipped）→ 可选注入 `EventBus` 发布 `AgentStart`/`AgentFinish` 事件。`WorkflowNode.executor(upstream: dict) -> Any` 接收上游产出字典。
+
+**测试**：8 个 — 线性链顺序 · 并行扇出汇聚 · 条件跳过 · 失败传播 · 循环检测 · context 合并 · 事件发布 · 失败事件
+
+---
+
+##### `planner/planner.py` — 任务规划器（P1 完成）
+
+```python
+class Planner:
+    def plan(goal: str, scenario: str | None = None) -> Plan
+```
+
+**逻辑**：4 场景模板纯算法分解（不调 LLM）：`cyber_red`（recon→vuln→exploit→lateral 链）、`cyber_blue`（detector→triage→hunt→ir 链）、`cyber_purple`（critic+reviewer 并行）、`generic`（analyze→execute→verify）。输出 `protocol.Plan`（dag + tasks），dag key 为 node_id（=agent_id），与 `WorkflowNode.dependencies` 对齐。
+
+**测试**：7 个 — 红队链 · 蓝队链 · 紫队并行 · 默认 generic · 未知场景报错 · task_id 唯一 · 场景列表
+
+---
+
+##### `orchestrator/orchestrator.py` — 通用编排器（P1 完成）
+
+```python
+class Orchestrator:
+    def execute(goal: str, runtime: RuntimeAPI, scenario=None, context=None) -> WorkflowResult
+    def execute_plan(plan: Plan, runtime: RuntimeAPI, context=None) -> WorkflowResult
+```
+
+**逻辑**：整合 Planner + WorkflowEngine + EventBus。`execute` 一站式（goal→Plan→WorkflowNode→执行）；`execute_plan` 执行已构造 Plan；内部将 `Plan.dag` 转 `WorkflowNode`，executor 调用 `runtime.run(node_id, task)`，上游产出注入 `task.plan["upstream"]`。
+
+**测试**：6 个 — 红队链执行 · 紫队并行 · 事件发布 · 上游传递 · 失败传播 · plan 不一致报错
+
+---
+
+##### `orchestrator/runtime.py` — CyberRuntime 真实运行时（P1 完成）
+
+```python
+class CyberRuntime:  # 实现 RuntimeAPI
+    def run(agent_id: str, task: Task) -> dict
+```
+
+**逻辑**：委托 `CyberOrchestrator` 红蓝紫三条链，替代 `MockRuntime` 85 行 dispatch map。`run("red_chain", task)` → `run_red_chain()`；`run("blue_chain", task)` → `run_blue_chain()`；`run("purple_review", task)` → `run_purple_review()`。protocol dataclass → dict 序列化。`MockRuntime` 保留作兼容层。
+
+**测试**：7 个 — 红蓝紫链 · submit/stop/heartbeat · 未知 agent_id 兜底
+
+---
+
 #### 🔲 未实现（仅 AGENT.md）
+
+> P1 编排器 5 子任务已全部完成（EventBus / Workflow / Planner / Orchestrator / CyberRuntime）。
+> 以下为 engine 子模块内的占位（系统级 planner，区别于 planning/planner/ 角色级）。
 
 | 目录 | 计划功能 |
 |------|---------|
-| `planner/` | 规划器：将 goal 分解为 Plan(DAG) |
-| `orchestrator/` | 编排器：协调多 Agent 执行 |
-| `engine/workflow/` | 工作流引擎：DAG 执行 |
-| `engine/eventbus/` | 事件总线实现（publish/subscribe） |
+| `engine/planner/` | 系统级规划器（engine 内部，区别于 `planning/planner/` 角色级） |
+| `engine/eventbus/handlers/` | 事件总线内置 handler（当前由各模块自行注册） |
+| `engine/eventbus/topics/` | 主题管理（当前由 EventType 枚举覆盖） |
+| `engine/workflow/dags/` | 预置 DAG 模板库（当前由 Planner 模板覆盖） |
+| `engine/workflow/nodes/` | 预置节点类型库（当前由 WorkflowNode 覆盖） |
 
-> **影响**：11 个 Agent 目前只能被 API 逐个手动调用，无法自动协同。
+> **影响**：编排器已就绪，11 个 Agent 可通过 `Orchestrator.execute(goal, CyberRuntime())` 自动协同。
 
 ---
 

@@ -41,20 +41,22 @@ class ReconAgent(StructuredAgent[ReconResult]):
     OUTPUT_TYPE = ReconResult
     TEMPERATURE = 0.3
 
-    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
+    def __init__(self, provider=None, mock: MockProvider | None = None, model=None) -> None:
         """初始化侦察 Agent。
 
         兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
-        保持现有测试（``ReconAgent(provider=mock)``）无需改动。
+        保持现有测试（``ReconAgent(provider=mock)``）无需改动。真实 API 模式
+        通过 ``model=`` 注入 SDK ``Model``（由 :meth:`SDKProvider.get_sdk_model` 创建）。
 
         Args:
             provider: 旧版 ``ModelProvider``（MockProvider），兼容现有测试签名。
             mock: :class:`MockProvider` 实例，显式传入时用于 Mock 模式。
+            model: SDK ``Model`` 实例（真实 API 模式）；非 None 时优先使用。
         """
         # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
         if provider is not None and mock is None:
             mock = provider
-        super().__init__(mock=mock)
+        super().__init__(model=model, mock=mock)
 
     def scan(self, target_range: str) -> list[Asset]:
         """对目标网络范围执行侦察扫描，返回发现的资产列表。

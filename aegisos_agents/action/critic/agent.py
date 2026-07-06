@@ -56,7 +56,7 @@ class CriticAgent(StructuredAgent[CritiqueResult]):
     OUTPUT_TYPE = CritiqueResult
     TEMPERATURE = 0.3
 
-    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
+    def __init__(self, provider=None, mock: MockProvider | None = None, model=None) -> None:
         """初始化批判 Agent，预建红/蓝双 SDK Agent。
 
         兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
@@ -70,7 +70,7 @@ class CriticAgent(StructuredAgent[CritiqueResult]):
         if provider is not None and mock is None:
             mock = provider
         # 基类用 SYSTEM_PROMPT(=RED) 构造 self._sdk_agent；保存红队引用
-        super().__init__(mock=mock)
+        super().__init__(model=model, mock=mock)
         self._sdk_agent_red: Agent = self._sdk_agent
         # 另构造蓝队批判 SDK Agent，供 critique(side="blue") 切换使用
         self._sdk_agent_blue: Agent = Agent(

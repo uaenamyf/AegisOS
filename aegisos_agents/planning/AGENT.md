@@ -69,6 +69,7 @@ plan(goal) -> Plan(DAG)；route(task) -> Route；schedule(task) -> execution。
 ### 🔧 SDK 集成状态
 
 > 2026-07-06 全量排查。✅ **CyberOrchestrator 已用 SDK Agent 装配**，🔲 待深化。
+> 2026-07-06 P1 编排器实现完成：EventBus / Workflow / Planner / Orchestrator / CyberRuntime 5 子任务全完成。
 
 | 文件 | SDK 能力 | 状态 |
 |------|---------|------|
@@ -76,6 +77,11 @@ plan(goal) -> Plan(DAG)；route(task) -> Route；schedule(task) -> execution。
 | 同上 — handoffs | 手动 `_run()` 串联 → 待用 SDK `Agent.handoffs` 声明式串联 | 🔲 R4 (P1) |
 | 同上 — guardrails | 手动 `if critique.valid` 判断 → 待用 SDK `guardrails` 自动校验 + 回退重试 | 🔲 R4 (P1) |
 | 同上 — tracing | `print` 日志 → 待用 SDK `tracing`（`RunTrace`）自动记录编排流程 | 🔲 R4 (P2) |
-| `engine/` 各模块 | 纯算法实现（topology/router/scheduler），无 LLM 调用 | ✅ 无需 SDK |
+| `engine/eventbus/impl.py` | 纯 Python 实现（topic 发布/订阅 + 死信 + 历史），无 LLM 调用 | ✅ P1 完成 |
+| `engine/workflow/engine.py` | 纯 Python DAG 引擎（Kahn 拓扑 + 并行 + 条件分支），无 LLM 调用 | ✅ P1 完成 |
+| `planner/planner.py` | 纯算法模板分解（4 场景），不调 LLM | ✅ P1 完成 |
+| `orchestrator/orchestrator.py` | 通用编排器（Planner + WorkflowEngine + EventBus 整合），可接入任意 RuntimeAPI | ✅ P1 完成 |
+| `orchestrator/runtime.py` | CyberRuntime 实现 RuntimeAPI，委托 CyberOrchestrator 红蓝紫链 | ✅ P1 完成 |
+| `engine/` topology/router/scheduler | 纯算法实现，无 LLM 调用 | ✅ 无需 SDK |
 
 > 详见 `aegisos_agents/AGENT.md`「openai-agents SDK 集成状态」段 + `developer/plan.md`。

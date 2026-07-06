@@ -48,7 +48,7 @@ class ReviewerAgent(StructuredAgent[ReviewResult]):
     OUTPUT_TYPE = ReviewResult
     TEMPERATURE = 0.2
 
-    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
+    def __init__(self, provider=None, mock: MockProvider | None = None, model=None) -> None:
         """初始化审查 Agent。
 
         兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
@@ -61,7 +61,7 @@ class ReviewerAgent(StructuredAgent[ReviewResult]):
         # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
         if provider is not None and mock is None:
             mock = provider
-        super().__init__(mock=mock)
+        super().__init__(model=model, mock=mock)
 
     def review(self, artifacts: dict) -> dict:
         """对多份异构产出进行一致性审查。

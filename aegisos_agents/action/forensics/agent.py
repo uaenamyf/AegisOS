@@ -45,7 +45,7 @@ class ForensicsAgent(StructuredAgent[ForensicsResult]):
     OUTPUT_TYPE = ForensicsResult
     TEMPERATURE = 0.3
 
-    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
+    def __init__(self, provider=None, mock: MockProvider | None = None, model=None) -> None:
         """初始化取证 Agent。
 
         兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
@@ -58,7 +58,7 @@ class ForensicsAgent(StructuredAgent[ForensicsResult]):
         # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
         if provider is not None and mock is None:
             mock = provider
-        super().__init__(mock=mock)
+        super().__init__(model=model, mock=mock)
 
     def investigate(self, plan: ResponsePlan) -> dict:
         """根据响应计划进行数字化取证分析。

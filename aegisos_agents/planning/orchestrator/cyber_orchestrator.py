@@ -171,25 +171,27 @@ class CyberOrchestrator:
         _mock: Mock Provider 实例（Mock 模式）；真实模式为 None。
     """
 
-    def __init__(self, mock: MockProvider | None = None) -> None:
+    def __init__(self, mock: MockProvider | None = None, model=None) -> None:
         """初始化编排器，装配 11 个 SDK Agent。
 
         Args:
             mock: :class:`MockProvider` 实例（Mock 模式）；真实模式传 None。
+            model: SDK ``Model`` 实例（真实 API 模式）；非 None 时优先于 mock，
+                由 :meth:`SDKProvider.get_sdk_model` 创建。9 个 Agent 共享同一 Model。
         """
         self._mock = mock
         # 红队
-        self.recon = ReconSDKAgent(mock=mock)
-        self.vuln_correlator = VulnCorrelatorSDKAgent(mock=mock)
-        self.exploit_planner = ExploitPlannerSDKAgent(mock=mock)
+        self.recon = ReconSDKAgent(mock=mock, model=model)
+        self.vuln_correlator = VulnCorrelatorSDKAgent(mock=mock, model=model)
+        self.exploit_planner = ExploitPlannerSDKAgent(mock=mock, model=model)
         # 蓝队
-        self.detector = DetectorSDKAgent(mock=mock)
-        self.triage = TriageSDKAgent(mock=mock)
-        self.threat_hunt = ThreatHuntSDKAgent(mock=mock)
-        self.ir_planner = IRPlannerSDKAgent(mock=mock)
+        self.detector = DetectorSDKAgent(mock=mock, model=model)
+        self.triage = TriageSDKAgent(mock=mock, model=model)
+        self.threat_hunt = ThreatHuntSDKAgent(mock=mock, model=model)
+        self.ir_planner = IRPlannerSDKAgent(mock=mock, model=model)
         # 紫队
-        self.critic = CriticSDKAgent(mock=mock)
-        self.reviewer = ReviewerSDKAgent(mock=mock)
+        self.critic = CriticSDKAgent(mock=mock, model=model)
+        self.reviewer = ReviewerSDKAgent(mock=mock, model=model)
 
     def run_red_chain(self, target_range: str) -> dict[str, Any]:
         """执行红队攻击链：recon → vuln_correlator → exploit_planner。

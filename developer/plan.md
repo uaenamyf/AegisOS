@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-06 · 94 测试全通过 · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅
+> 最后更新：2026-07-06 · **130 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅ · **P1 编排器实现 ✅**
 
 ---
 
@@ -20,8 +20,8 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + 赛事 Phase F-H 待启动 |
-| **测试** | 94 passed（protocol 6 + memory 33 + planning 18 + tools 5 + action 19 + perception 4 + e2e 9） |
-| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ |
+| **测试** | **130 passed**（protocol 6 + memory 33 + planning 54 + tools 5 + action 19 + perception 4 + e2e 9） |
+| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ · **P1 编排器 ✅** |
 | **待完成 Phase** | R4 SDK 编排深化（8 项详细计划） · R5 旧接口清理+流式+事件总线（5 项） · F · G · H |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
@@ -44,17 +44,17 @@
 
 ### 🔥 P0 — 立即执行（本周）
 
-> ✅ B3 + E13 已于 2026-07-06 完成，详见 §8「已完成任务」。下一步 P1：编排器实现。
+> ✅ B3 + E13 已于 2026-07-06 完成，详见 §8「已完成任务」。✅ P1 编排器实现已于 2026-07-06 完成（EventBus/Workflow/Planner/Orchestrator/CyberRuntime 5 子任务）。下一步：R4 SDK 深化 + F 后端端点。
 
 ### ⚡ P1 — 短期（1-2 周）
 
 #### 编排器实现（P5 收尾）
-> **优先级**：P1 · **预估**：2-3 天 · **阻塞**：E13、F
-- [ ] `aegisos_agents/planning/planner/` Planner 实现（任务分解 → 子任务 DAG）
-- [ ] `aegisos_agents/planning/orchestrator/` Orchestrator 实现（多 Agent 编排调度）
-- [ ] `aegisos_agents/planning/engine/workflow/` Workflow 引擎（DAG 执行）
-- [ ] `aegisos_agents/planning/engine/eventbus/` EventBus 实现（8 事件发布/订阅）
-- [ ] 编排器集成 MockRuntime → 替换为真实 Runtime
+> **优先级**：P1 · **预估**：2-3 天 · **阻塞**：E13、F · **状态**：✅ 已完成（2026-07-06）
+- [x] `aegisos_agents/planning/planner/` Planner 实现（任务分解 → 子任务 DAG）— `planner.py`：4 场景模板（cyber_red/blue/purple/generic），纯算法不调 LLM，输出 `protocol.Plan`
+- [x] `aegisos_agents/planning/orchestrator/` Orchestrator 实现（多 Agent 编排调度）— `orchestrator.py`：整合 Planner + WorkflowEngine + EventBus，`execute(goal, runtime)` 一站式编排
+- [x] `aegisos_agents/planning/engine/workflow/` Workflow 引擎（DAG 执行）— `engine.py`：Kahn 拓扑排序 + ThreadPoolExecutor 并行 + 条件分支 + 失败传播 + 循环检测
+- [x] `aegisos_agents/planning/engine/eventbus/` EventBus 实现（8 事件发布/订阅）— `impl.py`：topic 路由 + FIFO 顺序 + 异常隔离死信队列 + 历史回放
+- [x] 编排器集成 MockRuntime → 替换为真实 Runtime — `runtime.py`：`CyberRuntime` 委托 `CyberOrchestrator` 红蓝紫链，实现 `RuntimeAPI`，替代 MockRuntime 85 行 dispatch map
 
 #### F — 后端攻防 REST 端点
 > **优先级**：P1 · **预估**：2 天 · **依赖**：编排器
@@ -324,6 +324,53 @@
 - **memory/ 域**：纯算法实现（余弦相似度/关键词匹配/token 估算），无 LLM 调用，**不需要 SDK 重构**。
 - **api/ 域**：Protocol 接口定义，无 LLM 逻辑，**不需要 SDK 重构**。
 - [ ] `protocol/scheduler.py` Task 补充 `payload` 字段（当前 MockRuntime 用 getattr fallback）
+
+#### Agent 编排框架调研结论（2026-07-06）
+
+> 背景：R4-R5 SDK 深化路线确立后，需确认 aegisos_agents 中"自编排/自定义"代码与"计划后续开发"的占位模块是否还需引入第二个 Agent 编排框架。调研覆盖 LangGraph / Pydantic AI / AutoGen / CrewAI / Temporal / Prefect / blinker 七个候选。
+
+**自编排代码分类**
+
+| 类别 | 文件 | 现状 | 对应任务 |
+|------|------|------|---------|
+| A. Agent 串联编排 | `cyber_orchestrator.py`（手动 `_run()` + `json.dumps`） | 半 SDK 半自编排 | → R4.2 |
+| B. 神经符号闭环 | `neuro_symbolic.py`（`validate_and_fix` 循环） | 旧 `ModelProvider.complete()` + `json.loads` | → R4.1 |
+| C. 纯算法路由/调度/选举 | `router.py` / `election.py` / `scheduler.py` / `topology.py` | 自定义点积/Top-K/tier 分级 | 无（领域算法，保持自研） |
+| D. 多模型路由 | `model_router.py`（`MODEL_PREFIX_MAP` 手写表） | R5.2 已计划清理 | → R5.2 |
+| E. DAG 工作流引擎（占位） | `planning/engine/workflow/` | 仅 AGENT.md | → R4.2 后评估 |
+| F. 事件总线（占位） | `planning/engine/eventbus/` | 仅 AGENT.md | → R5.4 |
+| G. 记忆 7 空模块（占位） | `memory/{archive,cache,checkpoint,...}` | 仅 README | 无（自研存储） |
+
+**主流框架契合度对比**
+
+| 框架 | 契合点 | 冲突点 | 结论 |
+|------|--------|--------|------|
+| **openai-agents SDK**（已用） | `handoffs`/`output_guardrails`/`AgentHooks`/`trace()`/`FunctionTool`/`Runner.run_streamed` 全套原生编排 | — | ✅ 首选（已集成，R4-R5 对齐） |
+| **LangGraph** | `StateGraph`+条件边=红蓝紫 DAG；`evaluator-optimizer`=神经符号闭环；`Send` API=动态异构分派；内置持久化/流式/HITL | 引入 LangChain 生态依赖，与"轻量自研"理念冲突；与 SDK 功能重叠 | ⚠️ 仅 workflow 引擎超 handoffs 时备选 |
+| **Pydantic AI** | `Pydantic Graph` 类型化图编排；与 11 个 BaseModel 天然契合；MCP/Durable Exec | 多 Agent 编排能力弱于 SDK handoffs | ⚠️ 轻量图编排备选 |
+| **AutoGen** | Core 事件驱动多 Agent runtime；GroupChat=对抗博弈；Docker 代码执行=沙箱 | Core 学习曲线陡；与 SDK 严重重叠；事件总线偏重 | ❌ 不推荐 |
+| **CrewAI** | Flows+Crews 角色化协作 | 偏任务委派非对抗博弈；大依赖 | ❌ 不推荐 |
+| **Temporal** | Durable execution/长程恢复/子工作流=超长程攻击防御 | 需 Temporal Server（额外运维）；赛事阶段过重 | ❌ 赛后做长程恢复再考虑 |
+| **Prefect** | Pythonic DAG + UI + 事件触发 | 需 Prefect Server；与 SDK 编排重叠 | ❌ 不推荐 |
+| **blinker** | 轻量发布/订阅（纯信号库） | 仅信号库，无 Agent 能力 | ✅ 事件总线备选（R5.4 已采用） |
+
+**分项决策**
+
+| 类别 | 决策 | 理由 |
+|------|------|------|
+| A. Agent 串联编排 | **子编排（SDK 原生 handoffs）** | R4.2 方案正确，SDK 自动管理状态传递+对话历史，无需第二框架 |
+| B. 神经符号闭环 | **子编排（SDK guardrails）** | R4.1 方案正确，`output_guardrail` 自带重试循环 = evaluator-optimizer 模式 |
+| C. 路由/调度/选举 | **保持自研** | 纯算法（点积/Top-K/tier），任何框架都帮不上忙 |
+| D. 多模型路由 | **清理（R5.2）** | SDK `ModelProvider` 内置路由，`model_router` 降级为配置层或删除 |
+| E. DAG 工作流引擎 | **子编排优先；LangGraph/Pydantic Graph 备选** | R4.2 完成后红蓝紫链本身即 DAG，workflow 引擎需求大幅降低；若未来出现"条件分支+并行汇聚+循环"超出 handoffs，引入 LangGraph StateGraph（仅此一处，不扩散） |
+| F. 事件总线 | **子编排（blinker + AgentHooks）** | R5.4 方案正确，SDK `AgentHooks` 为事件源 + `blinker` 发布/订阅，不需 AutoGen/Temporal 级基础设施 |
+| G. 记忆空模块 | **自研** | 存储/检索/同步逻辑，无 Agent 编排需求 |
+
+**最终结论**：openai-agents SDK 的 `handoffs`/`guardrails`/`tracing`/`AgentHooks`/`FunctionTool` 已覆盖 90% 自编排需求，**无需引入第二个 Agent 框架**。R4-R5 路线方向正确，按计划执行即可。备选框架登记（不立即引入）：
+- **LangGraph StateGraph** — 仅当 `planning/engine/workflow/` 出现 SDK handoffs 无法表达的复杂 DAG（多入汇聚+条件循环）时启用，限定在 workflow 引擎子模块内，不扩散到全项目。
+- **Pydantic Graph** — 若需更轻量的类型化图编排，作为 LangGraph 的替代候选。
+- **blinker** — R5.4 事件总线已采用（轻量发布/订阅）。
+- **Temporal** — 赛后若需长程任务恢复与跨会话持久化，再评估引入。
 
 #### 记忆子系统补全（10 个空模块）
 - [ ] `aegisos_agents/memory/archive/` 归档记忆

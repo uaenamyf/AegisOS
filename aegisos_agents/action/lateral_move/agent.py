@@ -47,7 +47,7 @@ class LateralMoveAgent(StructuredAgent[LateralMoveResult]):
     OUTPUT_TYPE = LateralMoveResult
     TEMPERATURE = 0.4
 
-    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
+    def __init__(self, provider=None, mock: MockProvider | None = None, model=None) -> None:
         """初始化横向移动 Agent。
 
         兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
@@ -60,7 +60,7 @@ class LateralMoveAgent(StructuredAgent[LateralMoveResult]):
         # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
         if provider is not None and mock is None:
             mock = provider
-        super().__init__(mock=mock)
+        super().__init__(model=model, mock=mock)
 
     def plan_moves(self, chain: AttackChain, topology: Graph) -> list[AttackStep]:
         """根据攻击链和网络拓扑规划横向移动步骤。

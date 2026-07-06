@@ -47,7 +47,7 @@ class VulnCorrelatorAgent(StructuredAgent[VulnCorrelatorResult]):
     OUTPUT_TYPE = VulnCorrelatorResult
     TEMPERATURE = 0.2
 
-    def __init__(self, provider=None, mock: MockProvider | None = None) -> None:
+    def __init__(self, provider=None, mock: MockProvider | None = None, model=None) -> None:
         """初始化漏洞关联 Agent。
 
         兼容旧接口：接受 ``provider`` 参数（原 ``ModelProvider``）时走 Mock 路径，
@@ -60,7 +60,7 @@ class VulnCorrelatorAgent(StructuredAgent[VulnCorrelatorResult]):
         # provider 参数兼容：旧测试传 MockProvider，转用 mock 参数
         if provider is not None and mock is None:
             mock = provider
-        super().__init__(mock=mock)
+        super().__init__(model=model, mock=mock)
 
     def correlate(self, assets: list[Asset]) -> list[VulnFinding]:
         """对资产列表进行漏洞关联分析。
