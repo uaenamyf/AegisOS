@@ -1,6 +1,6 @@
 # date: 2026-07-04
 # dev: myf
-# changelog: 新建攻防协议类型
+# changelog: 2026-07-06 扩展 ThreatIntel ATT&CK 映射字段（technique_id/sub_technique/detection/risk_level/asset_ids）
 """攻防演练协议类型。
 
 定义网络安全攻防演练场景中使用的数据契约，包括资产、漏洞、
@@ -187,8 +187,21 @@ class ThreatIntel:
         technique: 攻击技术名称（如 T1059 Command and Scripting Interpreter）。
         tactic: 攻击战术类别（如 Execution / Persistence）。
         refs: 参考资料链接列表。
+        technique_id: ATT&CK 技术编号（如 T1059.004 Unix Shell）。
+        sub_technique: 子技术名称（空表示无子技术）。
+        detection: 检测建议（描述如何在 SIEM/IDS 中检测此技术）。
+        mitigation: 缓解措施建议（描述如何缓解此攻击技术）。
+        risk_level: 风险等级：low / medium / high / critical。
+        asset_ids: 受此威胁影响的资产 ID 列表。
     """
 
     technique: str = ""
     tactic: str = ""
     refs: list = field(default_factory=list)
+    # date: 2026-07-06 dev: myf changelog: 新增 ATT&CK 技战术映射字段
+    technique_id: str = ""
+    sub_technique: str = ""
+    detection: str = ""
+    mitigation: str = ""
+    risk_level: str = "medium"
+    asset_ids: list = field(default_factory=list)

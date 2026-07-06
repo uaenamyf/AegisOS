@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store";
 import { Sidebar } from "@/views/layout";
 import { CanvasView } from "@/views/canvas";
 import { ChatView } from "@/views/chat";
+import { CyberView } from "@/views/cyber";
 import { GraphView } from "@/views/graph";
 import { MonitorView } from "@/views/monitor";
 import { ReplayView } from "@/views/replay";
@@ -19,6 +20,7 @@ import type { ViewName } from "@/protocol/frontend-types";
 const VIEWS: Record<ViewName, () => JSX.Element> = {
   canvas: CanvasView,
   chat: ChatView,
+  cyber: CyberView,
   graph: GraphView,
   monitor: MonitorView,
   replay: ReplayView,

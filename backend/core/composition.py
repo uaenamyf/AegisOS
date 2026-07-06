@@ -31,6 +31,7 @@ from backend.repositories.database import (
 )
 from backend.repositories.repositories import SessionRepository, TaskRepository
 from backend.services.agent_service import AgentService
+from backend.services.cyber_defense_service import CyberDefenseService
 from backend.services.di_ports import (
     PersistencePortImpl,
     SessionPortImpl,
@@ -90,6 +91,8 @@ class Composition:
         self.agent_service = AgentService(self.agent_registry, self.runtime)
         self.memory_service = MemoryService(self.memory_api)
         self.graph_service = GraphService(self.event_bus)
+        # date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 注入 CyberDefenseService
+        self.cyber_defense_service = CyberDefenseService()
 
         # --- DI 端口（agents.api.ports）由后端实现 ---
         self.persistence_port = PersistencePortImpl(self.task_repo)
@@ -156,6 +159,11 @@ def get_memory_service() -> MemoryService:
 def get_graph_service() -> GraphService:
     """提供 GraphService 依赖。"""
     return get_composition().graph_service
+
+
+def get_cyber_defense_service() -> CyberDefenseService:
+    """提供 CyberDefenseService 依赖。"""
+    return get_composition().cyber_defense_service
 
 
 def get_event_bus() -> MockEventBusAPI:

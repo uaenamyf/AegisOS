@@ -229,10 +229,51 @@ export interface Task {
   latency_budget?: number;
 }
 
+// date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 补充 ThreatIntel ATT&CK 映射字段 + 攻防响应类型
 export interface ThreatIntel {
   technique?: string;
   tactic?: string;
   refs?: any[];
+  technique_id?: string;
+  sub_technique?: string;
+  detection?: string;
+  mitigation?: string;
+  risk_level?: string;
+  asset_ids?: any[];
+}
+
+// --- 攻防场景响应类型（对应后端 backend/schemas/__init__.py）---
+
+export interface RangeResponse {
+  range_id: string;
+  target_range: string;
+  label: string;
+  status: string;
+  topology: TopologyResponse;
+}
+
+export interface TopologyResponse {
+  target_range: string;
+  nodes: Record<string, any>[];
+  edges: Record<string, any>[];
+}
+
+export interface RedAttackResponse {
+  assets: Asset[];
+  findings: VulnFinding[];
+  chain: Record<string, any>;
+}
+
+export interface BlueDefenseResponse {
+  alerts: Alert[];
+  triaged: Alert[];
+  hypotheses: Record<string, any>[];
+  plan: Record<string, any>;
+}
+
+export interface PurpleReviewResponse {
+  critique: Record<string, any>;
+  review: Record<string, any>;
 }
 
 export interface ToolCall {

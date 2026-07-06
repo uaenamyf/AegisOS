@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-06 · **130 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅ · **P1 编排器实现 ✅**
+> 最后更新：2026-07-06 · **151 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅ · P1 编排器实现 ✅ · **F 后端端点 ✅ · G 前端视图 ✅**
 
 ---
 
@@ -19,10 +19,10 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + 赛事 Phase F-H 待启动 |
-| **测试** | **130 passed**（protocol 6 + memory 33 + planning 54 + tools 5 + action 19 + perception 4 + e2e 9） |
-| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ · **P1 编排器 ✅** |
-| **待完成 Phase** | R4 SDK 编排深化（8 项详细计划） · R5 旧接口清理+流式+事件总线（5 项） · F · G · H |
+| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + **赛事 Phase F ✅ · G ✅** · H 待启动 |
+| **测试** | **151 passed**（protocol 6 + memory 33 + planning 54 + tools 5 + action 19 + perception 4 + e2e 9 + backend cyber 11 + frontend cyber 21） |
+| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ · P1 编排器 ✅ · **F ✅ · G ✅** |
+| **待完成 Phase** | R4 SDK 编排深化（8 项详细计划） · R5 旧接口清理+流式+事件总线（5 项） · H |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -38,13 +38,13 @@
 
 | 场景 | 描述 | 依赖 | 状态 |
 |------|------|------|------|
-| 场景 1 | 网络防御（红→蓝→紫完整链路） | B3 + E13 + 编排器 | 🔲 待做 |
+| 场景 1 | 网络防御（红→蓝→紫完整链路） | B3 + E13 + 编排器 + F + G | ✅ 可演示 |
 | 场景 2 | 超长程攻击链（多步横向移动） | 场景 1 + H1 靶场 | 🔲 待做 |
 | 场景 3 | 端-边-云协同防御 | 场景 1 + H7 端边云 | 🔲 待做 |
 
 ### 🔥 P0 — 立即执行（本周）
 
-> ✅ B3 + E13 已于 2026-07-06 完成，详见 §8「已完成任务」。✅ P1 编排器实现已于 2026-07-06 完成（EventBus/Workflow/Planner/Orchestrator/CyberRuntime 5 子任务）。下一步：R4 SDK 深化 + F 后端端点。
+> ✅ B3 + E13 已于 2026-07-06 完成。✅ P1 编排器实现已于 2026-07-06 完成。✅ F 后端端点 + G 前端视图已于 2026-07-06 完成（11 后端测试 + 21 前端测试全通过）。下一步：R4 SDK 深化 + H 靶场/数据/部署。
 
 ### ⚡ P1 — 短期（1-2 周）
 
@@ -57,28 +57,32 @@
 - [x] 编排器集成 MockRuntime → 替换为真实 Runtime — `runtime.py`：`CyberRuntime` 委托 `CyberOrchestrator` 红蓝紫链，实现 `RuntimeAPI`，替代 MockRuntime 85 行 dispatch map
 
 #### F — 后端攻防 REST 端点
-> **优先级**：P1 · **预估**：2 天 · **依赖**：编排器
-- [ ] F1 `backend/routers/range.py` 靶场管理端点（`/api/v1/range/*`）
-- [ ] F2 `backend/routers/topology.py` 拓扑端点（`/api/v1/topology`）
-- [ ] F3 `backend/routers/attack.py` 攻击端点（`/api/v1/attack` · `/api/v1/attack/chain`）
-- [ ] F4 `backend/routers/defense.py` 防御端点（`/api/v1/defense` · `/api/v1/alerts` · `/api/v1/response`）
-- [ ] F5 `protocol/cyber.py` ThreatIntel 补充 ATT&CK 技战术映射字段
-- [ ] F6 后端测试：攻防端点集成测试
+> **优先级**：P1 · **预估**：2 天 · **依赖**：编排器 · **状态**：✅ 已完成（2026-07-06）
+- [x] F1 `backend/routers/range.py` 靶场管理端点（`/api/v1/range/start` · `/api/v1/range/{id}`）
+- [x] F2 `backend/routers/range.py` 拓扑端点（`/api/v1/range/{id}/topology`）
+- [x] F3 `backend/routers/attack.py` 攻击端点（`/api/v1/attack` · `/api/v1/attack/chain/{id}`）
+- [x] F4 `backend/routers/defense.py` 防御端点（`/api/v1/defense` · `/api/v1/defense/{id}` · `/api/v1/defense/purple-review`）
+- [x] F5 `protocol/cyber.py` ThreatIntel 补充 ATT&CK 技战术映射字段 + `backend/routers/threat.py` 威胁情报端点
+- [x] F6 后端测试：攻防端点集成测试（11 测试方法全通过）
 
 #### G — 前端攻防视图
-> **优先级**：P1 · **预估**：3-4 天 · **依赖**：F
-- [ ] G1 `frontend/views/canvas/CanvasView.tsx` 攻击链 DAG 可视化（React Flow）
-  - 节点：Asset / AttackStep / 节点状态颜色
-  - 边：攻击路径
-- [ ] G2 `frontend/views/monitor/MonitorView.tsx` 防御看板
-  - 告警列表 + 严重度排序
-  - 响应计划 + 执行状态
-- [ ] G3 `frontend/views/replay/ReplayView.tsx` 时序回放
-  - 时间轴拖拽
-  - 攻击链逐步回放
-- [ ] G4 `frontend/views/graph/GraphView.tsx` 异构图可视化
-- [ ] G5 `frontend/src/protocol/types.ts` 补充 cyber 类型映射
-- [ ] G6 前端测试：视图交互测试
+> **优先级**：P1 · **预估**：3-4 天 · **依赖**：F · **状态**：✅ 已完成（2026-07-06）
+- [x] G1 `frontend/src/views/cyber/RedTeamPanel.tsx` 攻击链 DAG 可视化（自定义 SVG，非 React Flow）
+  - 节点：Asset / AttackStep + 颜色区分（蓝=资产，红=攻击步骤）
+  - 边：贝塞尔曲线 + 箭头标记
+  - 漏洞发现表 + CVSS 评分徽章
+- [x] G2 `frontend/src/views/cyber/BlueTeamPanel.tsx` 防御看板
+  - 告警列表 + 严重度排序（critical/high→danger，medium→warning，low→success）
+  - 响应计划 + 执行状态 + 置信度 + 回滚信息
+  - 安全假设列表
+- [x] G3 `frontend/src/views/cyber/PurpleTeamPanel.tsx` 时序回放
+  - Critique/Review 裁决展示
+  - 攻击链时间轴回放（Play/Pause/Step forward/backward）
+- [x] G4 `frontend/src/views/cyber/ThreatIntelPanel.tsx` ATT&CK 威胁情报表
+  - 战术过滤按钮（9 个战术）
+  - 可展开行显示 technique_id / detection / mitigation / refs
+- [x] G5 `frontend/src/protocol/types.ts` 补充 cyber 类型映射（ThreatIntel 扩展 + RangeResponse/RedAttackResponse/BlueDefenseResponse/PurpleReviewResponse/TopologyResponse）
+- [x] G6 前端测试：cyber API service 单元测试（12）+ 视图组件渲染测试（9）= 21 测试全通过
 
 ### 📅 P2 — 中期（赛事前）
 
@@ -371,6 +375,105 @@
 - **Pydantic Graph** — 若需更轻量的类型化图编排，作为 LangGraph 的替代候选。
 - **blinker** — R5.4 事件总线已采用（轻量发布/订阅）。
 - **Temporal** — 赛后若需长程任务恢复与跨会话持久化，再评估引入。
+
+#### Agent 行动模式补全（Plan / ReAct / Ask / Goal）
+
+> **调研结论（2026-07-06）**：当前 11 个攻防 Agent 全部为"单次 LLM 调用 → 结构化输出"模式，无迭代推理、无工具调用循环、无人机交互、无递归分解。四种经典 Agent 行动范式（Plan / ReAct / Ask / Goal）对 11 个 Agent 的适用性分析如下。
+
+**范式 × Agent 适配矩阵**
+
+| 范式 | 定义 | 高价值 Agent | 中价值 Agent | 赛事评分维度 |
+|------|------|-------------|-------------|-------------|
+| **Plan**（先规划后执行） | LLM 先生成高层策略/步骤分解，再逐步执行每步 | exploit_planner · ir_planner · lateral_move | threat_hunt | 技术创新 20（深度协同推理） |
+| **ReAct**（思考-行动-观察循环） | think→act(tool)→observe→think 循环，直到任务完成 | recon · vuln_correlator · detector · threat_hunt · forensics | exploit_planner | 完整性 40（可演示） + 应用创新 25 |
+| **Ask**（人机协同/澄清） | 遇不确定时暂停向人类提问，获指导后继续 | ir_planner（破坏性操作确认） | critic · threat_hunt | 应用创新 25（HITL 对抗仿真） |
+| **Goal**（递归目标分解） | 高层目标递归分解为子目标，逐个求解，失败重试/换路 | CyberOrchestrator（编排器级） | exploit_planner · threat_hunt | 技术创新 20（群体智能） |
+
+**逐 Agent 分析**
+
+| Agent | 当前模式 | Plan | ReAct | Ask | Goal | 分析 |
+|-------|---------|------|-------|-----|------|------|
+| recon | 单次调用 | — | **高** | — | — | 应实际运行 nmap/masscan 扫描 → 解析结果；ReAct 让 LLM 自主决定扫哪个端口、用什么参数 |
+| vuln_correlator | 单次调用 | — | **高** | — | — | 应运行 nuclei/nmap 脚本获取真实 CVE，而非 LLM 猜测漏洞 |
+| exploit_planner | 单次调用 | **高** | 中 | — | 中 | 先规划攻击策略（入口→路径→目标），再生成详细步骤；复杂目标可递归分解 |
+| lateral_move | 单次调用 | **高** | — | — | — | 先规划移动策略（哪些资产可达、优先路径），再生成步骤 |
+| detector | 单次调用 | — | **高** | — | — | 应查询真实 IDS/SIEM（Zeek/Suricata），观察事件流，迭代检测 |
+| triage | 单次调用 | — | — | — | — | 纯排序/去重任务，单次调用已足够，无需范式增强 |
+| threat_hunt | 单次调用 | 中 | **高** | 中 | 中 | 假设驱动：形成假设→查询日志→观察→修正假设→再查（天然 ReAct） |
+| ir_planner | 单次调用 | **高** | — | **高** | — | 先规划多阶段响应策略，再细化动作；破坏性操作（隔离/阻断）须人工确认 |
+| forensics | 单次调用 | — | **高** | — | — | 取证本质是多工具迭代：分析内存→观察→关联日志→观察→重建时间线 |
+| critic | 单次调用 | — | — | 中 | — | 发现严重问题时可向人类请求严重度阈值指导 |
+| reviewer | 单次调用 | — | — | — | — | 一致性审查是单次推理任务，当前模式已足够 |
+
+**实现优先级与路线图**
+
+> 依赖关系：ReAct 依赖 H1（Docker 沙箱靶场 + 工具注册）先落地；Plan 可独立于 H1 实现（纯 LLM 推理增强）；Ask 依赖前端交互通道（F/G 端点）；Goal 依赖编排器重构（R4.2 handoffs）完成。
+
+```mermaid
+graph LR
+    P[Plan 范式<br/>exploit_planner + ir_planner<br/>+ lateral_move] --> R4[R4.2 handoffs]
+    H1[H1 沙箱靶场] --> R[ReAct 范式<br/>recon + vuln_correlator<br/>+ detector + threat_hunt + forensics]
+    R4 --> G[Goal 范式<br/>CyberOrchestrator 递归分解]
+    F[F 端点] --> A[Ask 范式<br/>ir_planner HITL]
+    G --> A
+```
+
+**P1 — Plan 范式**（与 R4 并行，2-3 天）
+- [ ] AP1.1 `perception/reasoning/strategies/plan_mode.py` — Plan 行动模式实现
+  - 接口：`plan(task, context) -> PlanResult`（高层策略 + 步骤分解）
+  - 用 SDK `Agent` + 两阶段 prompt：阶段 1「分析目标 + 生成策略」，阶段 2「按策略逐步生成详细产出」
+  - 可复用 `StructuredAgent` 基类，阶段 1 output_type 为 `PlanResult`（策略 + 步骤列表），阶段 2 output_type 为各 Agent 原有 output_type
+- [ ] AP1.2 `exploit_planner` 接入 Plan 范式 — 先规划攻击策略（入口资产、攻击路径、目标），再生成详细 AttackChain
+- [ ] AP1.3 `ir_planner` 接入 Plan 范式 — 先规划多阶段响应策略（隔离→阻断→诱饵→监控），再生成详细 DefenseAction 列表
+- [ ] AP1.4 `lateral_move` 接入 Plan 范式 — 先规划移动策略（可达性分析 + 优先路径），再生成 AttackStep 列表
+- [ ] AP1.5 测试：Plan 范式模式下 3 个 Agent 输出质量提升验证
+
+**P2 — ReAct 范式**（依赖 H1 沙箱完成，3-4 天）
+- [ ] AP2.1 `perception/reasoning/strategies/react_mode.py` — ReAct 行动模式实现
+  - 接口：`react(task, tools, max_iterations) -> ReActResult`
+  - 循环：`think(prompt) → act(ToolCall) → observe(ToolResult) → think(...)` 直到完成或达 max_iterations
+  - 用 SDK `FunctionTool` 注册沙箱工具，LLM 自主决定调用哪个工具
+  - 每次 think/act/observe 写入记忆（working memory），超长时触发 compress
+- [ ] AP2.2 `recon` 接入 ReAct — LLM 自主调用 nmap/masscan 工具，观察扫描结果，决定下一步扫描策略
+- [ ] AP2.3 `vuln_correlator` 接入 ReAct — LLM 自主调用 nuclei/nmap-script 工具，获取真实 CVE 数据
+- [ ] AP2.4 `detector` 接入 ReAct — LLM 自主查询 Zeek/Suricata 日志，迭代检测异常
+- [ ] AP2.5 `threat_hunt` 接入 ReAct — 假设驱动：生成假设 → 查询日志 → 观察 → 修正假设 → 再查
+- [ ] AP2.6 `forensics` 接入 ReAct — LLM 自主调用取证工具（内存分析/磁盘分析/日志关联），迭代构建取证报告
+- [ ] AP2.7 测试：ReAct 模式下 5 个 Agent 工具调用循环验证
+
+**P2 — Goal 范式**（依赖 R4.2 handoffs 完成，2 天）
+- [ ] AP3.1 `perception/reasoning/strategies/goal_mode.py` — Goal 行动模式实现
+  - 接口：`decompose(goal, depth) -> list[SubGoal]`，`solve(subgoal) -> Result`，失败时 `retry(alternative)`
+  - 递归分解：高层目标 → 子目标列表 → 每个子目标递归分解或直接执行
+  - 用 SDK `Agent.handoffs` 实现子目标委派，失败时 SDK 自动重试或切换备选路径
+- [ ] AP3.2 `CyberOrchestrator` 接入 Goal 范式 — 替代当前 4 个固定场景模板，实现递归目标分解
+  - 「防御 10.0.0.0/24」→ 「识别威胁」+ 「部署防御」→ 各自递归分解为子任务 DAG
+- [ ] AP3.3 `exploit_planner` 支持 Goal 递归 — 复杂攻击目标分解为多阶段子目标
+- [ ] AP3.4 测试：Goal 范式下编排器递归分解 + 失败重试验证
+
+**P2 — Ask 范式**（依赖 F/G 端点 + 前端交互通道，1-2 天）
+- [ ] AP4.1 `perception/reasoning/strategies/ask_mode.py` — Ask 行动模式实现
+  - 接口：`ask(question, options) -> HumanResponse`
+  - Agent 检测到不确定/需人工决策时暂停，经 EventBus 发布 `HumanInputRequired` 事件
+  - 后端 SSE/WebSocket 推送到前端，用户回复后继续执行
+  - 超时降级：无人响应时按默认策略继续
+- [ ] AP4.2 `ir_planner` 接入 Ask — 破坏性操作（isolate/block）执行前向分析师确认
+- [ ] AP4.3 `critic` 接入 Ask — 发现 critical 级别问题时向人类请求严重度阈值指导
+- [ ] AP4.4 `threat_hunt` 接入 Ask — 假设验证结果模棱两可时向分析师请求澄清
+- [ ] AP4.5 `protocol/event.py` 补充 `HumanInputRequired` / `HumanResponse` 事件类型
+- [ ] AP4.6 前端 `ChatView` 支持人机交互消息渲染（选项卡片 + 文本输入）
+- [ ] AP4.7 测试：Ask 范式 HITL 流程验证
+
+**与现有任务的关系**
+
+| 新任务 | 依赖 | 产物 |
+|--------|------|------|
+| AP1（Plan） | R4（SDK 深化） | `perception/reasoning/strategies/plan_mode.py` + 3 个 Agent 增强 |
+| AP2（ReAct） | H1（沙箱靶场）+ R4.5（FunctionTool） | `perception/reasoning/strategies/react_mode.py` + 5 个 Agent 增强 |
+| AP3（Goal） | R4.2（handoffs） | `perception/reasoning/strategies/goal_mode.py` + Orchestrator 增强 |
+| AP4（Ask） | F（端点）+ G（前端） | `perception/reasoning/strategies/ask_mode.py` + 3 个 Agent 增强 + 事件类型 |
+
+> **实现策略**：4 种范式统一放在 `aegisos_agents/perception/reasoning/strategies/` 目录（当前仅 AGENT.md 规划，无代码）。每个范式为独立模块，各 Agent 通过 `StructuredAgent` 的子类 mixin 或装饰器模式接入。范式之间可组合（如 exploit_planner 可同时用 Plan + ReAct：先规划策略，再 ReAct 逐步执行工具调用）。
 
 #### 记忆子系统补全（10 个空模块）
 - [ ] `aegisos_agents/memory/archive/` 归档记忆

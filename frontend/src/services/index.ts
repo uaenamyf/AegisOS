@@ -12,6 +12,15 @@ export type { InvokeAgentRequest, InvokeAgentResponse, InvokeToolRequest, ListAg
 export { memoryApi } from "./api/memory";
 export { graphApi } from "./api/graph";
 
+// date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 新增攻防 API 服务导出
+export { cyberApi } from "./api/cyber";
+export type {
+  StartRangeRequest,
+  RedAttackRequest,
+  BlueDefenseRequest,
+  PurpleReviewRequest,
+} from "./api/cyber";
+
 // 实时通信服务（对应后端 sse.py + ws.py）
 export { SseManager, sseManager } from "./realtime/sse";
 export type { SseHandler } from "./realtime/sse";

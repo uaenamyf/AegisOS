@@ -42,7 +42,7 @@ def _load_dotenv() -> None:
         from dotenv import dotenv_values
     except ImportError:
         # python-dotenv 未安装时手动解析
-        for line in env_path.read_text().splitlines():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -66,7 +66,7 @@ def _load_yaml_defaults() -> dict:
         import yaml
     except ImportError:
         return {}
-    data = yaml.safe_load(yaml_path.read_text()) or {}
+    data = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     return data if isinstance(data, dict) else {}
 
 

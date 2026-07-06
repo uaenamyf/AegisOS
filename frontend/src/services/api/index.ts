@@ -10,3 +10,11 @@ export { agentApi } from "./agents";
 export type { InvokeAgentRequest, ListAgentsResponse } from "./agents";
 export { memoryApi } from "./memory";
 export { graphApi } from "./graph";
+// date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 新增攻防 API 服务导出
+export { cyberApi } from "./cyber";
+export type {
+  StartRangeRequest,
+  RedAttackRequest,
+  BlueDefenseRequest,
+  PurpleReviewRequest,
+} from "./cyber";

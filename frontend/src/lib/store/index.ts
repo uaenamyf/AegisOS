@@ -8,6 +8,11 @@ import type {
   Event,
   Graph,
   Task,
+  BlueDefenseResponse,
+  PurpleReviewResponse,
+  RangeResponse,
+  RedAttackResponse,
+  ThreatIntel,
 } from "@/protocol/types";
 import type {
   ConnectionStatus,
@@ -37,6 +42,15 @@ export interface AppState {
   isSending: boolean;
   selectedAgentId: string | null;
 
+  // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 新增攻防演练状态字段
+  currentRange: RangeResponse | null;
+  redAttackResult: RedAttackResponse | null;
+  blueDefenseResult: BlueDefenseResponse | null;
+  purpleReviewResult: PurpleReviewResponse | null;
+  threatIntel: ThreatIntel[];
+  cyberLoading: boolean;
+  cyberError: string | null;
+
   setSession: (session: Session | null) => void;
   setTasks: (tasks: Task[]) => void;
   upsertTask: (task: Task) => void;
@@ -53,6 +67,16 @@ export interface AppState {
   clearChat: () => void;
   setSending: (sending: boolean) => void;
   setSelectedAgentId: (agentId: string | null) => void;
+
+  // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 新增攻防演练 setter
+  setCurrentRange: (range: RangeResponse | null) => void;
+  setRedAttackResult: (result: RedAttackResponse | null) => void;
+  setBlueDefenseResult: (result: BlueDefenseResponse | null) => void;
+  setPurpleReviewResult: (result: PurpleReviewResponse | null) => void;
+  setThreatIntel: (intel: ThreatIntel[]) => void;
+  setCyberLoading: (loading: boolean) => void;
+  setCyberError: (error: string | null) => void;
+
   reset: () => void;
 }
 
@@ -69,6 +93,14 @@ const initialState = {
   chatMessages: [] as ChatMessage[],
   isSending: false,
   selectedAgentId: null as string | null,
+  // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 攻防演练初始状态
+  currentRange: null as RangeResponse | null,
+  redAttackResult: null as RedAttackResponse | null,
+  blueDefenseResult: null as BlueDefenseResponse | null,
+  purpleReviewResult: null as PurpleReviewResponse | null,
+  threatIntel: [] as ThreatIntel[],
+  cyberLoading: false,
+  cyberError: null as string | null,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -140,6 +172,15 @@ export const useAppStore = create<AppState>((set) => ({
   setSending: (sending) => set({ isSending: sending }),
 
   setSelectedAgentId: (agentId) => set({ selectedAgentId: agentId }),
+
+  // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 攻防演练 setter 实现
+  setCurrentRange: (range) => set({ currentRange: range }),
+  setRedAttackResult: (result) => set({ redAttackResult: result }),
+  setBlueDefenseResult: (result) => set({ blueDefenseResult: result }),
+  setPurpleReviewResult: (result) => set({ purpleReviewResult: result }),
+  setThreatIntel: (intel) => set({ threatIntel: intel }),
+  setCyberLoading: (loading) => set({ cyberLoading: loading }),
+  setCyberError: (error) => set({ cyberError: error }),
 
   reset: () => set({ ...initialState }),
 }));

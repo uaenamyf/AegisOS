@@ -80,3 +80,127 @@ class ErrorResponse(BaseModel):
     code: str
     message: str
     trace_id: str
+
+
+# --- 攻防端点 Schema (date: 2026-07-06, dev: Claude Code (glm-5.2), changelog: 新建攻防场景请求/响应 Schema) ---
+
+
+class StartRangeRequest(BaseModel):
+    target_range: str = Field("10.0.0.0/24", description="Target network range in CIDR notation")
+    label: str = Field("", description="Optional label for the range session")
+
+
+class RedAttackRequest(BaseModel):
+    target_range: str = Field("10.0.0.0/24", description="Target network range to attack")
+
+
+class BlueDefenseRequest(BaseModel):
+    event_stream: list[dict[str, Any]] = Field(
+        default_factory=list, description="Raw event stream for detection"
+    )
+
+
+class PurpleReviewRequest(BaseModel):
+    attack_chain: dict[str, Any] = Field(..., description="Red team attack chain")
+    response_plan: dict[str, Any] = Field(..., description="Blue team response plan")
+    alerts: list[dict[str, Any]] = Field(
+        default_factory=list, description="Alert list for purple review"
+    )
+
+
+class RangeResponse(BaseModel):
+    range_id: str
+    target_range: str
+    label: str
+    status: str
+    topology: dict[str, Any] = Field(default_factory=dict)
+
+
+class TopologyResponse(BaseModel):
+    target_range: str
+    nodes: list[dict[str, Any]] = Field(default_factory=list)
+    edges: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class AssetResponse(BaseModel):
+    asset_id: str
+    host: str = ""
+    services: list[Any] = Field(default_factory=list)
+    os: str = ""
+    exposure: str = "external"
+
+
+class VulnFindingResponse(BaseModel):
+    finding_id: str
+    cve_id: str = ""
+    asset_id: str = ""
+    cvss: float = 0.0
+    attack_surface: str = ""
+
+
+class AttackStepResponse(BaseModel):
+    step_id: str
+    technique: str = ""
+    from_asset: str = ""
+    to_asset: str = ""
+    success: bool = False
+
+
+class AttackChainResponse(BaseModel):
+    chain_id: str
+    target: str = ""
+    steps: list[AttackStepResponse] = Field(default_factory=list)
+    status: str = "planned"
+
+
+class AlertResponse(BaseModel):
+    alert_id: str
+    severity: str = "low"
+    src: str = ""
+    dst: str = ""
+    technique: str = ""
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
+class DefenseActionResponse(BaseModel):
+    action_id: str
+    kind: str = "monitor"
+    target: str = ""
+    rationale: str = ""
+
+
+class ResponsePlanResponse(BaseModel):
+    plan_id: str
+    actions: list[DefenseActionResponse] = Field(default_factory=list)
+    confidence: float = 0.0
+    rollback: dict[str, Any] = Field(default_factory=dict)
+
+
+class ThreatIntelResponse(BaseModel):
+    technique: str = ""
+    tactic: str = ""
+    refs: list[Any] = Field(default_factory=list)
+    technique_id: str = ""
+    sub_technique: str = ""
+    detection: str = ""
+    mitigation: str = ""
+    risk_level: str = "medium"
+    asset_ids: list[Any] = Field(default_factory=list)
+
+
+class RedAttackResponse(BaseModel):
+    assets: list[AssetResponse] = Field(default_factory=list)
+    findings: list[VulnFindingResponse] = Field(default_factory=list)
+    chain: dict[str, Any] = Field(default_factory=dict)
+
+
+class BlueDefenseResponse(BaseModel):
+    alerts: list[AlertResponse] = Field(default_factory=list)
+    triaged: list[AlertResponse] = Field(default_factory=list)
+    hypotheses: list[dict[str, Any]] = Field(default_factory=list)
+    plan: dict[str, Any] = Field(default_factory=dict)
+
+
+class PurpleReviewResponse(BaseModel):
+    critique: dict[str, Any] = Field(default_factory=dict)
+    review: dict[str, Any] = Field(default_factory=dict)

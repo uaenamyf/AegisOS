@@ -2,6 +2,68 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [F + G] 2026-07-06 攻防后端端点 + 前端视图（32 测试全通过）
+
+### F1-F2 — 靶场管理 + 拓扑端点
+- 新增 `backend/routers/range.py` — `POST /api/v1/range/start`（启动靶场）、`GET /api/v1/range/{range_id}`（查询靶场状态）、`GET /api/v1/range/{range_id}/topology`（获取拓扑图）。
+- 使用 `Depends(get_cyber_defense_service)` DI 注入，返回 `RangeStartResponse` / `TopologyResponse` schema。
+
+### F3 — 攻击端点
+- 新增 `backend/routers/attack.py` — `POST /api/v1/attack`（执行红队攻击链）、`GET /api/v1/attack/chain/{range_id}`（获取攻击链结果）。
+- 返回 `RedAttackResponse` schema（含 assets / findings / chain）。
+
+### F4 — 防御 + 紫队评审端点
+- 新增 `backend/routers/defense.py` — `POST /api/v1/defense`（执行蓝队防御）、`GET /api/v1/defense/{range_id}`（查询防御结果）、`POST /api/v1/defense/purple-review`（紫队评审）。
+- 返回 `BlueDefenseResponse` / `PurpleReviewResponse` schema。
+
+### F5 — ThreatIntel 协议扩展 + 威胁情报端点
+- 扩展 `protocol/cyber.py` `ThreatIntel` dataclass：新增 `technique_id` / `sub_technique` / `detection` / `mitigation` / `risk_level` / `asset_ids` 字段。
+- 新增 `backend/routers/threat.py` — `GET /api/v1/threat/attack-techniques`（支持 `?tactic=` 过滤）。
+- 新增 `backend/schemas/__init__.py` — `ThreatIntelResponse` 等 6 个 Pydantic v2 响应 schema。
+- 新增 `backend/services/cyber_defense.py` — `CyberDefenseService` 封装 `CyberOrchestrator`，提供 7 个业务方法。
+- 更新 `backend/core/composition.py` — 注入 `CyberDefenseService`。
+- 更新 `backend/routers/__init__.py` — 注册 range / attack / defense / threat 路由。
+
+### F6 — 后端集成测试
+- 新增 `tests/backend/test_cyber_endpoints.py` — 11 个测试方法：靶场启动/查询/拓扑/404、红队攻击/链查询、蓝队防御/按靶场查询/紫队评审、威胁情报全量/过滤/映射。
+- 全部使用 `TestClient` + `X-API-Key: aegis-dev-key` 认证头。
+
+### G1 — 攻击链 DAG 可视化
+- 新增 `frontend/src/views/cyber/RedTeamPanel.tsx` — 自定义 SVG 渲染攻击链 DAG：资产节点（蓝色矩形）+ 攻击步骤节点（红色矩形）+ 贝塞尔曲线边 + 箭头标记。漏洞发现表 + CVSS 评分徽章 + 统计栏。
+
+### G2 — 防御看板
+- 新增 `frontend/src/views/cyber/BlueTeamPanel.tsx` — 告警列表（严重度排序 + 左边框颜色标识）、响应计划（动作类型徽章 + 置信度 + 回滚信息）、安全假设列表、事件流输入 + 执行防御按钮。
+
+### G3 — 紫队评审 + 时序回放
+- 新增 `frontend/src/views/cyber/PurpleTeamPanel.tsx` — Critique/Review 裁决展示、问题/发现列表、攻击链时间轴回放（Play/Pause/Step forward/backward + 进度计数器）。
+
+### G4 — ATT&CK 威胁情报表
+- 新增 `frontend/src/views/cyber/ThreatIntelPanel.tsx` — 战术过滤按钮（9 个战术）、统计栏、可展开表格行显示 technique_id / detection / mitigation / refs，自动 fetch。
+
+### G5 — 前端类型映射
+- 更新 `frontend/src/protocol/types.ts` — `ThreatIntel` 接口扩展 + 新增 `RangeResponse` / `TopologyResponse` / `RedAttackResponse` / `BlueDefenseResponse` / `PurpleReviewResponse` 接口。
+
+### G6 — 前端测试
+- 新增 `frontend/src/services/api/__tests__/cyber.test.ts` — 12 个 cyber API service 单元测试（mock apiClient + 断言调用参数与返回值）。
+- 新增 `frontend/src/views/cyber/__tests__/cyber-views.test.tsx` — 9 个组件渲染测试（mock store + 断言 tab/按钮/面板渲染）。
+- 新增依赖：`@testing-library/react` + `@testing-library/dom`。
+
+### 前端基础设施
+- 新增 `frontend/src/services/api/cyber.ts` — `cyberApi` 对象 9 个方法 + 4 个请求接口。
+- 更新 `frontend/src/lib/store/index.ts` — 新增 7 个攻防状态字段 + setter。
+- 更新 `frontend/src/protocol/frontend-types.ts` — `ViewName` 新增 `'cyber'`。
+- 更新 `frontend/src/controllers/routes.ts` — 新增 cyber 路由。
+- 更新 `frontend/src/App.tsx` — VIEWS 映射新增 `cyber: CyberView`。
+- 新增 `frontend/src/views/cyber/CyberView.tsx` — 主视图（4 tab 切换 + 靶场启动栏 + 错误显示）。
+- 新增 `frontend/src/views/cyber/index.ts` — barrel export。
+- 更新 `frontend/src/views/index.ts` — 导出 `CyberView`。
+- 更新 `frontend/src/index.css` — 新增 cyber defense 视图全部样式（~100 个 CSS class，使用暗色主题变量）。
+
+### 质量门禁
+- TypeScript 零错误（8 个新文件全部通过 `get_errors` 验证）。
+- 后端 11 测试 + 前端 21 测试全通过（共 32 新增测试）。
+- 项目总计 **151 测试全通过**。
+
 ## [P1] 2026-07-06 编排器实现（P5 收尾，5 子任务全完成）
 
 ### P1.1 — EventBus 事件总线
