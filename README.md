@@ -77,21 +77,26 @@ aegisos_agents/
 
 ### 前置条件
 
-- Python 3.12+（项目自带 `.venv/`）
+- Python 3.12+（项目自带 `.venv/`，Windows 需 3.14+）
 - Node.js 18+（前端开发）
-- macOS / Linux
+- macOS / Linux / Windows
 
 ### 启动
 
 ```bash
 # 1. 安装依赖
-.venv/bin/pip install -e ".[dev]"
+.venv/bin/pip install -e ".[dev]"          # macOS/Linux
+# 或 pip install -e ".[dev]"                # Windows
+pip install openai-agents                   # SDK 依赖
 cd frontend && npm install && cd ..
 
-# 2. 启动后端（http://localhost:8000）
+# 2. 配置环境变量
+cp .env.example .env                        # 默认 Mock 模式，无需 API Key
+
+# 3. 启动后端（http://localhost:8000）
 .venv/bin/uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
-# 3. 启动前端（http://localhost:5173）
+# 4. 启动前端（http://localhost:5173）
 cd frontend && npm run dev
 ```
 
@@ -99,16 +104,14 @@ cd frontend && npm run dev
 
 ```bash
 # 运行测试
-.venv/bin/python -m pytest tests/ -v          # 59 passed
-
-# 质量门禁
-.venv/bin/ruff format && .venv/bin/ruff check --fix
+python -m pytest tests/ -v                  # 179 passed
 
 # API 文档
-open http://localhost:8000/docs                # Swagger UI
+open http://localhost:8000/docs              # Swagger UI
 ```
 
 > API 鉴权：所有 `/api/v1/*` 端点需 `X-API-Key: aegis-dev-key` header。
+> 流式端点：`POST /api/v1/stream/agent/{id}` 实时 SSE 推送 Agent 执行过程。
 
 ---
 
@@ -122,13 +125,18 @@ open http://localhost:8000/docs                # Swagger UI
 | **D** | 端边云三层调度 + 多模型兼容 | ✅ 完成 | 13 |
 | **E** | 11 红蓝紫 Agent + 神经符号闭环 | ✅ 完成 | 23 |
 | — | 前后端打通（14 Agent + Chat） | ✅ 完成 | — |
-| **B3** | 记忆接入 runtime 认知循环 | 🔲 待做 | — |
-| **E13** | 场景 1 端到端测试 | 🔲 待做 | — |
-| **F** | 后端攻防 REST 端点 | 🔲 待做 | — |
-| **G** | 前端攻防视图（DAG/看板/回放） | 🔲 待做 | — |
+| **B3** | 记忆接入 runtime 认知循环 | ✅ 完成 | — |
+| **E13** | 场景 1 端到端测试 | ✅ 完成 | 9 |
+| **P1** | 编排器（EventBus/Workflow/Planner/Orchestrator/CyberRuntime） | ✅ 完成 | 36 |
+| **F** | 后端攻防 REST 端点 | ✅ 完成 | 23 |
+| **G** | 前端攻防视图（DAG/看板/回放） | ✅ 完成 | — |
+| **SDK** | openai-agents SDK 集成 S1-S4 | ✅ 完成 | — |
+| **R2-R3** | Provider 清理 + 结构化输出 | ✅ 完成 | — |
+| **R4** | SDK 深化（handoffs/guardrails/tracing/FunctionTool） | ✅ 完成 | — |
+| **R5** | 旧接口清理 + 流式 SSE + AgentHooks→EventBus | ✅ 完成 | 6 |
 | **H** | Docker 沙箱 + Neo4j/Qdrant + 评测 | 🔲 待做 | — |
 
-> 完整 gap 分析见 `/memories/repo/gap-analysis.md`。
+> **179 测试全通过**（本机 Windows Python 3.14 + openai-agents 0.17.7）
 
 ---
 

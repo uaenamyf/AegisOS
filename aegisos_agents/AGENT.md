@@ -473,34 +473,22 @@ class NeuroSymbolicLoop:
 
 ##### `llms/base.py` — 旧 LLM 抽象基类（⚠️ R5 清理目标）
 
+##### `llms/base.py` — LLM 请求/响应数据结构（R5.1 清理后）
+
+R5.1 清理后仅保留 `LLMRequest` / `LLMResponse`（MockProvider 与 MockSDKModel 内部数据契约）。`ModelProvider` Protocol 已删除（SDK 有自己的 `ModelProvider`）。
+
 | 类 | 字段/方法 |
 |----|----------|
 | `LLMRequest` | `prompt` · `model_id` · `system_prompt` · `temperature` · `max_tokens` |
-| `LLMResponse` | `content` · `model_id` · `usage` · `latency_ms` |
-| `ModelProvider` | `complete(request) -> LLMResponse`（Protocol） |
-
-> ⚠️ `ModelProvider`/`LLMRequest`/`LLMResponse` 仅被 `neuro_symbolic.py` 和 `MockProvider` 使用。R5 任务：neuro_symbolic 迁移后删除旧接口。
+| `LLMResponse` | `text` · `ok` · `error` · `usage` · `model_id` |
 
 ##### `llms/mock_provider.py` — Mock 实现
 
 测试用，按预设 response 返回。
 
-##### `llms/model_router.py` — 多模型路由器
+##### ~~`llms/model_router.py`~~ — R5.2 已删除
 
-```python
-class ModelRouter:
-    MODEL_PREFIX_MAP = {"gpt": "openai", "o1": "openai", "o3": "openai",
-                        "claude": "anthropic", "local": "local", "qwen": "local",
-                        "deepseek": "local", "llama": "local", "mock": "mock"}
-    TIER_PROVIDER_MAP = {"device": "local", "edge": "local", "cloud": "cloud"}
-```
-
-**路由逻辑**：
-1. 按 `request.model_id` 前缀匹配 provider
-2. 匹配不到 → 使用 `default_provider`
-3. `complete_with_model()` 按 scheduler Model.tier（device/edge/cloud）映射到 provider
-
-**测试**：5 个 — mock 返回 · 正确 provider 分发 · fallback 到默认 · 无匹配返回 stub · tier 映射
+R5.2 删除（无业务代码引用）。模型选择由 `Agent(model=...)` 或 `RunConfig(model=...)` 指定。
 
 ---
 
@@ -550,24 +538,26 @@ class ModelRouter:
 
 > 2026-07-06 全量排查。详见 `developer/plan.md`「openai-agents SDK 重构排查」段。
 
-#### ✅ 已完成（S1-S4）
+#### ✅ 已完成（S1-S4 + R4 + R5）
 
-| 文件 | SDK 能力 |
-|------|---------|
-| `action/structured_agent.py` | `Agent` + `Runner.run_sync` + `output_type`（泛型基类） |
-| `action/output_types.py` | 11 个 Pydantic BaseModel 作为 `output_type` |
-| `action/{recon,vuln_correlator,exploit_planner,lateral_move,detector,triage,threat_hunt,ir_planner,forensics,critic,reviewer}/agent.py` | 全部继承 `StructuredAgent[T]`，无 `json.loads` |
-| `tools/llms/sdk_provider.py` | `OpenAIChatCompletionsModel` + `set_default_openai_api("chat_completions")` |
-| `tools/llms/mock_sdk_model.py` | SDK `Model` 接口实现（Mock 适配） |
-| `planning/orchestrator/cyber_orchestrator.py` | 9 个 SDK Agent 装配 + 红蓝紫链 |
+| 文件 | SDK 能力 | 状态 |
+|------|---------|------|
+| `action/structured_agent.py` | `Agent` + `Runner.run_sync` + `output_type` + `_run_streamed`（R5.3） | ✅ |
+| `action/output_types.py` | 11 个 Pydantic BaseModel 作为 `output_type` | ✅ |
+| `action/{11个攻防Agent}/agent.py` | 全部继承 `StructuredAgent[T]`，支持 `model=` 真实 API 注入 | ✅ |
+| `tools/llms/sdk_provider.py` | `OpenAIChatCompletionsModel` + `set_default_openai_api("chat_completions")` | ✅ |
+| `tools/llms/mock_sdk_model.py` | SDK `Model` 接口实现（Mock 适配） | ✅ |
+| `planning/orchestrator/cyber_orchestrator.py` | 9 SDK Agent + handoffs + guardrails + tracing + FunctionTool | ✅ R4 |
+| `perception/reasoning/neuro_symbolic.py` | `NeuroSymbolicAgent`（SDK 结构化输出） | ✅ R4.1 |
+| `observability/inspect/monitor/tracing/hooks.py` | `CyberAgentHooks` + eventbus 发布（R5.4） | ✅ R5.4 |
+| `backend/routers/stream.py` | SDK `Runner.run_streamed()` → SSE 流式（R5.3） | ✅ R5.3 |
 
-#### 🔲 待 SDK 重构（R4-R5）
+#### ✅ R5 清理已完成
 
-| # | 文件 | 当前 | SDK 方案 | 优先级 |
-|---|------|------|---------|--------|
-| 1 | `perception/reasoning/neuro_symbolic.py` | 旧 `ModelProvider.complete()` + `json.loads` | `StructuredAgent[ExploitPlannerResult]` | **P0** |
-| 2 | `planning/orchestrator/cyber_orchestrator.py` | 手动 `_run()` 串联 | SDK `Agent.handoffs` 声明式串联 | P1 |
-| 3 | `planning/orchestrator/cyber_orchestrator.py` | 手动 `if critique.valid` 判断 | SDK `guardrails` 自动校验 + 回退重试 | P1 |
-| 4 | `planning/orchestrator/cyber_orchestrator.py` | `print` 日志 | SDK `tracing`（`RunTrace`） | P2 |
-| 5 | `backend/mocks/runtime.py` MockRuntime | 85 行手写 dispatch map | 替换为 `CyberOrchestrator` 调用 | P1 |
-| 6 | `tools/llms/base.py` 旧接口 | `ModelProvider`/`LLMRequest`/`LLMResponse` | neuro_symbolic 迁移后删除 | P2 |
+| # | 任务 | 状态 |
+|---|------|------|
+| R5.1 | `base.py` 删除 `ModelProvider` Protocol，保留 `LLMRequest`/`LLMResponse` | ✅ |
+| R5.2 | 删除 `model_router.py`（无业务引用） | ✅ |
+| R5.3 | SDK `Runner.run_streamed()` → SSE → 前端实时展示 | ✅ |
+| R5.4 | `AgentHooks` 发布事件到 `EventBus`（AgentStart/AgentFinish/ToolCall/ToolFinish） | ✅ |
+| R5.5 | 179 测试全通过 | ✅ |

@@ -22,6 +22,7 @@ from backend.core.composition import get_composition
 from backend.core.middleware import TraceMiddleware, get_trace_id
 from backend.core.routes import router as gateway_router
 from backend.routers.health import router as health_router
+from backend.routers.stream import router as stream_router
 from backend.routers.ws import router as ws_router
 from tooling.configs.settings import settings
 
@@ -83,6 +84,8 @@ def create_app() -> FastAPI:
     app.include_router(gateway_router)
     # WebSocket 不在 /api/v1 下（规范：ws://host/ws/v1/stream）。
     app.include_router(ws_router)
+    # R5.3: SDK 流式 SSE router（/api/v1/stream/*）
+    app.include_router(stream_router, prefix="/api/v1")
 
     # --- 统一错误格式：{"code", "message", "trace_id"} ---
     @app.exception_handler(HTTPException)

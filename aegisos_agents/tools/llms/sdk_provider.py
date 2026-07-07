@@ -50,7 +50,7 @@ def _is_mock_mode() -> bool:
 
 
 class SDKProvider:
-    """SDK 桥接 Provider —— 实现 :class:`ModelProvider` Protocol。
+    """SDK 桥接 Provider —— 真实 API 模式下桥接 LLMRequest 到 OpenAI Chat Completions。
 
     在真实 API 模式下，将项目的 :class:`LLMRequest` 转换为 OpenAI Chat Completions
     调用，返回 :class:`LLMResponse`。内部使用 SDK 的

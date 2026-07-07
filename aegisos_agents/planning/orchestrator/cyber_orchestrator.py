@@ -976,11 +976,18 @@ class CyberOrchestrator:
         if _SDK_TRACING_AVAILABLE:
             set_trace_processors([])
 
-    def install_hooks(self) -> list[CyberAgentHooks]:
+    def install_hooks(self, eventbus: Any = None, task_id: str = "") -> list[CyberAgentHooks]:
         """为所有 9 个 SDK Agent 安装生命周期钩子。
 
         为每个 Agent 创建 :class:`CyberAgentHooks` 并设置到 ``agent.hooks`` 属性。
         SDK Runner 执行 Agent 时自动触发回调，记录 ``on_start`` / ``on_end`` 等事件。
+
+        R5.4：若注入 ``eventbus``，回调中还发布 :class:`protocol.Event` 到总线，
+        供 ``backend/routers/sse.py`` 实时推送与 ``observability/inspect/replay/`` 回放消费。
+
+        Args:
+            eventbus: 可选的 :class:`EventBus` 实例；非 None 时钩子发布事件到总线。
+            task_id: 可选的任务 ID，作为发布事件的 ``task_id`` 字段。
 
         Returns:
             安装的 :class:`CyberAgentHooks` 列表（9 个）。
@@ -998,7 +1005,11 @@ class CyberOrchestrator:
         ]
         self._hooks = []
         for agent in agents:
-            hook = CyberAgentHooks(agent_name=agent.__class__.__name__)
+            hook = CyberAgentHooks(
+                agent_name=agent.__class__.__name__,
+                eventbus=eventbus,
+                task_id=task_id,
+            )
             agent._sdk_agent.hooks = hook
             self._hooks.append(hook)
         return self._hooks

@@ -1,11 +1,12 @@
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
-// changelog: 新建 ChatView，用户与智能体对话的聊天界面
+// changelog: R5.3 加流式模式开关——Stream 开启时用 fetch SSE 实时展示 Agent 执行过程
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore, type ChatMessage } from "@/lib/store";
 import { agentApi } from "@/services/api/agents";
 import { taskApi } from "@/services/api/tasks";
+import { streamAgent } from "@/services/api/stream";
 
 function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -23,6 +24,7 @@ export function ChatView() {
   const setSelectedAgentId = useAppStore((s) => s.setSelectedAgentId);
 
   const [input, setInput] = useState("");
+  const [streamMode, setStreamMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -106,6 +108,51 @@ export function ChatView() {
     }
   };
 
+  // R5.3: 流式发送——用 fetch SSE 实时展示 Agent 执行过程
+  const handleSendStream = async () => {
+    const goal = input.trim();
+    if (!goal || isSending || !selectedAgentId) return;
+
+    const userMsg: ChatMessage = {
+      id: genId(),
+      role: "user",
+      content: goal,
+      timestamp: Date.now(),
+    };
+    addChatMessage(userMsg);
+    setInput("");
+    setSending(true);
+
+    const assistantMsgId = genId();
+    addChatMessage({
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      status: "sending",
+      agentId: selectedAgentId,
+      timestamp: Date.now(),
+    });
+
+    let accumulated = "";
+    await streamAgent(selectedAgentId, goal, (evt) => {
+      if (evt.event === "error") {
+        updateChatMessage(assistantMsgId, {
+          content: `Stream error: ${JSON.stringify(evt.data)}`,
+          status: "error",
+        });
+      } else {
+        accumulated += `[${evt.event}] ${JSON.stringify(evt.data, null, 2)}\n`;
+        updateChatMessage(assistantMsgId, {
+          content: accumulated,
+          status: "sending",
+        });
+      }
+    });
+
+    updateChatMessage(assistantMsgId, { status: "done" });
+    setSending(false);
+  };
+
   return (
     <div className="chat">
       <div className="chat__header">
@@ -125,6 +172,15 @@ export function ChatView() {
               </option>
             ))}
           </select>
+          <label className="chat__stream-toggle" title="R5.3: 流式模式实时展示 Agent 执行过程">
+            <input
+              type="checkbox"
+              checked={streamMode}
+              onChange={(e) => setStreamMode(e.target.checked)}
+              disabled={isSending || !selectedAgentId}
+            />
+            Stream
+          </label>
         </div>
       </div>
 
@@ -190,10 +246,10 @@ export function ChatView() {
         />
         <button
           className="chat__send-btn"
-          onClick={() => void handleSend()}
-          disabled={!input.trim() || isSending}
+          onClick={() => void (streamMode ? handleSendStream() : handleSend())}
+          disabled={!input.trim() || isSending || (streamMode && !selectedAgentId)}
         >
-          {isSending ? "Sending..." : "Send"}
+          {isSending ? "Sending..." : streamMode ? "Stream" : "Send"}
         </button>
       </div>
     </div>

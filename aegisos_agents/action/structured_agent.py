@@ -127,6 +127,27 @@ class StructuredAgent(Generic[T]):
                     f"StructuredAgent._run timed out after {timeout}s for prompt: {prompt[:200]}"
                 )
 
+    async def _run_streamed(self, prompt: str):
+        """异步流式执行，逐事件 yield SDK ``RunResultStreaming.stream_events()``。
+
+        R5.3：供后端 SSE router 实时推送 Agent 思考过程到前端。
+
+        用 SDK ``Runner.run_streamed()`` 启动流式执行，逐事件 yield。
+        事件类型包括：
+            - ``AgentUpdatedStreamEvent``：Agent 切换（handoff）
+            - ``RunItemStreamEvent``：产出项（消息/工具调用/输出）
+            - ``RawResponsesStreamEvent``：原始模型响应
+
+        Args:
+            prompt: 用户 prompt 文本。
+
+        Yields:
+            SDK 流式事件对象（由调用方决定如何序列化为 SSE 帧）。
+        """
+        result = Runner.run_streamed(self._sdk_agent, prompt)
+        async for event in result.stream_events():
+            yield event
+
 
 def create_sdk_model_provider(
     mock: MockProvider | None = None,

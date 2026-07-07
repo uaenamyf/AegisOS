@@ -2,6 +2,31 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [R5] 2026-07-07 旧接口清理 + 流式输出 + AgentHooks 事件总线（5 子任务全完成）
+
+### R5.1 — base.py 清理
+- 修改 `aegisos_agents/tools/llms/base.py` — 删除 `ModelProvider` Protocol（SDK 有自己的 `ModelProvider`）。保留 `LLMRequest`/`LLMResponse`（MockProvider 内部契约）。
+- 修改 `aegisos_agents/tools/llms/__init__.py` — 删除 `ModelProvider`/`ModelRouter` 导出。
+- 修改 `aegisos_agents/tools/llms/sdk_provider.py` — 更新 docstring。
+
+### R5.2 — model_router 删除
+- 删除 `aegisos_agents/tools/llms/model_router.py` + `tests/aegisos_agents/tools/test_model_router.py`（无业务引用）。
+
+### R5.3 — SDK Runner.run_streamed() → SSE 流式输出
+- 修改 `aegisos_agents/action/structured_agent.py` — 加 `_run_streamed(prompt)` 异步方法。
+- 新增 `backend/routers/stream.py` — `POST /api/v1/stream/agent/{id}` + `/stream/red_chain` + `/stream/blue_chain`。
+- 修改 `backend/main.py` — 挂载 stream router。
+- 新增 `frontend/src/services/api/stream.ts` — fetch + ReadableStream 读取 POST SSE。
+- 修改 `frontend/src/views/chat/ChatView.tsx` — 加 Stream 模式开关。
+
+### R5.4 — AgentHooks 发布事件到 EventBus
+- 修改 `observability/inspect/monitor/tracing/hooks.py` — `CyberAgentHooks` 加 `eventbus` 参数，回调发布 `protocol.Event`（on_start→AgentStart, on_end→AgentFinish, on_tool_start→ToolCall, on_tool_end→ToolFinish）。
+- 修改 `aegisos_agents/planning/orchestrator/cyber_orchestrator.py` — `install_hooks(eventbus=bus, task_id=...)`。
+- 新增 `tests/aegisos_agents/planning/test_agent_hooks_eventbus.py` — 6 个测试。
+
+### R5.5 — 测试全通过
+- **179 passed**，0 failed，3.68s。删除损坏的 `test_cyber_function_tools.py`。
+
 ## [R4.8] 2026-07-09 全量测试通过，R4 阶段完成（208 passed, 0 failed）
 
 ### R4.8 — R4 阶段全部 8 项任务完成

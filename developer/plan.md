@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-06 · **151 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · 文档对齐 ✅ · 整合 roadmap ✅ · SDK 重构排查 ✅ · R4-R5 详细计划 ✅ · P1 编排器实现 ✅ · **F 后端端点 ✅ · G 前端视图 ✅** · **计划优先级调整 ✅（容器化后移 P3）**
+> 最后更新：2026-07-07 · **179 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · R4 SDK 深化 ✅ · **R5 旧接口清理+流式+事件总线 ✅** · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · P1 编排器 ✅ · F 后端端点 ✅ · G 前端视图 ✅ · 计划优先级调整 ✅（容器化后移 P3）
 
 ---
 
@@ -19,10 +19,10 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + R2-R3 ✅ + R4-R5 详细计划已定 + **赛事 Phase F ✅ · G ✅** · 功能实现推进中 |
-| **测试** | **151 passed**（protocol 6 + memory 33 + planning 54+9+5 + tools 5 + action 19 + perception 4 + e2e 9 + backend cyber 11 + frontend cyber 21） |
-| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK 集成 S1-S4 ✅ · R2 Provider 清理 ✅ · R3 结构化输出 ✅ · 文档对齐 ✅ · P1 编排器 ✅ · **F ✅ · G ✅** · **R4.1-R4.3 ✅** |
-| **待完成 Phase** | **P1**：R4 SDK 编排深化（R4.4-R4.8 剩 5 项）· R5 旧接口清理+流式+事件总线（5 项）· AP1 Plan 范式 · **P2**：H2 数据层 · H5 可观测评测 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
+| **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + **R2-R5 全部 ✅** · **赛事 Phase F ✅ · G ✅** · 功能实现推进中 |
+| **测试** | **179 passed**（protocol 6 + memory 33 + planning 66 + tools 5 + action 19 + perception 6 + e2e 9 + backend 23 + hooks 6 + tracing 6） |
+| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK S1-S4 ✅ · R2-R5 ✅ · P1 编排器 ✅ · F ✅ · G ✅ |
+| **待完成 Phase** | **P2**：H2 数据层 · H5 可观测评测 · AP1 Plan 范式 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -237,32 +237,31 @@
 
 - [ ] **R4.8** 测试全通过
 
-**阶段 5: 旧接口层清理 + 流式输出 + 事件总线**（≤4 文件）
+**阶段 5: 旧接口层清理 + 流式输出 + 事件总线**（≤4 文件）✅ 已完成
 
-- [ ] **R5.1** `aegisos_agents/tools/llms/base.py` 清理旧接口（0.5 天）
-  - 删除 `LLMRequest`/`LLMResponse`/`ModelProvider` Protocol（R4.1 完成后无消费者）
-  - 保留 `MockProvider`（测试依赖，`MockSDKModel` 内部委托）
-  - `MockProvider` 改为直接返回 dict（不再包装为 `LLMResponse`）
+- [x] **R5.1** `aegisos_agents/tools/llms/base.py` 清理旧接口（0.5 天）
+  - 删除 `ModelProvider` Protocol（SDK 有自己的 `ModelProvider`，真实 API 走 `SDKProvider.get_sdk_model()`）
+  - 保留 `LLMRequest`/`LLMResponse`（MockProvider 与 MockSDKModel 内部数据契约，测试依赖）
+  - 更新 `__init__.py` 导出，更新 `sdk_provider.py` docstring
 
-- [ ] **R5.2** `aegisos_agents/tools/llms/model_router.py` 简化（0.5 天）
-  - 当前：手写 `MODEL_PREFIX_MAP` + `TIER_PROVIDER_MAP` 三层映射
-  - 简化方案：SDK `ModelProvider` 已内置模型路由，`model_router` 降级为配置层（仅保留 tier→model_id 映射，不再创建 Provider 实例）
-  - 或直接删除，模型选择由 `RunConfig(model=...)` 或 `Agent(model=...)` 指定
+- [x] **R5.2** `aegisos_agents/tools/llms/model_router.py` 删除（0.5 天）
+  - 无业务代码引用（仅 test_model_router.py 使用），直接删除 `model_router.py` + 测试
+  - 模型选择由 `Agent(model=...)` 或 `RunConfig(model=...)` 指定
 
-- [ ] **R5.3** SDK `Runner.run_streamed()` → SSE → 前端实时展示（1 天）
-  - 后端：`backend/routers/stream.py` 用 `Runner.run_streamed()` 替代 `Runner.run_sync()`
-  - `RunResultStreaming.stream_events()` → 逐事件 yield → SSE `EventSource` 推送前端
-  - 前端：`frontend/views/chat/ChatView.tsx` 订阅 SSE，实时展示 Agent 思考过程 + handoff 过程 + tool 调用
-  - 评委演示效果：实时看到 Agent 编排流程逐步展开
-  - SDK 能力：`AgentUpdatedStreamEvent` / `AgentToolStreamEvent` / `HandoffOutputItem` 事件类型
+- [x] **R5.3** SDK `Runner.run_streamed()` → SSE → 前端实时展示（1 天）
+  - 后端：新增 `backend/routers/stream.py`——`POST /api/v1/stream/agent/{id}` + `/stream/red_chain` + `/stream/blue_chain`
+  - `StructuredAgent._run_streamed(prompt)` 异步方法，yield SDK `stream_events()`
+  - 前端：新增 `frontend/src/services/api/stream.ts`（fetch + ReadableStream 读取 POST SSE）
+  - `ChatView.tsx` 加 Stream 模式开关，实时展示 Agent 执行事件
+  - Mock 模式回退到同步（MockSDKModel 不支持流式）
 
-- [ ] **R5.4** 事件总线实现（0.5 天）
-  - 新建 `aegisos_agents/planning/engine/eventbus/impl.py`
-  - 基于 SDK `AgentHooks`（`on_start`/`on_end`/`on_handoff`）发布事件到 `protocol/event.py` 的 8 种事件类型
-  - 或用 `blinker` 库实现发布/订阅，`AgentHooks` 作为事件源
-  - 替代 MockRuntime 中的手动事件分发
+- [x] **R5.4** AgentHooks 发布事件到 EventBus（0.5 天）
+  - `observability/inspect/monitor/tracing/hooks.py` 的 `CyberAgentHooks` 加可选 `eventbus` 参数
+  - 回调中发布 `protocol.Event` 到总线：`on_start`→`AgentStart`、`on_end`→`AgentFinish`、`on_tool_start`→`ToolCall`、`on_tool_end`→`ToolFinish`
+  - `CyberOrchestrator.install_hooks(eventbus=bus, task_id=...)` 支持 eventbus 注入
+  - 6 个新测试（`test_agent_hooks_eventbus.py`）验证发布正确性
 
-- [ ] **R5.5** 测试全通过
+- [x] **R5.5** 测试全通过——**179 passed**（173 既有 + 6 新增 R5.4 测试），3.68s
 
 </details>
 
