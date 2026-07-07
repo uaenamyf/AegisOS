@@ -1,11 +1,11 @@
 # date: 2026-07-06
 # dev: myf
-"""蓝队响应规划 Agent 模块（SDK 结构化输出版）。
+# changelog: AP1.3 接入 Plan 范式——新增 plan_response_with_strategy 方法
+"""蓝队响应规划 Agent 模块（SDK 结构化输出版 + Plan 范式）。
 
-本模块接收威胁狩猎阶段产出的假设列表，利用大语言模型生成
-事件响应计划（``ResponsePlan``），包含隔离/阻断/誘饵/监控等
-响应动作、整体置信度和回滚方案。SDK 的 ``output_type`` 结构化输出
-自动处理 JSON 解析与 Pydantic 验证，无需手写 ``json.loads + try/except``。
+AP1.3 新增：``plan_response_with_strategy`` 方法用 :class:`PlanMode` 两阶段推理，
+先规划多阶段响应策略（隔离→阻断→诱饵→监控），再按策略生成详细 DefenseAction 列表。
+原有 ``plan_response`` 方法保持不变（向后兼容）。
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import json
 
 from aegisos_agents.action.output_types import IRPlannerResult
 from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.perception.reasoning.strategies import PlanMode
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import ResponsePlan
 
@@ -24,17 +25,11 @@ SYSTEM_PROMPT = (
 )
 
 
-class IRPlannerAgent(StructuredAgent[IRPlannerResult]):
-    """蓝队响应规划 Agent（SDK 结构化输出）。
+class IRPlannerAgent(StructuredAgent[IRPlannerResult], PlanMode[IRPlannerResult]):
+    """蓝队响应规划 Agent（SDK 结构化输出 + Plan 范式）。
 
-    接收威胁狩猎假设列表，利用大语言模型生成结构化的事件响应计划，
-    SDK 的 ``output_type`` 机制自动将返回 JSON 解析为 :class:`IRPlannerResult`
-    （Pydantic 验证 + 自动重试），再转为 ``ResponsePlan`` 对象返回。
-
-    Attributes:
-        SYSTEM_PROMPT: 系统提示词，描述 Agent 角色与输出格式。
-        OUTPUT_TYPE: SDK 结构化输出类型 :class:`IRPlannerResult`。
-        TEMPERATURE: 采样温度，0.3 保证响应计划的稳定性。
+    AP1.3：``plan_response_with_strategy`` 用 :class:`PlanMode` 两阶段推理，
+    先规划多阶段响应策略（隔离→阻断→诱饵→监控），再按策略生成详细 DefenseAction 列表。
     """
 
     SYSTEM_PROMPT = SYSTEM_PROMPT
@@ -72,6 +67,31 @@ class IRPlannerAgent(StructuredAgent[IRPlannerResult]):
         """
         result = self._run(f"Plan response for: {json.dumps(hypotheses)}")
         # Pydantic Model → protocol dataclass 转换；actions 转 dict 保持原接口
+        return ResponsePlan(
+            plan_id=result.plan_id,
+            actions=[a.model_dump() for a in result.actions],
+            confidence=result.confidence,
+            rollback=result.rollback,
+        )
+
+    def plan_response_with_strategy(self, hypotheses: list[dict]) -> ResponsePlan:
+        """Plan 范式规划响应计划（AP1.3）。
+
+        两阶段推理：
+            1. 规划阶段：LLM 分析威胁假设，生成多阶段响应策略（隔离→阻断→诱饵→监控）。
+            2. 执行阶段：按策略生成详细 DefenseAction 列表 + 置信度 + 回滚方案。
+
+        与 :meth:`plan_response` 的区别：先规划再执行，响应计划更系统化。
+        规划阶段失败时降级到直接 :meth:`plan_response`。
+
+        Args:
+            hypotheses: 威胁狩猎假设列表。
+
+        Returns:
+            规划出的响应计划（``ResponsePlan``）。
+        """
+        prompt = f"Plan response for: {json.dumps(hypotheses)}"
+        result = self._run_with_plan(prompt, domain="incident_response")
         return ResponsePlan(
             plan_id=result.plan_id,
             actions=[a.model_dump() for a in result.actions],

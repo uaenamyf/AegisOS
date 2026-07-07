@@ -2,6 +2,41 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [AP1] 2026-07-07 Plan 行动范式（两阶段 LLM 推理增强，5 子任务全完成）
+
+### AP1.1 — plan_mode.py 实现
+- 新增 `aegisos_agents/perception/reasoning/strategies/plan_mode.py` — `PlanMode[T]` 泛型混入类 + `PlanResult`/`PlanStep` Pydantic 类型 + `create_plan_mode_agent()` 工厂函数。
+- 两阶段推理：阶段 1 用独立 SDK `Agent(output_type=PlanResult)` 生成策略 + 步骤分解；阶段 2 把策略拼入增强 prompt，用 Agent 自身 output_type 生成详细产出。
+- 规划失败或空策略时降级到直接 `_run`（向后兼容）。
+- 新增 `aegisos_agents/perception/reasoning/strategies/__init__.py` — 导出 PlanMode/PlanResult/PlanStep/create_plan_mode_agent。
+
+### AP1.2 — exploit_planner 接入 Plan 范式
+- 修改 `aegisos_agents/action/exploit_planner/agent.py` — 继承 `PlanMode[ExploitPlannerResult]`，新增 `plan_with_strategy(findings)` 方法。先规划攻击策略（入口资产、攻击路径、目标），再按策略生成详细 AttackChain。
+
+### AP1.3 — ir_planner 接入 Plan 范式
+- 修改 `aegisos_agents/action/ir_planner/agent.py` — 继承 `PlanMode[IRPlannerResult]`，新增 `plan_response_with_strategy(hypotheses)` 方法。先规划多阶段响应策略（隔离→阻断→诱饵→监控），再生成详细 DefenseAction 列表。
+
+### AP1.4 — lateral_move 接入 Plan 范式
+- 修改 `aegisos_agents/action/lateral_move/agent.py` — 继承 `PlanMode[LateralMoveResult]`，新增 `plan_moves_with_strategy(chain, topology)` 方法。先规划移动策略（可达性分析 + 优先路径），再生成详细 AttackStep 列表。
+
+### AP1.5 — 测试
+- 新增 `tests/aegisos_agents/perception/test_plan_mode.py` — 9 个测试：
+  - PlanResult/PlanStep 类型验证（2）
+  - 3 Agent 降级路径（3）：Mock 不识别规划 prompt 时降级到直接执行
+  - 完整两阶段路径（1）：Mock 能响应规划 prompt 时走完整 Plan 范式
+  - 工厂函数 + 格式化（3）
+- 本机 Windows Python 3.14.6 + openai-agents 0.17.7 验证：**188 passed**，0 failed，13.28s。
+
+### 文件清单
+- 新增 2 个：`strategies/plan_mode.py` + `strategies/__init__.py`
+- 修改 3 个：`exploit_planner/agent.py` + `ir_planner/agent.py` + `lateral_move/agent.py`（继承 PlanMode + 新增 *_with_strategy 方法）
+- 新增 1 个测试：`test_plan_mode.py`（9 测试用例）
+
+### 设计说明
+- PlanMode 是泛型混入类（mixin），不替代 StructuredAgent 继承链，原有 `plan`/`plan_response`/`plan_moves` 方法保持不变（向后兼容）。
+- 规划阶段用独立 SDK `Agent(output_type=PlanResult)`，复用 Agent 自身的 `model`（Mock 或真实 API）。
+- 降级策略：规划阶段抛异常或返回空 PlanResult 时，降级到直接 `_run`，保证 Mock 模式与现有测试不破坏。
+
 ## [R5] 2026-07-07 旧接口清理 + 流式输出 + AgentHooks 事件总线（5 子任务全完成）
 
 ### R5.1 — base.py 清理

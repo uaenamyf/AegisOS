@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-07 · **179 测试全通过** · SDK 集成 S1-S4 ✅ · R2 清理 ✅ · R3 结构化输出 ✅ · R4 SDK 深化 ✅ · **R5 旧接口清理+流式+事件总线 ✅** · 编排器 e2e ✅ · B3 ✅ · E13 ✅ · P1 编排器 ✅ · F 后端端点 ✅ · G 前端视图 ✅ · 计划优先级调整 ✅（容器化后移 P3）
+> 最后更新：2026-07-07 · **188 测试全通过** · SDK S1-S4 ✅ · R2-R5 ✅ · **AP1 Plan 范式 ✅** · 编排器 ✅ · B3 ✅ · E13 ✅ · P1 编排器 ✅ · F ✅ · G ✅ · 容器化后移 P3
 
 ---
 
@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + **R2-R5 全部 ✅** · **赛事 Phase F ✅ · G ✅** · 功能实现推进中 |
-| **测试** | **179 passed**（protocol 6 + memory 33 + planning 66 + tools 5 + action 19 + perception 6 + e2e 9 + backend 23 + hooks 6 + tracing 6） |
-| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK S1-S4 ✅ · R2-R5 ✅ · P1 编排器 ✅ · F ✅ · G ✅ |
-| **待完成 Phase** | **P2**：H2 数据层 · H5 可观测评测 · AP1 Plan 范式 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
+| **测试** | **188 passed**（protocol 6 + memory 33 + planning 66 + tools 5 + action 19 + perception 15 + e2e 9 + backend 23 + hooks 6 + tracing 6） |
+| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK S1-S4 ✅ · R2-R5 ✅ · **AP1 Plan 范式 ✅** · P1 编排器 ✅ · F ✅ · G ✅ |
+| **待完成 Phase** | **P2**：H2 数据层 · H5 可观测评测 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -266,17 +266,18 @@
 </details>
 
 #### AP1 — Plan 范式（功能优先，不依赖容器化）
-> **优先级**：P1 · **预估**：2-3 天 · **依赖**：R4（可并行）· **状态**：🔲 待做
+> **优先级**：P1 · **预估**：2-3 天 · **依赖**：R4（可并行）· **状态**：✅ 已完成（2026-07-07）
 > Plan 范式为纯 LLM 推理增强，不依赖 Docker 沙箱，可独立实现。
 
-- [ ] AP1.1 `perception/reasoning/strategies/plan_mode.py` — Plan 行动模式实现
-  - 接口：`plan(task, context) -> PlanResult`（高层策略 + 步骤分解）
-  - 用 SDK `Agent` + 两阶段 prompt：阶段 1「分析目标 + 生成策略」，阶段 2「按策略逐步生成详细产出」
-  - 可复用 `StructuredAgent` 基类，阶段 1 output_type 为 `PlanResult`（策略 + 步骤列表），阶段 2 output_type 为各 Agent 原有 output_type
-- [ ] AP1.2 `exploit_planner` 接入 Plan 范式 — 先规划攻击策略（入口资产、攻击路径、目标），再生成详细 AttackChain
-- [ ] AP1.3 `ir_planner` 接入 Plan 范式 — 先规划多阶段响应策略（隔离→阻断→诱饵→监控），再生成详细 DefenseAction 列表
-- [ ] AP1.4 `lateral_move` 接入 Plan 范式 — 先规划移动策略（可达性分析 + 优先路径），再生成 AttackStep 列表
-- [ ] AP1.5 测试：Plan 范式模式下 3 个 Agent 输出质量提升验证
+- [x] AP1.1 `perception/reasoning/strategies/plan_mode.py` — Plan 行动模式实现
+  - `PlanResult`（strategy + steps + risks）+ `PlanStep` Pydantic 类型
+  - `PlanMode[T]` 泛型混入类：`_run_with_plan(prompt, domain)` 两阶段推理（先规划策略，再按策略执行）
+  - `create_plan_mode_agent()` 工厂函数（动态构造 StructuredAgent + PlanMode 联合子类）
+  - 规划失败/空策略时降级到直接 `_run`（向后兼容）
+- [x] AP1.2 `exploit_planner` 接入 Plan 范式 — `plan_with_strategy(findings)` 先规划攻击策略，再生成详细 AttackChain
+- [x] AP1.3 `ir_planner` 接入 Plan 范式 — `plan_response_with_strategy(hypotheses)` 先规划多阶段响应策略，再生成 DefenseAction 列表
+- [x] AP1.4 `lateral_move` 接入 Plan 范式 — `plan_moves_with_strategy(chain, topology)` 先规划移动策略，再生成 AttackStep 列表
+- [x] AP1.5 测试：`tests/aegisos_agents/perception/test_plan_mode.py` — 9 个测试（类型验证 + 3 Agent 降级路径 + 完整两阶段路径 + 工厂函数 + 格式化）
 
 ### 📅 P2 — 中期（赛事前）
 
