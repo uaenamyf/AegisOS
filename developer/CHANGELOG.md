@@ -2,6 +2,44 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [H5] 2026-07-07 可观测与评测（5 子任务全完成）
+
+### H5.1 — 实时监控
+- 新增 `observability/inspect/monitor/metrics.py` — `MetricsCollector` 订阅 EventBus 自动采集 Agent 延迟/成功率/Token/调用次数。`Metric`/`MetricType`（counter/gauge/histogram）+ `AlertRule`/`Alert` 告警规则 + `get_dashboard()` 面板数据（summary/agents/tools/alerts/latency）。
+- 新增 `observability/inspect/monitor/__init__.py` — 导出 5 个类型。
+- 实现 `MonitorAPI` Protocol。
+
+### H5.2 — 攻击链回放
+- 新增 `observability/inspect/replay/player.py` — `Timeline` 时序记录（按时间排序 + task_id/topic/agent/时间范围过滤）+ `ReplayPlayer`（step/seek/replay/play_timed 速度控制）+ `get_attack_chain_view()` 评委演示视图（配对 AgentStart/Finish 计算延迟）+ `create_replay_from_eventbus()` 工厂。
+- 新增 `observability/inspect/replay/__init__.py` — 导出 4 个类型。
+- 实现 `ReplayAPI` Protocol。
+
+### H5.3 — 性能基准测试
+- 新增 `observability/measure/benchmark/runner.py` — `BenchmarkCase`/`BenchmarkSuite`/`BenchmarkRunner` + `CaseResult`/`CaseStats`/`BenchmarkReport`。支持 setup/teardown、重复运行取 min/avg/max/p99/std 统计、成功率统计。
+- 新增 `observability/measure/benchmark/__init__.py` — 导出 6 个类型。
+- 实现 `BenchmarkAPI` Protocol。
+
+### H5.4 — 5 维度评测
+- 新增 `observability/measure/evaluation/scorers.py` — 5 评分函数（`score_accuracy`/`score_recall`/`score_latency`/`score_resource`/`score_robustness`）+ `Evaluator`（5 维度加权总分，对齐赛题评分占比 accuracy 30%/recall 20%/latency 15%/resource 15%/robustness 20%）+ `EvaluationReport`/`DimensionScore`/`Metric` + `evaluate_from_benchmark()` 从基准报告提取延迟。
+- 新增 `observability/measure/evaluation/__init__.py` + `observability/measure/__init__.py` — 导出聚合。
+- 实现 `EvaluationAPI` Protocol。
+
+### H5.5 — 数据可视化
+- 新增 `observability/present/visualization/renderer.py` — `ChartGenerator`（agent_latency_chart/success_rate_chart/benchmark_latency_chart/evaluation_radar_chart，ECharts 兼容）+ `GraphRenderer`（render_topology/render_attack_chain，React Flow 兼容）+ `DashboardAssembler`（聚合监控/基准/评测/回放为综合仪表盘）+ `VisualizationService`（统一 render 入口）。
+- 新增 `observability/present/visualization/__init__.py` + `observability/present/__init__.py` — 导出聚合。
+- 实现 `VisualizationAPI` Protocol。
+
+### 测试
+- 新增 `tests/observability/test_monitor.py` — 7 个测试（指标采集/EventBus 订阅/告警触发/面板结构/工具计数/reset）
+- 新增 `tests/observability/test_replay.py` — 8 个测试（时间排序/过滤/攻击链视图/步进/reset/确定性回放/工厂）
+- 新增 `tests/observability/test_benchmark_evaluation.py` — 15 个测试（基准执行/失败/setup-teardown/结果查询/JSON + 5 评分函数 + Evaluator 5 维度/满分/历史/从 benchmark/JSON）
+- 新增 `tests/observability/test_visualization.py` — 11 个测试（拓扑图/攻击链 DAG/图表生成/雷达图/仪表盘聚合/服务入口）
+- 本机 Windows Python 3.14.6 + openai-agents 0.17.7 验证：**229 passed**（188 既有 + 41 新增），0 failed，25.22s。
+
+### 文件清单
+- 新增源码 9 个：`monitor/{metrics,__init__}.py` + `replay/{player,__init__}.py` + `benchmark/{runner,__init__}.py` + `evaluation/{scorers,__init__}.py` + `visualization/{renderer,__init__}.py` + `measure/__init__.py` + `present/__init__.py`
+- 新增测试 4 个：`test_monitor.py` + `test_replay.py` + `test_benchmark_evaluation.py` + `test_visualization.py`
+
 ## [AP1] 2026-07-07 Plan 行动范式（两阶段 LLM 推理增强，5 子任务全完成）
 
 ### AP1.1 — plan_mode.py 实现

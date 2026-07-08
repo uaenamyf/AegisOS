@@ -11,7 +11,7 @@
 > 4. 本文件已整合 `roadmap/`（阶段总览，详见附录 D）；`roadmap/` 仍作为 SSOT 保留
 > 5. `specs/plans/13`、`14`、`15` 及 `roadmap/` 仍作为 SSOT 保留，本文件为执行态整合视图
 >
-> 最后更新：2026-07-07 · **188 测试全通过** · SDK S1-S4 ✅ · R2-R5 ✅ · **AP1 Plan 范式 ✅** · 编排器 ✅ · B3 ✅ · E13 ✅ · P1 编排器 ✅ · F ✅ · G ✅ · 容器化后移 P3
+> 最后更新：2026-07-07 · **229 测试全通过** · SDK S1-S4 ✅ · R2-R5 ✅ · AP1 Plan 范式 ✅ · **H5 可观测评测 ✅** · 编排器 ✅ · B3 ✅ · E13 ✅ · P1 编排器 ✅ · F ✅ · G ✅ · 容器化后移 P3
 
 ---
 
@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ + P6 部分 + **SDK 集成 S1-S4 ✅** + **R2-R5 全部 ✅** · **赛事 Phase F ✅ · G ✅** · 功能实现推进中 |
-| **测试** | **188 passed**（protocol 6 + memory 33 + planning 66 + tools 5 + action 19 + perception 15 + e2e 9 + backend 23 + hooks 6 + tracing 6） |
-| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK S1-S4 ✅ · R2-R5 ✅ · **AP1 Plan 范式 ✅** · P1 编排器 ✅ · F ✅ · G ✅ |
-| **待完成 Phase** | **P2**：H2 数据层 · H5 可观测评测 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
+| **测试** | **229 passed**（protocol 6 + memory 33 + planning 66 + tools 5 + action 19 + perception 15 + e2e 9 + backend 23 + hooks 6 + tracing 6 + observability 41） |
+| **已完成 Phase** | A ✅ · B ✅ · C ✅ · D ✅ · E ✅ · 前后端打通 ✅ · SDK S1-S4 ✅ · R2-R5 ✅ · AP1 Plan 范式 ✅ · **H5 可观测评测 ✅** · P1 编排器 ✅ · F ✅ · G ✅ |
+| **待完成 Phase** | **P2**：H2 数据层 · AP3 Goal 范式 · AP4 Ask 范式 · 记忆/感知/工具层补全 · **P3**：~~H1 沙箱靶场~~ · ~~AP2 ReAct 范式~~ · ~~H7 部署交付~~ · ~~工程支撑~~（容器化/部署后移） |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 赛事对齐（详见 §11 附录）
@@ -291,12 +291,12 @@
 - [ ] H2.4 `aegisos_agents/memory/semantic/` 对接 Neo4j ATT&CK 图
 
 #### H5 — 可观测与评测
-> **优先级**：P2 · **预估**：2-3 天 · **状态**：🔲 待做（功能优先）
-- [ ] H5.1 `observability/inspect/monitor/` 实时监控实现
-- [ ] H5.2 `observability/inspect/replay/` 攻击链回放实现
-- [ ] H5.3 `observability/measure/benchmark/` 性能基准测试
-- [ ] H5.4 `observability/measure/evaluation/` 5 维度评测（准确率/召回率/延迟/资源/鲁棒性）
-- [ ] H5.5 `observability/present/visualization/` 数据可视化
+> **优先级**：P2 · **预估**：2-3 天 · **状态**：✅ 已完成（2026-07-07）
+- [x] H5.1 `observability/inspect/monitor/` 实时监控实现 — `MetricsCollector` 订阅 EventBus 自动采集 Agent 延迟/成功率/Token/调用次数 + `AlertRule` 告警规则 + `get_dashboard()` 面板数据
+- [x] H5.2 `observability/inspect/replay/` 攻击链回放实现 — `Timeline` 时序记录 + `ReplayPlayer` 步进/跳跃/定时回放 + `get_attack_chain_view()` 评委演示视图
+- [x] H5.3 `observability/measure/benchmark/` 性能基准测试 — `BenchmarkCase`/`Suite`/`Runner` + 重复运行取 min/avg/max/p99 统计 + `BenchmarkReport`
+- [x] H5.4 `observability/measure/evaluation/` 5 维度评测 — accuracy/recall/latency/resource/robustness 5 评分函数 + `Evaluator` 加权总分 + `EvaluationReport`（对齐赛题评分维度）
+- [x] H5.5 `observability/present/visualization/` 数据可视化 — `ChartGenerator`（ECharts 兼容）+ `GraphRenderer`（React Flow 兼容）+ `DashboardAssembler` 综合仪表盘 + `VisualizationService`
 
 #### 记忆子系统补全（7 个空模块）
 > **优先级**：P2 · **预估**：2 天 · **状态**：🔲 待做（功能优先）

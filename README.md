@@ -135,9 +135,10 @@ open http://localhost:8000/docs              # Swagger UI
 | **R4** | SDK 深化（handoffs/guardrails/tracing/FunctionTool） | ✅ 完成 | — |
 | **R5** | 旧接口清理 + 流式 SSE + AgentHooks→EventBus | ✅ 完成 | 6 |
 | **AP1** | Plan 范式（两阶段 LLM 推理增强） | ✅ 完成 | 9 |
+| **H5** | 可观测与评测（监控/回放/基准/5 维度评测/可视化） | ✅ 完成 | 41 |
 | **H** | Docker 沙箱 + Neo4j/Qdrant + 评测 | 🔲 待做 | — |
 
-> **188 测试全通过**（本机 Windows Python 3.14 + openai-agents 0.17.7）
+> **229 测试全通过**（本机 Windows Python 3.14 + openai-agents 0.17.7）
 
 ---
 

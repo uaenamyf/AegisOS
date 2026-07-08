@@ -117,7 +117,7 @@
 - **Python 环境**：macOS 上有 `.venv/`（Python 3.12.13 + greenlet 3.5.3），可运行 `pytest`/`ruff`/`mypy`/`uvicorn` 全链路。Windows 环境仅有 node + perl（Python 域代码须在 macOS/容器内开发）。详见 memory `aegisos-windows-no-python`。
 - **赛事**：XH-202631，截止 2026-09-15；详见 memory `aegisos-cyberdefense-competition` 与 `plans/14` · `15`。
 - **protocol 现状**：`protocol/*.py` 为 `@dataclass`（非 Pydantic，`06 §12` 列迁移待办）；id 字段约定 `*_id`；`Graph.nodes` 为 dict；`NodeKind.Agent` 驼峰。
-- **openai-agents SDK 集成**：S1-S4 ✅ + R4 SDK 深化 ✅ + R5 旧接口清理+流式+事件总线 ✅ + **AP1 Plan 范式 ✅**（`StructuredAgent[T]` 基类 + 11 个攻防 Agent + `SDKProvider`/`MockSDKModel` + `CyberOrchestrator` + SDK handoffs/guardrails/tracing/FunctionTool + `_run_streamed` SSE 流式 + AgentHooks→EventBus 发布 + `PlanMode` 两阶段推理）；188 测试通过。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
+- **openai-agents SDK 集成**：S1-S4 ✅ + R4 SDK 深化 ✅ + R5 旧接口清理+流式+事件总线 ✅ + AP1 Plan 范式 ✅ + H5 可观测评测 ✅（`StructuredAgent[T]` 基类 + 11 个攻防 Agent + `SDKProvider`/`MockSDKModel` + `CyberOrchestrator` + SDK handoffs/guardrails/tracing/FunctionTool + `_run_streamed` SSE 流式 + AgentHooks→EventBus 发布 + `PlanMode` 两阶段推理 + `MetricsCollector`/`Timeline`/`BenchmarkRunner`/`Evaluator`/`VisualizationService`）；229 测试通过。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
 
 ---
 
