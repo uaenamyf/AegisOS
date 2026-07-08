@@ -2,6 +2,23 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [AP3] 2026-07-08 Goal 范式（递归目标分解 + 失败重试 + 备选路径，4 子任务全完成）
+
+### AP3.1 - Goal 模式核心
+- 新增 `aegisos_agents/perception/reasoning/strategies/goal_mode.py` - `GoalMode` 混入类（递归分解 `decompose()` + 执行树 `execute_tree()` + 失败重试 + 备选路径注入）。`GoalNode`/`GoalResult`/`GoalStatus` 数据类型。3 场景模板（cyber_red/cyber_blue/generic）+ 自定义模板支持。`create_goal_mode_orchestrator` 工厂函数。
+- 更新 `aegisos_agents/perception/reasoning/strategies/__init__.py` - 导出 GoalMode 相关类型。
+
+### AP3.2 - CyberOrchestrator 接入 Goal
+- 更新 `aegisos_agents/planning/orchestrator/cyber_orchestrator.py` - `CyberOrchestrator` 继承 `GoalMode[dict]`，新增 `run_red_chain_with_goal()` / `run_blue_chain_with_goal()` 方法（替代固定模板链，递归分解 + 重试）。新增 `_create_red_agent_executor()` / `_create_blue_agent_executor()` 执行回调（按 agent_name 分发到对应 Agent，注入 fallback hint）。
+
+### AP3.3 - exploit_planner Goal 递归
+- 更新 `aegisos_agents/action/exploit_planner/agent.py` - 新增 `plan_with_goal()` 方法，将复杂攻击目标按资产递归分解为多阶段子目标（初始访问 + 横向移动），失败重试 + 备选路径，汇聚为完整 AttackChain。适用于超长程攻击链场景。
+
+### AP3.4 - 测试
+- 新增 `tests/aegisos_agents/perception/test_goal_mode.py` - 21 个测试：数据类型验证 + decompose 递归分解（4 场景）+ execute_tree 成功/失败重试/备选路径/依赖跳过 + 工厂函数 + CyberOrchestrator 端到端（红队/蓝队）+ ExploitPlannerAgent.plan_with_goal（单资产/多资产/空）。
+
+**测试总数：229 → 250（+21）**
+
 ## [H5] 2026-07-07 可观测与评测（5 子任务全完成）
 
 ### H5.1 — 实时监控

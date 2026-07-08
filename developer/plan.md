@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-07-08 · **229 测试全通过** · SDK S1-S4 ✅ · R2-R5 ✅ · AP1 ✅ · H5 ✅ · 编排器 ✅ · F ✅ · G ✅
+> 最后更新：2026-07-08 · **250 测试全通过** · SDK S1-S4 ✅ · R2-R5 ✅ · AP1 ✅ · AP3 ✅ · H5 ✅ · 编排器 ✅ · F ✅ · G ✅
 
 ---
 
@@ -19,10 +19,10 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ |
-| **测试** | **229 passed**（全模块覆盖） |
-| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · B3+E13 ✅ |
-| **待完成** | P2 数据层(H2) · 记忆/感知/工具补全 · AP3 Goal · AP4 Ask · P3 容器化部署 · AP2 ReAct |
+| **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ |
+| **测试** | **250 passed**（全模块覆盖） |
+| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · B3+E13 ✅ |
+| **待完成** | P2 数据层(H2) · 记忆/感知/工具补全 · AP4 Ask · P3 容器化部署 · AP2 ReAct |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
@@ -56,8 +56,7 @@
 - G 前端攻防视图（6 个子任务）
 - R4 SDK 编排器深化（8 个子任务）
 - R5 旧接口清理 + 流式 + 事件总线（5 个子任务）
-- AP1 Plan 范式（5 个子任务）
-
+- AP1 Plan 范式（5 个子任务）- AP3 Goal 范式（4 个子任务）
 ---
 
 ## 📅 §3 — P2 中期（赛事前）
@@ -90,11 +89,11 @@
 - [ ] `aegisos_agents/tools/runtime/` 工具运行时
 
 ### AP3 — Goal 范式（递归目标分解）
-> **优先级**：P2 · **预估**：2 天 · **依赖**：R4（已完成）· **状态**：🔲 待做
-- [ ] AP3.1 `perception/reasoning/strategies/goal_mode.py` — Goal 模式（递归分解 + 失败重试 + 备选路径）
-- [ ] AP3.2 `CyberOrchestrator` 接入 Goal — 替代固定模板，目标递归分解为子任务 DAG
-- [ ] AP3.3 `exploit_planner` 支持 Goal 递归 — 复杂目标分解为多阶段子目标
-- [ ] AP3.4 测试：Goal 范式递归分解 + 失败重试验证
+> **优先级**：P2 · **预估**：2 天 · **依赖**：R4（已完成）· **状态**：✅ 完成（2026-07-08）
+- [x] AP3.1 `perception/reasoning/strategies/goal_mode.py` - Goal 模式（递归分解 + 失败重试 + 备选路径）
+- [x] AP3.2 `CyberOrchestrator` 接入 Goal - 替代固定模板，目标递归分解为子任务 DAG
+- [x] AP3.3 `exploit_planner` 支持 Goal 递归 - 复杂目标分解为多阶段子目标
+- [x] AP3.4 测试：Goal 范式递归分解 + 失败重试验证（21 测试）
 
 ### AP4 — Ask 范式（人机协同）
 > **优先级**：P2 · **预估**：1-2 天 · **依赖**：F/G 端点（已完成）· **状态**：🔲 待做
@@ -171,7 +170,12 @@
 ---
 
 ## ✅ §7 — 已完成任务（按完成时间倒序）
+### 2026-07-08 AP3 Goal 范式（递归目标分解）✅（250 passed）
 
+- [x] **AP3.1** `perception/reasoning/strategies/goal_mode.py` - `GoalMode` 混入类（`decompose()` 递归分解 + `execute_tree()` 依赖序执行 + 失败重试 + 备选路径注入）。`GoalNode`/`GoalResult`/`GoalStatus` 数据类型。3 场景模板（cyber_red/cyber_blue/generic）+ 自定义模板。`create_goal_mode_orchestrator` 工厂。
+- [x] **AP3.2** `CyberOrchestrator` 继承 `GoalMode[dict]`，新增 `run_red_chain_with_goal()` / `run_blue_chain_with_goal()`（替代固定模板，递归分解 + 重试 + fallback）。`_create_red_agent_executor()` / `_create_blue_agent_executor()` 执行回调。
+- [x] **AP3.3** `exploit_planner/agent.py` 新增 `plan_with_goal()` - 按资产递归分解为初始访问 + 横向移动子目标，失败重试 + 备选路径，汇聚为完整 AttackChain。
+- [x] **AP3.4** 21 个测试：数据类型 + decompose（4 场景）+ execute_tree（成功/重试/备选路径/依赖跳过）+ 工厂 + CyberOrchestrator 端到端 + exploit_planner Goal 递归。250 测试全通过。
 ### 2026-07-09 R4.4-R4.8 SDK 编排深化 + 测试 ✅（208 passed）
 
 - [x] **R4.4** SDK tracing + AgentHooks — `CyberTraceProcessor` + `CyberAgentHooks`（7 个生命周期回调） + `trace()` 包裹编排流程。22 测试通过。

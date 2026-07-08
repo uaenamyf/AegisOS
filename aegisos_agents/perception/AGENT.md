@@ -62,8 +62,9 @@ perceive(input) -> Understanding；产出可追溯推理与反思。
 
 ## 下辖子模块
 - aegisos_agents/perception/context/ — 上下文窗口与会话管理（Token 预算、裁剪、隔离）
-- aegisos_agents/perception/reasoning/ — 推理链/树与策略（CoT/ToT/ReAct）
-- aegisos_agents/perception/reflection/ — 反思、批判与反馈评分（区别于 aegisos_agents/memory/reflection/ 反思记忆存储）
+- aegisos_agents/perception/reasoning/ — 推理链/树与策略（CoT/ToT/ReAct）  - `reasoning/strategies/plan_mode.py` - AP1 Plan 范式（两阶段 LLM 推理）✅
+  - `reasoning/strategies/goal_mode.py` - AP3 Goal 范式（递归目标分解 + 失败重试 + 备选路径）✅
+  - `reasoning/neuro_symbolic.py` - 神经-符号闭环（SDK 结构化输出 + 符号校验 + 反馈修复）✅- aegisos_agents/perception/reflection/ — 反思、批判与反馈评分（区别于 aegisos_agents/memory/reflection/ 反思记忆存储）
 
 ---
 

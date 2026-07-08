@@ -96,6 +96,14 @@ try:
 except ImportError:
     _SDK_FUNCTION_TOOL_AVAILABLE = False
 
+# AP3: GoalMode 依赖
+from aegisos_agents.perception.reasoning.strategies.goal_mode import (
+    GoalMode,
+    GoalNode,
+    GoalResult,
+    GoalStatus,
+)
+
 
 # ==================================================================
 # R4.2: ChainContext —— handoff 链共享上下文
@@ -253,12 +261,15 @@ class ReviewerSDKAgent(StructuredAgent[ReviewResult]):
     TEMPERATURE = 0.2
 
 
-class CyberOrchestrator:
+class CyberOrchestrator(GoalMode[dict]):
     """攻防编排器 —— 用 SDK Agent 实现红蓝紫攻防链。
 
     封装 11 个 SDK Agent，提供红队攻击链、蓝队防御链、紫队校验的
     编排接口。Mock 模式下注入 :class:`MockSDKModel`，真实 API 模式
     注入 SDK ``OpenAIChatCompletionsModel``。
+
+    AP3：继承 :class:`GoalMode`，支持 :meth:`run_red_chain_with_goal` /
+    :meth:`run_blue_chain_with_goal` 递归目标分解编排，替代固定模板链。
 
     Attributes:
         _mock: Mock Provider 实例（Mock 模式）；真实模式为 None。
@@ -1286,3 +1297,299 @@ class CyberOrchestrator:
         """
         all_tools = self.get_all_cyber_tools()
         return [t for t in all_tools if getattr(t, "needs_approval", False)]
+
+    # ==================================================================
+    # AP3: Goal 范式（递归目标分解 + 失败重试 + 备选路径）
+    # ==================================================================
+
+    # date: 2026-07-08
+    # dev: myf
+    # changelog: AP3.2 CyberOrchestrator 接入 Goal--新增 run_red_chain_with_goal / run_blue_chain_with_goal / _create_red_agent_executor / _create_blue_agent_executor 方法
+
+    def run_red_chain_with_goal(
+        self,
+        target_range: str,
+        max_retries: int = 2,
+    ) -> dict[str, Any]:
+        """Goal 范式执行红队攻击链（递归目标分解 + 失败重试）。
+
+        替代 :meth:`run_red_chain` 的固定模板链，将目标分解为子目标树：
+            recon -> vuln_correlator -> exploit_planner -> lateral_move
+
+        每个子目标由对应 Agent 执行，失败时自动重试（最多 max_retries 次），
+        重试时注入 fallback 备选路径提示。最终汇聚所有子目标产出。
+
+        与 :meth:`run_red_chain` 的区别：
+            - ``run_red_chain``：固定模板，无重试，单次执行
+            - 本方法：递归分解，失败重试 + 备选路径，更鲁棒
+
+        Args:
+            target_range: 目标网络范围，如 ``"10.0.0.0/24"``。
+            max_retries: 子目标失败后的最大重试次数。
+
+        Returns:
+            含 ``assets`` / ``findings`` / ``chain`` / ``goal_result`` 的字典。
+            ``goal_result`` 是 :class:`GoalResult`，含子目标执行状态。
+        """
+        tree = self.decompose(
+            f"攻击 {target_range}",
+            scenario="cyber_red",
+        )
+        executor = self._create_red_agent_executor(target_range)
+        result = self.execute_tree(tree, executor, max_retries=max_retries)
+
+        # 汇聚产出
+        assets = result.outputs.get("recon", [])
+        findings = result.outputs.get("vuln", [])
+        chain = result.outputs.get("exploit", AttackChain(
+            chain_id="", target=target_range, steps=[], status="failed"
+        ))
+
+        return {
+            "assets": assets,
+            "findings": findings,
+            "chain": chain,
+            "goal_result": result,
+        }
+
+    def run_blue_chain_with_goal(
+        self,
+        event_stream: list[dict[str, Any]],
+        max_retries: int = 2,
+    ) -> dict[str, Any]:
+        """Goal 范式执行蓝队防御链（递归目标分解 + 失败重试）。
+
+        替代 :meth:`run_blue_chain` 的固定模板链，将目标分解为子目标树：
+            detector -> triage -> threat_hunt -> ir_planner
+
+        每个子目标由对应 Agent 执行，失败时自动重试。
+
+        Args:
+            event_stream: 原始事件流列表。
+            max_retries: 子目标失败后的最大重试次数。
+
+        Returns:
+            含 ``alerts`` / ``triaged`` / ``hypotheses`` / ``plan`` / ``goal_result`` 的字典。
+        """
+        tree = self.decompose(
+            "防御事件流",
+            scenario="cyber_blue",
+        )
+        executor = self._create_blue_agent_executor(event_stream)
+        result = self.execute_tree(tree, executor, max_retries=max_retries)
+
+        alerts = result.outputs.get("detect", [])
+        triaged = result.outputs.get("triage", alerts)
+        hypotheses = result.outputs.get("hunt", [])
+        plan = result.outputs.get("respond", ResponsePlan(
+            plan_id="", actions=[], confidence=0.0, rollback={}
+        ))
+
+        return {
+            "alerts": alerts,
+            "triaged": triaged,
+            "hypotheses": hypotheses,
+            "plan": plan,
+            "goal_result": result,
+        }
+
+    def _create_red_agent_executor(
+        self, target_range: str
+    ) -> Any:
+        """创建红队子目标执行回调。
+
+        返回一个 ``executor(node, context) -> Any`` 回调，根据 ``node.agent_name``
+        调用对应的红队 Agent，并将上游产出注入为上下文。
+
+        Args:
+            target_range: 目标网络范围。
+
+        Returns:
+            执行回调函数。
+        """
+
+        def executor(node: GoalNode, context: dict[str, Any]) -> Any:
+            """红队子目标执行器。
+
+            根据 node.agent_name 分发到对应 Agent，上游产出从 context 中获取。
+            失败时抛出异常，由 :meth:`GoalMode.execute_tree` 捕获并重试。
+            """
+            agent_name = node.agent_name
+            fallback_hint = context.get("_fallback_hint", "")
+
+            if agent_name == "recon":
+                prompt = f"Scan target range: {target_range}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                recon_result = self.recon._run(prompt)
+                return [
+                    Asset(
+                        asset_id=a.asset_id,
+                        host=a.host,
+                        services=a.services,
+                        os=a.os,
+                        exposure=a.exposure,
+                    )
+                    for a in recon_result.assets
+                ]
+
+            elif agent_name == "vuln_correlator":
+                assets = context.get("recon", [])
+                assets_desc = json.dumps(
+                    [
+                        {
+                            "asset_id": a.asset_id,
+                            "host": a.host,
+                            "services": a.services,
+                            "os": a.os,
+                        }
+                        for a in assets
+                    ]
+                )
+                prompt = f"Correlate vulnerabilities for these assets: {assets_desc}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                vuln_result = self.vuln_correlator._run(prompt)
+                return [
+                    VulnFinding(
+                        finding_id=f.finding_id,
+                        cve_id=f.cve_id,
+                        asset_id=f.asset_id,
+                        cvss=f.cvss,
+                        attack_surface=f.attack_surface,
+                    )
+                    for f in vuln_result.findings
+                ]
+
+            elif agent_name == "exploit_planner":
+                findings = context.get("vuln", [])
+                findings_desc = json.dumps(
+                    [
+                        {
+                            "finding_id": f.finding_id,
+                            "cve_id": f.cve_id,
+                            "asset_id": f.asset_id,
+                            "cvss": f.cvss,
+                        }
+                        for f in findings
+                    ]
+                )
+                prompt = f"Plan exploit chain for: {findings_desc}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                exploit_result = self.exploit_planner._run(prompt)
+                return AttackChain(
+                    chain_id=exploit_result.chain_id,
+                    target=exploit_result.target,
+                    steps=[
+                        AttackStep(**s.model_dump()) for s in exploit_result.steps
+                    ],
+                    status=exploit_result.status,
+                )
+
+            elif agent_name == "lateral_move":
+                from aegisos_agents.action.lateral_move.agent import LateralMoveAgent
+
+                chain = context.get("exploit", AttackChain())
+                lateral_agent = LateralMoveAgent(
+                    mock=self._mock,
+                )
+                prompt = f"Plan lateral moves. Chain: {json.dumps(chain.to_dict() if hasattr(chain, 'to_dict') else {})}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                lateral_result = lateral_agent._run(prompt)
+                return [
+                    AttackStep(**s.model_dump()) for s in lateral_result.steps
+                ]
+
+            else:
+                raise ValueError(f"Unknown red team agent: {agent_name}")
+
+        return executor
+
+    def _create_blue_agent_executor(
+        self, event_stream: list[dict[str, Any]]
+    ) -> Any:
+        """创建蓝队子目标执行回调。
+
+        Args:
+            event_stream: 原始事件流列表。
+
+        Returns:
+            执行回调函数。
+        """
+
+        def executor(node: GoalNode, context: dict[str, Any]) -> Any:
+            """蓝队子目标执行器。"""
+            agent_name = node.agent_name
+            fallback_hint = context.get("_fallback_hint", "")
+
+            if agent_name == "detector":
+                prompt = f"Detect anomalies in: {json.dumps(event_stream)}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                detector_result = self.detector._run(prompt)
+                return [
+                    Alert(
+                        alert_id=a.alert_id,
+                        severity=a.severity,
+                        src=a.src,
+                        dst=a.dst,
+                        technique=a.technique,
+                        raw=a.raw,
+                    )
+                    for a in detector_result.alerts
+                ]
+
+            elif agent_name == "triage":
+                alerts = context.get("detect", [])
+                alerts_desc = json.dumps(
+                    [
+                        {
+                            "alert_id": a.alert_id,
+                            "severity": a.severity,
+                            "src": a.src,
+                            "dst": a.dst,
+                        }
+                        for a in alerts
+                    ]
+                )
+                prompt = f"Triage these alerts: {alerts_desc}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                triage_result = self.triage._run(prompt)
+                return [
+                    Alert(**t.model_dump()) for t in triage_result.alerts
+                ] or alerts
+
+            elif agent_name == "threat_hunt":
+                alerts = context.get("triage", context.get("detect", []))
+                alerts_desc = json.dumps(
+                    [
+                        {"alert_id": a.alert_id, "severity": a.severity}
+                        for a in alerts
+                    ]
+                )
+                prompt = f"Generate hunting hypotheses for: {alerts_desc}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                hunt_result = self.threat_hunt._run(prompt)
+                return [h.model_dump() for h in hunt_result.hypotheses]
+
+            elif agent_name == "ir_planner":
+                hypotheses = context.get("hunt", [])
+                prompt = f"Plan response for: {json.dumps(hypotheses)}"
+                if fallback_hint:
+                    prompt += f" (Fallback: {fallback_hint})"
+                ir_result = self.ir_planner._run(prompt)
+                return ResponsePlan(
+                    plan_id=ir_result.plan_id,
+                    actions=[a.model_dump() for a in ir_result.actions],
+                    confidence=ir_result.confidence,
+                    rollback=ir_result.rollback,
+                )
+
+            else:
+                raise ValueError(f"Unknown blue team agent: {agent_name}")
+
+        return executor
