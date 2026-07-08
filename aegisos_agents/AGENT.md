@@ -447,7 +447,7 @@ class NeuroSymbolicLoop:
 
 **测试**：4 个 — 合法链通过 · 非法技术被标记 · 闭环修复 · 迭代上限
 
-**⚠️ SDK 重构 P0**：这是 `aegisos_agents/` 中**唯一**仍用旧 `ModelProvider.complete()` + `json.loads` 手写解析的 LLM 调用点。待迁移到 `StructuredAgent[ExploitPlannerResult]`，`validate_chain` 符号侧保留。详见 `developer/plan.md` R4-R5。
+**✅ SDK 重构完成（R4.1）**：已迁移到 `NeuroSymbolicAgent(StructuredAgent[ExploitPlannerResult])`，SDK `output_type` 替代旧 `ModelProvider.complete()` + `json.loads`。`validate_chain` 符号侧保留。
 
 ---
 
@@ -471,9 +471,7 @@ class NeuroSymbolicLoop:
 
 `MockSDKModel(Model)` 实现 SDK `Model` 接口，将 `MockProvider` 包装为 SDK `ModelResponse`。
 
-##### `llms/base.py` — 旧 LLM 抽象基类（⚠️ R5 清理目标）
-
-##### `llms/base.py` — LLM 请求/响应数据结构（R5.1 清理后）
+##### `llms/base.py` — LLM 请求/响应数据结构（✅ R5.1 清理后）
 
 R5.1 清理后仅保留 `LLMRequest` / `LLMResponse`（MockProvider 与 MockSDKModel 内部数据契约）。`ModelProvider` Protocol 已删除（SDK 有自己的 `ModelProvider`）。
 

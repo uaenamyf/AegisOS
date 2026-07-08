@@ -249,6 +249,5 @@ curl -H "X-API-Key: aegis-dev-key" http://localhost:8000/api/v1/agents
 
 ### 未实现
 
-- 🔲 攻防端点 `/api/v1/range/*`（靶场启停/拓扑/红队攻击/攻击链/防御）
-- 🔲 `/api/v1/threat/attack-techniques`（ATT&CK 技术列表）
 - 🔲 Task payload 字段（当前 MockRuntime.run() 用 getattr 从 goal 解析）
+- 🔲 WebSocket 双向流完善

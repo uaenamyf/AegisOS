@@ -84,13 +84,13 @@ observability/
 ├── api/
 │   └── __init__.py        ✅ 6 个 Protocol 接口定义
 ├── inspect/
-│   ├── monitor/           🔲 仅 AGENT.md
-│   └── replay/            🔲 仅 AGENT.md
+│   ├── monitor/           ✅ MetricsCollector + AlertRule + tracing（CyberTraceProcessor/CyberAgentHooks）
+│   └── replay/            ✅ Timeline + ReplayPlayer
 ├── measure/
-│   ├── benchmark/         🔲 仅 AGENT.md
-│   └── evaluation/        🔲 仅 AGENT.md
+│   ├── benchmark/         ✅ BenchmarkCase/Suite/Runner + 统计
+│   └── evaluation/        ✅ Evaluator（5 维度评分）
 └── present/
-    └── visualization/     🔲 仅 AGENT.md
+    └── visualization/     ✅ VisualizationService（ECharts + React Flow 兼容）
 ```
 
 ### 已实现
@@ -106,31 +106,17 @@ observability/
 | `EvaluationAPI` | `evaluate(spec)` · `report(evaluation_id)` | 质量评测 |
 | `VisualizationAPI` | `render(graph)` · `export(format)` | 可视化导出 |
 
-### 未实现（全空，仅 AGENT.md）
+#### H5 可观测评测实现（✅ 全部完成，41 测试）
 
-#### `inspect/` — 观测层
+| 子模块 | 功能 |
+|--------|------|
+| `inspect/monitor/` | `MetricsCollector`：订阅 EventBus 采集 Agent 延迟/成功率/Token/调用次数 + `AlertRule` 告警 + `get_dashboard()` 面板 |
+| `inspect/monitor/tracing/` | `CyberTraceProcessor` + `CyberAgentHooks`（7 个生命周期回调→EventBus 发布） |
+| `inspect/replay/` | `Timeline` 时序记录 + `ReplayPlayer` 步进/跳跃/定时回放 + `get_attack_chain_view()` 演示视图 |
+| `measure/benchmark/` | `BenchmarkCase`/`Suite`/`Runner` + 重复运行取 min/avg/max/p99 + `BenchmarkReport` |
+| `measure/evaluation/` | `Evaluator` 5 维度评测（accuracy/recall/latency/resource/robustness）+ 加权总分 + `EvaluationReport` |
+| `present/visualization/` | `ChartGenerator`（ECharts 兼容）+ `GraphRenderer`（React Flow 兼容）+ `DashboardAssembler` + `VisualizationService` |
 
-| 子模块 | 计划功能 |
-|--------|---------|
-| `monitor/` | 实时监控面板：Agent 状态 · 资源使用 · 事件流 |
-| `replay/` | 时序回放：按时间轴重放 Agent 决策与通信 |
+### 未实现
 
-#### `measure/` — 度量层
-
-| 子模块 | 计划功能 |
-|--------|---------|
-| `benchmark/` | 性能基准：延迟 · 吞吐量 · 资源开销 |
-| `evaluation/` | 5 维度评测：准确率 · 覆盖率 · 响应时间 · 资源效率 · 协同质量 |
-
-#### `present/` — 呈现层
-
-| 子模块 | 计划功能 |
-|--------|---------|
-| `visualization/` | 可视化：拓扑图渲染 · 攻击链 DAG · 事件时间线 |
-
-### 赛事需求（来自 plans/14 · 15）
-
-| 任务 | 说明 | 状态 |
-|------|------|------|
-| H5 | Benchmark + 5 维度评测体系 | 🔲 未开始 |
-| — | 回放系统（赛事演示用） | 🔲 未开始 |
+- 🔲 前端 MonitorView/ReplayView 对接（数据源已就绪）

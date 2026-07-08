@@ -2,7 +2,7 @@
 
 > 本文件对每个顶层域的实际**代码实现状态**做精确描述：已实现什么、未实现什么、关键文件在哪、测试覆盖如何。
 > 各域详细实现文档已合并至对应 `AGENT.md` 末尾「📋 模块实现详解」段；全局模块总览已合并至根 `AGENT.md` 末尾「📋 模块实现总览」段。
-> 最后更新：2026-07-06 · 94 个测试全通过 · SDK 集成 S1-S4 ✅
+> 最后更新：2026-07-08 · 229 个测试全通过 · SDK S1-S4 ✅ · R4-R5 ✅ · F/G ✅ · H5 ✅ · AP1 ✅
 
 ---
 
@@ -11,15 +11,15 @@
 | 域 | 代码文件 | 测试数 | 实现状态 | 模块文档 |
 |----|---------|--------|---------|---------|
 | [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
-| [`aegisos_agents/`](#agents) | 25 `.py` | 84 | ✅ 核心算法完成 / ✅ SDK S1-S4 / 🔲 编排器深化 R4 | [AGENT.md](../aegisos_agents/AGENT.md) |
-| [`backend/`](#backend) | 18 `.py` | — | ✅ REST+WS+SSE+DB 可用 | [AGENT.md](../backend/AGENT.md) |
-| [`frontend/`](#frontend) | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 | [AGENT.md](../frontend/AGENT.md) |
+| [`aegisos_agents/`](#agents) | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R5 / ✅ 编排器 / ✅ Plan 范式 | [AGENT.md](../aegisos_agents/AGENT.md) |
+| [`backend/`](#backend) | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F | [AGENT.md](../backend/AGENT.md) |
+| [`frontend/`](#frontend) | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay | [AGENT.md](../frontend/AGENT.md) |
 | [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../infrastructure/AGENT.md) |
-| [`observability/`](#observability) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../observability/AGENT.md) |
+| [`observability/`](#observability) | 10+ `.py` | 41 | ✅ H5 完成（监控/回放/基准/评测/可视化） | [AGENT.md](../observability/AGENT.md) |
 | [`data/`](#data) | 1 `.py` | 0 | 🔲 仅 API 协议定义 + SQLite DB | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
 | [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
-| [`tests/`](#tests) | 27 `.py` | 94 | ✅ Phase A-E + B3 + E13 + SDK 覆盖 | — |
+| [`tests/`](#tests) | 30+ `.py` | 229 | ✅ 全覆盖 | — |
 
 ---
 
@@ -58,17 +58,17 @@
 
 ### 🔧 openai-agents SDK 集成状态
 
-> ✅ S1-S4 完成 · 🔲 R4-R5 待深化。详见 `aegisos_agents/AGENT.md` + `developer/plan.md`。
+> ✅ S1-S4 完成 · ✅ R4-R5 完成。详见 `aegisos_agents/AGENT.md` + `developer/plan.md`。
 
 | 能力 | 状态 |
 |------|------|
 | `StructuredAgent[T]` 基类（SDK `Agent` + `Runner.run_sync` + `output_type`） | ✅ |
 | 11 个攻防 Agent（红 4 + 蓝 5 + 紫 2，全部继承 StructuredAgent，无 `json.loads`） | ✅ |
 | `SDKProvider` + `MockSDKModel`（双模式：Mock / 火山引擎 ARK） | ✅ |
-| `CyberOrchestrator`（9 个 SDK Agent 装配 + 红蓝紫链） | ✅ 部分 |
-| `neuro_symbolic.py` 迁移 | 🔲 P0（唯一未迁移的 LLM 调用点） |
-| SDK `handoffs` / `guardrails` / `tracing` | 🔲 R4 |
-| 旧 `base.py` 接口清理 | 🔲 R5 |
+| `CyberOrchestrator`（9 个 SDK Agent 装配 + handoffs + guardrails + tracing + FunctionTool） | ✅ |
+| `neuro_symbolic.py` 迁移 | ✅ R4.1 |
+| SDK `handoffs` / `guardrails` / `tracing` | ✅ R4 |
+| 旧 `base.py` 接口清理 + 流式 SSE + 事件总线 | ✅ R5 |
 
 ### 子模块实现状态
 
@@ -81,8 +81,8 @@
 | [`engine/router/election.py`](../aegisos_agents/planning/engine/router/election.py) | `elect()` | 异构选举：task_features · capability_vectors 点积最高者胜出 | 2 |
 | [`engine/scheduler/scheduler.py`](../aegisos_agents/planning/engine/scheduler/scheduler.py) | `schedule()` · `Model` | 端边云三层卸载：device/edge/cloud，privacy=local→device，latency<1s→device，latency<5s→edge，否则→cloud，降级端→边→云 | 8 |
 
-> 🔲 **未实现**：`planner/` · `engine/workflow/` · `engine/eventbus/` 仅有 AGENT.md
-> ✅ **CyberOrchestrator**：`orchestrator/cyber_orchestrator.py` 已用 SDK Agent 实现红蓝紫攻防链编排（R4 待深化 handoffs/guardrails/tracing）
+> ✅ **全部已实现**：`planner/` · `engine/workflow/` · `engine/eventbus/` 均已实现。
+> ✅ **CyberOrchestrator**：`orchestrator/cyber_orchestrator.py` 已用 SDK Agent 实现红蓝紫攻防链编排（含 handoffs/guardrails/tracing/FunctionTool）。
 
 #### `aegisos_agents/memory/` — 记忆子系统（✅ B3 四层+集成层完成，🔲 7 子模块空）
 
@@ -179,8 +179,11 @@
 ### API 鉴权
 所有 `/api/v1/*` 端点需要 `X-API-Key: aegis-dev-key` header（`/health` 除外）。
 
+### 已实现
+- ✅ 10+ REST + SSE + WS 端点 + **攻防端点**（range/attack/defense/threat）
+
 ### 未实现
-- 🔲 攻防端点 `/api/v1/range/*`（靶场/拓扑/攻击/攻击链/防御）
+- 🔲 Task payload 字段（当前 MockRuntime.run() 用 getattr 从 goal 解析）
 
 📎 详细文档：[`backend/AGENT.md`](../backend/AGENT.md) 末尾「📋 模块实现详解」
 
@@ -251,10 +254,19 @@
 |------|------|
 | [`api/__init__.py`](../observability/api/__init__.py) | 6 个 Protocol 接口：`MonitorAPI` · `TraceAPI` · `ReplayAPI` · `BenchmarkAPI` · `EvaluationAPI` · `VisualizationAPI` |
 
-### 未实现（全空，仅 AGENT.md）
-- 🔲 `inspect/monitor/` · `inspect/replay/`
-- 🔲 `measure/benchmark/` · `measure/evaluation/`
-- 🔲 `present/visualization/`
+**H5 可观测评测**（✅ 全部完成，41 测试）：
+
+| 子模块 | 功能 |
+|--------|------|
+| `inspect/monitor/` | `MetricsCollector`：订阅 EventBus 自动采集 Agent 延迟/成功率/Token + `AlertRule` 告警 |
+| `inspect/replay/` | `Timeline` 时序记录 + `ReplayPlayer` 步进/跳跃/定时回放 |
+| `inspect/monitor/tracing/` | `CyberTraceProcessor` + `CyberAgentHooks`（7 个生命周期回调→EventBus） |
+| `measure/benchmark/` | `BenchmarkCase`/`Suite`/`Runner` + min/avg/max/p99 统计 |
+| `measure/evaluation/` | `Evaluator` 5 维度评测（accuracy/recall/latency/resource/robustness） |
+| `present/visualization/` | `VisualizationService`（ECharts 兼容 + React Flow 兼容） |
+
+### 未实现
+- 🔲 前端 MonitorView/ReplayView 对接（数据源已就绪）
 
 📎 详细文档：[`observability/AGENT.md`](../observability/AGENT.md) 末尾「📋 模块实现详解」
 

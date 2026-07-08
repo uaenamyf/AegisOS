@@ -22,6 +22,7 @@ Developer Agent
   -> 读取 tooling/configs/ 配置
   -> 生成代码
   -> 运行 Test（质量门禁：ruff format && ruff check --fix && mypy && pytest）
+  -> 检查并更新相关文档（见 `developer/specs/11_AI_CODING_SPEC.md` §7 文档一致性检查）
   -> 生成/更新 Doc + CHANGELOG + plan.md（勾选完成任务）
   -> Commit
 ```
@@ -72,6 +73,7 @@ Agent 永不扫描整个项目；按模块边界精准读写，效率高且不�
 - 技术栈只能使用 `developer/specs/12_TECH_STACK_SPEC.md` 登记的语言/框架/库；新增依赖须评估并登记。
 - AI 改动须符合 `developer/specs/11_AI_CODING_SPEC.md`（必读文件、单次范围、禁擅改协议/API、测试/文档/冲突处理）。
 - **代码注释强制**：首次创建文件须在文件顶部写文件说明 + `date` + `dev`（见 §10.1）；后续增改函数/方法/接口须在改动处写 `date` + `dev` + `changelog` + 代码注释（见 §10.2）。缺失注释的代码视为未完成。
+- **文档一致性检查**：每次修改代码后，须检查 `AGENT.md` 总览/`CLAUDE.md`/`docs/ARCHITECTURE.md`/域名 `AGENT.md`/`plan.md` 是否仍反映最新状态，如有过期立即同步更新。详见 `developer/specs/11_AI_CODING_SPEC.md` §7。
 
 ## Agent 统一生命周期
 Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reasoning -> Memory Read -> Tool Call -> Reflection -> Return Result -> Log -> Heartbeat -> Finish
@@ -124,15 +126,15 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | # | 大模块 | 是什么 | 代码文件 | 测试数 | 实现状态 |
 |---|--------|--------|---------|--------|---------|
 | 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
-| 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 25 `.py` | 84 | ✅ 核心算法完成 / ✅ SDK 集成 S1-S4 / 🔲 编排器深化 R4 |
-| 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 18 `.py` | — | ✅ 可运行 |
-| 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 25 `.ts/.tsx` | — | ✅ Chat 联调 / 🔲 攻防视图待补 |
+| 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R5 / ✅ 编排器完成 / ✅ Plan 范式 |
+| 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F |
+| 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay |
 | 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
-| 6 | `observability/` | 可观测层 — 监控 · 基准 · 可视化 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
+| 6 | `observability/` | 可观测层 — 监控 · 基准 · 可视化 | 10+ `.py` | 41 | ✅ H5 完成（MetricsCollector/Timeline/Benchmark/Evaluator/Visualization） |
 | 7 | `data/` | 数据层 — 数据集 · 模型 schema | 1 `.py` | 0 | 🔲 仅 API 协议 + SQLite |
 | 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
 | 9 | `developer/` | 规范层 — SSOT 规范 + roadmap | 0 `.py` | — | ✅ 规范就位 |
-| 10 | `tests/` | 测试 — 94 个测试全通过 | 27 `.py` | 94 | ✅ Phase A-E + B3 + E13 + SDK 覆盖 |
+| 10 | `tests/` | 测试 — 229 个测试全通过 | 30+ `.py` | 229 | ✅ 全覆盖 |
 
 **模块依赖关系**：
 
@@ -200,16 +202,18 @@ frontend/services ← 调用 backend REST API
 
 #### openai-agents SDK 集成
 
-> ✅ S1-S4 完成 · 🔲 R4-R5 待深化。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
+> ✅ S1-S4 完成 · ✅ R4-R5 完成。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
 
 | 能力 | 状态 | 说明 |
 |------|------|------|
 | `StructuredAgent[T]` 基类 | ✅ | 封装 SDK `Agent` + `Runner.run_sync` + `output_type`（Pydantic BaseModel） |
 | 11 个攻防 Agent 迁移 | ✅ | 全部继承 `StructuredAgent[T]`，无 `json.loads` |
 | `SDKProvider` + `MockSDKModel` | ✅ | 双模式：Mock（`AEGIS_USE_MOCK=1`）/ 火山引擎 ARK 真实 API |
-| `CyberOrchestrator` 编排器 | ✅ 部分 | 9 个 SDK Agent 装配 + 红蓝紫链；🔲 handoffs/guardrails/tracing 待 R4 |
-| `neuro_symbolic.py` 迁移 | 🔲 P0 | 唯一仍用旧 `ModelProvider.complete()` + `json.loads` 的 LLM 调用点 |
-| 旧 `base.py` 接口清理 | 🔲 R5 | `LLMRequest`/`LLMResponse`/`ModelProvider` 待 neuro_symbolic 迁移后删除 |
+| `CyberOrchestrator` 编排器 | ✅ | 9 个 SDK Agent 装配 + handoffs + guardrails + tracing + FunctionTool |
+| `neuro_symbolic.py` 迁移 | ✅ R4.1 | 已迁移到 `NeuroSymbolicAgent(StructuredAgent)` |
+| 旧 `base.py` 接口清理 | ✅ R5.1 | `ModelProvider` Protocol 已删除 |
+| 流式 SSE | ✅ R5.3 | `_run_streamed` + `backend/routers/stream.py` |
+| 事件总线 | ✅ R5.4 | AgentHooks → EventBus 发布 |
 
 📎 五层架构详解 + 子模块状态：[`aegisos_agents/AGENT.md`](aegisos_agents/AGENT.md) · 规范：[`08_AGENT_SPEC.md`](developer/specs/08_AGENT_SPEC.md)
 
@@ -223,13 +227,14 @@ frontend/services ← 调用 backend REST API
 #### 做了什么
 - **FastAPI 应用**：完整的 app 创建 + CORS + 请求追踪中间件 + lifespan 数据库初始化
 - **网关鉴权**：`/api/v1/*` 前缀路由 + X-API-Key header 鉴权（`aegis-dev-key`）
-- **10 个 REST 端点**：health / sessions / tasks / aegisos_agents / graph / memory / tools / metrics / replay
-- **实时通信**：SSE 事件推送 + WebSocket 双向流
+- **10+ REST 端点**：health / sessions / tasks / agents / graph / memory / tools / metrics / replay / stream + **攻防端点** range/attack/defense/threat
+- **实时通信**：SSE 事件推送 + WebSocket 双向流 + 流式输出
 - **数据持久化**：SQLAlchemy async + aiosqlite，Session/Task 实体 + 仓储 + 转换器
-- **DI 组合根**：`composition.py` 装配 DB + 仓储 + 服务 + 14 Agent 注册 + MockRuntime
+- **DI 组合根**：`composition.py` 装配 DB + 仓储 + 服务 + 14 Agent 注册 + CyberOrchestrator 注入
 
 #### 未实现
-- 🔲 攻防端点 `/api/v1/range/*`（靶场/拓扑/攻击/攻击链/防御）
+- 🔲 WebSocket 双向流完善
+- 🔲 Task payload 字段（当前 MockRuntime.run() 用 getattr 从 goal 解析）
 
 📎 架构 + 端点详解：[`backend/AGENT.md`](backend/AGENT.md) · 规范：[`05_API_SPEC.md`](developer/specs/05_API_SPEC.md) · [`10_INTERFACE_BOUNDARY_SPEC.md`](developer/specs/10_INTERFACE_BOUNDARY_SPEC.md)
 
@@ -247,11 +252,11 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 - **5 个 REST 服务**：agents / sessions / tasks / memory / graph
 - **实时通信**：SSE + WebSocket 封装
 - **ChatView 完整实现**：Agent 选择 + 消息收发 + 任务提交 + 状态轮询 + 自动滚动
-- **5 个视图骨架**：chat ✅ / canvas 🔲 / graph 🔲 / monitor 🔲 / replay 🔲
+- **攻防视图（4 面板）**：RedTeamPanel（攻击链 DAG）+ BlueTeamPanel（防御看板）+ PurpleTeamPanel（时序回放）+ ThreatIntelPanel（ATT&CK 情报表）
+- **5 个视图骨架**：chat ✅ / cyber ✅ / canvas 🔲 / monitor 🔲 / replay 🔲
 
 #### 未实现
-- 🔲 CanvasView / GraphView / MonitorView / ReplayView
-- 🔲 前端 cyber 类型（protocol/cyber.py 未映射到 TS）
+- 🔲 CanvasView / MonitorView / ReplayView（replay 数据源 H5.2 已完成）
 
 📎 架构 + ChatView 详解：[`frontend/AGENT.md`](frontend/AGENT.md) · 计划：[`plans/13_FRONTEND_BACKEND_PLAN.md`](developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md)
 
@@ -280,10 +285,11 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 
 #### 做了什么
 - **API 协议定义**：6 个 Protocol 接口（MonitorAPI / TraceAPI / ReplayAPI / BenchmarkAPI / EvaluationAPI / VisualizationAPI）
+- **H5 可观测评测**：✅ 全部完成 — `MetricsCollector`（监控+告警）+ `Timeline`/`ReplayPlayer`（回放）+ `BenchmarkRunner`（性能基准）+ `Evaluator`（5 维度评测）+ `VisualizationService`（ECharts/React Flow 可视化）
+- **Tracing**：`CyberTraceProcessor` + `CyberAgentHooks`（7 个生命周期回调）
 
 #### 未实现
-- 🔲 全部子模块仅有 AGENT.md，无代码实现
-- 🔲 赛事 H5：5 维度评测 + 攻击链回放
+- 🔲 前端 MonitorView/ReplayView 对接（数据源已完成）
 
 📎 目录 + 赛事需求：[`observability/AGENT.md`](observability/AGENT.md)
 

@@ -209,15 +209,14 @@ frontend/
 | 视图 | 路由 | 状态 | 说明 |
 |------|------|------|------|
 | **ChatView** | `chat` | ✅ 完整实现 | Agent 对话 + 任务提交 |
+| **攻防视图 4 面板** | `cyber` | ✅ 完整实现 | RedTeamPanel + BlueTeamPanel + PurpleTeamPanel + ThreatIntelPanel |
 | CanvasView | `canvas` | 🔲 占位 | 攻击链 DAG 可视化（待 React Flow） |
-| GraphView | `graph` | 🔲 占位 | 拓扑图可视化 |
-| MonitorView | `monitor` | 🔲 占位 | 防御看板 |
-| ReplayView | `replay` | 🔲 占位 | 时序回放 |
+| MonitorView | `monitor` | 🔲 占位 | 防御看板（数据源 H5.1 已就绪） |
+| ReplayView | `replay` | 🔲 占位 | 时序回放（数据源 H5.2 已就绪） |
 
 ### 未实现
 
 - 🔲 CanvasView：攻击链 DAG 可视化（需安装 `reactflow`）
 - 🔲 MonitorView：防御看板（告警/响应状态）
 - 🔲 ReplayView：时序回放
-- 🔲 前端 cyber 类型（`protocol/cyber.py` 未映射到 TS）
 - 🔲 GraphView：动态拓扑图交互
