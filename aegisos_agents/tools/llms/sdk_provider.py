@@ -1,8 +1,8 @@
 # date: 2026-07-06
 # dev: myf
-"""SDK Provider 适配器 —— 桥接项目 ModelProvider 与 openai-agents SDK。
+"""SDK Provider 适配器 —— 桥接项目 MockProvider 与 openai-agents SDK。
 
-本模块提供统一的 LLM 调用入口，根据 ``AEGIS_USE_MOCK`` 环境变量在两种模式间切换：
+本模块根据 ``AEGIS_USE_MOCK`` 环境变量在两种模式间切换：
     - Mock 模式（``AEGIS_USE_MOCK=true``）：使用 :class:`MockProvider`，无需 API Key，
       返回预置响应。用于评委本地演示、CI、单元测试。
     - 真实 API 模式（``AEGIS_USE_MOCK=false``）：通过 SDK 调用 OpenAI 兼容端点
@@ -15,9 +15,9 @@
 
 与现有架构的关系：
     - 保留 :class:`MockProvider`（测试依赖，不删除）
-    - 保留 :class:`LLMRequest` / :class:`LLMResponse`（11 个 Agent 的接口契约不变）
-    - 本适配器实现 :class:`ModelProvider` Protocol，作为真实 API 模式的 Provider
-    - 4 个手写 Provider（openai/anthropic/local）将被本模块取代，后续可删除
+    - 保留 :class:`LLMRequest` / :class:`LLMResponse`（Mock 内部契约不变）
+    - 本适配器仅通过 :meth:`SDKProvider.get_sdk_model` 提供真实 API 的 SDK ``Model``，
+      不再提供旧 ``complete()`` 同步调用（已由 SDK ``Runner.run_sync`` 替代）
 """
 
 from __future__ import annotations
@@ -27,9 +27,7 @@ import os
 from agents import set_default_openai_api, set_tracing_disabled
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
 
-from .base import LLMRequest, LLMResponse
 from .mock_provider import MockProvider
 
 
@@ -50,14 +48,18 @@ def _is_mock_mode() -> bool:
 
 
 class SDKProvider:
-    """SDK 桥接 Provider —— 真实 API 模式下桥接 LLMRequest 到 OpenAI Chat Completions。
+    """SDK 桥接 Provider -- 真实 API 模式下提供 SDK ``Model`` 供 Agent 使用。
 
-    在真实 API 模式下，将项目的 :class:`LLMRequest` 转换为 OpenAI Chat Completions
-    调用，返回 :class:`LLMResponse`。内部使用 SDK 的
-    :class:`OpenAIChatCompletionsModel` 的底层客户端（``AsyncOpenAI``）发起请求。
+    在真实 API 模式下，创建 ``AsyncOpenAI`` 客户端并配置 SDK 全局默认 API 为
+    ``chat_completions``（火山引擎 ARK 不支持 Responses API），通过
+    :meth:`get_sdk_model` 返回 :class:`OpenAIChatCompletionsModel` 供 SDK
+    ``Agent(model=...)`` 直接使用。
 
     火山引擎 ARK 兼容：通过 ``OPENAI_BASE_URL`` + ``OPENAI_API_KEY`` 环境变量
     自动指向 ARK 端点，使用 Chat Completions API。
+
+    R6.1 清理：删除了旧 ``complete()`` 同步调用方法（已被 SDK
+    ``Runner.run_sync`` + ``output_type`` 结构化输出替代，无业务调用方）。
 
     Attributes:
         _client: OpenAI 异步客户端（真实模式）；Mock 模式下为 None。
@@ -100,60 +102,6 @@ class SDKProvider:
     def is_mock(self) -> bool:
         """当前是否为 Mock 模式。"""
         return self._mock is not None
-
-    def complete(self, request: LLMRequest) -> LLMResponse:
-        """执行一次 LLM 推理请求（同步包装异步调用）。
-
-        Mock 模式下委托 :class:`MockProvider`；真实模式下调用 OpenAI Chat Completions API。
-
-        Args:
-            request: 包含 prompt、模型、温度等参数的请求对象。
-
-        Returns:
-            封装了生成文本（或错误信息）的 :class:`LLMResponse`。
-            网络异常时返回 ``ok=False`` 并附带错误描述，不向上层抛出。
-        """
-        # Mock 模式：直接委托
-        if self._mock is not None:
-            return self._mock.complete(request)
-
-        # 真实 API 模式：通过 AsyncOpenAI 同步调用 Chat Completions
-        # 使用 asyncio.run 包装异步调用（项目 Agent 当前为同步接口）
-        import asyncio
-
-        async def _call() -> str:
-            assert self._client is not None  # 真实模式下 client 必已初始化
-            messages: list[ChatCompletionMessageParam] = []
-            if request.system_prompt:
-                messages.append({"role": "system", "content": request.system_prompt})
-            messages.append({"role": "user", "content": request.prompt})
-            resp = await self._client.chat.completions.create(
-                model=request.model_id or self._model,
-                messages=messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-                stop=request.stop or None,
-            )
-            return resp.choices[0].message.content or ""
-
-        try:
-            text = asyncio.run(_call())
-            return LLMResponse(
-                text=text,
-                ok=True,
-                model_id=request.model_id or self._model,
-                usage={
-                    "prompt_tokens": len(request.prompt) // 4,
-                    "completion_tokens": len(text) // 4,
-                },
-            )
-        except Exception as e:  # noqa: BLE001 - Provider 契约要求捕获所有异常
-            return LLMResponse(
-                text="",
-                ok=False,
-                error=str(e),
-                model_id=request.model_id or self._model,
-            )
 
     def get_sdk_model(self, model_name: str | None = None) -> OpenAIChatCompletionsModel:
         """获取 SDK ``Model`` 实例，供 SDK ``Agent(model=...)`` 直接使用。

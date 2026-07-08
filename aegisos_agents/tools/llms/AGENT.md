@@ -62,10 +62,11 @@ complete(prompt) -> Response；统一适配多 provider。
 
 | 文件 | 用途 | 状态 |
 |------|------|------|
-| `sdk_provider.py` | `SDKProvider` 桥接 `ModelProvider` Protocol → SDK `OpenAIChatCompletionsModel`；`create_provider()` 工厂支持 Mock/真实 API 切换 | ✅ |
-| `mock_sdk_model.py` | `MockSDKModel(Model)` 适配 `MockProvider` → SDK `ModelResponse`，测试无需真实 API | ✅ |
-| `base.py` | 旧 `LLMRequest`/`LLMResponse`/`ModelProvider` Protocol | ⚠️ R5 清理（neuro_symbolic 迁移后删除） |
-| `model_router.py` | `ModelRouter` 手写 prefix/tier 路由 | ⚠️ 可简化（SDK Provider 内置模型路由） |
+| `sdk_provider.py` | `SDKProvider` 仅提供 `get_sdk_model()` 返回 SDK `OpenAIChatCompletionsModel`；`create_provider()` 工厂支持 Mock/真实 API 切换。R6 删除旧 `complete()` 死代码 | ✅ |
+| `mock_sdk_model.py` | `MockSDKModel(Model)` 适配 `MockProvider` -> SDK `ModelResponse`，测试无需真实 API | ✅ |
+| `base.py` | `LLMRequest`/`LLMResponse`（Mock 内部数据契约，保留） | ✅ |
 | `mock_provider.py` | 测试用预设响应 | ✅ 保留 |
+
+> R5 已删除 `model_router.py`（无业务引用）与 `ModelProvider` Protocol（SDK 有自己的 `ModelProvider`）。R6 删除 `sdk_provider.complete()` 死代码 + 未使用 import。
 
 > 详见 `aegisos_agents/AGENT.md`「openai-agents SDK 集成状态」段 + `developer/plan.md`。

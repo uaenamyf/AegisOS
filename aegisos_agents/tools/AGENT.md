@@ -70,10 +70,11 @@ complete(prompt) -> Response；render(template,vars) -> prompt；run(agent,task)
 
 | 文件 | SDK 能力 | 状态 |
 |------|---------|------|
-| `llms/sdk_provider.py` | `OpenAIChatCompletionsModel` + `set_default_openai_api("chat_completions")`；双模式（Mock / 火山引擎 ARK 真实 API） | ✅ |
+| `llms/sdk_provider.py` | `OpenAIChatCompletionsModel` + `set_default_openai_api("chat_completions")`；双模式（Mock / 火山引擎 ARK 真实 API）。R6 删除旧 `complete()` 死代码 | ✅ |
 | `llms/mock_sdk_model.py` | SDK `Model` 接口实现（将 `MockProvider` 适配为 SDK `ModelResponse`） | ✅ |
-| `llms/base.py` | 旧 `LLMRequest`/`LLMResponse`/`ModelProvider`（Protocol） | ⚠️ R5 清理目标 |
-| `llms/model_router.py` | 手写 `MODEL_PREFIX_MAP` + `TIER_PROVIDER_MAP` | ⚠️ 可简化（R5） |
+| `llms/base.py` | `LLMRequest`/`LLMResponse`（Mock 内部数据契约，保留） | ✅ |
 | `llms/mock_provider.py` | 测试用 Mock 实现 | ✅ 保留 |
+
+> R5 已删除 `model_router.py`（无业务引用）与 `ModelProvider` Protocol（SDK 有自己的 `ModelProvider`）。R6 删除 `sdk_provider.complete()` 死代码 + 未使用 import。
 
 > 详见 `aegisos_agents/AGENT.md`「openai-agents SDK 集成状态」段 + `developer/plan.md`。

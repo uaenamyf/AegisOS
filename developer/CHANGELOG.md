@@ -2,6 +2,21 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [R6] 2026-07-08 SDK 对齐清理--删除死代码 + 修复注释规范
+
+### R6.1 - 删除 sdk_provider.py 死代码 complete() + _call()
+- 排查发现 `tools/llms/sdk_provider.py` 的 `complete()` 方法（旧 `ModelProvider.complete()` 接口）已无任何业务调用方：grep 确认所有 Agent 走 `StructuredAgent._run()` -> SDK `Runner.run_sync`，`backend/core/composition.py` 仅用 `SDKProvider.get_sdk_model()`。
+- 删除 `complete()` 方法 + 内联 `_call()` async 函数（手写 `chat.completions.create` + `asyncio.run` 同步包装 + 异常捕获）--这些已被 SDK `OpenAIChatCompletionsModel` + `Runner.run_sync` 原生替代。
+- 删除随之未使用的 import：`ChatCompletionMessageParam`（来自 `openai.types.chat`）、`LLMRequest`/`LLMResponse`（来自 `.base`）。
+- 更新文件 docstring：标题 `ModelProvider` -> `MockProvider`，移除"本适配器实现 ModelProvider Protocol"等过时描述。
+- 保留 `get_sdk_model()` + `is_mock` + `create_provider` 工厂（业务在用）。
+
+### R6.2 - 修复 __init__.py 注释规范违规
+- `tools/llms/__init__.py` 文件头 `# changelog:` 行违反 `comment-style-rule.md`（changelog 应在变更处上方，不在文件头）。
+- 删除文件头 `# changelog:` 行，简化 docstring（移除 R5 清理历史说明，仅保留当前导出清单）。
+
+**测试：250 passed（无回归）**
+
 ## [AP3] 2026-07-08 Goal 范式（递归目标分解 + 失败重试 + 备选路径，4 子任务全完成）
 
 ### AP3.1 - Goal 模式核心
