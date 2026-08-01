@@ -58,6 +58,9 @@ class MemoryStore:
         sync: v2 端边云记忆同步管理器。
     """
 
+    # date: 2026-08-01
+    # dev: 123 chen
+    # changelog: 注入 7 个 v2 子模块（retrieval_engine/cache/checkpoint/reflection/archive/snapshot/sync）
     def __init__(self) -> None:
         """初始化记忆集成存储，装配四层子存储 + 七个 v2 子模块。"""
         self.working = WorkingMemory()
@@ -102,6 +105,9 @@ class MemoryStore:
             kind="normal",
         )
 
+    # date: 2026-08-01
+    # dev: 123 chen
+    # changelog: 新增缓存失效（cache.invalidate）与反思预评估（reflection.evaluate）
     def write(self, packet: MemoryPacket) -> bool:
         """写入一条记忆，按内容自动路由到对应记忆层（实现 ``MemoryAPI.write``）。
 
@@ -135,6 +141,9 @@ class MemoryStore:
             self.reflection.evaluate(packet)
         return True
 
+    # date: 2026-08-01
+    # dev: 123 chen
+    # changelog: 替换为 RetrievalEngine 混合检索 + ReflectionEngine 反思排序
     def retrieve(self, query: dict[str, Any]) -> list[Any]:
         """检索相关记忆（v2：委托 RetrievalEngine 做混合检索 + 反思排序）。
 
@@ -158,6 +167,9 @@ class MemoryStore:
 
     # ---- 认知循环专用接口（供编排器调用） ----
 
+    # date: 2026-08-01
+    # dev: 123 chen
+    # changelog: 升级为三级流水线（L1缓存→RetrievalEngine RRF混合检索→ReflectionEngine排序）
     def recall(self, trigger: str) -> list[MemoryPacket]:
         """根据触发词唤醒相关历史经验（v2：缓存 → 检索 → 反思三级流水线）。
 
@@ -231,6 +243,9 @@ class MemoryStore:
 
     # ---- v2 编排器钩子 ----
 
+    # date: 2026-08-01
+    # dev: 123 chen
+    # changelog: 新增编排器钩子 checkpoint_cycle / archive_cycle / snapshot_cycle
     def checkpoint_cycle(self, session_id: str, state: dict) -> str | None:
         """每步调用，内部计步，每 N 步自动保存检查点。
 
