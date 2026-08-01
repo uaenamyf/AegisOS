@@ -21,34 +21,57 @@ from __future__ import annotations
 
 from typing import Any
 
+from aegisos_agents.memory.archive.store import ArchiveStore
+from aegisos_agents.memory.cache.store import MemoryCache
+from aegisos_agents.memory.checkpoint.manager import CheckpointManager
 from aegisos_agents.memory.compression.compactor import compress
 from aegisos_agents.memory.episodic.store import EpisodicMemory
 from aegisos_agents.memory.recall.recaller import recall
+from aegisos_agents.memory.reflection.engine import ReflectionEngine
+from aegisos_agents.memory.retrieval.engine import RetrievalEngine
 from aegisos_agents.memory.semantic.store import SemanticMemory
+from aegisos_agents.memory.snapshot.manager import SnapshotManager
+from aegisos_agents.memory.sync.sync import MemorySync
 from aegisos_agents.memory.vector.store import VectorMemory
 from aegisos_agents.memory.working.store import WorkingMemory
 from protocol.memory import MemoryPacket
 
 
 class MemoryStore:
-    """记忆集成存储 —— 聚合四层记忆 + 压缩 + 唤醒，实现 ``MemoryAPI``。
+    """记忆集成存储 —— 聚合四层记忆 + 压缩 + 唤醒 + 7 个 v2 子模块，实现 ``MemoryAPI``。
 
-    持有工作/情景/语义/向量四层子存储，对外提供统一的读写检索接口，
-    并在内部按记忆内容自动路由到对应层级，串联压缩与唤醒形成认知闭环。
+    持有工作/情景/语义/向量四层子存储 + 缓存/检索/检查点/反思/归档/快照/同步
+    七个 v2 子模块，对外提供统一的读写检索接口，并在内部按记忆内容自动路由到
+    对应层级，串联压缩与唤醒形成认知闭环。
 
     Attributes:
         working: 工作记忆存储（会话级临时上下文）。
         episodic: 情景记忆存储（跨会话历史经验）。
         semantic: 语义记忆存储（ATT&CK/CVE 知识库）。
         vector: 向量记忆存储（余弦相似度检索，Qdrant 预留）。
+        retrieval_engine: v2 混合检索引擎（向量+关键词+图 RRF 融合）。
+        cache: v2 二级记忆缓存（L1 查询 + L2 热点 LRU）。
+        checkpoint: v2 检查点管理器（任务中断恢复）。
+        reflection: v2 反思引擎（三维经验质量评估）。
+        archive: v2 冷数据归档存储。
+        snapshot: v2 全局快照管理器。
+        sync: v2 端边云记忆同步管理器。
     """
 
     def __init__(self) -> None:
-        """初始化记忆集成存储，装配四层子存储（语义层预置 ATT&CK 种子知识）。"""
+        """初始化记忆集成存储，装配四层子存储 + 七个 v2 子模块。"""
         self.working = WorkingMemory()
         self.episodic = EpisodicMemory()
         self.semantic = SemanticMemory(seed=True)
         self.vector = VectorMemory()
+        # ---- v2 新增：7 个子模块 ----
+        self.retrieval_engine = RetrievalEngine(self.vector, self.semantic, self.episodic)
+        self.cache = MemoryCache()
+        self.checkpoint = CheckpointManager(self)
+        self.reflection = ReflectionEngine()
+        self.archive = ArchiveStore()
+        self.snapshot = SnapshotManager()
+        self.sync = MemorySync()
 
     # ---- MemoryAPI 实现 ----
 
@@ -105,38 +128,42 @@ class MemoryStore:
         # 4) 语义记忆：携带结构化 semantic 且有 concept_id 时入库
         if packet.semantic and "concept_id" in packet.semantic:
             self.semantic.add(str(packet.semantic["concept_id"]), packet)
+        # [v2] 失效相关缓存
+        self.cache.invalidate(packet.task_id)
+        # [v2] 对新决策预计算评估分
+        if packet.kind == "decision":
+            self.reflection.evaluate(packet)
         return True
 
     def retrieve(self, query: dict[str, Any]) -> list[Any]:
-        """检索相关记忆（实现 ``MemoryAPI.retrieve``）。
-
-        优先按 ``trigger`` 关键词经 recaller 跨情景+向量唤醒；若 ``query`` 含
-        ``keyword`` 则额外合并语义知识库检索结果。
+        """检索相关记忆（v2：委托 RetrievalEngine 做混合检索 + 反思排序）。
 
         Args:
-            query: 检索条件字典，识别 ``trigger`` 与 ``keyword`` 键。
+            query: 检索条件字典，识别 ``trigger`` / ``keyword`` / ``embedding`` / ``channels`` 键。
 
         Returns:
-            匹配的 ``MemoryPacket`` 列表（决策优先，Top-K）。
+            匹配的 ``MemoryPacket`` 列表（质量评分高的优先，Top-K）。
         """
         trigger = query.get("trigger") or query.get("keyword") or ""
-        results = self.recall(trigger)
-        # 额外的语义知识检索（与唤醒结果合并去重）
-        keyword = query.get("keyword")
-        if keyword:
-            knowledge = self.semantic.search(keyword)
-            existing_ids = {m.task_id for m in results}
-            for m in knowledge:
-                if m.task_id not in existing_ids:
-                    results.append(m)
-        return results
+        embedding = query.get("embedding")
+        channels = query.get("channels")
+        top_k = query.get("top_k", 10)
+        if not trigger and not embedding:
+            return []
+        scored = self.retrieval_engine.retrieve(
+            trigger, query_embedding=embedding, channels=channels, top_k=top_k
+        )
+        ranked = self.reflection.rank([s.packet for s in scored])
+        return [p for p, _ in ranked[:top_k]]
 
     # ---- 认知循环专用接口（供编排器调用） ----
 
     def recall(self, trigger: str) -> list[MemoryPacket]:
-        """根据触发词唤醒相关历史经验（封装 recaller）。
+        """根据触发词唤醒相关历史经验（v2：缓存 → 检索 → 反思三级流水线）。
 
-        跨情景记忆与向量记忆做关键词匹配，决策类优先，返回 Top-5。
+        1. L1 查询缓存命中直接返回。
+        2. 调用混合检索引擎（向量 + 关键词 + 图三通道 RRF 融合）召回 20 条。
+        3. 反思引擎按质量评分重排序，返回 Top-5。
 
         Args:
             trigger: 触发回忆的关键词或短语。
@@ -144,7 +171,22 @@ class MemoryStore:
         Returns:
             命中的记忆片段列表，长度不超过 5。
         """
-        return recall(trigger, self.episodic.all(), self.vector.all())
+        # 1) L1 查询缓存
+        cached = self.cache.get_query(trigger)
+        if cached is not None:
+            return cached
+        # 2) 混合检索（三通道 RRF 融合）
+        scored = self.retrieval_engine.retrieve(trigger, top_k=20)
+        # 3) 反思重排序
+        ranked = self.reflection.rank([s.packet for s in scored])
+        results = [p for p, _ in ranked[:5]]
+        # 4) 记录引用 + 写入 L1 缓存
+        for pkt in results:
+            if pkt.task_id:
+                self.reflection.record_reference(pkt.task_id)
+            self.cache.touch(pkt.task_id)
+        self.cache.set_query(trigger, results)
+        return results
 
     def search_knowledge(self, keyword: str) -> list[MemoryPacket]:
         """查询语义知识库（ATT&CK/CVE）。
@@ -186,3 +228,63 @@ class MemoryStore:
             session_id: 待结束的会话标识符。
         """
         self.working.clear(session_id)
+
+    # ---- v2 编排器钩子 ----
+
+    def checkpoint_cycle(self, session_id: str, state: dict) -> str | None:
+        """每步调用，内部计步，每 N 步自动保存检查点。
+
+        编排器（如 CyberOrchestrator）在每个执行步后调用此方法，
+        由 ``CheckpointManager.maybe_save`` 内部计数并在达到间隔时触发保存。
+
+        Args:
+            session_id: 当前会话标识符。
+            state: 编排器当前状态字典（step_index / completed_tasks / working_summary / topology_snapshot）。
+
+        Returns:
+            触发保存时返回 checkpoint_id；否则返回 ``None``。
+        """
+        return self.checkpoint.maybe_save(session_id, state)
+
+    def archive_cycle(self) -> int:
+        """压缩后触发冷数据下沉。
+
+        将情景记忆中从未被引用（``is_cold`` 返回 True）且不在最近 100 条内的
+        记忆下沉到归档存储。
+
+        Returns:
+            本次归档的记忆条数。
+        """
+        all_episodes = self.episodic.all()
+        if len(all_episodes) <= 100:
+            return 0
+        cold = [m for m in all_episodes[:-100] if self.reflection.is_cold(m.task_id)]
+        if not cold:
+            return 0
+        return self.archive.archive(cold)
+
+    def snapshot_cycle(self, session_id: str, state: dict | None = None) -> str:
+        """阶段完成后触发快照。
+
+        拍摄当前记忆子系统全局统计快照，供 replay/monitor 使用。
+
+        Args:
+            session_id: 当前会话标识符。
+            state: 可选的编排器拓扑状态字典。
+
+        Returns:
+            快照标识符。
+        """
+        stats = {
+            "working_sessions": len(self.working.sessions()),
+            "episodic_total": len(self.episodic),
+            "semantic_total": len(self.semantic),
+            "vector_total": len(self.vector),
+            "archive_total": self.archive.size(),
+        }
+        if state:
+            stats["topology_state"] = state
+        return self.snapshot.capture(
+            label=f"snapshot_{session_id}",
+            state=stats,
+        )

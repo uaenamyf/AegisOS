@@ -17,8 +17,27 @@
 - protocol/ 类型定义
 
 ## 输出
-- aegisos_agents/memory/working..sync 12 子模块
-- 统一 MemoryPacket 接口
+- aegisos_agents/memory/ 全部 14 子模块（含 v2 新增 7 个）
+- 统一 MemoryPacket 接口 + MemoryStore v2 编排器钩子
+
+### 模块清单
+
+| 模块 | 状态 | 层级 | 职责 |
+|------|------|------|------|
+| working | ✅ (P2) | 基础 | 工作记忆（会话临时上下文） |
+| episodic | ✅ (P2) | 基础 | 情景记忆（历史经验） |
+| semantic | ✅ (P2) | 基础 | 语义记忆（ATT&CK 知识库） |
+| vector | ✅ (P2) | 基础 | 向量记忆（余弦相似度检索） |
+| compression | ✅ (P2) | 基础 | 记忆压缩（token 预算控制） |
+| recall | ✅ (P2) | 基础 | 记忆唤醒器（关键词匹配） |
+| memory_store | ✅ (P2) | 集成 | 记忆集成存储（MemoryAPI 实现 + v2 钩子） |
+| retrieval | ✅ (P2) | ★核心 | 混合检索引擎（向量+关键词+图 RRF 融合） |
+| cache | ✅ (P2) | ★核心 | 热数据缓存（L1+L2 LRU） |
+| checkpoint | ✅ (P2) | ★核心 | 检查点管理器（任务中断恢复） |
+| reflection | ✅ (P2) | ★核心 | 反思引擎（三维经验质量评估） |
+| archive | ✅ (P2) | ◇骨架 | 冷数据归档（长期存储 + defrost） |
+| snapshot | ✅ (P2) | ◇骨架 | 全局快照管理器（时间点固化） |
+| sync | ✅ (P2) | ◇骨架 | 端边云记忆同步（push/pull/merge） |
 
 ## 依赖
 - protocol/ MemoryPacket

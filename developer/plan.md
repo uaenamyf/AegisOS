@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-07-08 · **250 测试全通过** · SDK S1-S4 ✅ · R2-R5 ✅ · AP1 ✅ · AP3 ✅ · H5 ✅ · 编排器 ✅ · F ✅ · G ✅
+> 最后更新：2026-08-01 · **P2 记忆子系统补全完成** · 289 测试全通过
 
 ---
 
@@ -68,15 +68,15 @@
 - [ ] H2.3 `aegisos_agents/memory/vector/` 对接 Qdrant
 - [ ] H2.4 `aegisos_agents/memory/semantic/` 对接 Neo4j ATT&CK 图
 
-### 记忆子系统补全（7 个空模块）
-> **优先级**：P2 · **预估**：2 天 · **状态**：🔲 待做
-- [ ] `aegisos_agents/memory/archive/` 归档记忆
-- [ ] `aegisos_agents/memory/cache/` 缓存记忆
-- [ ] `aegisos_agents/memory/checkpoint/` 检查点
-- [ ] `aegisos_agents/memory/reflection/` 反思记忆
-- [ ] `aegisos_agents/memory/retrieval/` 检索
-- [ ] `aegisos_agents/memory/snapshot/` 快照
-- [ ] `aegisos_agents/memory/sync/` 同步
+### 记忆子系统补全（7 个空模块）✅
+> **优先级**：P2 · **预估**：2 天 · **状态**：✅ 完成（2026-08-01）
+- [x] `aegisos_agents/memory/archive/` 归档记忆
+- [x] `aegisos_agents/memory/cache/` 缓存记忆
+- [x] `aegisos_agents/memory/checkpoint/` 检查点
+- [x] `aegisos_agents/memory/reflection/` 反思记忆
+- [x] `aegisos_agents/memory/retrieval/` 检索
+- [x] `aegisos_agents/memory/snapshot/` 快照
+- [x] `aegisos_agents/memory/sync/` 同步
 
 ### 感知层补全
 > **优先级**：P2 · **预估**：1-2 天 · **状态**：🔲 待做
@@ -397,7 +397,9 @@
 ## 🔄 最近变更
 
 | 日期 | 变更 | 提交 |
-|------|------|------|| 2026-07-08 | **R6 SDK 对齐清理**：删除 `sdk_provider.complete()` 死代码 + 未使用 import；修复 `__init__.py` 注释规范 | - |
+|------|------|------|
+| 2026-08-01 | **P2 记忆子系统补全**：retrieval/cache/checkpoint/reflection/archive/snapshot/sync 7 模块 + MemoryStore v2 集成 + 39 新测试 | — |
+| 2026-07-08 | **R6 SDK 对齐清理**：删除 `sdk_provider.complete()` 死代码 + 未使用 import；修复 `__init__.py` 注释规范 | - |
 | 2026-07-08 | **AP3 Goal 范式完成**：递归分解 + 失败重试 + 备选路径（21 测试） | - || 2026-07-08 | **plan.md 重组**：待完成区与完成区分离，已完成任务集中到 §7 | — |
 | 2026-07-09 | R4.4-R4.8 SDK 编排深化完成 + R5 旧接口清理/流式/事件总线完成 | `af88bdf` |
 | 2026-07-08 | R4.1-R4.3 SDK handoffs/guardrails/neuro_symbolic 完成 | （见 CHANGELOG） |

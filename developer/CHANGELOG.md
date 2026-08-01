@@ -2,6 +2,39 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P2] 2026-08-01 记忆子系统补全 — 7 个空模块实现 + MemoryStore v2 集成
+
+### 新增模块（7 个）
+
+| 模块 | 文件 | 层级 | 职责 |
+|------|------|------|------|
+| retrieval | `engine.py` + `__init__.py` + `AGENT.md` | ★核心 | 混合检索引擎：向量+关键词+图三通道 RRF 融合 |
+| cache | `store.py` + `__init__.py` + `AGENT.md` | ★核心 | 二级记忆缓存：L1 查询缓存（TTL 60s）+ L2 热点缓存（LRU 100 条）|
+| checkpoint | `manager.py` + `__init__.py` + `AGENT.md` | ★核心 | 检查点管理器：每 N 步自动保存编排器状态，支持断点恢复 |
+| reflection | `engine.py` + `__init__.py` + `AGENT.md` | ★核心 | 反思引擎：三维评估（时效性×引用频次×结果标记），优质经验优先 |
+| archive | `store.py` + `__init__.py` + `AGENT.md` | ◇骨架 | 冷数据归档：低引用记忆下沉长期存储 + defrost 回热 |
+| snapshot | `manager.py` + `__init__.py` + `AGENT.md` | ◇骨架 | 全局快照管理器：拍摄/恢复/列举/清理时间点快照 |
+| sync | `sync.py` + `__init__.py` + `AGENT.md` | ◇骨架 | 端边云同步：push/pull/merge 协议骨架，进程内多节点模拟 |
+
+### MemoryStore v2 变更
+
+- **`recall()` 升级**：缓存→检索→反思三级流水线替换旧关键词匹配
+- **`write()` 升级**：新增缓存失效 + 反思预评估
+- **`retrieve()` 升级**：委托 RetrievalEngine 做 RRF 混合检索
+- **新增 3 个编排器钩子**：`checkpoint_cycle()` / `archive_cycle()` / `snapshot_cycle()`
+- **新增 7 个属性**：retrieval_engine / cache / checkpoint / reflection / archive / snapshot / sync
+
+### 测试
+
+- 新增 7 个测试文件：test_retrieval / test_cache / test_checkpoint / test_reflection / test_archive / test_snapshot / test_sync
+- 39 新测试通过
+
+### 不变约束
+
+- `protocol/memory.py` MemoryPacket：零改动
+- 现有 7 个已实现模块（working/episodic/semantic/vector/compression/recall/memory_store）：接口兼容
+- `MemoryAPI`（read/write/retrieve）：签名不变
+
 ## [R6] 2026-07-08 SDK 对齐清理--删除死代码 + 修复注释规范
 
 ### R6.1 - 删除 sdk_provider.py 死代码 complete() + _call()
