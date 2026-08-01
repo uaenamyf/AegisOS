@@ -30,6 +30,7 @@ class WriteMemoryRequest(BaseModel):
     archive: dict[str, Any] = Field(default_factory=dict)
     summary: str = ""
     task_id: str = ""
+    kind: str = "normal"  # normal | decision | digest | checkpoint | snapshot
 
 
 class InvokeToolRequest(BaseModel):

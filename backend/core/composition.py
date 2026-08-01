@@ -42,6 +42,7 @@ from backend.services.memory_service import MemoryService
 from backend.services.session_service import SessionService
 from backend.services.task_service import TaskService
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
+from aegisos_agents.memory.memory_store import MemoryStore
 
 
 class Composition:
@@ -82,7 +83,7 @@ class Composition:
 
         # --- Mock agents.api 实现（agents P5 未就绪） ---
         self.agent_registry = MockAgentRegistry()
-        self.memory_api = MockMemoryAPI()
+        self.memory_api = MemoryStore()  # v2: 真实记忆系统（含 7 个新模块）
         self.execution_api = MockExecutionAPI()
         self.event_bus = MockEventBusAPI()
 

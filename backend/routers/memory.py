@@ -74,6 +74,7 @@ async def write_memory(
         archive=body.archive,
         summary=body.summary,
         task_id=body.task_id,
+        kind=body.kind,
     )
     ok = await service.write_memory(session_id, packet)
     if not ok:
