@@ -2,6 +2,22 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P2] 2026-08-03 工具层补全 — 2 个空模块实现
+
+### 新增模块
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| prompts | `registry.py` + `renderer.py` | Prompt 模板集中注册、版本追踪、角色筛选、变量渲染、变量校验。预置 11 个 Agent 默认模板 |
+| runtime | `lifecycle.py` + `supervisor.py` | Agent 六态状态机（Init→Running⇌Suspended→Completed/Failed/Timeout）+ 心跳 + 超时 + 多 Agent 托管 |
+
+### 测试
+
+- 新增 2 个测试文件：test_prompts（14 用例）/ test_runtime（13 用例）
+- 27 新测试
+- 纯算法实现，不调 LLM
+- 复用 protocol/Heartbeat 类型
+
 ## [P2] 2026-08-01 感知层补全 — 2 个空模块实现
 
 ### 新增模块（2 个）

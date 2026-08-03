@@ -83,10 +83,10 @@
 - [x] `aegisos_agents/perception/context/` 上下文管理（TokenBudget + ContextManager）
 - [x] `aegisos_agents/perception/reflection/` 反思（ExecutionCritic + OutputScorer + FeedbackLoop）
 
-### 工具层补全
-> **优先级**：P2 · **预估**：1 天 · **状态**：🔲 待做
-- [ ] `aegisos_agents/tools/prompts/` Prompt 管理
-- [ ] `aegisos_agents/tools/runtime/` 工具运行时
+### 工具层补全 ✅
+> **优先级**：P2 · **预估**：1 天 · **状态**：✅ 完成（2026-08-03）
+- [x] `aegisos_agents/tools/prompts/` Prompt 管理（PromptRegistry + PromptRenderer）
+- [x] `aegisos_agents/tools/runtime/` 运行时（AgentLifecycle + RuntimeSupervisor）
 
 ### AP3 — Goal 范式（递归目标分解）
 > **优先级**：P2 · **预估**：2 天 · **依赖**：R4（已完成）· **状态**：✅ 完成（2026-07-08）
