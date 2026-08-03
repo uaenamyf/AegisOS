@@ -2,6 +2,27 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P2] 2026-08-01 感知层补全 — 2 个空模块实现
+
+### 新增模块（2 个）
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| context | `window.py` + `manager.py` | 上下文窗口管理：TokenBudget（token 估算+智能裁剪）+ ContextManager（open/close/pack/switch/isolate） |
+| reflection | `critic.py` + `scoring.py` + `feedback.py` | 运行时反思：ExecutionCritic（四维批判）+ OutputScorer（四维评分）+ FeedbackLoop（整合→写回 memory/reflection） |
+
+### 测试
+
+- 新增 2 个测试文件：test_context（12 用例）/ test_reflection（14 用例）
+- 26 新测试（含 context 12 + reflection 14）
+- 3 已有 perception 测试零回归
+
+### 设计原则
+
+- 纯算法实现，不调 LLM（与 AGENT.md 标注一致）
+- perception/reflection 区别于 memory/reflection：前者评估"本次执行行不行"，后者评估"历史记忆好不好"
+- FeedbackLoop 写回 memory/reflection（tag_outcome + record_reference），形成认知闭环
+
 ## [P2] 2026-08-01 记忆子系统补全 — 7 个空模块实现 + MemoryStore v2 集成
 
 ### 新增模块（7 个）

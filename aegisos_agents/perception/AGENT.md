@@ -61,10 +61,23 @@ perceive(input) -> Understanding；产出可追溯推理与反思。
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
 
 ## 下辖子模块
-- aegisos_agents/perception/context/ — 上下文窗口与会话管理（Token 预算、裁剪、隔离）
-- aegisos_agents/perception/reasoning/ — 推理链/树与策略（CoT/ToT/ReAct）  - `reasoning/strategies/plan_mode.py` - AP1 Plan 范式（两阶段 LLM 推理）✅
-  - `reasoning/strategies/goal_mode.py` - AP3 Goal 范式（递归目标分解 + 失败重试 + 备选路径）✅
-  - `reasoning/neuro_symbolic.py` - 神经-符号闭环（SDK 结构化输出 + 符号校验 + 反馈修复）✅- aegisos_agents/perception/reflection/ — 反思、批判与反馈评分（区别于 aegisos_agents/memory/reflection/ 反思记忆存储）
+
+| 子模块 | 状态 | 职责 |
+|--------|:----:|------|
+| `context/` | ✅ P2 | 上下文窗口管理：TokenBudget + ContextManager |
+| `reasoning/` | ✅ | 推理策略：plan_mode / goal_mode / neuro_symbolic |
+| `reflection/` | ✅ P2 | 运行时反思：ExecutionCritic + OutputScorer + FeedbackLoop |
+
+### context/ — 上下文窗口管理（✅ P2）
+- `window.py` — TokenBudget：token 估算（字符/4）+ 智能裁剪（决策优先+头尾保留+digest）
+- `manager.py` — ContextManager：会话上下文生命周期（open/close/pack/switch/isolate）
+- 纯算法实现，不调 LLM。
+
+### reflection/ — 运行时反思（✅ P2）
+- `critic.py` — ExecutionCritic：四维批判检查（完整性/合理性/一致性/空结果）
+- `scoring.py` — OutputScorer：四维量化评分（completeness/correctness/efficiency/safety）
+- `feedback.py` — FeedbackLoop：整合批判+评分 → FeedbackRecord → 写回 memory/reflection
+- 纯算法实现，不调 LLM。
 
 ---
 

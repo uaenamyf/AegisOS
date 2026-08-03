@@ -78,10 +78,10 @@
 - [x] `aegisos_agents/memory/snapshot/` 快照
 - [x] `aegisos_agents/memory/sync/` 同步
 
-### 感知层补全
-> **优先级**：P2 · **预估**：1-2 天 · **状态**：🔲 待做
-- [ ] `aegisos_agents/perception/context/` 上下文管理
-- [ ] `aegisos_agents/perception/reflection/` 反思
+### 感知层补全 ✅
+> **优先级**：P2 · **预估**：1-2 天 · **状态**：✅ 完成（2026-08-01）
+- [x] `aegisos_agents/perception/context/` 上下文管理（TokenBudget + ContextManager）
+- [x] `aegisos_agents/perception/reflection/` 反思（ExecutionCritic + OutputScorer + FeedbackLoop）
 
 ### 工具层补全
 > **优先级**：P2 · **预估**：1 天 · **状态**：🔲 待做
