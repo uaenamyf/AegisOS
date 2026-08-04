@@ -74,6 +74,10 @@ async def write_memory(
         archive=body.archive,
         summary=body.summary,
         task_id=body.task_id,
+        # date: 2026-08-01
+        # dev: 123 chen
+        # changelog: 传递 kind 字段以支持 MemoryStore v2 记忆路由
+        kind=body.kind,
     )
     ok = await service.write_memory(session_id, packet)
     if not ok:
