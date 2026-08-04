@@ -370,19 +370,7 @@ class MemoryStore:  # 实现 aegisos_agents.api.MemoryAPI
 
 ---
 
-#### 🔲 未实现（6 个子模块，仅 AGENT.md）
-
-| 子模块 | 计划功能 |
-|--------|---------|
-| `archive/` | 归档（长期存储） |
-| `cache/` | 缓存 |
-| `checkpoint/` | 检查点 |
-| `reflection/` | 反思记忆 |
-| `retrieval/` | 检索引擎 |
-| `snapshot/` | 快照 |
-| `sync/` | 同步 |
-
-> **B3 已完成**：working/episodic/semantic/vector 四层 + MemoryStore 集成层接入 runtime 认知循环。
+> **✅ P2 全部完成（2026-08-01）**：archive/cache/checkpoint/reflection/retrieval/snapshot/sync 7 子模块全部实现。详见 `developer/CHANGELOG.md` [P2] 2026-08-01。
 
 ---
 
@@ -451,9 +439,7 @@ class NeuroSymbolicLoop:
 
 ---
 
-#### 🔲 未实现
-- `context/` — 上下文管理
-- `reflection/` — 反思评估
+> **✅ P2 完成（2026-08-01）**：context/（TokenBudget + ContextManager）+ reflection/（ExecutionCritic + OutputScorer + FeedbackLoop）。
 
 ---
 
@@ -490,9 +476,7 @@ R5.2 删除（无业务代码引用）。模型选择由 `Agent(model=...)` 或 
 
 ---
 
-#### 🔲 未实现
-- `prompts/` — 提示词管理（仅 AGENT.md）
-- `runtime/` — Agent 运行时（仅 AGENT.md，B3 待补）
+> **✅ P2 完成（2026-08-03）**：prompts/（PromptRegistry + PromptRenderer）+ runtime/（AgentLifecycle + RuntimeSupervisor）。
 
 ---
 

@@ -2,7 +2,7 @@
 
 > 本文件对每个顶层域的实际**代码实现状态**做精确描述：已实现什么、未实现什么、关键文件在哪、测试覆盖如何。
 > 各域详细实现文档已合并至对应 `AGENT.md` 末尾「📋 模块实现详解」段；全局模块总览已合并至根 `AGENT.md` 末尾「📋 模块实现总览」段。
-> 最后更新：2026-07-08 · 229 个测试全通过 · SDK S1-S4 ✅ · R4-R5 ✅ · F/G ✅ · H5 ✅ · AP1 ✅
+> 最后更新：2026-08-04 · 346 个测试全通过 · SDK S1-S4 ✅ · R4-R6 ✅ · F/G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · P2 ✅
 
 ---
 
@@ -11,7 +11,7 @@
 | 域 | 代码文件 | 测试数 | 实现状态 | 模块文档 |
 |----|---------|--------|---------|---------|
 | [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
-| [`aegisos_agents/`](#agents) | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R5 / ✅ 编排器 / ✅ Plan 范式 | [AGENT.md](../aegisos_agents/AGENT.md) |
+| [`aegisos_agents/`](#agents) | 52 `.py` | 346 | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal 范式 / ✅ P2 感知/记忆/工具补全 | [AGENT.md](../aegisos_agents/AGENT.md) |
 | [`backend/`](#backend) | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F | [AGENT.md](../backend/AGENT.md) |
 | [`frontend/`](#frontend) | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay | [AGENT.md](../frontend/AGENT.md) |
 | [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../infrastructure/AGENT.md) |
@@ -19,7 +19,7 @@
 | [`data/`](#data) | 1 `.py` | 0 | 🔲 仅 API 协议定义 + SQLite DB | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
 | [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
-| [`tests/`](#tests) | 30+ `.py` | 229 | ✅ 全覆盖 | — |
+| [`tests/`](#tests) | 52 `.py` | 346 | ✅ 全覆盖 | — |
 
 ---
 
@@ -84,7 +84,7 @@
 > ✅ **全部已实现**：`planner/` · `engine/workflow/` · `engine/eventbus/` 均已实现。
 > ✅ **CyberOrchestrator**：`orchestrator/cyber_orchestrator.py` 已用 SDK Agent 实现红蓝紫攻防链编排（含 handoffs/guardrails/tracing/FunctionTool）。
 
-#### `aegisos_agents/memory/` — 记忆子系统（✅ B3 四层+集成层完成，🔲 7 子模块空）
+#### `aegisos_agents/memory/` — 记忆子系统（✅ B3 四层+集成层完成，✅ P2 7 子模块完成）
 
 | 文件 | 函数 | 功能 | 测试 |
 |------|------|------|------|
@@ -96,7 +96,7 @@
 | [`vector/store.py`](../aegisos_agents/memory/vector/store.py) | `VectorMemory` | 向量记忆：余弦相似度 Top-K 检索 | 5 |
 | [`memory_store.py`](../aegisos_agents/memory/memory_store.py) | `MemoryStore` | 集成存储：聚合四层 + compactor + recaller，认知循环中枢 | 10 |
 
-> 🔲 **未实现**：archive/cache/checkpoint/reflection/retrieval/snapshot/sync 仅 AGENT.md
+> ✅ **P2 完成（2026-08-01）**：archive/cache/checkpoint/reflection/retrieval/snapshot/sync 7 子模块全部实现。
 
 #### `aegisos_agents/action/` — 攻防 Agent（✅ 11 个全部完成）
 
@@ -120,7 +120,7 @@
 |------|--------|------|------|
 | [`reasoning/neuro_symbolic.py`](../aegisos_agents/perception/reasoning/neuro_symbolic.py) | `validate_chain()` · `NeuroSymbolicLoop` | 符号验证（allowed_techniques 规则） + LLM 重新生成 → 迭代修复 | 4 |
 
-> 🔲 **未实现**：`context/` · `reflection/` 仅有 AGENT.md
+> ✅ **P2 完成（2026-08-01）**：`context/`（TokenBudget + ContextManager）+ `reflection/`（ExecutionCritic + OutputScorer + FeedbackLoop）。
 
 #### `aegisos_agents/tools/` — 工具层（✅ 多模型兼容 + SDK 适配完成）
 
@@ -131,6 +131,8 @@
 | [`llms/base.py`](../aegisos_agents/tools/llms/base.py) | `LLMRequest` · `LLMResponse` · `ModelProvider` | 旧 LLM 调用抽象基类（⚠️ R5 清理目标） | — |
 | [`llms/mock_provider.py`](../aegisos_agents/tools/llms/mock_provider.py) | `MockProvider` | 测试用 Mock 实现 | — |
 | [`llms/model_router.py`](../aegisos_agents/tools/llms/model_router.py) | `ModelRouter` | 多模型路由：gpt→OpenAI, claude→Anthropic, local/*→本地, 按 tier(device/edge/cloud) 映射 | 5 |
+| [`prompts/registry.py`](../aegisos_agents/tools/prompts/registry.py) | `PromptRegistry` · `PromptRenderer` | 提示词注册与渲染（✅ P2 完成 2026-08-03） | — |
+| [`runtime/supervisor.py`](../aegisos_agents/tools/runtime/supervisor.py) | `AgentLifecycle` · `RuntimeSupervisor` | Agent 生命周期管理（✅ P2 完成 2026-08-03） | — |
 
 #### `aegisos_agents/api/` — 公共接口（✅ 5 接口定义完成）
 

@@ -126,7 +126,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | # | 大模块 | 是什么 | 代码文件 | 测试数 | 实现状态 |
 |---|--------|--------|---------|--------|---------|
 | 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
-| 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R5 / ✅ 编排器完成 / ✅ Plan 范式 |
+| 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal 范式 / ✅ P2 记忆/感知/工具补全 |
 | 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F |
 | 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay |
 | 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
@@ -134,7 +134,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 7 | `data/` | 数据层 — 数据集 · 模型 schema | 1 `.py` | 0 | 🔲 仅 API 协议 + SQLite |
 | 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
 | 9 | `developer/` | 规范层 — SSOT 规范 + roadmap | 0 `.py` | — | ✅ 规范就位 |
-| 10 | `tests/` | 测试 — 229 个测试全通过 | 30+ `.py` | 229 | ✅ 全覆盖 |
+| 10 | `tests/` | 测试 — 346 个测试全通过 | 52 `.py` | 346 | ✅ 全覆盖 |
 
 **模块依赖关系**：
 

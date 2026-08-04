@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-08-01 · **P2 记忆子系统补全完成** · 289 测试全通过
+> 最后更新：2026-08-04 · **P2 记忆/感知/工具全部补全** · 346 测试全通过
 
 ---
 
@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ |
-| **测试** | **250 passed**（全模块覆盖） |
-| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · B3+E13 ✅ |
-| **待完成** | P2 数据层(H2) · 记忆/感知/工具补全 · AP4 Ask · P3 容器化部署 · AP2 ReAct |
+| **测试** | **346 passed**（全模块覆盖） |
+| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R6 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · B3+E13 ✅ · P2 记忆/感知/工具补全 ✅ |
+| **待完成** | P2 数据层(H2) · AP4 Ask · P3 容器化部署 · AP2 ReAct |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
@@ -41,8 +41,8 @@
 >
 > 下一步优先级：
 > 1. **H2** 数据层（Neo4j + Qdrant）接入 — 记忆系统所需
-> 2. **记忆/感知/工具** 空模块补全
-> 3. **AP3 Goal + AP4 Ask** 行动范式
+> 2. **AP4 Ask** 行动范式 — 人机协同
+> 3. **H1 Docker 沙箱靶场** — 赛事演示必需
 
 ---
 
@@ -170,6 +170,14 @@
 ---
 
 ## ✅ §7 — 已完成任务（按完成时间倒序）
+### 2026-08-03 P2 全部补全 ✅（346 测试通过）
+
+- [x] **记忆 7 子模块**：retrieval（混合检索 RRF）+ cache（L1/L2 缓存）+ checkpoint（检查点）+ reflection（反思引擎）+ archive（归档）+ snapshot（快照）+ sync（同步）
+- [x] **感知 2 子模块**：context（TokenBudget + ContextManager）+ reflection（ExecutionCritic + OutputScorer + FeedbackLoop）
+- [x] **工具 2 子模块**：prompts（PromptRegistry + PromptRenderer）+ runtime（AgentLifecycle + RuntimeSupervisor）
+- [x] **MemoryStore v2**：recall/retrieve/write 升级 + 编排器 3 钩子 + 7 新属性
+- [x] 39（记忆）+ 26（感知）+ 27（工具）= 92 新测试，346 全通过
+
 ### 2026-07-08 AP3 Goal 范式（递归目标分解）✅（250 passed）
 
 - [x] **AP3.1** `perception/reasoning/strategies/goal_mode.py` - `GoalMode` 混入类（`decompose()` 递归分解 + `execute_tree()` 依赖序执行 + 失败重试 + 备选路径注入）。`GoalNode`/`GoalResult`/`GoalStatus` 数据类型。3 场景模板（cyber_red/cyber_blue/generic）+ 自定义模板。`create_goal_mode_orchestrator` 工厂。

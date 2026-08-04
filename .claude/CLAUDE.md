@@ -10,7 +10,7 @@
 
 **项目**：AegisOS = Agent Operating System + AI Native IDE；赛事作品为「面向超长程网络攻击防御的动态异构群体智能协同推理引擎」（荣耀 XH-202631，截止 2026-09-15）。
 
-**第一步**：读 `AGENT.md`（根，仓库最高规范）→ `developer/plan.md`（动态待办计划）→ `developer/specs/00_PROJECT_SPEC.md`（SSOT）→ `developer/roadmap/README.md`（当前阶段 P0..P7）→ 目标模块 `AGENT.md`。
+**第一步**：读 `AGENT.md`（根，仓库最高规范）→ `developer/plan.md`（动态待办计划）→ `developer/specs/00_PROJECT_SPEC.md`（SSOT）→ `developer/plan.md`（当前阶段 P0..P7）→ 目标模块 `AGENT.md`。
 
 **最易违反的铁律**：
 - 跨域调用仅经 `api/`：`from {domain}.api import ...`，禁直接 import 内部子包。
@@ -98,7 +98,7 @@
 > 冲突优先级：`00` > `04` ≈ `05` ≈ `06` > 其余编号 > 各模块 `AGENT.md`。必读顺序见根 `AGENT.md`。
 
 ### roadmap（`developer/roadmap/`，P0..P7）
-`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P6 ✅ 完成**（229 测试通过），P7 未开始；**openai-agents SDK 集成 S1-S4 ✅ + R4-R5 ✅ 完成**（11 个攻防 Agent + SDKProvider + CyberOrchestrator + handoffs/guardrails/tracing/FunctionTool + 流式 SSE + 事件总线）；**F/G 攻防端点视图 ✅**；**H5 可观测评测 ✅**；**AP1 Plan 范式 ✅**。各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
+`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P6 ✅ 完成**（346 测试通过），P7 未开始；**openai-agents SDK 集成 S1-S4 ✅ + R4-R5 ✅ 完成**（11 个攻防 Agent + SDKProvider + CyberOrchestrator + handoffs/guardrails/tracing/FunctionTool + 流式 SSE + 事件总线）；**F/G 攻防端点视图 ✅**；**H5 可观测评测 ✅**；**P2 记忆/感知/工具补全 ✅**；**AP1 Plan 范式 ✅**；**AP3 Goal 范式 ✅**。各阶段→攻防扩展映射见 `developer/plan.md`「赛事作品对齐」。
 
 ### skills（`.claude/skills/`，按需启用）
 - **superpowers（14）**：`writing-plans` · `executing-plans` · `subagent-driven-development` · `dispatching-parallel-agents` · `brainstorming` · `test-driven-development` · `systematic-debugging` · `verification-before-completion` · `requesting-code-review` · `receiving-code-review` · `using-git-worktrees` · `finishing-a-development-branch` · `using-superpowers` · `writing-skills`。
@@ -108,7 +108,7 @@
 - ⚠️ 本会话发现：子代理执行模型 `deepseek-v4-flash` 对本 token 无访问权（403），多代理派发暂不可用；改用脚本/主线直改。
 
 ### 计划（`developer/specs/plans/`）
-`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E + B3 + E13 + SDK S1-S4 + R4-R5 + F/G 攻防端点视图 + H5 可观测评测 + AP1 Plan 范式已完成（229 测试通过）；下一步：H2 数据层 + 记忆/感知/工具补全 + AP3 Goal + AP4 Ask。
+`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E + B3 + E13 + SDK S1-S4 + R4-R5 + R6 + F/G 攻防端点视图 + H5 可观测评测 + P2 记忆/感知/工具补全 + AP1 Plan 范式 + AP3 Goal 范式已完成（346 测试通过）；下一步：H2 数据层 + AP4 Ask + 容器化部署。
 > **动态开发计划**：`developer/plan.md` — 当前未完成任务清单 + 下一步计划，每次会话必读、每次完成任务后更新勾选。
 
 ---
@@ -117,7 +117,7 @@
 - **Python 环境**：macOS 上有 `.venv/`（Python 3.12.13 + greenlet 3.5.3），可运行 `pytest`/`ruff`/`mypy`/`uvicorn` 全链路。Windows 环境仅有 node + perl（Python 域代码须在 macOS/容器内开发）。详见 memory `aegisos-windows-no-python`。
 - **赛事**：XH-202631，截止 2026-09-15；详见 memory `aegisos-cyberdefense-competition` 与 `plans/14` · `15`。
 - **protocol 现状**：`protocol/*.py` 为 `@dataclass`（非 Pydantic，`06 §12` 列迁移待办）；id 字段约定 `*_id`；`Graph.nodes` 为 dict；`NodeKind.Agent` 驼峰。
-- **openai-agents SDK 集成**：S1-S4 ✅ + R4 SDK 深化 ✅ + R5 旧接口清理+流式+事件总线 ✅ + AP1 Plan 范式 ✅ + H5 可观测评测 ✅（`StructuredAgent[T]` 基类 + 11 个攻防 Agent + `SDKProvider`/`MockSDKModel` + `CyberOrchestrator` + SDK handoffs/guardrails/tracing/FunctionTool + `_run_streamed` SSE 流式 + AgentHooks→EventBus 发布 + `PlanMode` 两阶段推理 + `MetricsCollector`/`Timeline`/`BenchmarkRunner`/`Evaluator`/`VisualizationService`）；229 测试通过。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
+- **openai-agents SDK 集成**：S1-S4 ✅ + R4 SDK 深化 ✅ + R5 旧接口清理+流式+事件总线 ✅ + R6 SDK 对齐清理 ✅ + AP1 Plan 范式 ✅ + AP3 Goal 范式 ✅ + H5 可观测评测 ✅（`StructuredAgent[T]` 基类 + 11 个攻防 Agent + `SDKProvider`/`MockSDKModel` + `CyberOrchestrator` + SDK handoffs/guardrails/tracing/FunctionTool + `_run_streamed` SSE 流式 + AgentHooks→EventBus 发布 + `PlanMode` 两阶段推理 + `GoalMode` 递归分解 + `MetricsCollector`/`Timeline`/`BenchmarkRunner`/`Evaluator`/`VisualizationService`）；**P2 补全**：记忆 7 子模块（retrieval/cache/checkpoint/reflection/archive/snapshot/sync）+ 感知 2 子模块（context/reflection）+ 工具 2 子模块（prompts/runtime）✅。346 测试通过。详见 `aegisos_agents/AGENT.md`「🔧 openai-agents SDK 集成状态」段 + `developer/plan.md`。
 
 ---
 
