@@ -2,6 +2,76 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P2] 2026-08-03 工具层补全 — 2 个空模块实现
+
+### 新增模块
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| prompts | `registry.py` + `renderer.py` | Prompt 模板集中注册、版本追踪、角色筛选、变量渲染、变量校验。预置 11 个 Agent 默认模板 |
+| runtime | `lifecycle.py` + `supervisor.py` | Agent 六态状态机（Init→Running⇌Suspended→Completed/Failed/Timeout）+ 心跳 + 超时 + 多 Agent 托管 |
+
+### 测试
+
+- 新增 2 个测试文件：test_prompts（14 用例）/ test_runtime（13 用例）
+- 27 新测试
+- 纯算法实现，不调 LLM
+- 复用 protocol/Heartbeat 类型
+
+## [P2] 2026-08-01 感知层补全 — 2 个空模块实现
+
+### 新增模块（2 个）
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| context | `window.py` + `manager.py` | 上下文窗口管理：TokenBudget（token 估算+智能裁剪）+ ContextManager（open/close/pack/switch/isolate） |
+| reflection | `critic.py` + `scoring.py` + `feedback.py` | 运行时反思：ExecutionCritic（四维批判）+ OutputScorer（四维评分）+ FeedbackLoop（整合→写回 memory/reflection） |
+
+### 测试
+
+- 新增 2 个测试文件：test_context（12 用例）/ test_reflection（14 用例）
+- 26 新测试（含 context 12 + reflection 14）
+- 3 已有 perception 测试零回归
+
+### 设计原则
+
+- 纯算法实现，不调 LLM（与 AGENT.md 标注一致）
+- perception/reflection 区别于 memory/reflection：前者评估"本次执行行不行"，后者评估"历史记忆好不好"
+- FeedbackLoop 写回 memory/reflection（tag_outcome + record_reference），形成认知闭环
+
+## [P2] 2026-08-01 记忆子系统补全 — 7 个空模块实现 + MemoryStore v2 集成
+
+### 新增模块（7 个）
+
+| 模块 | 文件 | 层级 | 职责 |
+|------|------|------|------|
+| retrieval | `engine.py` + `__init__.py` + `AGENT.md` | ★核心 | 混合检索引擎：向量+关键词+图三通道 RRF 融合 |
+| cache | `store.py` + `__init__.py` + `AGENT.md` | ★核心 | 二级记忆缓存：L1 查询缓存（TTL 60s）+ L2 热点缓存（LRU 100 条）|
+| checkpoint | `manager.py` + `__init__.py` + `AGENT.md` | ★核心 | 检查点管理器：每 N 步自动保存编排器状态，支持断点恢复 |
+| reflection | `engine.py` + `__init__.py` + `AGENT.md` | ★核心 | 反思引擎：三维评估（时效性×引用频次×结果标记），优质经验优先 |
+| archive | `store.py` + `__init__.py` + `AGENT.md` | ◇骨架 | 冷数据归档：低引用记忆下沉长期存储 + defrost 回热 |
+| snapshot | `manager.py` + `__init__.py` + `AGENT.md` | ◇骨架 | 全局快照管理器：拍摄/恢复/列举/清理时间点快照 |
+| sync | `sync.py` + `__init__.py` + `AGENT.md` | ◇骨架 | 端边云同步：push/pull/merge 协议骨架，进程内多节点模拟 |
+
+### MemoryStore v2 变更
+
+- **`recall()` 升级**：缓存→检索→反思三级流水线替换旧关键词匹配
+- **`write()` 升级**：新增缓存失效 + 反思预评估
+- **`retrieve()` 升级**：委托 RetrievalEngine 做 RRF 混合检索
+- **新增 3 个编排器钩子**：`checkpoint_cycle()` / `archive_cycle()` / `snapshot_cycle()`
+- **新增 7 个属性**：retrieval_engine / cache / checkpoint / reflection / archive / snapshot / sync
+
+### 测试
+
+- 新增 7 个测试文件：test_retrieval / test_cache / test_checkpoint / test_reflection / test_archive / test_snapshot / test_sync
+- 39 新测试通过
+
+### 不变约束
+
+- `protocol/memory.py` MemoryPacket：零改动
+- 现有 7 个已实现模块（working/episodic/semantic/vector/compression/recall/memory_store）：接口兼容
+- `MemoryAPI`（read/write/retrieve）：签名不变
+
 ## [R6] 2026-07-08 SDK 对齐清理--删除死代码 + 修复注释规范
 
 ### R6.1 - 删除 sdk_provider.py 死代码 complete() + _call()

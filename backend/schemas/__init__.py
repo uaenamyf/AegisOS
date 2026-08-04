@@ -30,6 +30,10 @@ class WriteMemoryRequest(BaseModel):
     archive: dict[str, Any] = Field(default_factory=dict)
     summary: str = ""
     task_id: str = ""
+    # date: 2026-08-01
+    # dev: 123 chen
+    # changelog: 新增 kind 字段，支持 MemoryStore v2 记忆路由（decision/checkpoint/snapshot）
+    kind: str = "normal"  # normal | decision | digest | checkpoint | snapshot
 
 
 class InvokeToolRequest(BaseModel):

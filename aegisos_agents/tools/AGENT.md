@@ -58,9 +58,22 @@ complete(prompt) -> Response；render(template,vars) -> prompt；run(agent,task)
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
 
 ## 下辖子模块
-- aegisos_agents/tools/llms/ — LLM 提供方适配与路由（统一调用接口、成本/延迟路由）
-- aegisos_agents/tools/prompts/ — Prompt 模板库与版本管理（含 roles/ 各角色模板）
-- aegisos_agents/tools/runtime/ — Agent 运行时与生命周期管理（上下文注入、心跳、挂起/恢复）
+
+| 子模块 | 状态 | 职责 |
+|--------|:----:|------|
+| `llms/` | ✅ | LLM 提供方适配（SDK / Mock） |
+| `prompts/` | ✅ P2 | Prompt 模板版本化管理（PromptRegistry + PromptRenderer） |
+| `runtime/` | ✅ P2 | Agent 生命周期托管（AgentLifecycle + RuntimeSupervisor） |
+
+### prompts/ — Prompt 模板管理（✅ P2）
+- `registry.py` — PromptRegistry：集中注册 + 版本追踪 + 角色筛选 + 版本回滚，预置 11 个 Agent 模板
+- `renderer.py` — PromptRenderer：`{{ var }}` 替换 + 变量校验
+- 纯 Python，不调 LLM。
+
+### runtime/ — Agent 生命周期（✅ P2）
+- `lifecycle.py` — AgentLifecycle：六态状态机（Init→Running⇌Suspended→Completed/Failed/Timeout）+ 心跳
+- `supervisor.py` — RuntimeSupervisor：多 Agent spawn/suspend/resume/kill + 统计
+- 纯 Python，复用 protocol/Heartbeat。
 
 ---
 
