@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from data.datasets.attck.knowledge import load_attck_dataset
+from data.datasets.attck.knowledge import ATTACK_RELATIONS, load_attck_dataset
 from protocol.cyber import Asset
 from protocol.memory import MemoryPacket
 
@@ -39,6 +39,8 @@ class InMemoryGraphStore:
         self._attck_edges: list[tuple[str, str, str]] = []
         if seed_attck:
             self.seed_attck(load_attck_dataset())
+            # 一并加载数据集关系边，与 Neo4j 实现的 seed 行为保持一致
+            self._attck_edges = list(ATTACK_RELATIONS)
 
     # ---- ATT&CK 知识 ----
 
@@ -256,6 +258,15 @@ class Neo4jGraphStore:
                         tac=tac,
                         tid=tid,
                     )
+            # 创建数据集关系边（与 InMemory 实现的 seed 行为保持一致）
+            for src, rel, dst in ATTACK_RELATIONS:
+                session.run(
+                    f"MATCH (a) WHERE a.technique_id=$src OR a.name=$src "
+                    f"MATCH (b) WHERE b.technique_id=$dst OR b.name=$dst "
+                    f"MERGE (a)-[:{rel}]->(b)",
+                    src=src,
+                    dst=dst,
+                )
         return len(entries)
 
     def upsert_technique(self, technique_id: str, packet: MemoryPacket) -> None:
