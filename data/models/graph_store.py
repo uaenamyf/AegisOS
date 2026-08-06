@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from data.datasets.attck.knowledge import load_attck_dataset
 from protocol.cyber import Asset
 from protocol.memory import MemoryPacket
@@ -164,3 +166,240 @@ class InMemoryGraphStore:
     def list_topologies(self) -> list[str]:
         """返回全部已保存的拓扑作用域。"""
         return list(self._topologies.keys())
+
+
+class Neo4jGraphStore:
+    """Neo4j 图存储 —— 真实客户端适配器（惰性加载）。
+
+    首次方法调用时 ``import neo4j`` 并连接；未安装或连接失败时抛错，
+    不做静默降级。拓扑节点 label ``Asset``、技战术节点 label ``Technique``，
+    关系 label 即关系标签；``scope`` 作为节点属性归组。
+    """
+
+    def __init__(
+        self,
+        uri: str = "bolt://localhost:7687",
+        user: str = "neo4j",
+        password: str = "",
+        database: str | None = None,
+    ) -> None:
+        """初始化 Neo4j 连接参数（不建立连接）。
+
+        Args:
+            uri: bolt 连接地址。
+            user: 用户名。
+            password: 密码。
+            database: 数据库名，默认取 neo4j 默认库。
+        """
+        self._uri = uri
+        self._user = user
+        self._password = password
+        self._database = database
+        self._driver: Any | None = None  # 惰性：构造不导入三方包
+
+    def _get_driver(self) -> Any:
+        """惰性获取 neo4j 驱动。
+
+        Raises:
+            RuntimeError: 未安装 neo4j 包时。
+            ConnectionError: 连接失败时。
+        """
+        if self._driver is not None:
+            return self._driver
+        try:
+            from neo4j import GraphDatabase  # noqa: PLC0415
+        except ImportError as exc:  # pragma: no cover - 依赖缺失路径
+            raise RuntimeError("neo4j 驱动未安装，请 pip install aegisos[storage]") from exc
+        try:
+            driver = GraphDatabase.driver(self._uri, auth=(self._user, self._password))
+            driver.verify_connectivity()
+        except Exception as exc:  # pragma: no cover - 网络路径
+            raise ConnectionError(f"无法连接 Neo4j: {exc}") from exc
+        self._driver = driver
+        return driver
+
+    # ---- ATT&CK 知识 ----
+
+    def seed_attck(self, entries: list[MemoryPacket]) -> int:
+        """批量写入技战术（MERGE 幂等）与 tactic 关系。
+
+        Args:
+            entries: MemoryPacket 列表。
+
+        Returns:
+            写入条数。
+        """
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            for p in entries:
+                tid = str(p.semantic.get("technique_id") or p.task_id)
+                session.run(
+                    "MERGE (t:Technique {technique_id: $tid}) "
+                    "SET t.name=$name, t.tactic=$tactic, t.platform=$platform, t.description=$desc",
+                    tid=tid,
+                    name=p.semantic.get("name", ""),
+                    tactic=p.semantic.get("tactic", ""),
+                    platform=p.semantic.get("platform", ""),
+                    desc=p.semantic.get("description", ""),
+                )
+                tac = p.semantic.get("tactic", "")
+                if tac:
+                    session.run(
+                        "MERGE (a:Tactic {name:$tac}) MERGE (a)-[:contains]->(t:Technique {technique_id:$tid})",
+                        tac=tac,
+                        tid=tid,
+                    )
+        return len(entries)
+
+    def upsert_technique(self, technique_id: str, packet: MemoryPacket) -> None:
+        """按 ID 幂等写入一条技战术（MERGE）。"""
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            session.run(
+                "MERGE (t:Technique {technique_id: $tid}) "
+                "SET t.name=$name, t.tactic=$tactic, t.platform=$platform, t.description=$desc",
+                tid=technique_id,
+                name=packet.semantic.get("name", ""),
+                tactic=packet.semantic.get("tactic", ""),
+                platform=packet.semantic.get("platform", ""),
+                desc=packet.semantic.get("description", ""),
+            )
+
+    def get_technique(self, technique_id: str) -> MemoryPacket | None:
+        """按 ID 查询技战术，还原为 MemoryPacket。"""
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            rec = session.run(
+                "MATCH (t:Technique {technique_id: $tid}) RETURN t", tid=technique_id
+            ).single()
+        if rec is None:
+            return None
+        props = rec["t"]
+        return MemoryPacket(
+            task_id=technique_id,
+            summary=f"{technique_id} {props.get('name', '')}",
+            semantic={
+                "technique_id": technique_id,
+                "name": props.get("name", ""),
+                "tactic": props.get("tactic", ""),
+                "platform": props.get("platform", ""),
+                "description": props.get("description", ""),
+            },
+            kind="decision",
+        )
+
+    def search_techniques(self, keyword: str) -> list[MemoryPacket]:
+        """关键词检索技战术（名称/战术/ID 模糊匹配）。"""
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            recs = session.run(
+                "MATCH (t:Technique) WHERE toLower(t.technique_id) CONTAINS $kw "
+                "OR toLower(t.name) CONTAINS $kw OR toLower(t.tactic) CONTAINS $kw "
+                "RETURN t.technique_id AS tid ORDER BY tid",
+                kw=keyword.lower(),
+            ).data()
+        return [self._get_technique_or_blank(r["tid"]) for r in recs]
+
+    def all_techniques(self) -> list[MemoryPacket]:
+        """返回全部技战术。"""
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            recs = session.run("MATCH (t:Technique) RETURN t.technique_id AS tid ORDER BY tid").data()
+        return [self._get_technique_or_blank(r["tid"]) for r in recs]
+
+    def add_relation(self, src: str, rel: str, dst: str) -> None:
+        """添加关系边（两端节点已存在时；tactic 节点需已 seed）。
+
+        Args:
+            src: 源节点（tactic 名或 technique_id）。
+            rel: 关系标签。
+            dst: 目标节点。
+
+        Raises:
+            ValueError: rel 不在合法标签集合时。
+        """
+        if rel not in _ALLOWED_RELS:
+            raise ValueError(f"非法关系标签: {rel}")
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            session.run(
+                f"MATCH (a) WHERE a.technique_id=$src OR a.name=$src "
+                f"MATCH (b) WHERE b.technique_id=$dst OR b.name=$dst "
+                f"MERGE (a)-[:{rel}]->(b)",
+                src=src,
+                dst=dst,
+            )
+
+    def related_techniques(self, technique_id: str, relation: str | None = None) -> list[MemoryPacket]:
+        """返回与指定技战术关联的其他技战术（双向）。"""
+        rel_clause = f"-[r:{relation}]-" if relation else "-[r]-"
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            recs = session.run(
+                f"MATCH (t:Technique {{technique_id: $tid}}){rel_clause}(n:Technique) "
+                "RETURN n.technique_id AS tid",
+                tid=technique_id,
+            ).data()
+        return [self._get_technique_or_blank(r["tid"]) for r in recs]
+
+    def _get_technique_or_blank(self, technique_id: str) -> MemoryPacket:
+        """按 ID 查技战术；查不到时返回空白包（避免二次查询失败）。
+
+        Args:
+            technique_id: 技战术 ID。
+
+        Returns:
+            MemoryPacket 或空白包。
+        """
+        p = self.get_technique(technique_id)
+        return p if p is not None else MemoryPacket(task_id=technique_id, kind="decision")
+
+    # ---- 网络拓扑 ----
+
+    def save_topology(self, scope: str, assets: list[Asset], links: list[tuple[str, str, str]]) -> None:
+        """保存拓扑：删除旧 scope 节点后写入（MERGE 幂等）。"""
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            session.run("MATCH (a:Asset {scope: $scope}) DETACH DELETE a", scope=scope)
+            for asset in assets:
+                session.run(
+                    "MERGE (a:Asset {asset_id: $aid}) SET a.scope=$scope, a.host=$host, "
+                    "a.os=$os, a.exposure=$exposure, a.services=$services",
+                    aid=asset.asset_id,
+                    scope=scope,
+                    host=asset.host,
+                    os=asset.os,
+                    exposure=asset.exposure,
+                    services=list(asset.services),
+                )
+            for src, rel, dst in links:
+                session.run(
+                    f"MATCH (a:Asset {{asset_id: $src}}), (b:Asset {{asset_id: $dst}}) "
+                    f"MERGE (a)-[:{rel}]->(b)",
+                    src=src,
+                    dst=dst,
+                )
+
+    def get_topology(self, scope: str) -> tuple[list[Asset], list[tuple[str, str, str]]]:
+        """读取指定作用域拓扑，还原为 (assets, links)。"""
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            nodes = session.run("MATCH (a:Asset {scope: $scope}) RETURN a", scope=scope).data()
+            links = session.run(
+                "MATCH (a:Asset {scope: $scope})-[r]->(b:Asset) RETURN a.asset_id AS src, "
+                "type(r) AS rel, b.asset_id AS dst",
+                scope=scope,
+            ).data()
+        assets = [
+            Asset(asset_id=n["a"]["asset_id"], host=n["a"].get("host", ""), os=n["a"].get("os", ""),
+                  exposure=n["a"].get("exposure", "external"), services=list(n["a"].get("services", [])))
+            for n in nodes
+        ]
+        return assets, [(l["src"], l["rel"], l["dst"]) for l in links]
+
+    def list_topologies(self) -> list[str]:
+        """返回全部已保存的拓扑作用域。"""
+        driver = self._get_driver()
+        with driver.session(database=self._database) as session:
+            recs = session.run("MATCH (a:Asset) RETURN DISTINCT a.scope AS scope").data()
+        return [r["scope"] for r in recs]

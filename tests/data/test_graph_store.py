@@ -1,6 +1,15 @@
+import pytest
+
 from protocol.cyber import Asset
 
-from data.models.graph_store import InMemoryGraphStore
+from data.models.graph_store import InMemoryGraphStore, Neo4jGraphStore
+
+
+def test_neo4j_store_missing_driver_raises():
+    """未安装 neo4j 驱动时应抛 RuntimeError（惰性加载）。"""
+    gs = Neo4jGraphStore(uri="bolt://localhost:7687")
+    with pytest.raises(RuntimeError, match="neo4j"):
+        gs.get_technique("T1210")
 
 
 def test_seed_attck_default_loaded():
