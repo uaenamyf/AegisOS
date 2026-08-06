@@ -112,7 +112,9 @@ class InMemoryGraphStore:
             raise ValueError(f"非法关系标签: {rel}")
         self._attck_edges.append((src, rel, dst))
 
-    def related_techniques(self, technique_id: str, relation: str | None = None) -> list[MemoryPacket]:
+    def related_techniques(
+        self, technique_id: str, relation: str | None = None
+    ) -> list[MemoryPacket]:
         """返回与指定技战术关联的其他技战术（双向可达）。
 
         Args:
@@ -142,7 +144,9 @@ class InMemoryGraphStore:
 
     # ---- 网络拓扑 ----
 
-    def save_topology(self, scope: str, assets: list[Asset], links: list[tuple[str, str, str]]) -> None:
+    def save_topology(
+        self, scope: str, assets: list[Asset], links: list[tuple[str, str, str]]
+    ) -> None:
         """保存一个拓扑（按 scope 归组，覆盖写）。
 
         Args:
@@ -304,7 +308,9 @@ class Neo4jGraphStore:
         """返回全部技战术。"""
         driver = self._get_driver()
         with driver.session(database=self._database) as session:
-            recs = session.run("MATCH (t:Technique) RETURN t.technique_id AS tid ORDER BY tid").data()
+            recs = session.run(
+                "MATCH (t:Technique) RETURN t.technique_id AS tid ORDER BY tid"
+            ).data()
         return [self._get_technique_or_blank(r["tid"]) for r in recs]
 
     def add_relation(self, src: str, rel: str, dst: str) -> None:
@@ -330,7 +336,9 @@ class Neo4jGraphStore:
                 dst=dst,
             )
 
-    def related_techniques(self, technique_id: str, relation: str | None = None) -> list[MemoryPacket]:
+    def related_techniques(
+        self, technique_id: str, relation: str | None = None
+    ) -> list[MemoryPacket]:
         """返回与指定技战术关联的其他技战术（双向）。"""
         rel_clause = f"-[r:{relation}]-" if relation else "-[r]-"
         driver = self._get_driver()
@@ -356,7 +364,9 @@ class Neo4jGraphStore:
 
     # ---- 网络拓扑 ----
 
-    def save_topology(self, scope: str, assets: list[Asset], links: list[tuple[str, str, str]]) -> None:
+    def save_topology(
+        self, scope: str, assets: list[Asset], links: list[tuple[str, str, str]]
+    ) -> None:
         """保存拓扑：删除旧 scope 节点后写入（MERGE 幂等）。"""
         driver = self._get_driver()
         with driver.session(database=self._database) as session:
@@ -391,11 +401,16 @@ class Neo4jGraphStore:
                 scope=scope,
             ).data()
         assets = [
-            Asset(asset_id=n["a"]["asset_id"], host=n["a"].get("host", ""), os=n["a"].get("os", ""),
-                  exposure=n["a"].get("exposure", "external"), services=list(n["a"].get("services", [])))
+            Asset(
+                asset_id=n["a"]["asset_id"],
+                host=n["a"].get("host", ""),
+                os=n["a"].get("os", ""),
+                exposure=n["a"].get("exposure", "external"),
+                services=list(n["a"].get("services", [])),
+            )
             for n in nodes
         ]
-        return assets, [(l["src"], l["rel"], l["dst"]) for l in links]
+        return assets, [(lnk["src"], lnk["rel"], lnk["dst"]) for lnk in links]
 
     def list_topologies(self) -> list[str]:
         """返回全部已保存的拓扑作用域。"""

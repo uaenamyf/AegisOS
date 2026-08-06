@@ -46,7 +46,7 @@ class _VectorItem:
 
     vector_id: str
     vector: list[float]
-    payload: dict = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict)
 
 
 class InMemoryVectorStore:
@@ -60,7 +60,9 @@ class InMemoryVectorStore:
         """初始化空的内存向量存储。"""
         self._items: list[_VectorItem] = []
 
-    def add(self, vector_id: str, vector: list[float], payload: dict | None = None) -> None:
+    def add(
+        self, vector_id: str, vector: list[float], payload: dict[str, Any] | None = None
+    ) -> None:
         """写入/覆盖一条向量（幂等，按 vector_id）。
 
         Args:
@@ -74,7 +76,7 @@ class InMemoryVectorStore:
         self._items = [it for it in self._items if it.vector_id != vector_id]
         self._items.append(_VectorItem(vector_id, vector, payload or {}))
 
-    def search(self, query: list[float], top_k: int = 5) -> list[tuple[str, dict, float]]:
+    def search(self, query: list[float], top_k: int = 5) -> list[tuple[str, dict[str, Any], float]]:
         """按查询向量余弦相似度检索 Top-K。
 
         Args:
@@ -98,7 +100,7 @@ class InMemoryVectorStore:
         """返回已索引向量条数。"""
         return len(self._items)
 
-    def all(self) -> list[tuple[str, dict]]:
+    def all(self) -> list[tuple[str, dict[str, Any]]]:
         """返回全部 ``(vector_id, payload)``（按写入顺序）。"""
         return [(it.vector_id, it.payload) for it in self._items]
 
@@ -151,7 +153,9 @@ class QdrantVectorStore:
         self._client = client
         return client
 
-    def add(self, vector_id: str, vector: list[float], payload: dict | None = None) -> None:
+    def add(
+        self, vector_id: str, vector: list[float], payload: dict[str, Any] | None = None
+    ) -> None:
         """upsert 一条向量到 Qdrant（首次调用创建集合）。
 
         Args:
@@ -163,8 +167,8 @@ class QdrantVectorStore:
             return
         client = self._get_client()
         try:
-            from qdrant_client.models import Distance, PointStruct, VectorParams  # noqa: PLC0415
             from qdrant_client.http.exceptions import UnexpectedResponse  # noqa: PLC0415
+            from qdrant_client.models import Distance, PointStruct, VectorParams  # noqa: PLC0415
 
             try:
                 client.get_collection(self._collection)
@@ -180,7 +184,7 @@ class QdrantVectorStore:
         except Exception as exc:  # pragma: no cover - 网络路径
             raise ConnectionError(f"Qdrant upsert 失败: {exc}") from exc
 
-    def search(self, query: list[float], top_k: int = 5) -> list[tuple[str, dict, float]]:
+    def search(self, query: list[float], top_k: int = 5) -> list[tuple[str, dict[str, Any], float]]:
         """按查询向量检索 Top-K（返回 id/payload/score）。
 
         Args:
@@ -210,7 +214,7 @@ class QdrantVectorStore:
         info = client.count(collection_name=self._collection, exact=True)
         return int(info.count or 0)
 
-    def all(self) -> list[tuple[str, dict]]:
+    def all(self) -> list[tuple[str, dict[str, Any]]]:
         """滚动返回全部 ``(id, payload)``（演示规模足够，取前 1000 条）。"""
         client = self._get_client()
         points, _ = client.scroll(

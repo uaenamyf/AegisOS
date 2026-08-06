@@ -1,8 +1,7 @@
 import pytest
 
-from protocol.cyber import Asset
-
 from data.models.graph_store import InMemoryGraphStore, Neo4jGraphStore
+from protocol.cyber import Asset
 
 
 def test_neo4j_store_missing_driver_raises():
@@ -25,7 +24,10 @@ def test_upsert_get_search_techniques():
 
     gs.upsert_technique(
         "T0000",
-        MemoryPacket(task_id="T0000", semantic={"technique_id": "T0000", "name": "Test Tech", "tactic": "test"}),
+        MemoryPacket(
+            task_id="T0000",
+            semantic={"technique_id": "T0000", "name": "Test Tech", "tactic": "test"},
+        ),
     )
     assert gs.get_technique("T0000").semantic["name"] == "Test Tech"
     assert len(gs.search_techniques("Test")) == 1

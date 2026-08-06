@@ -47,6 +47,8 @@
 | **httpx** | **>=0.27** | 异步 HTTP 客户端（测试 + 外部调用） | `tests/`·`backend/services/` |
 | **SQLAlchemy** | **>=2.0** | ORM（异步引擎） | `backend/mappers/entities/`·`repositories/` |
 | **aiosqlite** | **>=0.20** | 异步 SQLite 驱动（dev；生产可换 asyncpg/PostgreSQL） | `backend/mappers/` |
+| **neo4j** | **>=5** | 图存储（网络拓扑 + ATT&CK 图）；可选 storage extra，惰性加载 | `data/models/graph_store.py` |
+| **qdrant-client** | **>=1.8** | 向量存储（记忆嵌入）；可选 storage extra，惰性加载 | `data/models/vector_store.py` |
 
 > 现状：`protocol/` 用 `@dataclass` + `typing.Protocol`（v1 基线）。P1 目标：迁移到 Pydantic v2 `BaseModel`（见 `06_SCHEMA_SPEC.md` §12），保持字段名/语义/导出不变，序列化改 `model_dump`/`model_validate`。
 

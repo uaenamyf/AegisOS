@@ -15,14 +15,14 @@ from protocol.memory import MemoryPacket
 
 class DatasetAPI(Protocol):
     def load(self, name: str, version: str = "latest") -> Any: ...
-    def list_datasets(self) -> list: ...
-    def preprocess(self, name: str, config: dict) -> Any: ...
+    def list_datasets(self) -> list[Any]: ...
+    def preprocess(self, name: str, config: dict[str, Any]) -> Any: ...
 
 
 class ModelSchemaAPI(Protocol):
-    def register_schema(self, name: str, schema: dict) -> None: ...
-    def validate(self, name: str, data: dict) -> bool: ...
-    def get_schema(self, name: str) -> dict: ...
+    def register_schema(self, name: str, schema: dict[str, Any]) -> None: ...
+    def validate(self, name: str, data: dict[str, Any]) -> bool: ...
+    def get_schema(self, name: str) -> dict[str, Any]: ...
     def migrate(self, name: str, from_ver: str, to_ver: str) -> Any: ...
 
 
@@ -33,7 +33,9 @@ class VectorStoreAPI(Protocol):
         无实例属性；本接口为 ``Protocol``，仅约束方法签名。
     """
 
-    def add(self, vector_id: str, vector: list[float], payload: dict | None = None) -> None:
+    def add(
+        self, vector_id: str, vector: list[float], payload: dict[str, Any] | None = None
+    ) -> None:
         """写入/覆盖一条向量（幂等）。
 
         Args:
@@ -43,7 +45,7 @@ class VectorStoreAPI(Protocol):
         """
         ...
 
-    def search(self, query: list[float], top_k: int = 5) -> list[tuple[str, dict, float]]:
+    def search(self, query: list[float], top_k: int = 5) -> list[tuple[str, dict[str, Any], float]]:
         """按查询向量检索 Top-K。
 
         Args:
@@ -63,7 +65,7 @@ class VectorStoreAPI(Protocol):
         """返回已索引向量条数。"""
         ...
 
-    def all(self) -> list[tuple[str, dict]]:
+    def all(self) -> list[tuple[str, dict[str, Any]]]:
         """返回全部 ``(vector_id, payload)``。"""
         ...
 
@@ -76,7 +78,9 @@ class GraphStoreAPI(Protocol):
     """
 
     # ---- 网络拓扑 ----
-    def save_topology(self, scope: str, assets: list[Asset], links: list[tuple[str, str, str]]) -> None:
+    def save_topology(
+        self, scope: str, assets: list[Asset], links: list[tuple[str, str, str]]
+    ) -> None:
         """保存一个拓扑（按 scope 归组，覆盖写）。
 
         Args:
@@ -127,12 +131,14 @@ class GraphStoreAPI(Protocol):
         """添加关系边（rel ∈ contains/precedes/uses/targets）。"""
         ...
 
-    def related_techniques(self, technique_id: str, relation: str | None = None) -> list[MemoryPacket]:
+    def related_techniques(
+        self, technique_id: str, relation: str | None = None
+    ) -> list[MemoryPacket]:
         """返回与指定技战术关联的其他技战术（双向）。"""
         ...
 
 
-def create_graph_store(mode: str = "in_memory", **kwargs) -> GraphStoreAPI:
+def create_graph_store(mode: str = "in_memory", **kwargs: Any) -> GraphStoreAPI:
     """按 mode 创建图存储（``"in_memory"`` 默认 / ``"neo4j"``）。
 
     Args:
@@ -147,7 +153,7 @@ def create_graph_store(mode: str = "in_memory", **kwargs) -> GraphStoreAPI:
     return _create(mode, **kwargs)
 
 
-def create_vector_store(mode: str = "in_memory", **kwargs) -> VectorStoreAPI:
+def create_vector_store(mode: str = "in_memory", **kwargs: Any) -> VectorStoreAPI:
     """按 mode 创建向量存储（``"in_memory"`` 默认 / ``"qdrant"``）。
 
     Args:

@@ -8,11 +8,15 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from data.models.graph_store import InMemoryGraphStore, Neo4jGraphStore
 from data.models.vector_store import InMemoryVectorStore, QdrantVectorStore
 
 
-def create_graph_store(mode: str = "in_memory", **kwargs):
+def create_graph_store(
+    mode: str = "in_memory", **kwargs: Any
+) -> InMemoryGraphStore | Neo4jGraphStore:
     """按 mode 创建图存储。
 
     Args:
@@ -32,7 +36,9 @@ def create_graph_store(mode: str = "in_memory", **kwargs):
     raise ValueError(f"未知 graph_store mode: {mode}")
 
 
-def create_vector_store(mode: str = "in_memory", **kwargs):
+def create_vector_store(
+    mode: str = "in_memory", **kwargs: Any
+) -> InMemoryVectorStore | QdrantVectorStore:
     """按 mode 创建向量存储。
 
     Args:
