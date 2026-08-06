@@ -1,6 +1,5 @@
-from data.api import create_vector_store
-
 from aegisos_agents.memory.vector.store import VectorMemory
+from data.api import create_vector_store
 from protocol.memory import MemoryPacket
 
 

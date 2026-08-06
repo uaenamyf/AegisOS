@@ -60,10 +60,9 @@ class SemanticMemory:
         if graph_backend is None:
             if seed:
                 self.seed_attack_knowledge()
-        elif seed:
+        elif seed and not graph_backend.all_techniques():
             # 后端为空时从共享数据集预载，避免首次查询退化
-            if not graph_backend.all_techniques():
-                graph_backend.seed_attck(load_attck_dataset())
+            graph_backend.seed_attck(load_attck_dataset())
 
     def add(self, concept_id: str, packet: MemoryPacket) -> None:
         """写入或覆盖一条知识条目。

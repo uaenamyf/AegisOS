@@ -1,8 +1,11 @@
 # date: 2026-08-01
 # dev: myf
 """同步模块测试 —— push/pull/merge + 多节点隔离。"""
+
 import time
+
 import pytest
+
 from aegisos_agents.memory.sync.sync import MemorySync
 from protocol.memory import MemoryPacket
 

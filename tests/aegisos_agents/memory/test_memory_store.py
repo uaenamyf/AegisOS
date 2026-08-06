@@ -1,4 +1,5 @@
 from aegisos_agents.memory.memory_store import MemoryStore
+from data.api import create_graph_store, create_vector_store
 from protocol.memory import MemoryPacket
 
 
@@ -125,3 +126,31 @@ def test_store_cognitive_loop_integration():
     # 压缩后情景/向量记忆仍可唤醒（闭环未断）
     assert len(store.recall("block")) >= 1
     assert len(store.vector) == 1
+
+
+def test_memory_store_backend_injection():
+    """MemoryStore 注入 vector/graph 后端后读写检索应工作。"""
+    ms = MemoryStore(
+        vector_backend=create_vector_store("in_memory"),
+        graph_backend=create_graph_store("in_memory", seed_attck=False),
+    )
+    ms.write(MemoryPacket(task_id="m1", embedding=[1.0, 0.0], summary="vec hit"))
+    assert len(ms.vector) == 1
+    assert ms.vector.search([1.0, 0.0])[0].task_id == "m1"
+    ms.semantic.add(
+        "T9999",
+        MemoryPacket(
+            task_id="T9999",
+            summary="kb",
+            semantic={"technique_id": "T9999", "name": "KB", "tactic": "test"},
+        ),
+    )
+    assert ms.semantic.get("T9999") is not None
+
+
+def test_memory_store_default_no_backend_unchanged():
+    """不注入后端时行为与现状一致。"""
+    ms = MemoryStore()
+    ms.write(MemoryPacket(task_id="d1", embedding=[1.0], summary="default"))
+    assert len(ms.vector) == 1
+    assert ms.semantic.get("T1210") is not None  # 默认种子

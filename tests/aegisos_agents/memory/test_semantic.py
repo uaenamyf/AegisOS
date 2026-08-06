@@ -1,6 +1,5 @@
-from data.api import create_graph_store
-
 from aegisos_agents.memory.semantic.store import SemanticMemory
+from data.api import create_graph_store
 from protocol.memory import MemoryPacket
 
 

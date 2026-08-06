@@ -1,11 +1,13 @@
 # date: 2026-08-01
 # dev: myf
 """检索模块测试 —— 三通道混合检索 + RRF 融合。"""
+
 import pytest
-from aegisos_agents.memory.semantic.store import SemanticMemory
-from aegisos_agents.memory.vector.store import VectorMemory
+
 from aegisos_agents.memory.episodic.store import EpisodicMemory
 from aegisos_agents.memory.retrieval.engine import RetrievalEngine, ScoredPacket
+from aegisos_agents.memory.semantic.store import SemanticMemory
+from aegisos_agents.memory.vector.store import VectorMemory
 from protocol.memory import MemoryPacket
 
 
@@ -33,7 +35,9 @@ def test_retrieve_keyword_channel_hits(engine):
 
 def test_retrieve_vector_channel_hits(engine):
     """向量通道：余弦相似度检索生效。"""
-    results = engine.retrieve("block", query_embedding=[0.9, 0.1, 0.0], channels=["vector"], top_k=5)
+    results = engine.retrieve(
+        "block", query_embedding=[0.9, 0.1, 0.0], channels=["vector"], top_k=5
+    )
     assert len(results) >= 1
     ids = {s.packet.task_id for s in results}
     assert "v1" in ids
