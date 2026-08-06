@@ -1,5 +1,3 @@
-import typing
-
 from data.api import (
     GraphStoreAPI,
     VectorStoreAPI,
@@ -10,9 +8,9 @@ from data.api import (
 
 
 def test_api_exposes_protocols():
-    """GraphStoreAPI / VectorStoreAPI 应为 typing.Protocol 子类。"""
-    assert isinstance(GraphStoreAPI, typing.Protocol)
-    assert isinstance(VectorStoreAPI, typing.Protocol)
+    """GraphStoreAPI / VectorStoreAPI 应为 typing.Protocol 运行时标记。"""
+    assert getattr(GraphStoreAPI, "_is_protocol", False)
+    assert getattr(VectorStoreAPI, "_is_protocol", False)
 
 
 def test_api_factories_return_compatible_stores():
