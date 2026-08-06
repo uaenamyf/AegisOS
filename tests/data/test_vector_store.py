@@ -1,4 +1,13 @@
-from data.models.vector_store import InMemoryVectorStore
+import pytest
+
+from data.models.vector_store import InMemoryVectorStore, QdrantVectorStore
+
+
+def test_qdrant_store_missing_client_raises():
+    """未安装 qdrant-client 时应抛 RuntimeError（惰性加载）。"""
+    vs = QdrantVectorStore(url="http://localhost:6333")
+    with pytest.raises(RuntimeError, match="qdrant-client"):
+        vs.search([1.0], top_k=1)
 
 
 def test_add_and_search_ranked():
