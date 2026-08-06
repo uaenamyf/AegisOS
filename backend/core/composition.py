@@ -46,6 +46,11 @@ from aegisos_agents.planning.orchestrator import CyberOrchestrator
 # dev: 123 chen
 # changelog: 导入 MemoryStore（v2 记忆系统，含 7 个新模块）
 from aegisos_agents.memory.memory_store import MemoryStore
+# date: 2026-08-06
+# dev: czy
+# changelog: 接入 data 层存储后端（默认 in_memory）
+from data.api import create_graph_store, create_vector_store
+from tooling.configs.settings import settings
 
 
 class Composition:
@@ -86,10 +91,13 @@ class Composition:
 
         # --- Mock agents.api 实现（agents P5 未就绪） ---
         self.agent_registry = MockAgentRegistry()
-        # date: 2026-08-01
-        # dev: 123 chen
-        # changelog: 替换 MockMemoryAPI 为 MemoryStore（v2 真实记忆系统，含 7 个新模块）
-        self.memory_api = MemoryStore()
+        # date: 2026-08-06
+        # dev: czy
+        # changelog: MemoryStore 注入 data 层存储后端（默认 in_memory，真实库按配置启用）
+        self.memory_api = MemoryStore(
+            vector_backend=self._build_vector_backend(),
+            graph_backend=self._build_graph_backend(),
+        )
         self.execution_api = MockExecutionAPI()
         self.event_bus = MockEventBusAPI()
 
@@ -112,6 +120,40 @@ class Composition:
         self.persistence_port = PersistencePortImpl(self.task_repo)
         self.session_port = SessionPortImpl(self.session_repo)
         self.task_update_port = TaskUpdatePortImpl(self.task_repo)
+
+    @staticmethod
+    def _build_vector_backend():
+        """按 settings.storage 构造向量存储后端；in_memory 模式返回 None。
+
+        Returns:
+            VectorStoreAPI 实例或 None（使用记忆模块内置实现）。
+        """
+        s = settings.storage
+        if s.vector_mode == "in_memory":
+            return None
+        return create_vector_store(
+            s.vector_mode,
+            url=s.qdrant_url,
+            api_key=s.qdrant_api_key,
+            collection=s.qdrant_collection,
+        )
+
+    @staticmethod
+    def _build_graph_backend():
+        """按 settings.storage 构造图存储后端；in_memory 模式返回 None。
+
+        Returns:
+            GraphStoreAPI 实例或 None（使用记忆模块内置实现）。
+        """
+        s = settings.storage
+        if s.graph_mode == "in_memory":
+            return None
+        return create_graph_store(
+            s.graph_mode,
+            uri=s.neo4j_uri,
+            user=s.neo4j_user,
+            password=s.neo4j_password,
+        )
 
     @staticmethod
     def _create_orchestrator() -> CyberOrchestrator:
