@@ -165,6 +165,31 @@ class FrontendEnvConfig:
 
 
 @dataclass(frozen=True)
+class StorageConfig:
+    """数据层存储后端配置。
+
+    Attributes:
+        graph_mode: 图存储模式（in_memory / neo4j）。
+        vector_mode: 向量存储模式（in_memory / qdrant）。
+        neo4j_uri: Neo4j bolt 地址。
+        neo4j_user: Neo4j 用户名。
+        neo4j_password: Neo4j 密码。
+        qdrant_url: Qdrant 服务地址。
+        qdrant_api_key: Qdrant API Key。
+        qdrant_collection: Qdrant 集合名。
+    """
+
+    graph_mode: str = "in_memory"
+    vector_mode: str = "in_memory"
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = ""
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+    qdrant_collection: str = "memory_vectors"
+
+
+@dataclass(frozen=True)
 class Settings:
     """全局配置根。所有模块统一从此读取，禁直接 ``os.environ`` / 硬编码。"""
     backend: BackendConfig = field(default_factory=BackendConfig)
@@ -176,6 +201,7 @@ class Settings:
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
     trace: TraceConfig = field(default_factory=TraceConfig)
     frontend_env: FrontendEnvConfig = field(default_factory=FrontendEnvConfig)
+    storage: StorageConfig = field(default_factory=StorageConfig)
 
 
 # --- 单例构建 ----------------------------------------------------------------
@@ -196,6 +222,7 @@ def _build_settings() -> Settings:
     rl = defaults.get("rate_limit", {})
     tr = defaults.get("trace", {})
     fe_env = defaults.get("frontend_env", {})
+    st = defaults.get("storage", {})
 
     cors_origins_default = list(cors.get("origins", ["http://localhost:5173", "http://127.0.0.1:5173"]))
 
@@ -242,6 +269,19 @@ def _build_settings() -> Settings:
             or "http://localhost:8000/api/v1",
             VITE_WS_URL=_env("VITE_WS_URL", fe_env.get("VITE_WS_URL", "ws://localhost:8000/ws/v1/stream"))
             or "ws://localhost:8000/ws/v1/stream",
+        ),
+        storage=StorageConfig(
+            graph_mode=_env("AEGIS_STORAGE_GRAPH_MODE", st.get("graph_mode", "in_memory")) or "in_memory",
+            vector_mode=_env("AEGIS_STORAGE_VECTOR_MODE", st.get("vector_mode", "in_memory")) or "in_memory",
+            neo4j_uri=_env("AEGIS_STORAGE_NEO4J_URI", st.get("neo4j_uri", "bolt://localhost:7687"))
+            or "bolt://localhost:7687",
+            neo4j_user=_env("AEGIS_STORAGE_NEO4J_USER", st.get("neo4j_user", "neo4j")) or "neo4j",
+            neo4j_password=_env("AEGIS_STORAGE_NEO4J_PASSWORD", st.get("neo4j_password", "")) or "",
+            qdrant_url=_env("AEGIS_STORAGE_QDRANT_URL", st.get("qdrant_url", "http://localhost:6333"))
+            or "http://localhost:6333",
+            qdrant_api_key=_env("AEGIS_STORAGE_QDRANT_API_KEY", st.get("qdrant_api_key", "")) or "",
+            qdrant_collection=_env("AEGIS_STORAGE_QDRANT_COLLECTION", st.get("qdrant_collection", "memory_vectors"))
+            or "memory_vectors",
         ),
     )
 

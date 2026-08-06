@@ -29,6 +29,10 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.10",
 ]
+storage = [
+    "neo4j>=5",
+    "qdrant-client>=1.8",
+]
 
 [tool.ruff]
 line-length = 100
