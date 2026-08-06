@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from data.api import GraphStoreAPI, load_attck_dataset
 from protocol.memory import MemoryPacket
 
 # ATT&CK 种子知识：technique_id -> (名称, 战术阶段, 描述)
@@ -39,22 +40,30 @@ _ATTACK_SEED: dict[str, tuple[str, str, str]] = {
 class SemanticMemory:
     """语义记忆存储 —— 结构化知识库（ATT&CK/CVE）。
 
-    以 ``concept_id -> MemoryPacket`` 维护知识条目，支持精确按 ID 查询与
-    关键词子串检索。构造时预置 ATT&CK 种子知识，供攻防 Agent 查询。
+    默认内存 dict + 种子；传入 :class:`GraphStoreAPI` 后端时，
+    读写委托给图存储（ATT&CK 知识查询走后端）。
 
     Attributes:
-        _knowledge: concept_id -> 知识记忆包。
+        _backend: 可选的外部图存储后端。
+        _knowledge: 内部维护的 concept_id -> 知识记忆包。
     """
 
-    def __init__(self, seed: bool = True) -> None:
+    def __init__(self, seed: bool = True, graph_backend: GraphStoreAPI | None = None) -> None:
         """初始化语义记忆存储。
 
         Args:
-            seed: 是否在构造时预置 ATT&CK 种子知识，默认 ``True``。
+            seed: 是否在构造时预置 ATT&CK 知识，默认 ``True``。
+            graph_backend: 可选的外部图存储后端；为 None 时用内置内存实现。
         """
+        self._backend = graph_backend
         self._knowledge: dict[str, MemoryPacket] = {}
-        if seed:
-            self.seed_attack_knowledge()
+        if graph_backend is None:
+            if seed:
+                self.seed_attack_knowledge()
+        elif seed:
+            # 后端为空时从共享数据集预载，避免首次查询退化
+            if not graph_backend.all_techniques():
+                graph_backend.seed_attck(load_attck_dataset())
 
     def add(self, concept_id: str, packet: MemoryPacket) -> None:
         """写入或覆盖一条知识条目。
@@ -63,6 +72,9 @@ class SemanticMemory:
             concept_id: 知识概念唯一标识（如 ATT&CK 技战术 ID ``T1210``）。
             packet: 知识记忆包，其 ``semantic`` 字段承载结构化事实。
         """
+        if self._backend is not None:
+            self._backend.upsert_technique(concept_id, packet)
+            return
         self._knowledge[concept_id] = packet
 
     def get(self, concept_id: str) -> MemoryPacket | None:
@@ -74,19 +86,24 @@ class SemanticMemory:
         Returns:
             匹配的知识记忆包；未找到时返回 ``None``。
         """
+        if self._backend is not None:
+            return self._backend.get_technique(concept_id)
         return self._knowledge.get(concept_id)
 
     def search(self, keyword: str) -> list[MemoryPacket]:
-        """关键词子串检索知识库（大小写不敏感）。
+        """关键词检索知识库（大小写不敏感）。
 
-        在每条知识的 ``semantic`` 字段各值与 ``summary`` 中做子串匹配。
+        后端存在时委托图存储检索；否则在每条知识的 ``semantic`` 字段
+        各值与 ``summary`` 中做子串匹配。
 
         Args:
             keyword: 检索关键词，如 ``"lateral"``、``"扫描"``。
 
         Returns:
-            命中的知识记忆包列表（顺序不保证稳定）。
+            命中的知识记忆包列表。
         """
+        if self._backend is not None:
+            return self._backend.search_techniques(keyword)
         kw = keyword.lower()
         hits: list[MemoryPacket] = []
         for packet in self._knowledge.values():
@@ -103,6 +120,8 @@ class SemanticMemory:
 
     def all(self) -> list[MemoryPacket]:
         """返回全部知识条目。"""
+        if self._backend is not None:
+            return self._backend.all_techniques()
         return list(self._knowledge.values())
 
     def seed_attack_knowledge(self) -> None:
@@ -126,4 +145,6 @@ class SemanticMemory:
 
     def __len__(self) -> int:
         """返回知识条目总数。"""
+        if self._backend is not None:
+            return len(self._backend.all_techniques())
         return len(self._knowledge)
