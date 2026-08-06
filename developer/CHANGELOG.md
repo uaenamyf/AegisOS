@@ -2,6 +2,31 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P2] 2026-08-06 H2 数据层接入 — Neo4j + Qdrant + 记忆子系统对接
+
+### 新增（data 域）
+
+- `data/models/graph_store.py`：`InMemoryGraphStore`（默认）+ `Neo4jGraphStore`（`neo4j>=5` 惰性加载）—— 网络拓扑（`protocol.cyber.Asset` 节点 + 带标签关系）+ ATT&CK 知识（Technique 节点 + 关系边）
+- `data/models/vector_store.py`：`InMemoryVectorStore`（默认，余弦检索）+ `QdrantVectorStore`（`qdrant-client>=1.8` 惰性加载）
+- `data/models/registry.py`：`create_graph_store(mode)` / `create_vector_store(mode)` 工厂
+- `data/datasets/attck/knowledge.py`：ATT&CK 数据集（~36 技战术 + contains/precedes/uses/targets 关系边，保留原 8 条种子）
+- `data/api/__init__.py`：新增 `GraphStoreAPI` / `VectorStoreAPI` Protocol + `create_graph_store` / `create_vector_store` / `load_attck_dataset` 工厂（增量，既有接口不变）
+
+### 修改（aegisos_agents/memory + backend + configs）
+
+- `memory/vector/store.py`：`VectorMemory(backend)` 后端注入（默认内存实现不变）
+- `memory/semantic/store.py`：`SemanticMemory(graph_backend)` 图后端注入（空后端 seed 预载数据集）
+- `memory/memory_store.py`：`MemoryStore(vector_backend, graph_backend)` 可选注入
+- `backend/core/composition.py`：按 `settings.storage` 装配存储后端（默认 in_memory）
+- `tooling/configs/settings.py` + `defaults.yaml`：新增 `storage` 配置段（graph_mode/vector_mode/neo4j_*/qdrant_*）
+- `pyproject.toml`：新增 `[project.optional-dependencies] storage = ["neo4j>=5", "qdrant-client>=1.8"]`
+
+### 测试
+
+- 新增 `tests/data/` 5 个文件（attck/vector_store/graph_store/registry/data_api），18 用例
+- 扩展 memory 测试 6 用例（vector/semantic/memory_store 后端注入）
+- 本机可运行子集（data + memory + protocol）105 passed；`ruff` 全绿；`mypy` 新增代码零错误（protocol/ 等既有类型标注问题为预存在）
+
 ## [P2] 2026-08-03 工具层补全 — 2 个空模块实现
 
 ### 新增模块

@@ -131,10 +131,10 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay |
 | 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
 | 6 | `observability/` | 可观测层 — 监控 · 基准 · 可视化 | 10+ `.py` | 41 | ✅ H5 完成（MetricsCollector/Timeline/Benchmark/Evaluator/Visualization） |
-| 7 | `data/` | 数据层 — 数据集 · 模型 schema | 1 `.py` | 0 | 🔲 仅 API 协议 + SQLite |
+| 7 | `data/` | 数据层 — 数据集 · 模型 schema · 图/向量存储后端 | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现） |
 | 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
 | 9 | `developer/` | 规范层 — SSOT 规范 + roadmap | 0 `.py` | — | ✅ 规范就位 |
-| 10 | `tests/` | 测试 — 229 个测试全通过 | 30+ `.py` | 229 | ✅ 全覆盖 |
+| 10 | `tests/` | 测试 — 105+ 通过（本机可运行子集 data+memory+protocol） | 30+ `.py` | 105+ | ✅ 全覆盖（SDK 测试需真实依赖环境） |
 
 **模块依赖关系**：
 
@@ -301,12 +301,15 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 数据层，管理数据集和模型 schema。赛事要求接入 Neo4j 和 Qdrant。
 
 #### 做了什么
-- **API 协议定义**：2 个 Protocol 接口（DatasetAPI / ModelSchemaAPI）
+- **API 协议定义**：4 个 Protocol 接口（DatasetAPI / ModelSchemaAPI / GraphStoreAPI / VectorStoreAPI）+ 工厂（create_graph_store / create_vector_store / load_attck_dataset）
+- **H2 存储后端（双实现适配层）**：`InMemoryGraphStore`/`Neo4jGraphStore`（拓扑 + ATT&CK 图）+ `InMemoryVectorStore`/`QdrantVectorStore`（向量检索），默认 in_memory 零依赖，真实库按配置惰性启用
+- **ATT&CK 数据集**：`datasets/attck/knowledge.py`（~36 技战术 + 关系边）
+- **记忆子系统对接**：`memory/vector` 与 `memory/semantic` 支持 `data.api` 后端注入
 - **SQLite 数据库**：`aegisos.db` 文件（后端运行时自动生成）
 
 #### 未实现
-- 🔲 Neo4j 拓扑图 + ATT&CK 图接入（赛事 H2）
-- 🔲 Qdrant 向量库接入（赛事 H2）
+- 🔲 真实 Neo4j/Qdrant 集成测试（需运行中 DB，留待容器化 H1/P3）
+- 🔲 CVE 漏洞数据库 / 攻防场景测试数据
 
 📎 目录 + 赛事需求：[`data/AGENT.md`](data/AGENT.md)
 
@@ -353,7 +356,7 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 | 目录 | 测试数 | 覆盖内容 |
 |------|--------|---------|
 | `tests/protocol/` | 6 | 8 个攻防 dataclass |
-| `tests/aegisos_agents/memory/` | 33 | 4 层记忆存储 + MemoryStore 闭环 + 压缩/唤醒 |
+| `tests/aegisos_agents/memory/` | 81 | 4 层记忆存储 + MemoryStore 闭环 + 压缩/唤醒 + 后端注入 |
 | `tests/aegisos_agents/planning/` | 10 | 活跃子图 + Top-K 路由 + 选举 + 调度 |
 | `tests/aegisos_agents/tools/` | 5 | 多模型路由 |
 | `tests/aegisos_agents/action/` | 23 | 11 个攻防 Agent + 神经符号闭环 |
@@ -374,7 +377,7 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 | 协议 | Python `@dataclass`（§12 计划迁移 Pydantic） |
 | AI SDK | openai-agents SDK · `StructuredAgent[T]` + `output_type`（Pydantic）· Mock/真实 API 双模式 |
 | 数据库 | SQLite（`aegisos.db`）→ Neo4j + Qdrant（待接入） |
-| 测试 | pytest · ruff · mypy · 94 tests passing |
+| 测试 | pytest · ruff · mypy · 105+ tests passing（本机可运行子集） |
 
 ### 快速启动
 

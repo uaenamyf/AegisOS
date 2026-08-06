@@ -98,7 +98,7 @@
 > 冲突优先级：`00` > `04` ≈ `05` ≈ `06` > 其余编号 > 各模块 `AGENT.md`。必读顺序见根 `AGENT.md`。
 
 ### roadmap（`developer/roadmap/`，P0..P7）
-`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P6 ✅ 完成**（229 测试通过），P7 未开始；**openai-agents SDK 集成 S1-S4 ✅ + R4-R5 ✅ 完成**（11 个攻防 Agent + SDKProvider + CyberOrchestrator + handoffs/guardrails/tracing/FunctionTool + 流式 SSE + 事件总线）；**F/G 攻防端点视图 ✅**；**H5 可观测评测 ✅**；**AP1 Plan 范式 ✅**。各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
+`P0 初始化(✅) → P1 Protocol → P2 Memory → P3 Router → P4 Scheduler → P5 Planner+Agents → P6 Frontend → P7 Deployment`。当前 **P0-P6 ✅ 完成**（本机可运行子集 105+ 测试通过，SDK 测试需真实依赖环境），P7 未开始；**openai-agents SDK 集成 S1-S4 ✅ + R4-R5 ✅ 完成**（11 个攻防 Agent + SDKProvider + CyberOrchestrator + handoffs/guardrails/tracing/FunctionTool + 流式 SSE + 事件总线）；**F/G 攻防端点视图 ✅**；**H5 可观测评测 ✅**；**AP1 Plan ✅ + AP3 Goal ✅**；**H2 数据层 ✅（Neo4j/Qdrant 双实现 + memory 后端注入 + ATT&CK 数据集）**。各阶段→攻防扩展映射见 `roadmap/README.md`「赛事作品对齐」。
 
 ### skills（`.claude/skills/`，按需启用）
 - **superpowers（14）**：`writing-plans` · `executing-plans` · `subagent-driven-development` · `dispatching-parallel-agents` · `brainstorming` · `test-driven-development` · `systematic-debugging` · `verification-before-completion` · `requesting-code-review` · `receiving-code-review` · `using-git-worktrees` · `finishing-a-development-branch` · `using-superpowers` · `writing-skills`。
@@ -108,7 +108,7 @@
 - ⚠️ 本会话发现：子代理执行模型 `deepseek-v4-flash` 对本 token 无访问权（403），多代理派发暂不可用；改用脚本/主线直改。
 
 ### 计划（`developer/specs/plans/`）
-`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E + B3 + E13 + SDK S1-S4 + R4-R5 + F/G 攻防端点视图 + H5 可观测评测 + AP1 Plan 范式已完成（229 测试通过）；下一步：H2 数据层 + 记忆/感知/工具补全 + AP3 Goal + AP4 Ask。
+`13` 前后端全流程 · `14` 赛事总体方案 · `15` 实施任务清单。Phase A-E + B3 + E13 + SDK S1-S4 + R4-R5 + F/G 攻防端点视图 + H5 可观测评测 + AP1 Plan + AP3 Goal + 记忆/感知/工具补全 + **H2 数据层（Neo4j/Qdrant 双实现 + 记忆对接）** 已完成；下一步：AP4 Ask + 容器化部署 H1/H7。
 > **动态开发计划**：`developer/plan.md` — 当前未完成任务清单 + 下一步计划，每次会话必读、每次完成任务后更新勾选。
 
 ---

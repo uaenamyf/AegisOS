@@ -75,7 +75,7 @@ register/invoke(agent) -> Result；详见各子模块 AGENT.md。
 - **感知 aegisos_agents/perception/**：`context/`（上下文管理）、`reasoning/`（推理）、`reflection/`（反思评估）
 - **规划 aegisos_agents/planning/**：`planner/`（规划角色 Agent）、`orchestrator/`（编排角色 Agent）、`engine/`（编排引擎：planner/scheduler/router/workflow/eventbus/topology）
 - **行动 aegisos_agents/action/**：`coder/`、`executor/`（执行角色）、`tester/`、`debugger/`、`critic/`、`reviewer/`、`researcher/`、`docwriter/`（角色 Agent）+ `execution/`（executor 沙箱 + tools 工具）
-- **记忆 aegisos_agents/memory/**：12 子模块（working/episodic/semantic/vector/archive/compression/retrieval/reflection/checkpoint/cache/snapshot/sync）
+- **记忆 aegisos_agents/memory/**：12 子模块（working/episodic/semantic/vector/archive/compression/retrieval/reflection/checkpoint/cache/snapshot/sync）+ H2 对接 `data.api` 存储后端（`VectorMemory(backend)` / `SemanticMemory(graph_backend)`）
 - **工具 aegisos_agents/tools/**：`llms/`（模型调用）、`prompts/`（提示词，含 roles/）、`runtime/`（运行时托管）
 
 ---

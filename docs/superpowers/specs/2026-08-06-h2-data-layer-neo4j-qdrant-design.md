@@ -1,7 +1,7 @@
 # H2 数据层接入 — 设计文档（Neo4j + Qdrant + 记忆子系统对接）
 
 > 日期：2026-08-06 · 作者：dev czy
-> 状态：已确认 · 关联计划：`developer/plan.md` §3 H2 数据层接入（H2.1–H2.4）
+> 状态：已实施（R1-R3 完成）· 关联计划：`developer/plan.md` §3 H2 数据层接入（H2.1–H2.4）
 > 规范依据：`00_PROJECT_SPEC` · `03_IMPORT_SPEC` · `05_API_SPEC` · `06_SCHEMA_SPEC` · `11_AI_CODING_SPEC` · `12_TECH_STACK_SPEC`
 
 ---

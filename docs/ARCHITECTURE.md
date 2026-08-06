@@ -16,7 +16,7 @@
 | [`frontend/`](#frontend) | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay | [AGENT.md](../frontend/AGENT.md) |
 | [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../infrastructure/AGENT.md) |
 | [`observability/`](#observability) | 10+ `.py` | 41 | ✅ H5 完成（监控/回放/基准/评测/可视化） | [AGENT.md](../observability/AGENT.md) |
-| [`data/`](#data) | 1 `.py` | 0 | 🔲 仅 API 协议定义 + SQLite DB | [AGENT.md](../data/AGENT.md) |
+| [`data/`](#data) | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现 + ATT&CK 数据集 + memory 对接） | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
 | [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
 | [`tests/`](#tests) | 30+ `.py` | 229 | ✅ 全覆盖 | — |
@@ -277,12 +277,20 @@
 ### 已实现
 | 文件 | 内容 |
 |------|------|
-| [`api/__init__.py`](../data/api/__init__.py) | 2 个 Protocol 接口：`DatasetAPI` · `ModelSchemaAPI` |
+| [`api/__init__.py`](../data/api/__init__.py) | 4 个 Protocol 接口：`DatasetAPI` · `ModelSchemaAPI` · `GraphStoreAPI` · `VectorStoreAPI` + 工厂 `create_graph_store` / `create_vector_store` / `load_attck_dataset` |
+| [`models/graph_store.py`](../data/models/graph_store.py) | ✅ H2：`InMemoryGraphStore`（默认）/ `Neo4jGraphStore`（惰性）—— 拓扑（`Asset` 节点）+ ATT&CK 图 |
+| [`models/vector_store.py`](../data/models/vector_store.py) | ✅ H2：`InMemoryVectorStore`（默认）/ `QdrantVectorStore`（惰性）—— 向量检索 |
+| [`datasets/attck/knowledge.py`](../data/datasets/attck/knowledge.py) | ✅ H2：ATT&CK 数据集（~36 技战术 + 关系边） |
 | `aegisos.db` | SQLite 数据库文件（后端运行时生成） |
 
+### 记忆子系统对接（H2.3/H2.4）
+- `memory/vector` → `VectorMemory(backend)` 注入 `data.api.VectorStoreAPI`（Qdrant）
+- `memory/semantic` → `SemanticMemory(graph_backend)` 注入 `data.api.GraphStoreAPI`（Neo4j ATT&CK）
+- 默认 in_memory 零依赖，真实库按 `settings.storage`（AEGIS_STORAGE_*）启用
+
 ### 未实现
-- 🔲 `datasets/` — 仅 AGENT.md
-- 🔲 `models/` — 仅 AGENT.md（Neo4j 拓扑图 + Qdrant 向量库待接入）
+- 🔲 真实 Neo4j/Qdrant 集成测试（需运行中 DB，留待容器化 H1/P3）
+- 🔲 CVE 漏洞数据库 / 攻防场景测试数据（`datasets/` 其余条目）
 
 📎 详细文档：[`data/AGENT.md`](../data/AGENT.md) 末尾「📋 模块实现详解」
 

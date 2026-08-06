@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-08-01 · **P2 记忆子系统补全完成** · 289 测试全通过
+> 最后更新：2026-08-06 · **H2 数据层接入完成（Neo4j + Qdrant + 记忆对接）**
 
 ---
 
@@ -19,10 +19,10 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ |
-| **测试** | **250 passed**（全模块覆盖） |
-| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · B3+E13 ✅ |
-| **待完成** | P2 数据层(H2) · 记忆/感知/工具补全 · AP4 Ask · P3 容器化部署 · AP2 ReAct |
+| **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · **H2 数据层 ✅** |
+| **测试** | **105+ passed**（本机可运行子集 data+memory+protocol 全绿） |
+| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · B3+E13 ✅ · **H2 数据层（Neo4j/Qdrant 双实现 + 记忆对接）✅** |
+| **待完成** | AP4 Ask · P3 容器化部署 · AP2 ReAct · CVE/攻防数据集补全 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
@@ -62,11 +62,11 @@
 ## 📅 §3 — P2 中期（赛事前）
 
 ### H2 — 数据层接入
-> **优先级**：P2 · **预估**：2-3 天 · **状态**：🔲 待做
-- [ ] H2.1 `data/models/` Neo4j 拓扑图 + ATT&CK 图接入
-- [ ] H2.2 `data/models/` Qdrant 向量库接入
-- [ ] H2.3 `aegisos_agents/memory/vector/` 对接 Qdrant
-- [ ] H2.4 `aegisos_agents/memory/semantic/` 对接 Neo4j ATT&CK 图
+> **优先级**：P2 · **预估**：2-3 天 · **状态**：✅ 完成（2026-08-06）
+- [x] H2.1 `data/models/` Neo4j 拓扑图 + ATT&CK 图接入（`InMemoryGraphStore` / `Neo4jGraphStore` 双实现适配层）
+- [x] H2.2 `data/models/` Qdrant 向量库接入（`InMemoryVectorStore` / `QdrantVectorStore` 双实现适配层）
+- [x] H2.3 `aegisos_agents/memory/vector/` 对接 Qdrant（`VectorMemory(backend)` 后端注入）
+- [x] H2.4 `aegisos_agents/memory/semantic/` 对接 Neo4j ATT&CK 图（`SemanticMemory(graph_backend)` + `data/datasets/attck` 数据集）
 
 ### 记忆子系统补全（7 个空模块）✅
 > **优先级**：P2 · **预估**：2 天 · **状态**：✅ 完成（2026-08-01）
@@ -398,7 +398,7 @@
 
 | 日期 | 变更 | 提交 |
 |------|------|------|
-| 2026-08-01 | **P2 记忆子系统补全**：retrieval/cache/checkpoint/reflection/archive/snapshot/sync 7 模块 + MemoryStore v2 集成 + 39 新测试 | — |
+| 2026-08-06 | **H2 数据层接入完成**：data/models 双实现（InMemory/Neo4j/Qdrant）+ data/api 新接口与工厂 + ATT&CK 数据集（~36）+ memory/vector·semantic 后端注入 + storage 配置 + 24 新测试 | — |
 | 2026-07-08 | **R6 SDK 对齐清理**：删除 `sdk_provider.complete()` 死代码 + 未使用 import；修复 `__init__.py` 注释规范 | - |
 | 2026-07-08 | **AP3 Goal 范式完成**：递归分解 + 失败重试 + 备选路径（21 测试） | - || 2026-07-08 | **plan.md 重组**：待完成区与完成区分离，已完成任务集中到 §7 | — |
 | 2026-07-09 | R4.4-R4.8 SDK 编排深化完成 + R5 旧接口清理/流式/事件总线完成 | `af88bdf` |

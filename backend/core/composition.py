@@ -15,11 +15,15 @@ from typing import Annotated
 
 from fastapi import Depends
 
+# date: 2026-08-01
+# dev: 123 chen
+# changelog: 导入 MemoryStore（v2 记忆系统，含 7 个新模块）
+from aegisos_agents.memory.memory_store import MemoryStore
+from aegisos_agents.planning.orchestrator import CyberOrchestrator
 from backend.mocks import (
     MockAgentRegistry,
     MockEventBusAPI,
     MockExecutionAPI,
-    MockMemoryAPI,
     MockRuntime,
 )
 from backend.mocks.cyber_provider import _CyberMockProvider
@@ -41,11 +45,7 @@ from backend.services.graph_service import GraphService
 from backend.services.memory_service import MemoryService
 from backend.services.session_service import SessionService
 from backend.services.task_service import TaskService
-from aegisos_agents.planning.orchestrator import CyberOrchestrator
-# date: 2026-08-01
-# dev: 123 chen
-# changelog: 导入 MemoryStore（v2 记忆系统，含 7 个新模块）
-from aegisos_agents.memory.memory_store import MemoryStore
+
 # date: 2026-08-06
 # dev: czy
 # changelog: 接入 data 层存储后端（默认 in_memory）
