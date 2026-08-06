@@ -48,6 +48,9 @@ class SemanticMemory:
         _knowledge: 内部维护的 concept_id -> 知识记忆包。
     """
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 新增 graph_backend 可选注入，get/search/all/__len__ 委托 data.api 图后端；空后端 seed 时预载数据集
     def __init__(self, seed: bool = True, graph_backend: GraphStoreAPI | None = None) -> None:
         """初始化语义记忆存储。
 
@@ -64,6 +67,9 @@ class SemanticMemory:
             # 后端为空时从共享数据集预载，避免首次查询退化
             graph_backend.seed_attck(load_attck_dataset())
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时委托 backend.upsert_technique
     def add(self, concept_id: str, packet: MemoryPacket) -> None:
         """写入或覆盖一条知识条目。
 
@@ -76,6 +82,9 @@ class SemanticMemory:
             return
         self._knowledge[concept_id] = packet
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时委托 backend.get_technique
     def get(self, concept_id: str) -> MemoryPacket | None:
         """按概念 ID 精确查询知识条目。
 
@@ -89,6 +98,9 @@ class SemanticMemory:
             return self._backend.get_technique(concept_id)
         return self._knowledge.get(concept_id)
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时委托 backend.search_techniques
     def search(self, keyword: str) -> list[MemoryPacket]:
         """关键词检索知识库（大小写不敏感）。
 
@@ -117,6 +129,9 @@ class SemanticMemory:
                     break
         return hits
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时委托 backend.all_techniques
     def all(self) -> list[MemoryPacket]:
         """返回全部知识条目。"""
         if self._backend is not None:
@@ -142,6 +157,9 @@ class SemanticMemory:
                 kind="decision",  # 知识库条目视为决策级（检索时优先）
             )
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时统计后端技战术条数
     def __len__(self) -> int:
         """返回知识条目总数。"""
         if self._backend is not None:

@@ -172,6 +172,9 @@ class InMemoryGraphStore:
         return list(self._topologies.keys())
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 Neo4jGraphStore —— 真实 Neo4j 客户端适配器（H2，惰性加载）
 class Neo4jGraphStore:
     """Neo4j 图存储 —— 真实客户端适配器（惰性加载）。
 

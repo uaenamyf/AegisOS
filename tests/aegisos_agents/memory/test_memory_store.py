@@ -128,6 +128,9 @@ def test_store_cognitive_loop_integration():
     assert len(store.vector) == 1
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 MemoryStore 后端注入测试（H2）
 def test_memory_store_backend_injection():
     """MemoryStore 注入 vector/graph 后端后读写检索应工作。"""
     ms = MemoryStore(
@@ -148,6 +151,9 @@ def test_memory_store_backend_injection():
     assert ms.semantic.get("T9999") is not None
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增默认不注入后端行为不变测试（H2 兼容性）
 def test_memory_store_default_no_backend_unchanged():
     """不注入后端时行为与现状一致。"""
     ms = MemoryStore()

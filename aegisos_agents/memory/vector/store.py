@@ -53,6 +53,9 @@ class VectorMemory:
         _items: 内部维护的记忆列表（仅含 embedding 非空者）。
     """
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 新增 backend 可选注入，add/search/all/__len__ 委托 data.api 向量后端；新增 _payload/_restore 序列化辅助
     def __init__(self, backend: VectorStoreAPI | None = None) -> None:
         """初始化向量记忆存储。
 
@@ -97,6 +100,9 @@ class VectorMemory:
             session_id=payload.get("session_id", ""),
         )
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时委托 backend.add，否则维持原内存索引
     def add(self, packet: MemoryPacket) -> None:
         """索引一条记忆向量。
 
@@ -116,6 +122,9 @@ class VectorMemory:
             return
         self._items.append(packet)
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时委托 backend.search 并还原 MemoryPacket
     def search(self, query: list[float], top_k: int = 5) -> list[MemoryPacket]:
         """按查询向量做余弦相似度检索，返回 Top-K 记忆。
 
@@ -136,6 +145,9 @@ class VectorMemory:
         scored.sort(key=lambda x: x[1], reverse=True)
         return [p for p, _ in scored[:top_k]]
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 注入后端时委托 backend.all/count
     def all(self) -> list[MemoryPacket]:
         """返回全部已索引的记忆（按写入顺序）。"""
         if self._backend is not None:

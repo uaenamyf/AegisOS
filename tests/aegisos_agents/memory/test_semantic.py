@@ -42,6 +42,9 @@ def test_semantic_search_no_match_returns_empty():
     assert sm.search("zzz") == []
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增图后端委托测试（H2：SemanticMemory(graph_backend)）
 def test_semantic_graph_backend_delegates():
     """提供 graph_backend 时 get/search/all/len 应委托后端。"""
     backend = create_graph_store("in_memory", seed_attck=False)
@@ -59,6 +62,9 @@ def test_semantic_graph_backend_delegates():
     assert len(sm) == 1
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增空后端 seed 预载测试（H2）
 def test_semantic_graph_backend_seeds_when_empty():
     """graph_backend 为空且 seed=True 时应从数据集预载。"""
     backend = create_graph_store("in_memory", seed_attck=False)

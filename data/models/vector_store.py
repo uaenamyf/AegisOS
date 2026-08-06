@@ -105,6 +105,9 @@ class InMemoryVectorStore:
         return [(it.vector_id, it.payload) for it in self._items]
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 QdrantVectorStore —— 真实 Qdrant 客户端适配器（H2，惰性加载）
 class QdrantVectorStore:
     """Qdrant 向量存储 —— 真实客户端适配器（惰性加载）。
 

@@ -166,6 +166,9 @@ class FrontendEnvConfig:
     VITE_WS_URL: str = "ws://localhost:8000/ws/v1/stream"
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 StorageConfig —— data 层图/向量存储后端配置（H2）
 @dataclass(frozen=True)
 class StorageConfig:
     """数据层存储后端配置。
@@ -204,7 +207,7 @@ class Settings:
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
     trace: TraceConfig = field(default_factory=TraceConfig)
     frontend_env: FrontendEnvConfig = field(default_factory=FrontendEnvConfig)
-    storage: StorageConfig = field(default_factory=StorageConfig)
+    storage: StorageConfig = field(default_factory=StorageConfig)  # H2：data 层存储后端
 
 
 # --- 单例构建 ----------------------------------------------------------------
@@ -225,7 +228,7 @@ def _build_settings() -> Settings:
     rl = defaults.get("rate_limit", {})
     tr = defaults.get("trace", {})
     fe_env = defaults.get("frontend_env", {})
-    st = defaults.get("storage", {})
+    st = defaults.get("storage", {})  # H2：data 层存储后端默认值
 
     cors_origins_default = list(
         cors.get("origins", ["http://localhost:5173", "http://127.0.0.1:5173"])

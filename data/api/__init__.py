@@ -26,6 +26,9 @@ class ModelSchemaAPI(Protocol):
     def migrate(self, name: str, from_ver: str, to_ver: str) -> Any: ...
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 VectorStoreAPI —— 向量存储接口（H2，Qdrant/内存双实现）
 class VectorStoreAPI(Protocol):
     """向量存储接口 —— 记忆嵌入向量的增删查（Qdrant / 内存双实现）。
 
@@ -70,6 +73,9 @@ class VectorStoreAPI(Protocol):
         ...
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 GraphStoreAPI —— 图存储接口（H2，拓扑 + ATT&CK，Neo4j/内存双实现）
 class GraphStoreAPI(Protocol):
     """图存储接口 —— 网络拓扑 + ATT&CK 知识（Neo4j / 内存双实现）。
 
@@ -138,6 +144,9 @@ class GraphStoreAPI(Protocol):
         ...
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 create_graph_store 工厂（H2）
 def create_graph_store(mode: str = "in_memory", **kwargs: Any) -> GraphStoreAPI:
     """按 mode 创建图存储（``"in_memory"`` 默认 / ``"neo4j"``）。
 
@@ -153,6 +162,9 @@ def create_graph_store(mode: str = "in_memory", **kwargs: Any) -> GraphStoreAPI:
     return _create(mode, **kwargs)
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 create_vector_store 工厂（H2）
 def create_vector_store(mode: str = "in_memory", **kwargs: Any) -> VectorStoreAPI:
     """按 mode 创建向量存储（``"in_memory"`` 默认 / ``"qdrant"``）。
 
@@ -168,6 +180,9 @@ def create_vector_store(mode: str = "in_memory", **kwargs: Any) -> VectorStoreAP
     return _create(mode, **kwargs)
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 load_attck_dataset —— 暴露 ATT&CK 数据集加载（H2）
 def load_attck_dataset() -> list[MemoryPacket]:
     """加载 ATT&CK 数据集为 MemoryPacket 列表（记忆子系统预载共用源）。
 

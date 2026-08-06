@@ -121,6 +121,9 @@ class Composition:
         self.session_port = SessionPortImpl(self.session_repo)
         self.task_update_port = TaskUpdatePortImpl(self.task_repo)
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 新增 _build_vector_backend —— 按配置构造向量存储后端（H2）
     @staticmethod
     def _build_vector_backend():
         """按 settings.storage 构造向量存储后端；in_memory 模式返回 None。
@@ -138,6 +141,9 @@ class Composition:
             collection=s.qdrant_collection,
         )
 
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 新增 _build_graph_backend —— 按配置构造图存储后端（H2）
     @staticmethod
     def _build_graph_backend():
         """按 settings.storage 构造图存储后端；in_memory 模式返回 None。
