@@ -1,4 +1,5 @@
 from aegisos_agents.memory.vector.store import VectorMemory
+from data.api import create_vector_store
 from protocol.memory import MemoryPacket
 
 
@@ -43,3 +44,27 @@ def test_vector_zero_vector_similarity_is_zero():
     vm.add(MemoryPacket(task_id="v1", embedding=[0.0, 0.0]))
     result = vm.search([1.0, 0.0])
     assert len(result) == 1  # 仍返回，相似度为 0
+
+
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增后端注入模式测试（H2：VectorMemory(backend) 委托）
+def test_vector_backend_injected_delegates():
+    """提供 backend 时 add/search/all/len 应委托后端。"""
+    backend = create_vector_store("in_memory")
+    vm = VectorMemory(backend=backend)
+    vm.add(MemoryPacket(task_id="b1", embedding=[1.0, 0.0], summary="backend hit"))
+    assert len(vm) == 1
+    result = vm.search([1.0, 0.0], top_k=1)
+    assert result[0].task_id == "b1"
+    assert result[0].summary == "backend hit"
+
+
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增后端空 embedding 跳过测试（H2）
+def test_vector_backend_empty_embedding_skipped():
+    backend = create_vector_store("in_memory")
+    vm = VectorMemory(backend=backend)
+    vm.add(MemoryPacket(task_id="empty", embedding=[]))
+    assert len(vm) == 0

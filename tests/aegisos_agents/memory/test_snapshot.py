@@ -1,7 +1,9 @@
 # date: 2026-08-01
 # dev: myf
 """快照模块测试 —— capture/restore/prune/统计。"""
+
 import pytest
+
 from aegisos_agents.memory.snapshot.manager import SnapshotManager
 
 

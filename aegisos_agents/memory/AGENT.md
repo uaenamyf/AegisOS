@@ -26,11 +26,11 @@
 |------|------|------|------|
 | working | ✅ (P2) | 基础 | 工作记忆（会话临时上下文） |
 | episodic | ✅ (P2) | 基础 | 情景记忆（历史经验） |
-| semantic | ✅ (P2) | 基础 | 语义记忆（ATT&CK 知识库） |
-| vector | ✅ (P2) | 基础 | 向量记忆（余弦相似度检索） |
+| semantic | ✅ (P2) + H2 后端注入 | 基础 | 语义记忆（ATT&CK 知识库，可对接 Neo4j 图后端） |
+| vector | ✅ (P2) + H2 后端注入 | 基础 | 向量记忆（余弦相似度检索，可对接 Qdrant 后端） |
 | compression | ✅ (P2) | 基础 | 记忆压缩（token 预算控制） |
 | recall | ✅ (P2) | 基础 | 记忆唤醒器（关键词匹配） |
-| memory_store | ✅ (P2) | 集成 | 记忆集成存储（MemoryAPI 实现 + v2 钩子） |
+| memory_store | ✅ (P2) + H2 后端注入 | 集成 | 记忆集成存储（MemoryAPI 实现 + v2 钩子 + vector/graph 后端注入） |
 | retrieval | ✅ (P2) | ★核心 | 混合检索引擎（向量+关键词+图 RRF 融合） |
 | cache | ✅ (P2) | ★核心 | 热数据缓存（L1+L2 LRU） |
 | checkpoint | ✅ (P2) | ★核心 | 检查点管理器（任务中断恢复） |
@@ -45,6 +45,7 @@
 
 ## 接口
 read/write/retrieve(memory_packet)；详见 developer/specs/08_AGENT_SPEC.md。
+H2：`VectorMemory(backend)` / `SemanticMemory(graph_backend)` / `MemoryStore(vector_backend, graph_backend)` 支持 `data.api` 存储后端注入（默认 None 保持内置内存实现）。
 
 ## 测试方式
 `pytest tests/aegisos_agents/memory/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。

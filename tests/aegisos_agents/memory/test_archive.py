@@ -1,7 +1,9 @@
 # date: 2026-08-01
 # dev: myf
 """归档模块测试 —— 冷热分层 + 回热 + 关键词检索。"""
+
 import pytest
+
 from aegisos_agents.memory.archive.store import ArchiveStore
 from aegisos_agents.memory.episodic.store import EpisodicMemory
 from protocol.memory import MemoryPacket
@@ -51,10 +53,12 @@ def test_defrost_moves_to_episodic(store):
 
 def test_search_keyword_in_archive(store):
     """归档记忆支持关键词检索。"""
-    store.archive([
-        make_pkt("t1", "lateral movement via smb"),
-        make_pkt("t2", "port scan detection"),
-    ])
+    store.archive(
+        [
+            make_pkt("t1", "lateral movement via smb"),
+            make_pkt("t2", "port scan detection"),
+        ]
+    )
     results = store.search("lateral")
     assert len(results) == 1
     assert results[0].task_id == "t1"

@@ -1,8 +1,11 @@
 # date: 2026-08-01
 # dev: myf
 """同步模块测试 —— push/pull/merge + 多节点隔离。"""
+
 import time
+
 import pytest
+
 from aegisos_agents.memory.sync.sync import MemorySync
 from protocol.memory import MemoryPacket
 
@@ -42,14 +45,16 @@ def test_push_and_pull_roundtrip(sync):
     assert ids == {"t1", "t2"}
 
 
+# date: 2026-08-06
+# dev: czy
+# changelog: 改为显式 synced_at 时间戳，消除对 time.sleep 实时差值的依赖（Windows 粗粒度定时器下偶发时序竞态）
 def test_pull_since_timestamp(sync):
     """since 时间戳过滤增量。"""
     sync.register_node("edge_01", "edge")
-    base = time.monotonic()
-    sync.push("edge_01", [make_pkt("old")])
-    time.sleep(0.01)
-    sync.push("edge_01", [make_pkt("new")])
-    incremental = sync.pull("edge_01", since_timestamp=base + 0.005)
+    old_pkt = MemoryPacket(task_id="old", summary="old", compression={"synced_at": 100.0})
+    new_pkt = MemoryPacket(task_id="new", summary="new", compression={"synced_at": 200.0})
+    sync.push("edge_01", [old_pkt, new_pkt])
+    incremental = sync.pull("edge_01", since_timestamp=150.0)
     assert len(incremental) == 1
     assert incremental[0].task_id == "new"
 

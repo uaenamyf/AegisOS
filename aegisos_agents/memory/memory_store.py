@@ -26,7 +26,6 @@ from aegisos_agents.memory.cache.store import MemoryCache
 from aegisos_agents.memory.checkpoint.manager import CheckpointManager
 from aegisos_agents.memory.compression.compactor import compress
 from aegisos_agents.memory.episodic.store import EpisodicMemory
-from aegisos_agents.memory.recall.recaller import recall
 from aegisos_agents.memory.reflection.engine import ReflectionEngine
 from aegisos_agents.memory.retrieval.engine import RetrievalEngine
 from aegisos_agents.memory.semantic.store import SemanticMemory
@@ -34,6 +33,7 @@ from aegisos_agents.memory.snapshot.manager import SnapshotManager
 from aegisos_agents.memory.sync.sync import MemorySync
 from aegisos_agents.memory.vector.store import VectorMemory
 from aegisos_agents.memory.working.store import WorkingMemory
+from data.api import GraphStoreAPI, VectorStoreAPI
 from protocol.memory import MemoryPacket
 
 
@@ -58,15 +58,24 @@ class MemoryStore:
         sync: v2 端边云记忆同步管理器。
     """
 
-    # date: 2026-08-01
-    # dev: 123 chen
-    # changelog: 注入 7 个 v2 子模块（retrieval_engine/cache/checkpoint/reflection/archive/snapshot/sync）
-    def __init__(self) -> None:
-        """初始化记忆集成存储，装配四层子存储 + 七个 v2 子模块。"""
+    # date: 2026-08-06
+    # dev: czy
+    # changelog: 新增 vector_backend/graph_backend 可选注入，对接 data 层存储后端
+    def __init__(
+        self,
+        vector_backend: VectorStoreAPI | None = None,
+        graph_backend: GraphStoreAPI | None = None,
+    ) -> None:
+        """初始化记忆集成存储，装配四层子存储 + 七个 v2 子模块。
+
+        Args:
+            vector_backend: 可选的外部向量存储后端（默认 None → 内置内存实现）。
+            graph_backend: 可选的外部图存储后端（默认 None → 内置内存知识库）。
+        """
         self.working = WorkingMemory()
         self.episodic = EpisodicMemory()
-        self.semantic = SemanticMemory(seed=True)
-        self.vector = VectorMemory()
+        self.semantic = SemanticMemory(seed=True, graph_backend=graph_backend)
+        self.vector = VectorMemory(backend=vector_backend)
         # ---- v2 新增：7 个子模块 ----
         self.retrieval_engine = RetrievalEngine(self.vector, self.semantic, self.episodic)
         self.cache = MemoryCache()

@@ -20,6 +20,7 @@ AegisOS 统一配置加载器。
     settings.database.url          # "sqlite+aiosqlite:///./data/aegisos.db"
     settings.frontend_env.VITE_API_BASE_URL  # "http://localhost:8000/api/v1"
 """
+
 from __future__ import annotations
 
 import os
@@ -160,13 +161,43 @@ class TraceConfig:
 @dataclass(frozen=True)
 class FrontendEnvConfig:
     """前端构建时注入的环境变量（Vite import.meta.env）。"""
+
     VITE_API_BASE_URL: str = "http://localhost:8000/api/v1"
     VITE_WS_URL: str = "ws://localhost:8000/ws/v1/stream"
+
+
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增 StorageConfig —— data 层图/向量存储后端配置（H2）
+@dataclass(frozen=True)
+class StorageConfig:
+    """数据层存储后端配置。
+
+    Attributes:
+        graph_mode: 图存储模式（in_memory / neo4j）。
+        vector_mode: 向量存储模式（in_memory / qdrant）。
+        neo4j_uri: Neo4j bolt 地址。
+        neo4j_user: Neo4j 用户名。
+        neo4j_password: Neo4j 密码。
+        qdrant_url: Qdrant 服务地址。
+        qdrant_api_key: Qdrant API Key。
+        qdrant_collection: Qdrant 集合名。
+    """
+
+    graph_mode: str = "in_memory"
+    vector_mode: str = "in_memory"
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = ""
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+    qdrant_collection: str = "memory_vectors"
 
 
 @dataclass(frozen=True)
 class Settings:
     """全局配置根。所有模块统一从此读取，禁直接 ``os.environ`` / 硬编码。"""
+
     backend: BackendConfig = field(default_factory=BackendConfig)
     frontend: FrontendConfig = field(default_factory=FrontendConfig)
     cors: CorsConfig = field(default_factory=CorsConfig)
@@ -176,6 +207,7 @@ class Settings:
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
     trace: TraceConfig = field(default_factory=TraceConfig)
     frontend_env: FrontendEnvConfig = field(default_factory=FrontendEnvConfig)
+    storage: StorageConfig = field(default_factory=StorageConfig)  # H2：data 层存储后端
 
 
 # --- 单例构建 ----------------------------------------------------------------
@@ -196,8 +228,11 @@ def _build_settings() -> Settings:
     rl = defaults.get("rate_limit", {})
     tr = defaults.get("trace", {})
     fe_env = defaults.get("frontend_env", {})
+    st = defaults.get("storage", {})  # H2：data 层存储后端默认值
 
-    cors_origins_default = list(cors.get("origins", ["http://localhost:5173", "http://127.0.0.1:5173"]))
+    cors_origins_default = list(
+        cors.get("origins", ["http://localhost:5173", "http://127.0.0.1:5173"])
+    )
 
     return Settings(
         backend=BackendConfig(
@@ -216,8 +251,12 @@ def _build_settings() -> Settings:
         auth=AuthConfig(
             enabled=_env_bool("AEGIS_AUTH_ENABLED", bool(auth.get("enabled", True))),
             mode=_env("AEGIS_AUTH_MODE", auth.get("mode", "api-key")) or "api-key",
-            api_key_header=_env("AEGIS_AUTH_API_KEY_HEADER", auth.get("api_key_header", "X-API-Key")) or "X-API-Key",
-            default_key=_env("AEGIS_AUTH_DEFAULT_KEY", auth.get("default_key", "aegis-dev-key")) or "aegis-dev-key",
+            api_key_header=_env(
+                "AEGIS_AUTH_API_KEY_HEADER", auth.get("api_key_header", "X-API-Key")
+            )
+            or "X-API-Key",
+            default_key=_env("AEGIS_AUTH_DEFAULT_KEY", auth.get("default_key", "aegis-dev-key"))
+            or "aegis-dev-key",
         ),
         database=DatabaseConfig(
             url=_env("AEGIS_DATABASE_URL", db.get("url", "sqlite+aiosqlite:///./data/aegisos.db"))
@@ -226,7 +265,10 @@ def _build_settings() -> Settings:
         ),
         logging=LoggingConfig(
             level=_env("AEGIS_LOG_LEVEL", log.get("level", "INFO")) or "INFO",
-            format=_env("AEGIS_LOG_FORMAT", log.get("format", "%(asctime)s %(levelname)s %(name)s %(message)s"))
+            format=_env(
+                "AEGIS_LOG_FORMAT",
+                log.get("format", "%(asctime)s %(levelname)s %(name)s %(message)s"),
+            )
             or "%(asctime)s %(levelname)s %(name)s %(message)s",
         ),
         rate_limit=RateLimitConfig(
@@ -238,10 +280,33 @@ def _build_settings() -> Settings:
             header=_env("AEGIS_TRACE_HEADER", tr.get("header", "X-Trace-Id")) or "X-Trace-Id",
         ),
         frontend_env=FrontendEnvConfig(
-            VITE_API_BASE_URL=_env("VITE_API_BASE_URL", fe_env.get("VITE_API_BASE_URL", "http://localhost:8000/api/v1"))
+            VITE_API_BASE_URL=_env(
+                "VITE_API_BASE_URL", fe_env.get("VITE_API_BASE_URL", "http://localhost:8000/api/v1")
+            )
             or "http://localhost:8000/api/v1",
-            VITE_WS_URL=_env("VITE_WS_URL", fe_env.get("VITE_WS_URL", "ws://localhost:8000/ws/v1/stream"))
+            VITE_WS_URL=_env(
+                "VITE_WS_URL", fe_env.get("VITE_WS_URL", "ws://localhost:8000/ws/v1/stream")
+            )
             or "ws://localhost:8000/ws/v1/stream",
+        ),
+        storage=StorageConfig(
+            graph_mode=_env("AEGIS_STORAGE_GRAPH_MODE", st.get("graph_mode", "in_memory"))
+            or "in_memory",
+            vector_mode=_env("AEGIS_STORAGE_VECTOR_MODE", st.get("vector_mode", "in_memory"))
+            or "in_memory",
+            neo4j_uri=_env("AEGIS_STORAGE_NEO4J_URI", st.get("neo4j_uri", "bolt://localhost:7687"))
+            or "bolt://localhost:7687",
+            neo4j_user=_env("AEGIS_STORAGE_NEO4J_USER", st.get("neo4j_user", "neo4j")) or "neo4j",
+            neo4j_password=_env("AEGIS_STORAGE_NEO4J_PASSWORD", st.get("neo4j_password", "")) or "",
+            qdrant_url=_env(
+                "AEGIS_STORAGE_QDRANT_URL", st.get("qdrant_url", "http://localhost:6333")
+            )
+            or "http://localhost:6333",
+            qdrant_api_key=_env("AEGIS_STORAGE_QDRANT_API_KEY", st.get("qdrant_api_key", "")) or "",
+            qdrant_collection=_env(
+                "AEGIS_STORAGE_QDRANT_COLLECTION", st.get("qdrant_collection", "memory_vectors")
+            )
+            or "memory_vectors",
         ),
     )
 

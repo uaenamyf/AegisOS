@@ -140,6 +140,8 @@
 | DatasetAPI.load | name, version | dataset | code:NOT_FOUND | 60s | 1 次 | v1 |
 | ModelSchemaAPI.register | schema: dict | ack: bool | code:INVALID_SCHEMA | 10s | 不重试 | v1 |
 
+> **H2 新增**：`data.api` 暴露 `GraphStoreAPI`（拓扑 + ATT&CK）/ `VectorStoreAPI`（向量）+ 工厂 `create_graph_store(mode)` / `create_vector_store(mode)` / `load_attck_dataset()`。双实现：InMemory（默认，零依赖）/ Neo4j（`neo4j>=5` 惰性）/ Qdrant（`qdrant-client>=1.8` 惰性）。`GraphStoreAPI` 拓扑方法使用 `protocol.cyber.Asset`，ATT&CK 方法使用 `protocol.memory.MemoryPacket`；`VectorStoreAPI.search` 返回 `[(id, payload, score)]`。
+
 ### 2.11 Tooling（`tooling.api`：ConfigAPI · ScriptAPI）
 
 | API | Request | Response | Error | Timeout | Retry | Version |

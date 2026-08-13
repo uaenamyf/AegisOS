@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from aegisos_agents.memory.episodic.store import EpisodicMemory
 from aegisos_agents.memory.semantic.store import SemanticMemory
-from aegisos_agents.memory.vector.store import VectorMemory, _cosine
+from aegisos_agents.memory.vector.store import VectorMemory
 from protocol.memory import MemoryPacket
 
 # 默认通道权重（用于可选加权，当前 RRF 等权）
@@ -116,9 +116,7 @@ class RetrievalEngine:
 
     # ---- 私有通道 ----
 
-    def _vector_channel(
-        self, query_embedding: list[float], top_k: int
-    ) -> dict[str, int]:
+    def _vector_channel(self, query_embedding: list[float], top_k: int) -> dict[str, int]:
         """向量通道：余弦相似度检索。
 
         Returns:
@@ -141,9 +139,7 @@ class RetrievalEngine:
                 scored.append((m.task_id, 1.0))
         # 语义记忆匹配
         for m in self._semantic.all():
-            text = (m.summary or "") + " " + " ".join(
-                str(v) for v in m.semantic.values()
-            )
+            text = (m.summary or "") + " " + " ".join(str(v) for v in m.semantic.values())
             if kw in text.lower():
                 scored.append((m.task_id, 0.8))
         # 去重保留最高分
@@ -191,9 +187,7 @@ class RetrievalEngine:
         sorted_ids = sorted(best, key=lambda k: best[k], reverse=True)
         return {tid: i + 1 for i, tid in enumerate(sorted_ids[:top_k])}
 
-    def _rrf_fuse(
-        self, channel_ranks: dict[str, dict[str, int]], top_k: int
-    ) -> list[ScoredPacket]:
+    def _rrf_fuse(self, channel_ranks: dict[str, dict[str, int]], top_k: int) -> list[ScoredPacket]:
         """RRF 融合多通道排名结果。
 
         公式：RRF_score(d, c) = Σ_c 1 / (k + rank_c(d))

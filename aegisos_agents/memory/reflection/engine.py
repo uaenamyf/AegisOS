@@ -76,9 +76,7 @@ class ReflectionEngine:
             + WEIGHT_OUTCOME * outcome_score
         )
 
-    def rank(
-        self, memories: list[MemoryPacket]
-    ) -> list[tuple[MemoryPacket, float]]:
+    def rank(self, memories: list[MemoryPacket]) -> list[tuple[MemoryPacket, float]]:
         """批量评估并按评分降序排列。
 
         Args:

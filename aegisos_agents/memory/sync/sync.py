@@ -87,11 +87,7 @@ class MemorySync:
         store: list[MemoryPacket] = info["store"]
         if since_timestamp <= 0.0:
             return list(store)
-        return [
-            pkt
-            for pkt in store
-            if pkt.compression.get("synced_at", 0.0) > since_timestamp
-        ]
+        return [pkt for pkt in store if pkt.compression.get("synced_at", 0.0) > since_timestamp]
 
     def merge(
         self,

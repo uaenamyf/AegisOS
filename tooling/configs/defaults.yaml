@@ -56,6 +56,17 @@ frontend_env:
   VITE_API_BASE_URL: "http://localhost:8000/api/v1"
   VITE_WS_URL: "ws://localhost:8000/ws/v1/stream"
 
+# --- 数据层存储后端（H2）---
+storage:
+  graph_mode: "in_memory"          # in_memory | neo4j
+  vector_mode: "in_memory"         # in_memory | qdrant
+  neo4j_uri: "bolt://localhost:7687"
+  neo4j_user: "neo4j"
+  neo4j_password: ""
+  qdrant_url: "http://localhost:6333"
+  qdrant_api_key: ""
+  qdrant_collection: "memory_vectors"
+
 # =============================================================================
 # 端-边-云 三层调度配置
 # =============================================================================

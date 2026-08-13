@@ -1,4 +1,5 @@
 from aegisos_agents.memory.semantic.store import SemanticMemory
+from data.api import create_graph_store
 from protocol.memory import MemoryPacket
 
 
@@ -39,3 +40,33 @@ def test_semantic_search_no_match_returns_empty():
     sm = SemanticMemory(seed=False)
     sm.add("C1", MemoryPacket(task_id="C1", summary="alpha"))
     assert sm.search("zzz") == []
+
+
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增图后端委托测试（H2：SemanticMemory(graph_backend)）
+def test_semantic_graph_backend_delegates():
+    """提供 graph_backend 时 get/search/all/len 应委托后端。"""
+    backend = create_graph_store("in_memory", seed_attck=False)
+    sm = SemanticMemory(seed=False, graph_backend=backend)
+    sm.add(
+        "T0000",
+        MemoryPacket(
+            task_id="T0000",
+            summary="probe",
+            semantic={"technique_id": "T0000", "name": "Probe", "tactic": "test"},
+        ),
+    )
+    assert sm.get("T0000") is not None
+    assert len(sm.search("probe")) == 1
+    assert len(sm) == 1
+
+
+# date: 2026-08-06
+# dev: czy
+# changelog: 新增空后端 seed 预载测试（H2）
+def test_semantic_graph_backend_seeds_when_empty():
+    """graph_backend 为空且 seed=True 时应从数据集预载。"""
+    backend = create_graph_store("in_memory", seed_attck=False)
+    sm = SemanticMemory(seed=True, graph_backend=backend)
+    assert len(sm) >= 30

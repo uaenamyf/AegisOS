@@ -72,9 +72,7 @@ class MemoryCache:
                 self.touch(pkt.task_id)
         return results
 
-    def set_query(
-        self, key: str, results: list[MemoryPacket], ttl: float = DEFAULT_TTL
-    ) -> None:
+    def set_query(self, key: str, results: list[MemoryPacket], ttl: float = DEFAULT_TTL) -> None:
         """写入 L1 查询缓存。
 
         Args:

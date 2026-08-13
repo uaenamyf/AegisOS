@@ -1,10 +1,11 @@
 # date: 2026-08-01
 # dev: myf
 """检查点模块测试 —— 保存/恢复/每 N 步自动/prune 截断。"""
+
 import pytest
+
 from aegisos_agents.memory.checkpoint.manager import CheckpointManager
 from aegisos_agents.memory.memory_store import MemoryStore
-from protocol.memory import MemoryPacket
 
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def mgr():
 def test_save_and_restore_roundtrip(mgr):
     """save→restore 往返数据一致。"""
     state = {"step": 3, "completed": ["t1", "t2"], "working_summary": "scan done"}
-    cid = mgr.save("s1", state, label="after_scan")
+    mgr.save("s1", state, label="after_scan")
     restored = mgr.restore("s1")
     assert restored is not None
     assert restored["step"] == 3
