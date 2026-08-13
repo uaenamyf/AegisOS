@@ -2,6 +2,68 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [AP2-TEST] 2026-08-13 ReAct 边界测试补强
+
+### 测试
+
+- 新增 7 个边界用例：错误 `call_id` 防串线、非法执行器返回值、后续思考失败时的
+  轨迹保留、工具输出提示注入数据化、空资产/空告警输入和最大迭代保护。
+- AP2 定向测试 25 个、action 30 个、perception 73 个、E2E 10 个全部通过。
+- `react_mode.py` 与 `react_support.py` 定向覆盖率均为 100%；新增测试的 Ruff 和
+  格式检查通过。
+
+## [AP2.7] 2026-08-12 ReAct 工具调用循环验证
+
+### 测试
+
+- 新增 `tests/e2e/test_react_tool_loop.py`，通过确定性的 `ExecutionAPI` 测试替身，
+  串联验证 recon、vuln_correlator、detector、threat_hunt、forensics 五个 Agent。
+- 验证每个 Agent 均完成 think→act→observe→finish，且工具顺序、权限、`call_id`、
+  观察结果、最终思考与跨阶段领域输出可审计。
+- 验证工具观察以 `UNTRUSTED_TOOL_OUTPUT_JSON` 数据标记进入最终归纳阶段，避免把
+  工具输出当作可信指令。
+- action 26 个测试、perception 70 个测试、E2E 10 个测试通过；新增文件的 Ruff、
+  格式检查及定向 mypy 检查通过。
+
+## [AP2.2-AP2.6] 2026-08-12 五个攻防 Agent 接入 ReAct
+
+### 新增
+
+- `aegisos_agents/action/react_support.py`：共享 ReAct 适配器，默认执行一次角色工具并
+  将成功观察交给结构化 Agent 归纳；支持注入自定义 thinker 扩展多工具循环。
+- recon、vuln_correlator、detector、threat_hunt、forensics 分别新增
+  `scan_react`、`correlate_react`、`detect_react`、`hunt_react`、
+  `investigate_react`，原同步方法保持兼容。
+- 工具调用复用 `ExecutionAPI` / `ToolCall` / `ToolResult`；默认工具失败立即停止，
+  工具输出在进入模型 prompt 前显式标记为不可信 JSON 数据。
+- Forensics 的 `ResponsePlan` 序列化支持真实 `DefenseAction` dataclass。
+
+### 测试
+
+- 新增 `test_react_agents.py` 7 个用例，覆盖五 Agent 默认工具映射、领域输出转换、
+  工具失败和自定义 thinker 备选工具路径。
+- action 26 个测试、perception 70 个测试通过；六个目标模块定向覆盖率 92%，
+  `react_support.py` 覆盖率 100%。
+- AP2.7 的 H1 真实沙箱端到端集成仍待完成。
+
+## [AP2.1] 2026-08-12 ReAct think→act→observe 循环内核
+
+### 新增
+
+- `aegisos_agents/perception/reasoning/strategies/react_mode.py`：提供 `ReactMode`、
+  `ReactDecision`、`ReactStep`、`ReactResult` 与终态枚举。
+- 思考器通过结构化决策选择 `ToolCall` 或结束循环；工具执行复用
+  `ExecutionAPI`、`ToolCall` 和 `ToolResult` 现有契约。
+- 工具异常规范化为失败观察，支持下一轮修正；可配置首次工具错误即停止。
+- 最大轮数保护阻止无限工具调用，完整轨迹可用于审计与回放。
+
+### 测试
+
+- 新增 `test_react_mode.py` 10 个用例，覆盖成功、即时结束、执行端口适配、
+  工具异常恢复、快速失败、轮数保护、思考异常和参数校验。
+- 感知层 70 个测试通过；`react_mode.py` 定向覆盖率 98%。
+- AP2.2-AP2.6 五 Agent 接入已完成；AP2.7/H1 安全沙箱联调仍待完成。
+
 ## [P2] 2026-08-03 工具层补全 — 2 个空模块实现
 
 ### 新增模块

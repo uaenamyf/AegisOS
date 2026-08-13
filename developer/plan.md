@@ -137,10 +137,10 @@
 - [ ] R1.7 测试全通过
 
 ### AP2 — ReAct 范式（工具调用循环）
-> **优先级**：P3 · **预估**：3-4 天 · **依赖**：H1 沙箱 · **状态**：🔲 后移
-- [ ] AP2.1 `perception/reasoning/strategies/react_mode.py` — ReAct 模式（think→act→observe 循环）
-- [ ] AP2.2-AP2.6 5 个 Agent 接入 ReAct（recon/vuln_correlator/detector/threat_hunt/forensics）
-- [ ] AP2.7 测试：ReAct 工具调用循环验证
+> **优先级**：P3 · **预估**：3-4 天 · **依赖**：H1 沙箱 · **状态**：✅ 完成（2026-08-12）
+- [x] AP2.1 `perception/reasoning/strategies/react_mode.py` — ReAct 模式（think→act→observe 循环）
+- [x] AP2.2-AP2.6 5 个 Agent 接入 ReAct（recon/vuln_correlator/detector/threat_hunt/forensics）
+- [x] AP2.7 测试：ReAct 工具调用循环验证
 
 ### 工程支撑（P3）
 - [ ] `tooling/scripts/check_no_broadcast.py` 低熵广播检测

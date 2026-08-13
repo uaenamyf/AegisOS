@@ -126,7 +126,7 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | # | 大模块 | 是什么 | 代码文件 | 测试数 | 实现状态 |
 |---|--------|--------|---------|--------|---------|
 | 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
-| 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal 范式 / ✅ P2 记忆/感知/工具补全 |
+| 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 记忆/感知/工具补全 |
 | 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F |
 | 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay |
 | 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
@@ -211,6 +211,8 @@ frontend/services ← 调用 backend REST API
 | `SDKProvider` + `MockSDKModel` | ✅ | 双模式：Mock（`AEGIS_USE_MOCK=1`）/ 火山引擎 ARK 真实 API |
 | `CyberOrchestrator` 编排器 | ✅ | 9 个 SDK Agent 装配 + handoffs + guardrails + tracing + FunctionTool |
 | `neuro_symbolic.py` 迁移 | ✅ R4.1 | 已迁移到 `NeuroSymbolicAgent(StructuredAgent)` |
+| `react_mode.py` 工具调用循环 | ✅ AP2.1 | `think→act→observe`、轨迹回放、错误观察与最大轮数保护 |
+| 五 Agent ReAct 接入 | ✅ AP2.2-AP2.6 | recon/vuln_correlator/detector/threat_hunt/forensics 经 `ExecutionAPI` 调工具 |
 | 旧 `base.py` 接口清理 | ✅ R5.1 | `ModelProvider` Protocol 已删除 |
 | 流式 SSE | ✅ R5.3 | `_run_streamed` + `backend/routers/stream.py` |
 | 事件总线 | ✅ R5.4 | AgentHooks → EventBus 发布 |

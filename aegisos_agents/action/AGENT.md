@@ -64,6 +64,7 @@ receive(task) -> think() -> tool() -> respond() -> Result。
 ## 下辖子模块
 - aegisos_agents/action/structured_agent.py — `StructuredAgent[T]` 泛型基类，包装 SDK `Agent` + `Runner.run_sync` + `output_type`
 - aegisos_agents/action/output_types.py — 11 个 Pydantic BaseModel 作为 SDK `output_type`
+- aegisos_agents/action/react_support.py — AP2.2-AP2.6 ReAct 共享适配器，组装默认工具调用并支持自定义 thinker
 - aegisos_agents/action/recon/ — 红队侦察 Agent（StructuredAgent[ReconResult]）
 - aegisos_agents/action/vuln_correlator/ — 红队漏洞关联 Agent（StructuredAgent[VulnCorrelatorResult]）
 - aegisos_agents/action/exploit_planner/ — 红队利用规划 Agent（StructuredAgent[ExploitPlannerResult]）
@@ -91,3 +92,23 @@ receive(task) -> think() -> tool() -> respond() -> Result。
 - **无 `json.loads`**：所有 Agent 通过 SDK `output_type` 获得结构化输出，无需手写 JSON 解析
 
 详见 `aegisos_agents/AGENT.md`「openai-agents SDK 集成状态」段 + `developer/plan.md`。
+
+---
+
+### 🔁 ReAct 接入状态（AP2.2-AP2.6）
+
+| Agent | ReAct 方法 | 默认工具 | 领域输出 |
+|-------|------------|----------|----------|
+| `recon` | `scan_react()` | `nmap_scan` | `list[Asset]` |
+| `vuln_correlator` | `correlate_react()` | `query_cve_db` | `list[VulnFinding]` |
+| `detector` | `detect_react()` | `correlate_alerts` | `list[Alert]` |
+| `threat_hunt` | `hunt_react()` | `query_attck_kb` | `list[dict]` |
+| `forensics` | `investigate_react()` | `collect_forensic_evidence` | `dict` |
+
+五个方法均保留原同步接口，新增路径统一返回 `ReactResult`。工具必须经调用方注入的
+`ExecutionAPI` 执行；默认工具失败立即停止，观察数据会标记为不可信 JSON 后再交给
+结构化模型归纳。调用方可注入自定义 thinker 并关闭快速失败，以实现多工具重试或
+备选路径。生产环境的危险工具执行仍须由 H1 Docker 沙箱提供隔离。
+
+**测试**：11 个 ReAct Agent 用例；`tests/aegisos_agents/action/` 共 30 个测试通过，
+其中 `react_support.py` 覆盖率为 100%。

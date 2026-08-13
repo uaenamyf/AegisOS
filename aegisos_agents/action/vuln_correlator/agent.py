@@ -1,5 +1,6 @@
 # date: 2026-07-06
 # dev: myf
+# change: 2026-08-12 overwhelmingly — AP2.3 接入 ReAct CVE 查询工具循环
 """红队漏洞关联 Agent 模块（SDK 结构化输出版）。
 
 本模块接收侦察阶段发现的资产清单，将其交给大语言模型进行
@@ -8,14 +9,22 @@ CVSS 评分、攻击面），为利用链规划提供输入。SDK 的 ``output_t
 结构化输出自动处理 JSON 解析与 Pydantic 验证，无需手写
 ``json.loads + try/except``。
 """
+
 from __future__ import annotations
 
 import json
 
 from aegisos_agents.action.output_types import VulnCorrelatorResult
+from aegisos_agents.action.react_support import render_tool_output, run_tool_react
 from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.perception.reasoning.strategies import (
+    ReactExecutor,
+    ReactResult,
+    ReactThinker,
+)
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Asset, VulnFinding
+from protocol.tool import ToolCall, ToolResult
 
 SYSTEM_PROMPT = (
     "You are a vulnerability correlation agent. Given a list of assets, "
@@ -88,3 +97,68 @@ class VulnCorrelatorAgent(StructuredAgent[VulnCorrelatorResult]):
             )
             for f in result.findings
         ]
+
+    def correlate_react(
+        self,
+        assets: list[Asset],
+        executor: ReactExecutor,
+        *,
+        thinker: ReactThinker[list[VulnFinding]] | None = None,
+        max_iterations: int = 8,
+        stop_on_tool_error: bool = True,
+    ) -> ReactResult[list[VulnFinding]]:
+        """通过 ReAct 查询漏洞知识库，再归纳为漏洞发现。
+
+        Args:
+            assets: 需要验证漏洞的资产清单。
+            executor: 执行 ``query_cve_db`` 的受控工具端口。
+            thinker: 可选自定义思考器，用于多工具策略。
+            max_iterations: 最大 ReAct 循环轮数。
+            stop_on_tool_error: 是否在工具失败时立即停止。
+
+        Returns:
+            带完整轨迹的漏洞关联结果。
+        """
+        asset_payload = [
+            {
+                "asset_id": asset.asset_id,
+                "host": asset.host,
+                "services": asset.services,
+                "os": asset.os,
+                "exposure": asset.exposure,
+            }
+            for asset in assets
+        ]
+
+        def finalize(observation: ToolResult) -> list[VulnFinding]:
+            result = self._run(
+                "Correlate vulnerabilities for assets "
+                f"{json.dumps(asset_payload)} using CVE observation: "
+                f"{render_tool_output(observation.output)}"
+            )
+            return [
+                VulnFinding(
+                    finding_id=finding.finding_id,
+                    cve_id=finding.cve_id,
+                    asset_id=finding.asset_id,
+                    cvss=finding.cvss,
+                    attack_surface=finding.attack_surface,
+                )
+                for finding in result.findings
+            ]
+
+        return run_tool_react(
+            goal=f"Correlate vulnerabilities for {len(assets)} assets",
+            action=ToolCall(
+                name="query_cve_db",
+                args={"assets": asset_payload},
+                permission="knowledge.read",
+            ),
+            executor=executor,
+            finalizer=finalize,
+            action_thought="需要查询 CVE 知识库验证资产暴露服务",
+            finish_thought="CVE 查询观察已经足够形成漏洞关联结果",
+            thinker=thinker,
+            max_iterations=max_iterations,
+            stop_on_tool_error=stop_on_tool_error,
+        )
