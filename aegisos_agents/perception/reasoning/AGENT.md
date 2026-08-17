@@ -31,8 +31,24 @@
 ## 接口
 reason(task) -> ReasoningTrace；可追溯、可回放。
 
+## 实现状态
+
+| 策略 | 状态 | 核心能力 |
+|------|:----:|----------|
+| `strategies/plan_mode.py` | ✅ AP1 | 先规划策略，再生成结构化产出 |
+| `strategies/goal_mode.py` | ✅ AP3 | 递归目标分解、失败重试和备选路径 |
+| `strategies/react_mode.py` | ✅ AP2.1 | 通用 think→act→observe 循环、轨迹回放、错误观察和轮数保护 |
+| `strategies/ask_mode.py` | 🔲 AP4 | 人机澄清与超时降级 |
+
+AP2.1 只提供纯编排内核，不直接执行系统命令或网络操作。AP2.2-AP2.6 已由
+action 层五个 Agent 通过受控 `ExecutionAPI` 接入；危险工具的真实执行仍必须在
+H1 Docker 沙箱中完成。
+
 ## 测试方式
 `pytest tests/aegisos_agents/perception/reasoning/`，覆盖核心路径与边界条件，覆盖率目标 >= 80%。
+
+AP2.1 定向测试：`pytest tests/aegisos_agents/perception/test_react_mode.py`（13 用例，
+`react_mode.py` 覆盖率 100%）。
 
 ## 日志位置
 `logs/aegisos_agents/perception/reasoning/`（结构化 JSON 日志，按 session/task 切分）。

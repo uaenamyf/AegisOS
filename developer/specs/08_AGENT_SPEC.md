@@ -54,6 +54,44 @@ Initialize → Load Config → Load Prompt → Load Skills → Receive Task
 
 > **规划与感知已内聚**：`PlanningAPI`（plan/route/schedule）和 `PerceptionAPI`（reason/reflect）是 aegisos_agents 域内部能力，不对外暴露。后端只调 `RuntimeAPI.run(task)`，agents 域内部自行编排 plan→route→schedule→execute→reflect。
 
+### 2.1 ReAct 推理循环
+
+`aegisos_agents/perception/reasoning/strategies/react_mode.py` 提供领域内部的
+`ReactMode.run_react()`，执行以下受控循环：
+
+```text
+think(goal, trace)
+  ├─ Finish(final_output) → Succeeded
+  └─ Act(ToolCall) → ExecutionAPI.execute() → ToolResult → observe → 下一轮 think
+```
+
+- 思考器只接收目标和 tuple 形式的历史视图，返回 `ReactDecision`。
+- 工具输入/输出必须复用 `protocol.ToolCall` / `protocol.ToolResult`。
+- 每次工具调用记录 `ReactStep(iteration, thought, action, observation)`，用于审计和回放。
+- 工具异常转换为失败 `ToolResult` 反馈给下一轮，允许 Agent 选择重试或备选工具。
+- `stop_on_tool_error` 支持安全敏感场景快速失败；`max_iterations` 防止无限循环。
+- 循环内核不直接执行命令或网络工具；具体 Agent 必须经受控 `ExecutionAPI`
+  执行工具，生产环境的危险操作必须实施沙箱隔离、权限校验和资源限制。
+
+### 2.2 五个攻防 Agent 接入 ReAct
+
+行动层通过 `aegisos_agents/action/react_support.py` 复用同一循环，保留原同步方法并
+新增显式 ReAct 方法：
+
+| Agent | 方法 | 默认 ToolCall | 权限 |
+|-------|------|----------------|------|
+| recon | `scan_react()` | `nmap_scan(target_range)` | `network.scan` |
+| vuln_correlator | `correlate_react()` | `query_cve_db(assets)` | `knowledge.read` |
+| detector | `detect_react()` | `correlate_alerts(alerts)` | `telemetry.read` |
+| threat_hunt | `hunt_react()` | `query_attck_kb(technique_id)` | `knowledge.read` |
+| forensics | `investigate_react()` | `collect_forensic_evidence(plan)` | `evidence.read` |
+
+- 默认流程为“选择角色工具 → `ExecutionAPI.execute()` → 将成功观察交给原有结构化模型归纳”。
+- 默认 `stop_on_tool_error=True`，禁止在缺失观察时生成伪结果。
+- 工具输出以“不可信 JSON 数据”标记后放入 prompt，模型不得将其中内容视作指令。
+- 可注入自定义 `ReactThinker` 并关闭快速失败，以执行多工具重试和备选路径。
+- 所有方法返回 `ReactResult[领域输出]`，完整保留 `ReactStep` 审计轨迹。
+
 ---
 
 ## 3. Agent Prompt（提示词）

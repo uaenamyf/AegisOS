@@ -2,7 +2,7 @@
 
 > 本文件对每个顶层域的实际**代码实现状态**做精确描述：已实现什么、未实现什么、关键文件在哪、测试覆盖如何。
 > 各域详细实现文档已合并至对应 `AGENT.md` 末尾「📋 模块实现详解」段；全局模块总览已合并至根 `AGENT.md` 末尾「📋 模块实现总览」段。
-> 最后更新：2026-08-04 · 346 个测试全通过 · SDK S1-S4 ✅ · R4-R6 ✅ · F/G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · P2 ✅
+> 最后更新：2026-08-13 · AP2 ReAct ✅（新增 25 个定向测试）· SDK S1-S4 ✅ · R4-R6 ✅ · F/G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · P2 ✅
 
 ---
 
@@ -11,7 +11,7 @@
 | 域 | 代码文件 | 测试数 | 实现状态 | 模块文档 |
 |----|---------|--------|---------|---------|
 | [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
-| [`aegisos_agents/`](#agents) | 52 `.py` | 346 | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal 范式 / ✅ P2 感知/记忆/工具补全 | [AGENT.md](../aegisos_agents/AGENT.md) |
+| [`aegisos_agents/`](#agents) | 99 `.py` | 346 基线 + AP2 新增 25 | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 感知/记忆/工具补全 | [AGENT.md](../aegisos_agents/AGENT.md) |
 | [`backend/`](#backend) | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F | [AGENT.md](../backend/AGENT.md) |
 | [`frontend/`](#frontend) | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay | [AGENT.md](../frontend/AGENT.md) |
 | [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../infrastructure/AGENT.md) |
@@ -19,7 +19,7 @@
 | [`data/`](#data) | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现 + ATT&CK 数据集 + memory 对接） | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
 | [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
-| [`tests/`](#tests) | 52 `.py` | 346 | ✅ 全覆盖 | — |
+| [`tests/`](#tests) | 55 `.py` | 346 基线 + AP2 新增 25 | ⚠️ AP2 定向通过；全仓门禁有既存阻塞 | — |
 
 ---
 
@@ -67,6 +67,8 @@
 | `SDKProvider` + `MockSDKModel`（双模式：Mock / 火山引擎 ARK） | ✅ |
 | `CyberOrchestrator`（9 个 SDK Agent 装配 + handoffs + guardrails + tracing + FunctionTool） | ✅ |
 | `neuro_symbolic.py` 迁移 | ✅ R4.1 |
+| `react_mode.py` think→act→observe 循环 | ✅ AP2.1 |
+| `react_support.py` + 五 Agent `*_react()` | ✅ AP2.2-AP2.6 |
 | SDK `handoffs` / `guardrails` / `tracing` | ✅ R4 |
 | 旧 `base.py` 接口清理 + 流式 SSE + 事件总线 | ✅ R5 |
 
@@ -102,23 +104,24 @@
 
 | Agent | 文件 | 核心方法 | 输入 → 输出 | 测试 |
 |-------|------|---------|------------|------|
-| 🔴 `recon` | [`recon/agent.py`](../aegisos_agents/action/recon/agent.py) | `scan(target_range)` | 目标范围 → `list[Asset]` | 2 |
-| 🔴 `vuln_correlator` | [`vuln_correlator/agent.py`](../aegisos_agents/action/vuln_correlator/agent.py) | `correlate(assets, cve_db)` | 资产+CVE库 → `list[VulnFinding]` | 1 |
+| 🔴 `recon` | [`recon/agent.py`](../aegisos_agents/action/recon/agent.py) | `scan(target_range)` · `scan_react(target_range, executor)` | 目标范围 → `list[Asset]` / `ReactResult[list[Asset]]` | 5 |
+| 🔴 `vuln_correlator` | [`vuln_correlator/agent.py`](../aegisos_agents/action/vuln_correlator/agent.py) | `correlate(assets)` · `correlate_react(assets, executor)` | 资产+CVE库 → `list[VulnFinding]` / `ReactResult[list[VulnFinding]]` | 3 |
 | 🔴 `exploit_planner` | [`exploit_planner/agent.py`](../aegisos_agents/action/exploit_planner/agent.py) | `plan(findings)` | 漏洞列表 → `AttackChain` | 1 |
 | 🔴 `lateral_move` | [`lateral_move/agent.py`](../aegisos_agents/action/lateral_move/agent.py) | `plan_moves(chain)` | 攻击链 → 横向移动步骤 | 1 |
-| 🔵 `detector` | [`detector/agent.py`](../aegisos_agents/action/detector/agent.py) | `detect(events)` | 事件流 → `list[Alert]` | 2 |
-| 🔵 `triage` | [`triage/agent.py`](../aegisos_agents/action/triage/agent.py) | `triage(alerts)` | 告警列表 → 按严重度排序 | 1 |
-| 🔵 `threat_hunt` | [`threat_hunt/agent.py`](../aegisos_agents/action/threat_hunt/agent.py) | `hunt(alerts)` | 告警 → ATT&CK 假设 | 1 |
+| 🔵 `detector` | [`detector/agent.py`](../aegisos_agents/action/detector/agent.py) | `detect(events)` · `detect_react(events, executor)` | 事件流 → `list[Alert]` / `ReactResult[list[Alert]]` | 3 |
+| 🔵 `triage` | [`triage/agent.py`](../aegisos_agents/action/triage/agent.py) | `triage(alerts)` | 告警列表 → 按严重度排序 | 2 |
+| 🔵 `threat_hunt` | [`threat_hunt/agent.py`](../aegisos_agents/action/threat_hunt/agent.py) | `hunt(alerts)` · `hunt_react(alerts, executor)` | 告警 → ATT&CK 假设 / `ReactResult[list[dict]]` | 3 |
 | 🔵 `ir_planner` | [`ir_planner/agent.py`](../aegisos_agents/action/ir_planner/agent.py) | `plan_response(hypotheses)` | 假设 → `ResponsePlan`(含 rollback) | 2 |
-| 🔵 `forensics` | [`forensics/agent.py`](../aegisos_agents/action/forensics/agent.py) | `investigate(alert)` | 告警 → 取证报告 | 1 |
+| 🔵 `forensics` | [`forensics/agent.py`](../aegisos_agents/action/forensics/agent.py) | `investigate(plan)` · `investigate_react(plan, executor)` | 响应计划 → 取证报告 / `ReactResult[dict]` | 2 |
 | 🟣 `critic` | [`critic/agent.py`](../aegisos_agents/action/critic/agent.py) | `critique(chain_or_plan)` | 对抗性校验，红蓝产出反驳 | 2 |
-| 🟣 `reviewer` | [`reviewer/agent.py`](../aegisos_agents/action/reviewer/agent.py) | `review(inputs)` | 一致性审查，最终结论 | 1 |
+| 🟣 `reviewer` | [`reviewer/agent.py`](../aegisos_agents/action/reviewer/agent.py) | `review(inputs)` | 一致性审查，最终结论 | 2 |
 
-#### `aegisos_agents/perception/` — 感知层（✅ 神经符号闭环完成）
+#### `aegisos_agents/perception/` — 感知层（✅ 神经符号闭环 + AP2.1 ReAct 内核完成）
 
 | 文件 | 函数/类 | 功能 | 测试 |
 |------|--------|------|------|
 | [`reasoning/neuro_symbolic.py`](../aegisos_agents/perception/reasoning/neuro_symbolic.py) | `validate_chain()` · `NeuroSymbolicLoop` | 符号验证（allowed_techniques 规则） + LLM 重新生成 → 迭代修复 | 4 |
+| [`reasoning/strategies/react_mode.py`](../aegisos_agents/perception/reasoning/strategies/react_mode.py) | `ReactMode` · `ReactDecision` · `ReactResult` | `think→act→observe` 循环、工具错误反馈、轨迹回放与最大轮数保护 | 10 |
 
 > ✅ **P2 完成（2026-08-01）**：`context/`（TokenBudget + ContextManager）+ `reflection/`（ExecutionCritic + OutputScorer + FeedbackLoop）。
 
@@ -329,7 +332,7 @@
 
 ## tests/ — 测试
 
-### 测试分布（59 个测试，全通过）
+### 测试分布（核心模块节选）
 
 | 目录 | 测试文件 | 测试数 | 覆盖内容 |
 |------|---------|--------|---------|
@@ -337,11 +340,11 @@
 | `tests/aegisos_agents/memory/` | `test_compactor.py` · `test_recaller.py` | 7 | 上下文压缩 + 记忆唤醒 |
 | `tests/aegisos_agents/planning/` | `test_topology.py` · `test_router.py` · `test_election.py` · `test_scheduler.py` | 18 | 活跃子图 + Top-K 路由 + 选举 + 端边云三层调度 |
 | `tests/aegisos_agents/tools/` | `test_model_router.py` | 5 | 多模型路由 |
-| `tests/aegisos_agents/action/` | 11 个 `test_*.py` | 19 | 11 个攻防 Agent |
-| `tests/aegisos_agents/perception/` | `test_neuro_symbolic.py` | 4 | 神经符号闭环 |
+| `tests/aegisos_agents/action/` | 12 个 `test_*.py` | 30 | 11 个攻防 Agent + 五 Agent ReAct 接入 |
+| `tests/aegisos_agents/perception/` | 6 个 `test_*.py` | 73 | 上下文 + Plan/Goal/ReAct + 神经符号闭环 + 反思 |
 
-### 未实现
-- 🔲 `tests/e2e/` — 端到端集成测试（场景 1 红→蓝→紫完整链路）
+### E2E
+- ✅ `tests/e2e/` — 场景 1 红→蓝→紫完整链路 9 个测试 + AP2.7 ReAct 工具循环 1 个测试
 
 ---
 

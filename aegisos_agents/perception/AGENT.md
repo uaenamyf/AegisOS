@@ -65,7 +65,7 @@ perceive(input) -> Understanding；产出可追溯推理与反思。
 | 子模块 | 状态 | 职责 |
 |--------|:----:|------|
 | `context/` | ✅ P2 | 上下文窗口管理：TokenBudget + ContextManager |
-| `reasoning/` | ✅ | 推理策略：plan_mode / goal_mode / neuro_symbolic |
+| `reasoning/` | ✅ | 推理策略：plan_mode / react_mode / goal_mode / neuro_symbolic |
 | `reflection/` | ✅ P2 | 运行时反思：ExecutionCritic + OutputScorer + FeedbackLoop |
 
 ### context/ — 上下文窗口管理（✅ P2）
