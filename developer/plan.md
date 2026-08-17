@@ -19,10 +19,10 @@
 
 | 维度 | 状态 |
 |------|------|
-| **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · **H2 数据层 ✅** |
+| **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · AP4 Ask ✅ · **H2 数据层 ✅** |
 | **测试** | **105+ passed**（本机可运行子集 data+memory+protocol 全绿） |
-| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · B3+E13 ✅ · **H2 数据层（Neo4j/Qdrant 双实现 + 记忆对接）✅** |
-| **待完成** | AP4 Ask · P3 容器化部署 · AP2 ReAct · CVE/攻防数据集补全 |
+| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · B3+E13 ✅ · **H2 数据层（Neo4j/Qdrant 双实现 + 记忆对接）✅** |
+| **待完成** | P3 容器化部署 · AP2 ReAct · CVE/攻防数据集补全 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
@@ -96,14 +96,14 @@
 - [x] AP3.4 测试：Goal 范式递归分解 + 失败重试验证（21 测试）
 
 ### AP4 — Ask 范式（人机协同）
-> **优先级**：P2 · **预估**：1-2 天 · **依赖**：F/G 端点（已完成）· **状态**：🔲 待做
-- [ ] AP4.1 `perception/reasoning/strategies/ask_mode.py` — Ask 模式（暂停提问 + 超时降级）
-- [ ] AP4.2 `ir_planner` 接入 Ask — 破坏性操作前确认
-- [ ] AP4.3 `critic` 接入 Ask — 严重度阈值请求
-- [ ] AP4.4 `threat_hunt` 接入 Ask — 不确定时澄清
-- [ ] AP4.5 `protocol/event.py` 补充 `HumanInputRequired` / `HumanResponse` 事件
-- [ ] AP4.6 前端 `ChatView` 人机交互消息渲染
-- [ ] AP4.7 测试：Ask 范式 HITL 流程
+> **优先级**：P2 · **预估**：1-2 天 · **依赖**：F/G 端点（已完成）· **状态**：✅ 完成（2026-08-17）
+- [x] AP4.1 `perception/reasoning/strategies/ask_mode.py` — Ask 模式（暂停提问 + 超时降级）
+- [x] AP4.2 `ir_planner` 接入 Ask — 破坏性操作前确认
+- [x] AP4.3 `critic` 接入 Ask — 严重度阈值请求
+- [x] AP4.4 `threat_hunt` 接入 Ask — 不确定时澄清
+- [x] AP4.5 `protocol/event.py` 补充 `HumanInputRequired` / `HumanResponse` 事件
+- [x] AP4.6 前端 `ChatView` 人机交互消息渲染
+- [x] AP4.7 测试：Ask 范式 HITL 流程（ask_mode + ir_planner/critic/threat_hunt 4 个测试文件）
 
 ---
 

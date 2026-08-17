@@ -27,6 +27,9 @@ class EventType(str, Enum):
     Rollback = "task.rollback"      # 任务回滚
     MemoryUpdate = "memory.update"  # 记忆系统更新
     GraphUpdate = "graph.update"    # 拓扑图更新
+    # AP4: 人机协同（Ask 范式）——暂停提问 + 超时降级
+    HumanInputRequired = "human.input.required"  # Agent 需要人工输入/确认（阻塞决策点）
+    HumanResponse = "human.response"            # 人类对上述请求的回答（含超时降级标记）
 
 
 @dataclass
