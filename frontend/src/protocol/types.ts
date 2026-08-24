@@ -11,7 +11,10 @@
 
 export type AgentStatus = "idle" | "running" | "waiting" | "failed" | "offline";
 
-export type EventType = "agent.start" | "agent.finish" | "tool.call" | "tool.finish" | "task.retry" | "task.rollback" | "memory.update" | "graph.update";
+// date: 2026-08-17
+// dev: 陈子毅
+// changelog: AP4.5/AP4.6 新增人机协同事件类型 human.input.required / human.response（对应 protocol/event.py EventType）
+export type EventType = "agent.start" | "agent.finish" | "tool.call" | "tool.finish" | "task.retry" | "task.rollback" | "memory.update" | "graph.update" | "human.input.required" | "human.response";
 
 export type NodeKind = "agent" | "task" | "memory" | "tool";
 

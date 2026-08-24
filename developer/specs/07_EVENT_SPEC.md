@@ -1,7 +1,7 @@
 # 07_EVENT_SPEC.md — 事件总线规范
 
 > 上游：`00_PROJECT_SPEC.md`、`04_PROTOCOL_SPEC.md`。本文件定义 EventBus（`aegisos_agents/planning/engine/eventbus/`）。
-> 事件类型定义在 `protocol/event.py`（`EventType` 8 类）。事件封装于 `Message` 信封投递。
+> 事件类型定义在 `protocol/event.py`（`EventType` 10 类）。事件封装于 `Message` 信封投递。
 
 ---
 
@@ -17,6 +17,8 @@
 | `Rollback` | `task.rollback` | 任务回滚 | Scheduler / Workflow | EventBus / 订阅者 | `{task_id, reason}` | v1 |
 | `MemoryUpdate` | `memory.update` | 记忆变更 | Memory 子系统 | EventBus / 订阅者 | `{memory_packet, session_id}` | v1 |
 | `GraphUpdate` | `graph.update` | 拓扑图变更 | Router / Topology | EventBus / 订阅者 | `{graph_diff}` | v1 |
+| `HumanInputRequired` | `human.input.required` | Agent 在关键决策点需要人工输入/确认（阻塞点） | Agent 节点（AskMode） | EventBus / 前端 ChatView | `{question, options, context}` | v1 |
+| `HumanResponse` | `human.response` | 人类对提问的回答（含超时/无人值守降级标记） | Agent 节点（AskMode） | EventBus / 前端 ChatView | `{answered, answer, timeout, rationale}` | v1 |
 
 ---
 

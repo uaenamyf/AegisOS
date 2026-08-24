@@ -20,6 +20,24 @@ import type {
   ViewName,
 } from "@/protocol/frontend-types";
 
+// date: 2026-08-17
+// dev: 陈子毅
+// changelog: AP4.6 新增 HitlPayload——人机协同卡片载荷（提问/选项/结论/超时降级），供 ChatView 渲染
+export interface HitlPayload {
+  kind: "request" | "resolved";
+  status?: "pending" | "resolved";
+  agent?: string;
+  taskId?: string;
+  question?: string;
+  options?: string[];
+  context?: Record<string, any>;
+  // 结论（kind === "resolved" 时存在）
+  answer?: string;
+  answered?: boolean; // false => 超时/无人值守降级
+  timeout?: boolean; // true => 因超时降级
+  rationale?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -28,6 +46,7 @@ export interface ChatMessage {
   taskId?: string;
   status?: "sending" | "done" | "error";
   timestamp: number;
+  hitl?: HitlPayload;
 }
 
 export interface AppState {

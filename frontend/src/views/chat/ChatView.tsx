@@ -3,13 +3,82 @@
 // changelog: R5.3 加流式模式开关——Stream 开启时用 fetch SSE 实时展示 Agent 执行过程
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useAppStore, type ChatMessage } from "@/lib/store";
+import { useAppStore, type ChatMessage, type HitlPayload } from "@/lib/store";
 import { agentApi } from "@/services/api/agents";
 import { taskApi } from "@/services/api/tasks";
 import { streamAgent } from "@/services/api/stream";
+import { humanApi } from "@/services/api/human";
 
 function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// date: 2026-08-17
+// dev: 陈子毅
+// changelog: AP4.6 人机协同卡片——展示 Agent 提问、可选项与人类结论（含超时降级）
+function HitlCard({
+  msg,
+  onAnswer,
+}: {
+  msg: ChatMessage;
+  onAnswer: (id: string, answer: string) => void;
+}) {
+  const h = msg.hitl as HitlPayload;
+  const resolved = h.kind === "resolved";
+  const isTimeout = resolved && Boolean(h.timeout);
+  return (
+    <div className={`chat__hitl${resolved ? " chat__hitl--resolved" : ""}`}>
+      <div className="chat__hitl-header">
+        <span className="chat__hitl-title">
+          {resolved ? "人机协同 · 已处理" : "人机协同 · 等待确认"}
+        </span>
+        <span
+          className={
+            "chat__hitl-badge " +
+            (resolved
+              ? isTimeout
+                ? "chat__hitl-badge--timeout"
+                : "chat__hitl-badge--confirmed"
+              : "chat__hitl-badge--pending")
+          }
+        >
+          {resolved
+            ? isTimeout
+              ? "超时降级"
+              : h.answered
+                ? "已确认"
+                : "已处理"
+            : "待响应"}
+        </span>
+      </div>
+      {h.question && <div className="chat__hitl-question">{h.question}</div>}
+      {h.options && h.options.length > 0 && !resolved && (
+        <div className="chat__hitl-options">
+          {h.options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              className="chat__hitl-option"
+              onClick={() => onAnswer(msg.id, opt)}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+      {resolved && (
+        <div className="chat__hitl-answer">
+          <span className="chat__hitl-answer-label">结论：</span>
+          <span className="chat__hitl-answer-value">
+            {h.answer || (isTimeout ? "（无人值守，已按安全默认降级）" : "—")}
+          </span>
+        </div>
+      )}
+      {resolved && h.rationale && (
+        <div className="chat__hitl-rationale">{h.rationale}</div>
+      )}
+    </div>
+  );
 }
 
 export function ChatView() {
@@ -107,6 +176,37 @@ export function ChatView() {
       void handleSend();
     }
   };
+
+  // date: 2026-08-17
+  // dev: 陈子毅
+  // changelog: AP4.6 人类在 ChatView 点选 HITL 选项 → 乐观更新卡片为已处理，并尽力回传后端
+  const handleHitlAnswer = useCallback(
+    (id: string, answer: string) => {
+      const current = useAppStore
+        .getState()
+        .chatMessages.find((m) => m.id === id);
+      const h = current?.hitl;
+      if (!h) return;
+      updateChatMessage(id, {
+        hitl: {
+          ...h,
+          kind: "resolved",
+          status: "resolved",
+          answer,
+          answered: true,
+          timeout: false,
+        },
+      });
+      // 集成点：后端需提供人类回答通道（REST POST /human/answer 或 WS）。
+      // 当前 backend 的 HITL 由 AutoAskHandler 即时降级，人类回传为前向兼容钩子，失败不影响 UI。
+      if (h.taskId) {
+        humanApi
+          .submitAnswer({ task_id: h.taskId, agent: h.agent ?? "", answer })
+          .catch(() => {});
+      }
+    },
+    [updateChatMessage],
+  );
 
   // R5.3: 流式发送——用 fetch SSE 实时展示 Agent 执行过程
   const handleSendStream = async () => {
@@ -224,9 +324,14 @@ export function ChatView() {
                   </span>
                 )}
               </div>
-              <div className="chat__msg-content">
-                {msg.content || (msg.status === "sending" ? "Thinking..." : "")}
-              </div>
+              {msg.hitl ? (
+                // date: 2026-08-17 dev: 陈子毅 changelog: AP4.6 渲染人机协同卡片（提问/选项/结论/超时降级）
+                <HitlCard msg={msg} onAnswer={handleHitlAnswer} />
+              ) : (
+                <div className="chat__msg-content">
+                  {msg.content || (msg.status === "sending" ? "Thinking..." : "")}
+                </div>
+              )}
             </div>
           </div>
         ))}

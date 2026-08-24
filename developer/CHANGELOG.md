@@ -2,7 +2,68 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
-## [AP2-TEST] 2026-08-13 ReAct 边界测试补强
+## [AP4] 2026-08-17 Ask 范式（人机协同 / HITL，7 子任务全完成）
+
+> 模式：暂停提问 + 超时降级。在关键决策点（破坏性操作前 / 严重度超阈值 / 不确定时）暂停向人类提问，
+> 无人值守或超时则按各 Agent 指定的安全默认自动降级（保证攻防链不阻塞）。
+
+### AP4.1 — Ask 模式核心（perception）
+- 新增 `aegisos_agents/perception/reasoning/strategies/ask_mode.py`：`AskMode` 混入类 + `AskRequest`/`AskResponse`/`AskTimeoutError` 数据类 + `AskHandler`(ABC)/`MockAskHandler`(测试)/`AutoAskHandler`(默认无人值守即时降级) + `severity_at_least()` 严重度比较。
+- `AskMode.ask_human()`：发布 `HumanInputRequired` → 调 handler 取回答（超时/异常均走降级）→ 发布 `HumanResponse`。handler/eventbus 经 `set_ask_handler`/`set_event_bus` 注入（duck typing，不反向依赖 planning）。
+
+### AP4.2 — ir_planner 接入（破坏性操作前确认）
+- 修改 `aegisos_agents/action/ir_planner/agent.py`：继承 `AskMode`，新增 `plan_response_with_human_check()`——含 isolate/block 动作时暂停提问，超时降级为仅 monitor。
+
+### AP4.3 — critic 接入（严重度阈值请求）
+- 修改 `aegisos_agents/action/critic/agent.py`：继承 `AskMode`，新增 `critique_with_human_check()`——severity ≥ 阈值（默认 high）时请求人工复核，超时确认结论。
+
+### AP4.4 — threat_hunt 接入（不确定时澄清）
+- 修改 `aegisos_agents/action/threat_hunt/agent.py`：继承 `AskMode`，新增 `hunt_with_human_check()`——置信度低于阈值时暂停澄清，可选缩小范围重试。
+
+### AP4.5 — 事件补充
+- 修改 `protocol/event.py`：`EventType` 新增 `HumanInputRequired = "human.input.required"` / `HumanResponse = "human.response"`，并在 `developer/specs/07_EVENT_SPEC.md` 双登记。
+
+### AP4.6 — 前端 ChatView 人机交互消息渲染
+- 修改 `frontend/src/protocol/types.ts`：`EventType` 联合类型补充两个人机协同值。
+- 修改 `frontend/src/lib/store/index.ts`：新增 `HitlPayload` 载荷类型 + `ChatMessage.hitl` 字段。
+- 新增 `frontend/src/services/api/human.ts`：`humanApi.submitAnswer()`（尽力回传人类回答，端点未实现时静默失败）。
+- 修改 `frontend/src/controllers/events.ts`：订阅 `human.input.required`/`human.response`，驱动 ChatView 卡片（同源 task 请求→响应原位更新为单卡片）。
+- 修改 `frontend/src/views/chat/ChatView.tsx`：渲染 `HitlCard`（提问+选项按钮+结论/超时降级徽章）。
+- 修改 `frontend/src/index.css`：人机协同卡片样式（`.chat__hitl*`）。
+
+### AP4.7 — 测试
+- 新增 `tests/aegisos_agents/perception/test_ask_mode.py`：Mock handler 回答 / 超时降级 / 无 handler 自动降级 / 事件发布 / severity_at_least / 新事件类型。
+- 新增 `tests/aegisos_agents/action/test_ir_planner_ask.py` / `test_critic_ask.py` / `test_threat_hunt_ask.py`：确认/降级/超时/取消/缩小范围重试等 HITL 路径。
+
+### 编排器接线
+- 修改 `aegisos_agents/planning/orchestrator/cyber_orchestrator.py`：移除与 `action/` 重复的 `ThreatHuntSDKAgent`/`IRPlannerSDKAgent`/`CriticSDKAgent`，复用规范 `ThreatHuntAgent`/`IRPlannerAgent`/`CriticAgent`（使 AP4 HITL 在链中生效）；新增 `run_blue_chain_with_human_check()` / `run_purple_review_with_human_check()`，支持注入 `ask_handler`/`eventbus`。
+
+### 质量门禁
+- Python 语法 `py_compile` 全绿（7 源码 + 4 测试）；AskMode 逻辑隔离烟测通过。
+- 前端 `tsc --noEmit` 仍需在可用环境验证（本机无 Python；前端 node 可用，已尽量保持类型一致）。
+- 全量 pytest 需在 macOS/容器运行（依赖完整 venv）。
+
+### 注意（跨目录）
+- 本次触及 `frontend/` 与 `developer/`（`07_EVENT_SPEC.md`/`plan.md`/本 CHANGELOG），按 `07_EVENT_SPEC.md §2` 事件双登记规范与 `plan.md` 维护规则要求执行；`aegisos_agents/AGENT.md` 默认将 `frontend/`/`developer/` 列为禁止修改目录，此处为用户显式指派 AP4.6 + 规范强制要求，已最小化改动并请负责人复核。
+
+## [P2] 2026-08-06 H2 数据层接入 — Neo4j + Qdrant + 记忆子系统对接
+
+### 新增（data 域）
+
+- `data/models/graph_store.py`：`InMemoryGraphStore`（默认）+ `Neo4jGraphStore`（`neo4j>=5` 惰性加载）—— 网络拓扑（`protocol.cyber.Asset` 节点 + 带标签关系）+ ATT&CK 知识（Technique 节点 + 关系边）
+- `data/models/vector_store.py`：`InMemoryVectorStore`（默认，余弦检索）+ `QdrantVectorStore`（`qdrant-client>=1.8` 惰性加载）
+- `data/models/registry.py`：`create_graph_store(mode)` / `create_vector_store(mode)` 工厂
+- `data/datasets/attck/knowledge.py`：ATT&CK 数据集（~36 技战术 + contains/precedes/uses/targets 关系边，保留原 8 条种子）
+- `data/api/__init__.py`：新增 `GraphStoreAPI` / `VectorStoreAPI` Protocol + `create_graph_store` / `create_vector_store` / `load_attck_dataset` 工厂（增量，既有接口不变）
+
+### 修改（aegisos_agents/memory + backend + configs）
+
+- `memory/vector/store.py`：`VectorMemory(backend)` 后端注入（默认内存实现不变）
+- `memory/semantic/store.py`：`SemanticMemory(graph_backend)` 图后端注入（空后端 seed 预载数据集）
+- `memory/memory_store.py`：`MemoryStore(vector_backend, graph_backend)` 可选注入
+- `backend/core/composition.py`：按 `settings.storage` 装配存储后端（默认 in_memory）
+- `tooling/configs/settings.py` + `defaults.yaml`：新增 `storage` 配置段（graph_mode/vector_mode/neo4j_*/qdrant_*）
+- `pyproject.toml`：新增 `[project.optional-dependencies] storage = ["neo4j>=5", "qdrant-client>=1.8"]`
 
 ### 测试
 

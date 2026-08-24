@@ -52,6 +52,11 @@ from aegisos_agents.action.output_types import (
     TriageResult,
     VulnCorrelatorResult,
 )
+# AP4: 复用规范层（action/）定义的红蓝紫 Agent 作为链上实例，单一事实来源，
+# 使 AP4 的 Ask 人机协同方法在运行时编排链路中直接生效（避免编排器内重复定义）。
+from aegisos_agents.action.critic.agent import CriticAgent
+from aegisos_agents.action.ir_planner.agent import IRPlannerAgent
+from aegisos_agents.action.threat_hunt.agent import ThreatHuntAgent
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert, Asset, AttackChain, AttackStep, ResponsePlan, VulnFinding
@@ -212,43 +217,6 @@ class TriageSDKAgent(StructuredAgent[TriageResult]):
     TEMPERATURE = 0.1
 
 
-class ThreatHuntSDKAgent(StructuredAgent[ThreatHuntResult]):
-    """蓝队威胁狩猎 SDK Agent。"""
-
-    SYSTEM_PROMPT = (
-        "You are a threat hunting agent. Given prioritized alerts, generate "
-        "hunting hypotheses. Return JSON with a 'hypotheses' array."
-    )
-    OUTPUT_TYPE = ThreatHuntResult
-    TEMPERATURE = 0.5
-
-
-class IRPlannerSDKAgent(StructuredAgent[IRPlannerResult]):
-    """蓝队响应规划 SDK Agent。"""
-
-    SYSTEM_PROMPT = (
-        "You are an incident response planner. Given threat hypotheses, "
-        "return JSON with plan_id, actions, confidence, rollback."
-    )
-    OUTPUT_TYPE = IRPlannerResult
-    TEMPERATURE = 0.3
-
-
-# ---- 紫队 Agent ----
-
-
-class CriticSDKAgent(StructuredAgent[CritiqueResult]):
-    """紫队对抗性批判 SDK Agent（红队侧）。"""
-
-    SYSTEM_PROMPT = (
-        "You are a red team critic. Given an attack chain, validate it against "
-        "ATT&CK rules. Return JSON: valid (bool), issues (array), severity "
-        "(none|low|medium|high), suggestion (str)."
-    )
-    OUTPUT_TYPE = CritiqueResult
-    TEMPERATURE = 0.3
-
-
 class ReviewerSDKAgent(StructuredAgent[ReviewResult]):
     """紫队一致性审查 SDK Agent。"""
 
@@ -277,15 +245,31 @@ class CyberOrchestrator(GoalMode[dict]):
         _hooks: R4.4 AgentHooks 列表（install_hooks 后非空）。
     """
 
-    def __init__(self, mock: MockProvider | None = None, model=None) -> None:
+    # date: 2026-08-17
+    # dev: 陈子毅
+    # changelog: AP4 编排器接入 Ask——新增 ask_handler/eventbus 参数，蓝队 threat_hunt/ir_planner 与紫队 critic 改用规范层 Agent 以复用人机协同能力
+    def __init__(
+        self,
+        mock: MockProvider | None = None,
+        model=None,
+        ask_handler=None,
+        eventbus=None,
+    ) -> None:
         """初始化编排器，装配 11 个 SDK Agent。
 
         Args:
             mock: :class:`MockProvider` 实例（Mock 模式）；真实模式传 None。
             model: SDK ``Model`` 实例（真实 API 模式）；非 None 时优先于 mock，
                 由 :meth:`SDKProvider.get_sdk_model` 创建。9 个 Agent 共享同一 Model。
+            ask_handler: 可选 :class:`AskHandler`（AP4 人机协同）；下发至
+                threat_hunt / ir_planner / critic。None 时各 Agent 退化为
+                :class:`AutoAskHandler`（无人值守即时安全降级）。
+            eventbus: 可选事件总线；下发至上述三个 Agent，使其发布
+                ``HumanInputRequired`` / ``HumanResponse`` 事件供前端渲染。
         """
         self._mock = mock
+        # AP4: 保存人机协同 handler，供 _with_human_check 编排方法下发
+        self._ask_handler = ask_handler
         # R4.4: tracing 状态
         self._trace_processor: CyberTraceProcessor | None = None
         self._hooks: list[CyberAgentHooks] = []
@@ -296,11 +280,21 @@ class CyberOrchestrator(GoalMode[dict]):
         # 蓝队
         self.detector = DetectorSDKAgent(mock=mock, model=model)
         self.triage = TriageSDKAgent(mock=mock, model=model)
-        self.threat_hunt = ThreatHuntSDKAgent(mock=mock, model=model)
-        self.ir_planner = IRPlannerSDKAgent(mock=mock, model=model)
+        # AP4: 规范层 Agent（自带 Ask 人机协同能力），注入 ask_handler/eventbus
+        self.threat_hunt = ThreatHuntAgent(
+            mock=mock, model=model, ask_handler=ask_handler
+        )
+        self.ir_planner = IRPlannerAgent(
+            mock=mock, model=model, ask_handler=ask_handler
+        )
         # 紫队
-        self.critic = CriticSDKAgent(mock=mock, model=model)
+        self.critic = CriticAgent(mock=mock, model=model, ask_handler=ask_handler)
         self.reviewer = ReviewerSDKAgent(mock=mock, model=model)
+        # AP4: 将事件总线下发至三个 HITL Agent，使其发布人机协同事件
+        if eventbus is not None:
+            self.threat_hunt.set_event_bus(eventbus)
+            self.ir_planner.set_event_bus(eventbus)
+            self.critic.set_event_bus(eventbus)
 
     def run_red_chain(self, target_range: str) -> dict[str, Any]:
         """执行红队攻击链：recon → vuln_correlator → exploit_planner。
@@ -431,6 +425,126 @@ class CyberOrchestrator(GoalMode[dict]):
         critique = critique_result.model_dump()
 
         # 紫队跨产出一致性审查
+        artifacts = {
+            "attack_chain": chain.to_dict(),
+            "response_plan": asdict(plan),
+            "alerts": [asdict(a) for a in alerts],
+        }
+        review_result = self.reviewer._run(
+            f"Review consistency: {json.dumps(artifacts, default=str)}"
+        )
+        review = review_result.model_dump()
+
+        return {"critique": critique, "review": review}
+
+    # ==================================================================
+    # AP4: 带人机协同（Ask 范式）的攻防编排方法
+    # ==================================================================
+
+    # date: 2026-08-17
+    # dev: 陈子毅
+    # changelog: AP4 新增 run_blue_chain_with_human_check——蓝队防御链在威胁狩猎与响应规划处接入人机确认
+    def run_blue_chain_with_human_check(
+        self,
+        event_stream: list[dict[str, Any]],
+        ask_handler=None,
+        confidence_threshold: float = 0.5,
+    ) -> dict[str, Any]:
+        """执行带人机协同的蓝队防御链（AP4）。
+
+        链路同 :meth:`run_blue_chain`（detector → triage → threat_hunt →
+        ir_planner），但在 threat_hunt 假设置信度偏低、ir_planner 计划含破坏性
+        动作时插入人工确认闸门（Ask 范式），超时/无人值守自动保守降级，
+        不阻塞整条防御链。
+
+        Args:
+            event_stream: 原始事件流列表。
+            ask_handler: 可选 :class:`AskHandler`；None 时使用编排器初始化时的 handler。
+            confidence_threshold: 触发澄清的置信度下限。
+
+        Returns:
+            含 ``alerts`` / ``triaged`` / ``hypotheses`` / ``plan`` 的字典。
+        """
+        # 1) 入侵检测（无需人工确认）
+        detector_result = self.detector._run(f"Detect anomalies in: {json.dumps(event_stream)}")
+        alerts = [
+            Alert(
+                alert_id=a.alert_id,
+                severity=a.severity,
+                src=a.src,
+                dst=a.dst,
+                technique=a.technique,
+                raw=a.raw,
+            )
+            for a in detector_result.alerts
+        ]
+
+        # 2) 告警分诊（无需人工确认）
+        alerts_desc = json.dumps(
+            [
+                {"alert_id": a.alert_id, "severity": a.severity, "src": a.src, "dst": a.dst}
+                for a in alerts
+            ]
+        )
+        triage_result = self.triage._run(f"Triage these alerts: {alerts_desc}")
+        triaged = [Alert(**t.model_dump()) for t in triage_result.alerts] or alerts
+
+        # 3) 威胁狩猎（低置信度假设时暂停澄清）
+        hunt_handler = ask_handler or self._ask_handler
+        hypotheses = self.threat_hunt.hunt_with_human_check(
+            triaged, confidence_threshold=confidence_threshold, ask_handler=hunt_handler
+        )
+
+        # 4) 响应规划（破坏性动作前确认）
+        ir_handler = ask_handler or self._ask_handler
+        plan = self.ir_planner.plan_response_with_human_check(
+            hypotheses, ask_handler=ir_handler
+        )
+
+        return {
+            "alerts": alerts,
+            "triaged": triaged,
+            "hypotheses": hypotheses,
+            "plan": plan,
+        }
+
+    # date: 2026-08-17
+    # dev: 陈子毅
+    # changelog: AP4 新增 run_purple_review_with_human_check——紫队批判严重度达阈值时请求人工复核
+    def run_purple_review_with_human_check(
+        self,
+        chain: AttackChain,
+        plan: ResponsePlan,
+        alerts: list[Alert],
+        ask_handler=None,
+        severity_threshold: str = "high",
+    ) -> dict[str, Any]:
+        """执行带人机协同的紫队校验（AP4）。
+
+        同 :meth:`run_purple_review` 的 reviewer 一致性审查，但 critic 批判在
+        判定严重度达到 ``severity_threshold`` 时暂停请求人工复核（Ask 范式），
+        超时/无人值守降级为确认结论并标记。
+
+        Args:
+            chain: 红队攻击链产出。
+            plan: 蓝队响应计划产出。
+            alerts: 蓝队告警列表。
+            ask_handler: 可选 :class:`AskHandler`；None 时使用编排器初始化时的 handler。
+            severity_threshold: 触发人工复核的严重度阈值。
+
+        Returns:
+            含 ``critique`` / ``review`` 的字典。
+        """
+        handler = ask_handler or self._ask_handler
+        # 紫队批判红队攻击链（严重度达阈值时请求人工复核）
+        critique = self.critic.critique_with_human_check(
+            chain.to_dict(),
+            side="red",
+            severity_threshold=severity_threshold,
+            ask_handler=handler,
+        )
+
+        # 紫队跨产出一致性审查（保持原逻辑）
         artifacts = {
             "attack_chain": chain.to_dict(),
             "response_plan": asdict(plan),
