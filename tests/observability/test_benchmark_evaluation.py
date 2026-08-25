@@ -4,26 +4,19 @@
 """H5.3 基准测试 + H5.4 5 维度评测单元测试。"""
 from __future__ import annotations
 
-import time
-
 from observability.measure.benchmark import (
     BenchmarkCase,
-    BenchmarkReport,
     BenchmarkRunner,
     BenchmarkSuite,
 )
 from observability.measure.evaluation import (
-    DimensionScore,
     Evaluator,
-    EvaluationReport,
-    Metric,
     score_accuracy,
     score_latency,
     score_recall,
     score_resource,
     score_robustness,
 )
-
 
 # ---- H5.3 Benchmark ----
 

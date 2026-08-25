@@ -27,8 +27,8 @@ _AUTH_HEADERS = {"X-API-Key": _API_KEY}
 @pytest.fixture()
 def client():
     """创建测试客户端，使用 Mock 模式。"""
-    from backend.main import create_app
     from backend.core.composition import reset_composition
+    from backend.main import create_app
 
     reset_composition()
     app = create_app()

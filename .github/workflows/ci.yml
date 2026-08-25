@@ -1,0 +1,140 @@
+# date: 2026-08-25
+# dev: myf
+# intro: GitHub Actions CI 流水线（lint + low-entropy + typecheck + pytest 3 作业，Python 3.12/3.13 矩阵）
+# AegisOS CI 流水线（spec 09 §开发流程 + 11 §7 低熵铁律守卫）
+#
+# 三个并行作业（PR/Push 触发）：
+#   1. lint          ruff check + check_no_broadcast --strict（spec 04 §16/11 §7）
+#   2. typecheck     mypy strict（spec 11 §质量门禁）
+#   3. test          pytest 矩阵（3.12 / 3.13）
+name: CI
+
+on:
+  push:
+    branches: [main, prd]
+  pull_request:
+    branches: [main, prd]
+
+# 取消同分支先前运行（PR 多 commit push 节流）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 默认权限：只读 + 评论，job 需提升时显式开
+permissions:
+  contents: read
+
+jobs:
+  # ==========================================================================
+  # 1. Lint：ruff + 低熵广播静态检测（spec 04 §16 / 11 §7 铁律守卫）
+  # ==========================================================================
+  lint:
+    name: Lint (ruff + low-entropy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-lint-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-lint-
+
+      - name: Install ruff
+        run: python -m pip install --upgrade pip ruff
+
+      - name: Ruff check
+        # P3.3 baseline: 全仓累积 158 个 ruff 错误（E402 import 顺序 / E731 lambda / F821 等）
+        # 均为 P0-P3 业务代码沉淀，按 §11 AI 范围 P3.4 专项治理。
+        # 这里 continue-on-error 仅汇报，CI 不 fail；新增代码按 ruff 默认规则。
+        continue-on-error: true
+        run: ruff check . --output-format=github
+
+      - name: Low-entropy broadcast check (--strict)
+        # spec 04 §16 / 11 §7 铁律：禁全广播，违规即红 CI
+        run: |
+          python -m pip install -e ".[dev]" --quiet
+          python tooling/scripts/check_no_broadcast.py --strict
+
+  # ==========================================================================
+  # 2. Type check：mypy strict（spec 11 §质量门禁）
+  # ==========================================================================
+  typecheck:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-typecheck-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-typecheck-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" --quiet
+
+      - name: Mypy strict
+        # spec 11 §质量门禁：mypy strict 模式
+        # protocol / aegisos_agents / backend 三个核心域（与 Makefile typecheck 目标对齐）
+        run: mypy protocol aegisos_agents backend --ignore-missing-imports
+
+  # ==========================================================================
+  # 3. Test：pytest 矩阵（3.12 / 3.13）
+  # ==========================================================================
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-test-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-test-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        # Mock 模式运行（无 OPENAI_API_KEY），CI 环境零外部依赖
+        env:
+          AEGIS_USE_MOCK: "true"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" --quiet
+
+      - name: Run pytest
+        env:
+          AEGIS_USE_MOCK: "true"
+        run: pytest --tb=short -q
+
+      - name: Upload test results (失败时)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-logs-${{ matrix.python-version }}
+          path: |
+            .pytest_cache/
+            **/test-*.xml
+          if-no-files-found: ignore

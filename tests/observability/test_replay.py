@@ -6,15 +6,14 @@ from __future__ import annotations
 
 import time
 
-from protocol.event import Event, EventType
-from protocol.message import NodeRef
-
+from aegisos_agents.planning.engine.eventbus import EventBus
 from observability.inspect.replay import (
     ReplayPlayer,
     Timeline,
     create_replay_from_eventbus,
 )
-from aegisos_agents.planning.engine.eventbus import EventBus
+from protocol.event import Event, EventType
+from protocol.message import NodeRef
 
 
 def _make_event(

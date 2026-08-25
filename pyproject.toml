@@ -37,6 +37,24 @@ storage = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# P3.3: CI 排除非 Python 文件 & 第三方配置目录
+# - .github/docs/frontend: 非 Python 项目代码
+# - .claude: Claude Code 配置 + skills（仓库内但属工具链，非业务）
+# - .venv/.git/agents/api: 历史 R1 重命名前路径（agents 是旧名，api 是 agents 子包历史名）
+extend-exclude = [
+    ".github",
+    "docs",
+    "frontend",
+    ".claude",
+    ".venv",
+    "agents",
+    "api",
+    "**/*.md",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.toml",
+    "Makefile",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]

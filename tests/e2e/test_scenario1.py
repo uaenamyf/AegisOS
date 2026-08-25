@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 from aegisos_agents.action.critic.agent import CriticAgent
 from aegisos_agents.action.detector.agent import DetectorAgent
@@ -36,6 +35,10 @@ from aegisos_agents.memory.memory_store import MemoryStore
 from backend.mocks.cyber_provider import _CyberMockProvider
 from protocol.cyber import AttackChain, ResponsePlan, VulnFinding
 from protocol.memory import MemoryPacket
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 SESSION_ID = "scenario-1"
 TARGET_RANGE = "10.0.0.0/24"

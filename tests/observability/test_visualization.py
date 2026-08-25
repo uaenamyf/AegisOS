@@ -4,18 +4,15 @@
 """H5.5 数据可视化单元测试。"""
 from __future__ import annotations
 
-from protocol.cyber import AttackChain, AttackStep
-from protocol.graph import Graph, GraphEdge, GraphNode, NodeKind
-
+from observability.inspect.monitor import MetricsCollector, MetricType
 from observability.present.visualization import (
-    ChartData,
     ChartGenerator,
     DashboardAssembler,
-    GraphData,
     GraphRenderer,
     VisualizationService,
 )
-from observability.inspect.monitor import MetricsCollector, MetricType
+from protocol.cyber import AttackChain, AttackStep
+from protocol.graph import Graph, GraphEdge, GraphNode, NodeKind
 
 
 def test_render_topology_generates_nodes_and_edges():
@@ -95,9 +92,9 @@ def test_dashboard_assembler_aggregates_sources():
 
 def test_dashboard_assembler_with_all_sources():
     """聚合全部数据源应含 monitor/benchmark/evaluation/replay。"""
+    from observability.inspect.replay import Timeline
     from observability.measure.benchmark import BenchmarkCase, BenchmarkRunner, BenchmarkSuite
     from observability.measure.evaluation import Evaluator
-    from observability.inspect.replay import Timeline
     from protocol.event import Event, EventType
     from protocol.message import NodeRef
 
