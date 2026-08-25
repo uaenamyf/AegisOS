@@ -57,3 +57,17 @@ route(task) -> Route；动态计算 Agent->Planner->Memory->Coder->Reviewer->Exe
 - **API 边界**：aegisos_agents/api/ — from aegisos_agents.api import ...
 - **数据契约**：protocol/message.py（Message）/ protocol/scheduler.py（Task）
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（红蓝紫角色/记忆/路由）
+
+## 📋 模块实现详解
+
+### 核心函数（router.py）
+- `route(message, topology, required_capability) -> list[NodeRef]`：基于 `active_subgraph()` 取在线候选，按 `success_rate - latency` 亲和度打分，降序后截 Top-K=3。
+- `TOP_K = 3`：单次最多向 3 个节点分发，绝不广播。
+
+### P3.2 业务接入（2026-08-25）
+- `route()` 历史仅在 test 内被引用（业务零调用）— P3.1 静态检测发现该漏洞。
+- **修复**：`CyberOrchestrator` 实现 `RouterAPI` Protocol（`select_targets` / `get_topology`），并新增 `assert_target_routable()` 作为防御性守卫。
+- `_create_red/blue_agent_executor`（AP3 Goal 模式）执行前调用守卫，目标 Agent 不在 Top-K 则抛 `ValueError`，阻断"绕过路由直接调用"。
+- 编排器构造时把 11 个攻防 Agent（红 4 + 蓝 5 + 紫 2）映射为 GraphNode，capability 标签 = agent_name。
+- 测试 `tests/aegisos_agents/planning/test_cyber_router_integration.py`（9 用例）覆盖：RouterAPI 签名、Top-K 截取、未知 capability 空返回、11 节点拓扑、已知/未知 target 守卫、红蓝 executor 路由守卫。
+- 配套静态守卫 `tooling/scripts/check_no_broadcast.py`（P3.1）持续监控业务域零全广播。

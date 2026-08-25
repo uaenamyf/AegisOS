@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # 合法端口范围
 PORT_MIN, PORT_MAX = 1, 65535
@@ -173,7 +173,7 @@ class ExecutionCritic:
             数据异常条目列表。
         """
         critiques: list[Critique] = []
-        # 递归检查所有字段值中的 port 数字
+        # 递归检查所有字段值中的 port 数字 / 破坏性操作标记
         for key, val in self._flatten(output).items():
             if "port" in key.lower() and isinstance(val, int):
                 if val < PORT_MIN or val > PORT_MAX:
@@ -185,8 +185,7 @@ class ExecutionCritic:
                             field=key,
                         )
                     )
-            # 检测破坏性操作标记
-            if "action" in key.lower() and isinstance(val, str):
+            elif "action" in key.lower() and isinstance(val, str):
                 val_lower = val.lower()
                 for kw in DESTRUCTIVE_KEYWORDS:
                     if kw in val_lower:

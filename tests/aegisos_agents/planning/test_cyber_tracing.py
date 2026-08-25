@@ -22,10 +22,8 @@ from observability.inspect.monitor.tracing import (
     CyberAgentHooks,
     CyberTraceData,
     CyberTraceProcessor,
-    HookEvent,
 )
-from protocol.cyber import Alert, AttackChain, AttackStep, ResponsePlan
-
+from protocol.cyber import Alert, AttackChain, AttackStep, DefenseAction, ResponsePlan
 
 # ------------------------------------------------------------------ #
 # Fixtures
@@ -64,7 +62,7 @@ def sample_plan() -> ResponsePlan:
     """示例响应计划。"""
     return ResponsePlan(
         plan_id="plan-001",
-        actions=[{"action": "isolate", "target": "host-1"}],
+        actions=[DefenseAction(action_id="a-1", kind="isolate", target="host-1")],
         confidence=0.85,
         rollback={"action": "restore"},
     )

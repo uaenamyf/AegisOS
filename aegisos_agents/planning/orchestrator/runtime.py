@@ -22,13 +22,17 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
+
+from pydantic import BaseModel
 
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
 from protocol import Heartbeat, NodeRef, Task, TaskStatus
 from protocol.cyber import Alert, AttackChain, ResponsePlan
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 
 class CyberRuntime:

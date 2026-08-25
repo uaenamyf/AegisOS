@@ -17,8 +17,6 @@
 """
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from aegisos_agents.action.exploit_planner.agent import ExploitPlannerAgent
@@ -30,10 +28,8 @@ from aegisos_agents.perception.reasoning.strategies.goal_mode import (
     create_goal_mode_orchestrator,
 )
 from aegisos_agents.planning.orchestrator.cyber_orchestrator import CyberOrchestrator
-from aegisos_agents.tools.llms.mock_provider import MockProvider
 from backend.mocks.cyber_provider import _CyberMockProvider
-from protocol.cyber import AttackChain, AttackStep, VulnFinding
-
+from protocol.cyber import AttackChain, VulnFinding
 
 # ---- 数据类型验证 ----
 

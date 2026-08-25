@@ -2,6 +2,7 @@
 # dev: 123 chen
 """Prompt 模块测试 — PromptRegistry + PromptRenderer。"""
 import pytest
+
 from aegisos_agents.tools.prompts.registry import PromptRegistry
 from aegisos_agents.tools.prompts.renderer import PromptRenderer
 
@@ -43,7 +44,7 @@ def test_get_latest_returns_highest_version(registry):
 def test_get_specific_version(registry):
     """按版本号精确查询。"""
     registry.register("test", "v1", role="red")
-    v2 = registry.register("test", "v2", role="blue")
+    _ = registry.register("test", "v2", role="blue")
     tpl = registry.get("test", version=1)
     assert tpl is not None
     assert tpl.version == 1

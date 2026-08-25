@@ -45,7 +45,7 @@ def elect(
         # 取该节点的能力向量；缺失时视为空向量，点积为 0
         vec = capability_vectors.get(inst.node_id, [])
         # 点积 = Σ(任务特征 × 能力幅值)；逐维相乘后求和
-        score = sum(f * v for f, v in zip(task_features, vec))
+        score = sum(f * v for f, v in zip(task_features, vec, strict=False))
         if score > best_score:
             best_score = score
             best_node = inst

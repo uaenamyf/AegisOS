@@ -7,12 +7,11 @@
 """
 from __future__ import annotations
 
-from protocol.event import EventType
-from protocol.scheduler import Plan, Task, TaskStatus
-
 from aegisos_agents.planning.engine.eventbus import EventBus
-from aegisos_agents.planning.orchestrator import Orchestrator
 from aegisos_agents.planning.engine.workflow import WorkflowStatus
+from aegisos_agents.planning.orchestrator import Orchestrator
+from protocol.event import EventType
+from protocol.scheduler import Plan, Task
 
 
 class _StubRuntime:
@@ -98,7 +97,6 @@ def test_upstream_outputs_passed_to_downstream():
 
     assert result.success
     # execute 的 upstream 应含 analyze 产出
-    analyze_call = next(c for c in runtime.calls if c[0] == "analyze")
     execute_call = next(c for c in runtime.calls if c[0] == "execute")
     verify_call = next(c for c in runtime.calls if c[0] == "verify")
     assert "analyze" in execute_call[1]

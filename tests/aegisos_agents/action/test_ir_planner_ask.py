@@ -44,7 +44,7 @@ def test_confirms_destructive_when_human_approves():
     plan = agent.plan_response_with_human_check(
         [{"hypothesis": "x", "confidence": 0.8, "technique": "T1021"}], ask_handler=handler
     )
-    assert plan.actions[0]["kind"] == "isolate"
+    assert plan.actions[0].kind == "isolate"
 
 
 def test_downgrades_to_monitor_when_human_denies():
@@ -53,7 +53,7 @@ def test_downgrades_to_monitor_when_human_denies():
     plan = agent.plan_response_with_human_check(
         [{"hypothesis": "x", "confidence": 0.8, "technique": "T1021"}], ask_handler=handler
     )
-    assert plan.actions[0]["kind"] == "monitor"
+    assert plan.actions[0].kind == "monitor"
 
 
 def test_timeout_downgrades_to_monitor():
@@ -62,7 +62,7 @@ def test_timeout_downgrades_to_monitor():
     plan = agent.plan_response_with_human_check(
         [{"hypothesis": "x", "confidence": 0.8, "technique": "T1021"}], ask_handler=handler
     )
-    assert plan.actions[0]["kind"] == "monitor"
+    assert plan.actions[0].kind == "monitor"
 
 
 def test_cancels_returns_empty_actions():
@@ -82,4 +82,4 @@ def test_no_ask_when_no_destructive_action():
     )
     # 无破坏性动作：不应暂停提问，直接返回原计划
     assert spy.calls == 0
-    assert plan.actions[0]["kind"] == "monitor"
+    assert plan.actions[0].kind == "monitor"

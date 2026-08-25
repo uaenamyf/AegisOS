@@ -30,7 +30,6 @@ from backend.mocks.cyber_provider import _CyberMockProvider
 from protocol.cyber import AttackChain, AttackStep, ResponsePlan, VulnFinding
 from protocol.graph import Graph, GraphNode, NodeKind
 
-
 # ---- PlanResult / PlanStep 类型验证 ----
 
 

@@ -2,10 +2,11 @@
 # dev: 123 chen
 """Runtime 模块测试 — AgentLifecycle + RuntimeSupervisor。"""
 import time
+
 import pytest
+
 from aegisos_agents.tools.runtime.lifecycle import AgentLifecycle, AgentState
 from aegisos_agents.tools.runtime.supervisor import RuntimeSupervisor
-
 
 # ---- AgentLifecycle 测试 ----
 
@@ -63,9 +64,9 @@ def test_heartbeat_updates_timestamp(lifecycle):
 def test_check_timeout(lifecycle):
     """超时检测：心跳过期后标记 TIMEOUT。"""
     lifecycle.start("agent_1", "task_1")
-    # 0.01s 超时确保触发
+    # 0.01s 超时确保触发（Windows monotonic 精度约 15ms，先睡 30ms 留出余量）
+    time.sleep(0.03)
     assert lifecycle.check_timeout("agent_1", max_sec=0.01) is True
-    time.sleep(0.02)
     assert lifecycle.status("agent_1")["state"] == "timeout"
 
 

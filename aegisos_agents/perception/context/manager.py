@@ -15,7 +15,6 @@ from aegisos_agents.perception.context.window import TokenBudget
 
 if TYPE_CHECKING:
     from aegisos_agents.memory.memory_store import MemoryStore
-    from protocol.memory import MemoryPacket
 
 
 @dataclass

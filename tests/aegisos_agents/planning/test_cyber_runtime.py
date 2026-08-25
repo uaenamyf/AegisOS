@@ -7,11 +7,9 @@ stop / heartbeat 返回值、未知 agent_id 兜底。
 """
 from __future__ import annotations
 
-from protocol import Heartbeat, Task, TaskStatus
-from protocol.cyber import AttackChain, ResponsePlan
-
 from aegisos_agents.planning.orchestrator import CyberRuntime
 from backend.mocks.cyber_provider import _CyberMockProvider
+from protocol import Heartbeat, Task, TaskStatus
 
 
 def test_run_red_chain():

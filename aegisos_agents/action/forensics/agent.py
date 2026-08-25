@@ -12,9 +12,9 @@
 from __future__ import annotations
 
 import json
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import cast
+
+from pydantic import BaseModel
 
 from aegisos_agents.action.output_types import ForensicsResult
 from aegisos_agents.action.react_support import render_tool_output, run_tool_react
@@ -27,6 +27,10 @@ from aegisos_agents.perception.reasoning.strategies import (
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import DefenseAction, ResponsePlan
 from protocol.tool import ToolCall, ToolResult
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 SYSTEM_PROMPT = (
     "You are a digital forensics agent. Given a response plan, return JSON "

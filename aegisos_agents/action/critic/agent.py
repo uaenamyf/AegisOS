@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import json
 
-from agents import Agent, AgentOutputSchema, ModelSettings
-
 from aegisos_agents.action.output_types import CritiqueResult
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.perception.reasoning.strategies import (
@@ -25,6 +23,7 @@ from aegisos_agents.perception.reasoning.strategies import (
     severity_at_least,
 )
 from aegisos_agents.tools.llms.mock_provider import MockProvider
+from agents import Agent, AgentOutputSchema, ModelSettings
 
 # 红队批判系统提示词：校验攻击链是否符合 ATT&CK 规则
 SYSTEM_PROMPT_RED = (

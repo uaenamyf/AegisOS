@@ -29,13 +29,13 @@
 from __future__ import annotations
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Generic, TypeVar
-
-from agents import Agent, Model, ModelProvider, Runner
 
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from aegisos_agents.tools.llms.mock_sdk_model import MockSDKModel
+from agents import Agent, Model, ModelProvider, Runner
 
 T = TypeVar("T")  # output_type 的 Pydantic 类型
 
@@ -107,7 +107,7 @@ class StructuredAgent(Generic[T]):
             RuntimeError: 在线程池模式下等待超时时抛出。
         """
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()  # 探测有无运行中的事件循环
         except RuntimeError:
             # 无运行中的事件循环 → 直接同步执行
             result = Runner.run_sync(self._sdk_agent, prompt)
@@ -122,10 +122,10 @@ class StructuredAgent(Generic[T]):
             future = pool.submit(_sync_call)
             try:
                 return future.result(timeout=timeout)
-            except FutureTimeoutError:
+            except FutureTimeoutError as err:
                 raise RuntimeError(
                     f"StructuredAgent._run timed out after {timeout}s for prompt: {prompt[:200]}"
-                )
+                ) from err
 
     async def _run_streamed(self, prompt: str):
         """异步流式执行，逐事件 yield SDK ``RunResultStreaming.stream_events()``。

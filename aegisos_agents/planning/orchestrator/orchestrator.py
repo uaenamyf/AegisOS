@@ -21,17 +21,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
-from protocol.scheduler import Plan, Task
 from aegisos_agents.planning.engine.eventbus import EventBus
 from aegisos_agents.planning.engine.workflow import (
     WorkflowEngine,
     WorkflowNode,
     WorkflowResult,
-    WorkflowStatus,
 )
 from aegisos_agents.planning.planner import Planner
+from protocol.scheduler import Plan, Task
 
 
 class _RuntimeLike(Protocol):
@@ -130,7 +130,7 @@ class Orchestrator:
 
         # 把 task_id -> node_id 映射建好，便于 executor 从 upstream 取值
         task_by_node: dict[str, Task] = {}
-        for node_id, task in zip(node_ids, plan.tasks):
+        for node_id, task in zip(node_ids, plan.tasks, strict=True):
             task_by_node[node_id] = task
 
         # 构造 WorkflowNode 字典

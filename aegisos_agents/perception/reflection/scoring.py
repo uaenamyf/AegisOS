@@ -8,10 +8,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from aegisos_agents.perception.reflection.critic import Critique
-
 
 # 评分维度权重
 WEIGHT_COMPLETENESS = 0.3

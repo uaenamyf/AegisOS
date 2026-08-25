@@ -9,14 +9,14 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 from protocol.heartbeat import Heartbeat
-from protocol.scheduler import NodeRef
+from protocol.message import NodeRef
 
 
-class AgentState(str, Enum):
+class AgentState(StrEnum):
     """Agent 生命周期状态枚举。"""
 
     INIT = "init"

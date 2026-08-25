@@ -39,34 +39,38 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
-from aegisos_agents.action.output_types import (
-    CritiqueResult,
-    DetectorResult,
-    ExploitPlannerResult,
-    IRPlannerResult,
-    ReconResult,
-    ReviewResult,
-    ThreatHuntResult,
-    TriageResult,
-    VulnCorrelatorResult,
-)
+from pydantic import BaseModel
+
 # AP4: 复用规范层（action/）定义的红蓝紫 Agent 作为链上实例，单一事实来源，
 # 使 AP4 的 Ask 人机协同方法在运行时编排链路中直接生效（避免编排器内重复定义）。
 from aegisos_agents.action.critic.agent import CriticAgent
 from aegisos_agents.action.ir_planner.agent import IRPlannerAgent
-from aegisos_agents.action.threat_hunt.agent import ThreatHuntAgent
+from aegisos_agents.action.output_types import (
+    DetectorResult,
+    ExploitPlannerResult,
+    ReconResult,
+    ReviewResult,
+    TriageResult,
+    VulnCorrelatorResult,
+)
 from aegisos_agents.action.structured_agent import StructuredAgent
+from aegisos_agents.action.threat_hunt.agent import ThreatHuntAgent
+
+# P3.2: 低熵稀疏路由（spec 04 §16 / 11 §7 铁律接入）
+from aegisos_agents.planning.engine.router.router import route as _route
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert, Asset, AttackChain, AttackStep, ResponsePlan, VulnFinding
+from protocol.graph import Graph, GraphNode, NodeKind
+from protocol.message import Message, NodeRef
 
 # R4.2: SDK handoffs 依赖
 try:
-    from agents import Agent as SDKAgent, RunContextWrapper
     from agents.handoffs import handoff
+
+    from agents import Agent as SDKAgent
+    from agents import RunContextWrapper
 
     _SDK_HANDOFF_AVAILABLE = True
 except ImportError:
@@ -74,8 +78,9 @@ except ImportError:
 
 # R4.3: SDK output_guardrail 依赖
 try:
-    from agents import OutputGuardrail, OutputGuardrailTripwireTriggered
     from agents.guardrail import GuardrailFunctionOutput, output_guardrail
+
+    from agents import OutputGuardrailTripwireTriggered
 
     _SDK_GUARDRAIL_AVAILABLE = True
 except ImportError:
@@ -83,7 +88,7 @@ except ImportError:
 
 # R4.4: SDK tracing 依赖
 try:
-    from agents import add_trace_processor, set_trace_processors, trace
+    from agents import set_trace_processors, trace
 
     _SDK_TRACING_AVAILABLE = True
 except ImportError:
@@ -97,7 +102,7 @@ from observability.inspect.monitor.tracing import (
 
 # R4.5: SDK FunctionTool 依赖
 try:
-    from agents import FunctionTool as SDKFunctionTool
+    import agents  # noqa: F401  # ensure SDK available
 
     _SDK_FUNCTION_TOOL_AVAILABLE = True
 except ImportError:
@@ -107,10 +112,11 @@ except ImportError:
 from aegisos_agents.perception.reasoning.strategies.goal_mode import (
     GoalMode,
     GoalNode,
-    GoalResult,
-    GoalStatus,
 )
 
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 # ==================================================================
 # R4.2: ChainContext —— handoff 链共享上下文
@@ -297,6 +303,95 @@ class CyberOrchestrator(GoalMode[dict]):
             self.threat_hunt.set_event_bus(eventbus)
             self.ir_planner.set_event_bus(eventbus)
             self.critic.set_event_bus(eventbus)
+        # P3.2: 构建低熵路由拓扑（11 个攻防 Agent × 能力映射），供 select_targets 使用
+        self._topology: Graph = self._build_topology()
+
+    # P3.2 ----------------------------------------------------------------
+    # 低熵稀疏路由：把编排器持有的所有攻防 Agent 映射到 Graph 节点，
+    # 通过 RouterAPI.select_targets 提供 Top-K 选取，替代任何"遍历后 dispatch"。
+
+    # date: 2026-08-25
+    # dev: myf
+    # changelog: P3.2 把 11 个攻防 Agent 映射为 GraphNode（capability=各自 agent_name），
+    # 供 select_targets() 走 spec 04 §16 Top-K 稀疏路由
+    def _build_topology(self) -> Graph:
+        """构建编排器内 Agent 的低熵路由拓扑。
+
+        每个 Agent 作为一个 ``GraphNode`` 注入到 ``Graph``，
+        能力标签使用其 agent_name（与 executor 中 ``node.agent_name`` 对齐）。
+        Mock 模式下 success_rate=0.5、latency=0.0，真实模式可由运行时心跳注入。
+        """
+        g = Graph()
+        agent_specs: list[tuple[str, str, str]] = [
+            # (node_id, kind, capability)
+            ("recon", "red", "recon"),
+            ("vuln_correlator", "red", "vuln_correlator"),
+            ("exploit_planner", "red", "exploit_planner"),
+            ("lateral_move", "red", "lateral_move"),
+            ("detector", "blue", "detector"),
+            ("triage", "blue", "triage"),
+            ("threat_hunt", "blue", "threat_hunt"),
+            ("ir_planner", "blue", "ir_planner"),
+            ("forensics", "blue", "forensics"),
+            ("critic", "purple", "critic"),
+            ("reviewer", "purple", "reviewer"),
+        ]
+        for node_id, _side, cap in agent_specs:
+            g.add_node(
+                GraphNode(
+                    node_id=node_id,
+                    kind=NodeKind.Agent,
+                    capabilities=[cap],
+                    success_rate=0.5,
+                    latency=0.0,
+                    status="active",
+                )
+            )
+        # side 信息保留在 _topology 上（按 node_id 索引）供调试用
+        g._side_map = {nid: side for nid, side, _ in agent_specs}  # type: ignore[attr-defined]
+        return g
+
+    # date: 2026-08-25
+    # dev: myf
+    # changelog: P3.2 实现 RouterAPI：按 capability 取 Top-K 目标（spec 04 §16），
+    # 内部委派 aegisos_agents.planning.engine.router.route，绝不遍历全图后 dispatch
+    def select_targets(
+        self, message: Message, required_capability: str
+    ) -> list[NodeRef]:
+        """按能力选取 Top-K 目标节点（实现 ``RouterAPI``）。"""
+        return _route(message, self._topology, required_capability)
+
+    # date: 2026-08-25
+    # dev: myf
+    # changelog: P3.2 暴露拓扑给调试与编排注入（RouterAPI.get_topology）
+    def get_topology(self) -> Graph:
+        """返回当前活动 Agent 拓扑（实现 ``RouterAPI``）。"""
+        return self._topology
+
+    # date: 2026-08-25
+    # dev: myf
+    # changelog: P3.2 防御性检查：executor 调用前用稀疏路由确认目标 Agent 在 Top-K 内；
+    # 不在则 raise，让 GoalMode 重试或上层处理
+    def assert_target_routable(
+        self, capability: str, target_agent_name: str
+    ) -> None:
+        """稀疏路由前置守卫：要求目标 Agent 在当前能力 Top-K 候选里。
+
+        Args:
+            capability: 能力标识（如 ``"recon"``）。
+            target_agent_name: 编排器即将调用的 Agent 名称（与 node.agent_name 对齐）。
+
+        Raises:
+            ValueError: 当目标不在 ``select_targets(...)`` 返回的 Top-K 中时抛出，
+                用于阻断任何"绕过路由直接调用"的违规路径。
+        """
+        targets = _route(Message(), self._topology, capability)
+        if not any(t.node_id == target_agent_name for t in targets):
+            raise ValueError(
+                f"Agent {target_agent_name!r} not in Top-K for capability "
+                f"{capability!r} (candidates={[t.node_id for t in targets]})"
+            )
+    # ---------------------------------------------------------------------
 
     def run_red_chain(self, target_range: str) -> dict[str, Any]:
         """执行红队攻击链：recon → vuln_correlator → exploit_planner。
@@ -592,7 +687,7 @@ class CyberOrchestrator(GoalMode[dict]):
         ctx = ChainContext(target_range=target_range)
 
         try:
-            await_result = self._run_red_handoff_chain(ctx, target_range)
+            _ = self._run_red_handoff_chain(ctx, target_range)
             # 如果 handoff 链成功（LLM 驱动了移交），使用累积的产出
             if ctx.chain is not None:
                 return self._context_to_red_result(ctx)
@@ -621,7 +716,7 @@ class CyberOrchestrator(GoalMode[dict]):
         ctx = ChainContext(event_stream=event_stream)
 
         try:
-            await_result = self._run_blue_handoff_chain(ctx, event_stream)
+            _ = self._run_blue_handoff_chain(ctx, event_stream)
             if ctx.plan is not None:
                 return self._context_to_blue_result(ctx)
         except Exception:
@@ -1533,6 +1628,18 @@ class CyberOrchestrator(GoalMode[dict]):
             agent_name = node.agent_name
             fallback_hint = context.get("_fallback_hint", "")
 
+            # P3.2: 低熵稀疏路由前置守卫 —— 目标 Agent 必须在 Top-K 内才执行
+            try:
+                self.assert_target_routable(agent_name, agent_name)
+            except ValueError:
+                # 单候选能力（如 lateral_move）路由可能为空；只有当图里无该
+                # capability 节点时才放行（启动时未注入该 Agent 的场景）
+                if any(
+                    n.node_id == agent_name
+                    for n in self._topology.nodes.values()
+                ):
+                    raise
+
             if agent_name == "recon":
                 prompt = f"Scan target range: {target_range}"
                 if fallback_hint:
@@ -1639,6 +1746,16 @@ class CyberOrchestrator(GoalMode[dict]):
             """蓝队子目标执行器。"""
             agent_name = node.agent_name
             fallback_hint = context.get("_fallback_hint", "")
+
+            # P3.2: 低熵稀疏路由前置守卫（与红队一致）
+            try:
+                self.assert_target_routable(agent_name, agent_name)
+            except ValueError:
+                if any(
+                    n.node_id == agent_name
+                    for n in self._topology.nodes.values()
+                ):
+                    raise
 
             if agent_name == "detector":
                 prompt = f"Detect anomalies in: {json.dumps(event_stream)}"

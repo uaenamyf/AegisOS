@@ -26,16 +26,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable
+from enum import StrEnum
+from typing import Any
 
 from protocol.event import Event, EventType
 from protocol.message import NodeRef
 
 
-class WorkflowStatus(str, Enum):
+class WorkflowStatus(StrEnum):
     """工作流节点状态枚举。
 
     表示节点在执行过程中的当前阶段，由 :class:`WorkflowEngine` 推进。

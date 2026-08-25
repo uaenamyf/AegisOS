@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from protocol.scheduler import Plan, Task, TaskStatus
 
-
 # ---- 场景模板定义 ----
 # 每个模板是 (node_id, sub_goal_description, explicit_deps) 三元组列表。
 # explicit_deps:

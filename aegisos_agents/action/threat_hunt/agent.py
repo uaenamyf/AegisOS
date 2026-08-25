@@ -14,7 +14,6 @@ AP4.4：``hunt_with_human_check`` 在假设置信度偏低时暂停向人类澄�
 from __future__ import annotations
 
 import json
-from typing import cast
 
 from aegisos_agents.action.output_types import ThreatHuntResult
 from aegisos_agents.action.react_support import render_tool_output, run_tool_react
@@ -23,6 +22,9 @@ from aegisos_agents.perception.reasoning.strategies import (
     AskMode,
     AskResponse,
     AutoAskHandler,
+    ReactExecutor,
+    ReactResult,
+    ReactThinker,
 )
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import Alert
@@ -185,3 +187,53 @@ class ThreatHuntAgent(StructuredAgent[ThreatHuntResult], AskMode):
             return [h.model_dump() for h in narrowed.hypotheses]
         # 保持当前假设 / 超时默认 / 补充上下文（无法在循环内获取自由文本）：返回原假设
         return hypotheses
+
+    # date: 2026-08-25
+    # dev: overwhelmingly
+    # changelog: AP2 ReAct 收尾——新增 hunt_react 工具调用循环
+    def hunt_react(
+        self,
+        alerts: list[Alert],
+        executor: ReactExecutor,
+        *,
+        thinker: ReactThinker[list[dict]] | None = None,
+        max_iterations: int = 8,
+        stop_on_tool_error: bool = True,
+    ) -> ReactResult[list[dict]]:
+        """通过 ReAct 查询 ATT&CK 知识库，再归纳为威胁狩猎假设。
+
+        Args:
+            alerts: 告警列表（空时使用空 technique_id 查询）。
+            executor: 执行 ``query_attck_kb`` 的受控工具端口。
+            thinker: 可选自定义思考器。
+            max_iterations: 最大 ReAct 循环轮数。
+            stop_on_tool_error: 是否在工具失败时立即停止。
+
+        Returns:
+            带完整轨迹的狩猎假设列表（list[dict]）。
+        """
+
+        technique_id = alerts[0].technique if alerts else ""
+
+        def finalize(observation: ToolResult) -> list[dict]:
+            result = self._run(
+                f"Generate hunting hypotheses for technique {technique_id} "
+                f"using ATT&CK observation: {render_tool_output(observation.output)}"
+            )
+            return [h.model_dump() for h in result.hypotheses]
+
+        return run_tool_react(
+            goal=f"Threat hunt using ATT&CK technique {technique_id}",
+            action=ToolCall(
+                name="query_attck_kb",
+                args={"technique_id": technique_id},
+                permission="knowledge.read",
+            ),
+            executor=executor,
+            finalizer=finalize,
+            action_thought="需要先查询 ATT&CK 知识库获取技术语义",
+            finish_thought="ATT&CK 观察已足够生成狩猎假设",
+            thinker=thinker,
+            max_iterations=max_iterations,
+            stop_on_tool_error=stop_on_tool_error,
+        )

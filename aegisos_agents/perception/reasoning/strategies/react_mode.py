@@ -10,7 +10,7 @@ Agent 接入时复用沙箱 ``ExecutionAPI``。
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Generic, TypeAlias, TypeVar
 
@@ -259,7 +259,8 @@ class ReactMode(Generic[OutputT]):
                 )
             if not result.call_id:
                 # 部分轻量执行器省略 call_id；补齐后才能可靠关联 action/observation。
-                result = replace(result, call_id=action.call_id)
+                # ToolResult 为 Pydantic BaseModel，使用 model_copy 替代 dataclasses.replace。
+                result = result.model_copy(update={"call_id": action.call_id})
             return result
         except Exception as exc:
             return ToolResult(

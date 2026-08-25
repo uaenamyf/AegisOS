@@ -7,9 +7,8 @@
 """
 from __future__ import annotations
 
-from protocol.scheduler import Plan, Task, TaskStatus
-
 from aegisos_agents.planning.planner import Planner
+from protocol.scheduler import Plan, TaskStatus
 
 
 def test_plan_cyber_red_chain():

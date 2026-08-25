@@ -23,8 +23,9 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict, deque
-from typing import Callable
+from collections.abc import Callable
 
 from protocol.event import Event, EventType
 
@@ -80,11 +81,9 @@ class EventBus:
             """取消订阅闭包：仅移除本次注册的那个 handler 实例。"""
             # 仅移除首个匹配项，避免误删同函数的多次订阅
             handlers = self._subscribers[topic]
-            try:
+            with contextlib.suppress(ValueError):
                 handlers.remove(handler)
-            except ValueError:
-                # 已移除或未注册：静默忽略，保证幂等
-                pass
+            # 已移除或未注册：静默忽略，保证幂等
 
         return _unsubscribe
 

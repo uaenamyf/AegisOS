@@ -2,11 +2,11 @@
 # dev: 123 chen
 """上下文模块测试 —— TokenBudget + ContextManager。"""
 import pytest
-from aegisos_agents.perception.context.window import TokenBudget
-from aegisos_agents.perception.context.manager import Context, ContextManager
-from aegisos_agents.memory.memory_store import MemoryStore
-from protocol.memory import MemoryPacket
 
+from aegisos_agents.memory.memory_store import MemoryStore
+from aegisos_agents.perception.context.manager import ContextManager
+from aegisos_agents.perception.context.window import TokenBudget
+from protocol.memory import MemoryPacket
 
 # ---- TokenBudget 测试 ----
 

@@ -1,6 +1,6 @@
 from .critic import Critique, ExecutionCritic
-from .scoring import OutputScore, OutputScorer
 from .feedback import FeedbackLoop, FeedbackRecord
+from .scoring import OutputScore, OutputScorer
 
 __all__ = [
     "Critique",

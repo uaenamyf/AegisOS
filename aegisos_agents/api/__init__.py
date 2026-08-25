@@ -28,6 +28,8 @@ from protocol import (  # 跨域数据契约，禁自造并行结构（见 03_IM
     ToolCall,
     ToolResult,
 )
+from protocol.graph import Graph
+from protocol.message import Message, NodeRef
 
 from .ports import PersistencePort, SessionPort, TaskUpdatePort  # DI 端口，由后端实现并注入
 
@@ -231,12 +233,55 @@ class RuntimeAPI(Protocol):
         ...
 
 
+class RouterAPI(Protocol):
+    """低熵稀疏路由接口 —— 从候选 Agent 池中按 Top-K 选取目标节点。
+
+    遵循 ``04_PROTOCOL_SPEC`` §16 与 ``11_AI_CODING_SPEC`` §7 铁律：
+    禁全广播通信，路由必须基于亲和度-负载的 Top-K 截取，
+    返回排序后的 ``NodeRef`` 列表（长度不超过 3）。
+
+    后端 e2e 测试、规划层编排器（CyberOrchestrator 目标选择）、
+    调度器（多候选 Agent 分发）均通过此接口访问路由能力，
+    避免业务层直接依赖 ``router.route`` 私有实现。
+
+    Attributes:
+        无实例属性；本接口为 ``Protocol``，仅约束方法签名。
+    """
+
+    def select_targets(
+        self, message: Message, required_capability: str
+    ) -> list[NodeRef]:
+        """按 ``required_capability`` 选取 Top-K 个最匹配的目标节点。
+
+        实现须调用 :func:`aegisos_agents.planning.engine.router.route`，
+        不允许遍历所有节点后 ``dispatch`` 广播。
+
+        Args:
+            message: 待路由消息，提供上下文（payload 决定亲和度计算）。
+            required_capability: 路由所需能力标识，如 ``"recon"`` / ``"threat_hunt"``。
+
+        Returns:
+            按得分降序排列的目标节点引用列表，长度 ``<= 3``；
+            无可用候选时返回空列表（非广播）。
+        """
+        ...
+
+    def get_topology(self) -> Graph:
+        """获取当前活动 Agent 拓扑（用于调试与编排器注入）。
+
+        Returns:
+            Graph: 当前 Agent 节点拓扑图。
+        """
+        ...
+
+
 __all__ = [  # 对外暴露的公共接口清单
     "AgentRegistryAPI",
     "MemoryAPI",
     "ExecutionAPI",
     "EventBusAPI",
     "RuntimeAPI",
+    "RouterAPI",
     "PersistencePort",
     "SessionPort",
     "TaskUpdatePort",

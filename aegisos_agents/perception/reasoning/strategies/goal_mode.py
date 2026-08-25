@@ -44,14 +44,15 @@ Attributes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Generic, TypeVar
+from enum import StrEnum
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T", bound=Any)
 
 
-class GoalStatus(str, Enum):
+class GoalStatus(StrEnum):
     """子目标执行状态。"""
 
     Pending = "pending"        # 待执行

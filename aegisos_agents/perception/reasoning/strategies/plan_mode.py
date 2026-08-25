@@ -40,12 +40,11 @@ from __future__ import annotations
 
 from typing import Any, Generic, TypeVar
 
-from agents import Agent, AgentOutputSchema, ModelSettings
 from pydantic import BaseModel, Field
 
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
-from aegisos_agents.tools.llms.mock_sdk_model import MockSDKModel
+from agents import Agent, AgentOutputSchema, ModelSettings
 
 T = TypeVar("T", bound=BaseModel)
 

@@ -91,7 +91,7 @@ class IRPlannerAgent(
             规划出的响应计划；LLM 失败时返回默认空计划。
         """
         result = self._run(f"Plan response for: {json.dumps(hypotheses)}")
-        # Pydantic Model → protocol dataclass 转换；actions 转 dict 保持原接口
+        # R1.6: DefenseActionModel → protocol.cyber.DefenseAction（Pydantic 自动校验）
         return ResponsePlan(
             plan_id=result.plan_id,
             actions=[a.model_dump() for a in result.actions],
@@ -117,6 +117,7 @@ class IRPlannerAgent(
         """
         prompt = f"Plan response for: {json.dumps(hypotheses)}"
         result = self._run_with_plan(prompt, domain="incident_response")
+        # R1.6: DefenseActionModel → protocol.cyber.DefenseAction（Pydantic 自动校验）
         return ResponsePlan(
             plan_id=result.plan_id,
             actions=[a.model_dump() for a in result.actions],
@@ -151,8 +152,9 @@ class IRPlannerAgent(
         # 先生成基础计划（复用既有 LLM 调用路径）
         plan = self.plan_response(hypotheses)
 
+        # R1.6: DefenseAction Pydantic 模型，用属性访问替代 dict.get
         destructive = [
-            a for a in plan.actions if (a.get("kind") in _DESTRUCTIVE_KINDS)
+            a for a in plan.actions if (a.kind in _DESTRUCTIVE_KINDS)
         ]
         if not destructive:
             # 无破坏性动作：直接返回，无需暂停
@@ -167,7 +169,7 @@ class IRPlannerAgent(
             options=["确认执行", "降级为仅监控", "取消执行"],
             context={
                 "plan_id": plan.plan_id,
-                "destructive_actions": [a.get("action_id", "") for a in destructive],
+                "destructive_actions": [a.action_id for a in destructive],
                 "confidence": plan.confidence,
             },
             # 无人值守/超时：保守降级为仅 monitor（不执行破坏性动作）
@@ -191,15 +193,17 @@ class IRPlannerAgent(
                 rollback=plan.rollback,
             )
         # 降级为仅 monitor / 超时默认：破坏性动作转换为 monitor
+        from protocol.cyber import DefenseAction
         new_actions = []
         for a in plan.actions:
-            if a.get("kind") in _DESTRUCTIVE_KINDS:
+            if a.kind in _DESTRUCTIVE_KINDS:
                 new_actions.append(
-                    {
-                        **a,
-                        "kind": "monitor",
-                        "rationale": f"degraded from {a.get('kind')} to monitor-only (human/timeout)",
-                    }
+                    DefenseAction(
+                        action_id=a.action_id,
+                        kind="monitor",
+                        target=a.target,
+                        rationale=f"degraded from {a.kind} to monitor-only (human/timeout)",
+                    )
                 )
             else:
                 new_actions.append(a)

@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import asyncio
 
-from protocol.event import EventType
-
 from aegisos_agents.planning.engine.eventbus import EventBus
 from observability.inspect.monitor.tracing import CyberAgentHooks
+from protocol.event import EventType
 
 
 class _FakeAgent:
@@ -109,8 +108,8 @@ def test_no_eventbus_does_not_publish():
 
 def test_install_hooks_with_eventbus_publishes():
     """CyberOrchestrator.install_hooks(eventbus=bus) 后链路执行发布事件。"""
-    from backend.mocks.cyber_provider import _CyberMockProvider
     from aegisos_agents.planning.orchestrator import CyberOrchestrator
+    from backend.mocks.cyber_provider import _CyberMockProvider
 
     bus = EventBus()
     orchestrator = CyberOrchestrator(mock=_CyberMockProvider())

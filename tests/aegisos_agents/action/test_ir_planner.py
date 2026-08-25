@@ -13,7 +13,7 @@ def test_plan_response_returns_response_plan():
     plan = agent.plan_response(hypotheses)
     assert plan.plan_id == "rp1"
     assert len(plan.actions) == 1
-    assert plan.actions[0]["kind"] == "isolate"
+    assert plan.actions[0].kind == "isolate"
     assert plan.confidence == 0.9
     assert plan.rollback["enabled"] is True
 

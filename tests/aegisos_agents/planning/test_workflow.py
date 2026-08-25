@@ -7,14 +7,13 @@
 """
 from __future__ import annotations
 
-from protocol.event import EventType
-
 from aegisos_agents.planning.engine.eventbus import EventBus
 from aegisos_agents.planning.engine.workflow import (
     WorkflowEngine,
     WorkflowNode,
     WorkflowStatus,
 )
+from protocol.event import EventType
 
 
 def test_linear_chain_executes_in_order():

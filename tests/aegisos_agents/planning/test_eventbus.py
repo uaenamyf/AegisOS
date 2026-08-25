@@ -7,10 +7,9 @@
 """
 from __future__ import annotations
 
+from aegisos_agents.planning.engine.eventbus import EventBus
 from protocol.event import Event, EventType
 from protocol.message import NodeRef
-
-from aegisos_agents.planning.engine.eventbus import EventBus
 
 
 def test_subscribe_and_receive_event():
