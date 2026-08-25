@@ -48,8 +48,6 @@ class TimelineEntry:
 
     def to_dict(self) -> dict[str, Any]:
         """转换为可序列化字典。"""
-        from dataclasses import asdict
-
         return {
             "relative_time": round(self.relative_time, 4),
             "phase": self.phase,

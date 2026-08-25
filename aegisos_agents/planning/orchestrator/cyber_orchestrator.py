@@ -38,7 +38,9 @@ R4.2 SDK handoffs 架构（声明式链 vs 手动串联）：
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from aegisos_agents.action.output_types import (
@@ -427,8 +429,8 @@ class CyberOrchestrator(GoalMode[dict]):
         # 紫队跨产出一致性审查
         artifacts = {
             "attack_chain": chain.to_dict(),
-            "response_plan": asdict(plan),
-            "alerts": [asdict(a) for a in alerts],
+            "response_plan": _asdict(plan),
+            "alerts": [_asdict(a) for a in alerts],
         }
         review_result = self.reviewer._run(
             f"Review consistency: {json.dumps(artifacts, default=str)}"
@@ -547,8 +549,8 @@ class CyberOrchestrator(GoalMode[dict]):
         # 紫队跨产出一致性审查（保持原逻辑）
         artifacts = {
             "attack_chain": chain.to_dict(),
-            "response_plan": asdict(plan),
-            "alerts": [asdict(a) for a in alerts],
+            "response_plan": _asdict(plan),
+            "alerts": [_asdict(a) for a in alerts],
         }
         review_result = self.reviewer._run(
             f"Review consistency: {json.dumps(artifacts, default=str)}"

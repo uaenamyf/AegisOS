@@ -25,7 +25,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 
 @dataclass
@@ -87,7 +88,7 @@ class CaseStats:
     latency_std_ms: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return _asdict(self)
 
 
 @dataclass

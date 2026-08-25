@@ -31,7 +31,9 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncGenerator
-from dataclasses import asdict, is_dataclass
+from dataclasses import is_dataclass
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from fastapi import APIRouter
@@ -48,7 +50,7 @@ def _serialize(obj: Any) -> Any:
     if isinstance(obj, BaseModel):
         return obj.model_dump()
     if is_dataclass(obj) and not isinstance(obj, type):
-        return asdict(obj)
+        return _asdict(obj)
     if hasattr(obj, "__dict__"):
         return {k: _serialize(v) for k, v in vars(obj).items() if not k.startswith("_")}
     return str(obj)

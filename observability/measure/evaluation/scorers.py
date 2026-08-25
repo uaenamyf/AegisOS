@@ -23,7 +23,9 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any, Callable
 
 import json
@@ -69,7 +71,7 @@ class DimensionScore:
             "dimension": self.dimension,
             "score": round(self.score, 2),
             "weight": self.weight,
-            "metrics": [asdict(m) for m in self.metrics],
+            "metrics": [_asdict(m) for m in self.metrics],
             "notes": self.notes,
         }
 

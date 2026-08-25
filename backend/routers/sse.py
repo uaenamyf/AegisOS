@@ -11,7 +11,8 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncGenerator
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
@@ -60,7 +61,7 @@ async def stream_events(
                 # 主题过滤：指定了 stream 时跳过不匹配的事件
                 if stream and event.topic != stream:
                     continue
-                payload = asdict(event)
+                payload = _asdict(event)
                 yield f"event: {event.topic}\ndata: {json.dumps(payload)}\n\n"
             await asyncio.sleep(0.5)  # 轮询间隔，避免 CPU 空转
 

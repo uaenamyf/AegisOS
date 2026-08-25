@@ -12,7 +12,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
@@ -73,7 +74,7 @@ async def ws_stream(
                     if payload.get("session_id") != session and event.task_id != session:
                         continue
                 await websocket.send_text(
-                    json.dumps({"type": event.topic, "data": asdict(event)}, default=str)
+                    json.dumps({"type": event.topic, "data": _asdict(event)}, default=str)
                 )
             # 非阻塞接收客户端消息，不阻塞推送循环
             raw = await _try_receive(websocket)

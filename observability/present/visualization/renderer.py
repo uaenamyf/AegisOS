@@ -22,7 +22,9 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from protocol.cyber import AttackChain
@@ -46,7 +48,7 @@ class ChartData:
     series: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return _asdict(self)
 
 
 class ChartGenerator:

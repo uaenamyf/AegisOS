@@ -22,7 +22,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
@@ -138,8 +139,8 @@ class CyberRuntime:
     def _serialize_red(result: dict) -> dict:
         """序列化红队链产出：dataclass 列表转 dict。"""
         return {
-            "assets": [asdict(a) for a in result["assets"]],
-            "findings": [asdict(f) for f in result["findings"]],
+            "assets": [_asdict(a) for a in result["assets"]],
+            "findings": [_asdict(f) for f in result["findings"]],
             "chain": result["chain"].to_dict(),
         }
 
@@ -147,8 +148,8 @@ class CyberRuntime:
     def _serialize_blue(result: dict) -> dict:
         """序列化蓝队链产出：dataclass 列表转 dict。"""
         return {
-            "alerts": [asdict(a) for a in result["alerts"]],
-            "triaged": [asdict(a) for a in result["triaged"]],
+            "alerts": [_asdict(a) for a in result["alerts"]],
+            "triaged": [_asdict(a) for a in result["triaged"]],
             "hypotheses": result["hypotheses"],
-            "plan": asdict(result["plan"]),
+            "plan": _asdict(result["plan"]),
         }

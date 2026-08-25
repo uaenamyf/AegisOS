@@ -8,7 +8,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 from fastapi import APIRouter
 
@@ -36,7 +37,7 @@ async def get_graph(
     """
     graph = await service.get_graph()
     # 节点以 ID 为键、节点 dataclass 转字典为值
-    nodes = {nid: asdict(node) for nid, node in graph.nodes.items()}
+    nodes = {nid: _asdict(node) for nid, node in graph.nodes.items()}
     # 边直接展平为字典列表
-    edges = [asdict(e) for e in graph.edges]
+    edges = [_asdict(e) for e in graph.edges]
     return GraphResponse(nodes=nodes, edges=edges)

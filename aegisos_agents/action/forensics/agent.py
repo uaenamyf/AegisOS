@@ -12,7 +12,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import cast
 
 from aegisos_agents.action.output_types import ForensicsResult
@@ -137,7 +138,7 @@ class ForensicsAgent(StructuredAgent[ForensicsResult]):
         return {
             "plan_id": plan.plan_id,
             "actions": [
-                asdict(action) if isinstance(action, DefenseAction) else action
+                _asdict(action) if isinstance(action, DefenseAction) else action
                 for action in plan.actions
             ],
             "confidence": plan.confidence,

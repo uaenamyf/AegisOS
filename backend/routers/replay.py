@@ -8,7 +8,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from fastapi import APIRouter
@@ -37,7 +38,7 @@ async def replay_session(
         包含 ``session_id``、``timeline`` 与 ``event_count`` 字段的
         字典。``timeline`` 为事件字典列表，``event_count`` 为事件数。
     """
-    events = [asdict(e) for e in event_bus.recent_events() if _belongs_to_session(e, session_id)]
+    events = [_asdict(e) for e in event_bus.recent_events() if _belongs_to_session(e, session_id)]
     return {
         "session_id": session_id,
         "timeline": events,

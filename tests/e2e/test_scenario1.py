@@ -20,7 +20,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 from aegisos_agents.action.critic.agent import CriticAgent
 from aegisos_agents.action.detector.agent import DetectorAgent
@@ -149,7 +150,7 @@ def test_scenario1_blue_team_detect_to_response_plan():
     assert isinstance(plan, ResponsePlan)
     assert plan.plan_id == "rp-1"
     assert len(plan.actions) >= 1
-    assert plan.actions[0]["kind"] == "isolate"
+    assert plan.actions[0].kind == "isolate"
     assert plan.confidence > 0.0
 
 
@@ -231,8 +232,8 @@ def test_scenario1_full_chain_data_flow_integration():
     review = ReviewerAgent(provider).review(
         {
             "attack_chain": chain.to_dict(),
-            "response_plan": asdict(plan),
-            "alerts": [asdict(a) for a in alerts],
+            "response_plan": _asdict(plan),
+            "alerts": [_asdict(a) for a in alerts],
         }
     )
     assert review["consistent"] is True

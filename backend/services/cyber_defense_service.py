@@ -15,7 +15,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from pydantic import BaseModel
+_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from aegisos_agents.memory.memory_store import MemoryStore
@@ -263,8 +264,8 @@ class CyberDefenseService:
             威胁情报条目列表（dict 格式）。
         """
         if tactic:
-            return [asdict(t) for t in self._intel_db if t.tactic == tactic]
-        return [asdict(t) for t in self._intel_db]
+            return [_asdict(t) for t in self._intel_db if t.tactic == tactic]
+        return [_asdict(t) for t in self._intel_db]
 
     # ---- 内部辅助 ----
 
@@ -298,8 +299,8 @@ class CyberDefenseService:
         findings = result.get("findings", [])
         chain = result.get("chain")
         return {
-            "assets": [asdict(a) if not isinstance(a, dict) else a for a in assets],
-            "findings": [asdict(f) if not isinstance(f, dict) else f for f in findings],
+            "assets": [_asdict(a) if not isinstance(a, dict) else a for a in assets],
+            "findings": [_asdict(f) if not isinstance(f, dict) else f for f in findings],
             "chain": chain.to_dict() if isinstance(chain, AttackChain) else chain,
         }
 
@@ -313,10 +314,10 @@ class CyberDefenseService:
         hypotheses = result.get("hypotheses", [])
         plan = result.get("plan")
         return {
-            "alerts": [asdict(a) if not isinstance(a, dict) else a for a in alerts],
-            "triaged": [asdict(a) if not isinstance(a, dict) else a for a in triaged],
+            "alerts": [_asdict(a) if not isinstance(a, dict) else a for a in alerts],
+            "triaged": [_asdict(a) if not isinstance(a, dict) else a for a in triaged],
             "hypotheses": hypotheses,
-            "plan": asdict(plan) if isinstance(plan, ResponsePlan) else plan,
+            "plan": _asdict(plan) if isinstance(plan, ResponsePlan) else plan,
         }
 
     @staticmethod
