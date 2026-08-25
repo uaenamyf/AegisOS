@@ -26,14 +26,15 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable
+from enum import StrEnum
+from typing import Any
 
 from protocol.event import Event, EventType
 
 
-class MetricType(str, Enum):
+class MetricType(StrEnum):
     """指标类型枚举。"""
 
     COUNTER = "counter"    # 计数器：单调递增（如调用次数）

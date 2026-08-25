@@ -20,13 +20,18 @@
 
 from __future__ import annotations
 
+import contextlib
 import statistics
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 
 @dataclass
@@ -242,10 +247,9 @@ class BenchmarkRunner:
                 report.raw_results.append(result)
                 # teardown
                 if case.teardown is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         case.teardown()
-                    except Exception:  # noqa: BLE001
-                        pass  # teardown 失败不影响结果
+                # teardown 失败不影响结果
             # 统计汇总
             stats = self._compute_stats(case.name, case_results)
             report.case_stats.append(stats)

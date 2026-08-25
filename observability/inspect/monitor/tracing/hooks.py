@@ -93,7 +93,7 @@ class CyberAgentHooks(AgentHooksBase):
     def __init__(
         self,
         agent_name: str = "",
-        eventbus: "EventBus | None" = None,
+        eventbus: EventBus | None = None,
         task_id: str = "",
     ) -> None:
         """初始化钩子。

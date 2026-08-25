@@ -1,6 +1,5 @@
 # date: 2026-07-07
 # dev: myf
-# changelog: H5.4 新建 5 维度评测——accuracy/recall/latency/resource/robustness metrics + scorers + EvaluationReport
 """5 维度评测 —— 对齐赛题评分维度的评估指标、评分器与报告。
 
 本模块实现对齐赛题评分维度的 5 维度评测：
@@ -23,12 +22,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
-from typing import Any, Callable
-
 import json
+from dataclasses import dataclass, field
+from typing import Any
+
+from pydantic import BaseModel
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 
 @dataclass

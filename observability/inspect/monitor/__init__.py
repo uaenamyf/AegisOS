@@ -5,7 +5,7 @@
 
 导出 :class:`MetricsCollector` 及相关类型，供后端 monitor router 与前端 MonitorView 消费。
 """
-from .metrics import Alert, AlertRule, Metric, MetricType, MetricsCollector
+from .metrics import Alert, AlertRule, Metric, MetricsCollector, MetricType
 
 __all__ = [
     "MetricsCollector",

@@ -1,6 +1,5 @@
 # date: 2026-07-07
 # dev: myf
-# changelog: H5.5 新建可视化——ChartGenerator 图表数据 + GraphRenderer 拓扑图数据 + DashboardAssembler 仪表盘聚合
 """数据可视化 —— 为前端生成图表/图谱/仪表盘的可渲染数据。
 
 本模块实现 :class:`ChartGenerator` / :class:`GraphRenderer` / :class:`DashboardAssembler`，
@@ -23,12 +22,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
+
+from pydantic import BaseModel
 
 from protocol.cyber import AttackChain
 from protocol.graph import Graph
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 
 @dataclass
