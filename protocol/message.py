@@ -1,3 +1,6 @@
+# date: 2026-08-25
+# dev: overwhelmingly
+# change: R1.1 Protocol→Pydantic 迁移：从 dataclass 升级为 BaseModel，保留 to_dict/from_dict 兼容
 """消息协议类型。
 
 定义 AegisOS 跨模块通信的标准消息结构，包括节点引用、
@@ -7,12 +10,12 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field
 
-@dataclass
-class NodeRef:
+
+class NodeRef(BaseModel):
     """节点引用。
 
     统一的节点寻址结构，用于消息的发送方与接收方标识。
@@ -23,13 +26,18 @@ class NodeRef:
         name: 节点可读名称。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     node_id: str
     node_type: str
     name: str = ""
 
+    def __init__(self, node_id: str = "", node_type: str = "", name: str = "") -> None:
+        """兼容旧 dataclass 位置参数调用方式。"""
+        super().__init__(node_id=node_id, node_type=node_type, name=name)
 
-@dataclass
-class Header:
+
+class Header(BaseModel):
     """消息头。
 
     携带协议版本与链路追踪信息。
@@ -41,14 +49,15 @@ class Header:
         compress: 压缩方式标识（如 gzip），空表示不压缩。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     version: str = "1.0"
-    trace_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    trace_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     session_id: str = ""
     compress: str = ""
 
 
-@dataclass
-class Message:
+class Message(BaseModel):
     """标准消息。
 
     跨模块通信的标准数据结构，包含路由、优先级、负载与头信息。
@@ -68,30 +77,32 @@ class Message:
         header: 消息头。
     """
 
-    message_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    model_config = ConfigDict(extra="ignore")
+
+    message_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     parent_id: str = ""
     task_id: str = ""
     workflow_id: str = ""
-    sender: NodeRef = field(default_factory=lambda: NodeRef("", ""))
-    receiver: NodeRef = field(default_factory=lambda: NodeRef("", ""))
+    sender: NodeRef = Field(default_factory=lambda: NodeRef(node_id="", node_type=""))
+    receiver: NodeRef = Field(default_factory=lambda: NodeRef(node_id="", node_type=""))
     priority: int = 0
     ttl: int = 64
     compression: str = ""
-    timestamp: float = field(default_factory=time.time)
+    timestamp: float = Field(default_factory=time.time)
     payload: Any = None
-    header: Header = field(default_factory=Header)
+    header: Header = Field(default_factory=Header)
 
     def to_dict(self) -> dict:
-        """将消息序列化为字典。
+        """将消息序列化为字典（兼容旧 API，内部委托 ``model_dump``）。
 
         Returns:
             包含所有字段的字典，嵌套的 NodeRef 与 Header 也会递归转换。
         """
-        return asdict(self)
+        return self.model_dump()
 
     @classmethod
     def from_dict(cls, data: dict) -> Message:
-        """从字典反序列化消息。
+        """从字典反序列化消息（兼容旧 API，内部委托 ``model_validate``）。
 
         Args:
             data: 包含消息字段的字典，其中 sender、receiver、header 为子字典。
@@ -99,7 +110,4 @@ class Message:
         Returns:
             重建后的 Message 实例。
         """
-        sender = NodeRef(**data.pop("sender", {"node_id": "", "node_type": ""}))
-        receiver = NodeRef(**data.pop("receiver", {"node_id": "", "node_type": ""}))
-        header = Header(**data.pop("header", {}))
-        return cls(sender=sender, receiver=receiver, header=header, **data)
+        return cls.model_validate(data)

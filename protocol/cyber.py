@@ -1,5 +1,6 @@
-# date: 2026-07-04
-# dev: myf
+# date: 2026-08-25
+# dev: overwhelmingly
+# change: R1.6 Protocol→Pydantic 迁移：从 dataclass 升级为 BaseModel；AttackChain.to_dict/from_dict 改用 model_dump/model_validate 递归
 """攻防演练协议类型。
 
 定义网络安全攻防演练场景中使用的数据契约，包括资产、漏洞、
@@ -8,11 +9,12 @@
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-@dataclass
-class Asset:
+class Asset(BaseModel):
     """网络资产描述。
 
     表示攻防演练中的一个目标或受保护资产。
@@ -25,15 +27,23 @@ class Asset:
         exposure: 暴露面分类：external（对外）/ internal（内网）/ isolated（隔离）。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     asset_id: str
     host: str = ""
-    services: list = field(default_factory=list)
+    services: list[str] = Field(default_factory=list)
     os: str = ""
     exposure: str = "external"  # external | internal | isolated
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
 
-@dataclass
-class VulnFinding:
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Asset:
+        return cls.model_validate(data)
+
+
+class VulnFinding(BaseModel):
     """漏洞发现记录。
 
     描述在一次扫描或渗透中发现的漏洞信息。
@@ -46,15 +56,23 @@ class VulnFinding:
         attack_surface: 攻击面描述。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     finding_id: str
     cve_id: str = ""
     asset_id: str = ""
     cvss: float = 0.0
     attack_surface: str = ""
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
 
-@dataclass
-class AttackStep:
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VulnFinding:
+        return cls.model_validate(data)
+
+
+class AttackStep(BaseModel):
     """攻击链中的单一步骤。
 
     描述从源资产到目标资产的一次攻击动作。
@@ -67,15 +85,23 @@ class AttackStep:
         success: 该步骤是否执行成功。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     step_id: str
     technique: str = ""
     from_asset: str = ""
     to_asset: str = ""
     success: bool = False
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
 
-@dataclass
-class AttackChain:
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AttackStep:
+        return cls.model_validate(data)
+
+
+class AttackChain(BaseModel):
     """攻击链。
 
     由多个 AttackStep 组成的有序攻击路径，描述完整的攻击过程。
@@ -87,36 +113,24 @@ class AttackChain:
         status: 攻击链状态：planned / in_progress / completed / failed。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     chain_id: str
     target: str = ""
-    steps: list = field(default_factory=list)
-    status: str = "planned"
+    steps: list[AttackStep] = Field(default_factory=list)
+    status: str = "planned"  # planned | in_progress | completed | failed
 
-    def to_dict(self) -> dict:
-        """将攻击链序列化为字典。
-
-        Returns:
-            包含所有字段的字典，steps 子项也会递归转换。
-        """
-        return asdict(self)
+    def to_dict(self) -> dict[str, Any]:
+        """将攻击链序列化为字典（递归转换 AttackStep 子对象）。"""
+        return self.model_dump()
 
     @classmethod
-    def from_dict(cls, data: dict) -> AttackChain:
-        """从字典反序列化攻击链。
-
-        Args:
-            data: 包含攻击链字段的字典，其中 steps 为列表 of dict。
-
-        Returns:
-            重建后的 AttackChain 实例。
-        """
-        steps_data = data.pop("steps", [])
-        steps = [AttackStep(**s) for s in steps_data]  # 逐个还原步骤子对象
-        return cls(steps=steps, **data)
+    def from_dict(cls, data: dict[str, Any]) -> AttackChain:
+        """从字典反序列化攻击链（model_validate 自动递归 AttackStep）。"""
+        return cls.model_validate(data)
 
 
-@dataclass
-class Alert:
+class Alert(BaseModel):
     """安全告警。
 
     描述检测到的安全事件告警。
@@ -130,16 +144,24 @@ class Alert:
         raw: 原始告警数据，保留完整上下文。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     alert_id: str
-    severity: str = "low"
+    severity: str = "low"  # low | medium | high | critical
     src: str = ""
     dst: str = ""
     technique: str = ""
-    raw: dict = field(default_factory=dict)
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Alert:
+        return cls.model_validate(data)
 
 
-@dataclass
-class DefenseAction:
+class DefenseAction(BaseModel):
     """防御动作。
 
     描述针对告警或威胁执行的单项防御操作。
@@ -151,14 +173,22 @@ class DefenseAction:
         rationale: 执行该动作的理由说明。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     action_id: str
-    kind: str = "monitor"
+    kind: str = "monitor"  # monitor | block | isolate | patch | decoy
     target: str = ""
     rationale: str = ""
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
 
-@dataclass
-class ResponsePlan:
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DefenseAction:
+        return cls.model_validate(data)
+
+
+class ResponsePlan(BaseModel):
     """响应计划。
 
     针对一组告警生成的防御动作集合，附带置信度与回滚方案。
@@ -170,14 +200,22 @@ class ResponsePlan:
         rollback: 回滚方案，键值对形式描述回滚步骤。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     plan_id: str
-    actions: list = field(default_factory=list)
+    actions: list[DefenseAction] = Field(default_factory=list)
     confidence: float = 0.0
-    rollback: dict = field(default_factory=dict)
+    rollback: dict[str, Any] = Field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ResponsePlan:
+        return cls.model_validate(data)
 
 
-@dataclass
-class ThreatIntel:
+class ThreatIntel(BaseModel):
     """威胁情报条目。
 
     描述已知攻击技术与战术的情报信息，供防御决策参考。
@@ -194,13 +232,22 @@ class ThreatIntel:
         asset_ids: 受此威胁影响的资产 ID 列表。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     technique: str = ""
     tactic: str = ""
-    refs: list = field(default_factory=list)
+    refs: list[str] = Field(default_factory=list)
     # date: 2026-07-06 dev: myf changelog: 新增 ATT&CK 技战术映射字段
     technique_id: str = ""
     sub_technique: str = ""
     detection: str = ""
     mitigation: str = ""
-    risk_level: str = "medium"
-    asset_ids: list = field(default_factory=list)
+    risk_level: str = "medium"  # low | medium | high | critical
+    asset_ids: list[str] = Field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ThreatIntel:
+        return cls.model_validate(data)

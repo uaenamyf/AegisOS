@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-08-06 · **H2 数据层接入完成（Neo4j + Qdrant + 记忆对接）**
+> 最后更新：2026-08-25 · **P3.4.7e ruff baseline 治理 I001+F401 自动修（18 错 61→43）** · **P3.4.7d ruff baseline 治理 E731 全部清零（tests 域 1 文件，14→0；4 批完成）** · **P3.4.7c ruff baseline 治理 E731 observability 域 3 文件（3 E731）** · **P3.4.7b ruff baseline 治理 E731 aegisos_agents 域 3 文件（3 E731）** · **P3.4.7a ruff baseline 治理 E731 backend 域 7 文件（routers 4 + mocks + services + replay，7 E731，lambda→def）** · **P3.4.6 ruff baseline 治理 E402 全部清零（observability 2 文件 5 错，65→0；142→0 全完成 6 批）** · **P3.4.5 ruff baseline 治理 E402 第 5 批（tests 域 1 文件 13 错，78→65）** · **P3.4.4 ruff baseline 治理 E402 第 4 批（aegisos_agents/orchestrator 2 文件 17 错，多 try/except import 块重构，95→78）** · **P3.4.3 ruff baseline 治理 E402 第 3 批（backend/mocks/runtime.py + backend/services/cyber_defense_service.py，2 文件 22 错，117→95）** · **R1.1-R1.7 Protocol→Pydantic 迁移完成**（7 步 9 文件 + 14 业务文件 asdict shim）· **AP2 ReAct 范式确认完成（AP2.1 内核 + AP2.2-6 5 Agent 接入 + AP2.7 测试 + AP2.8 集成收尾：hunt_react + ReactMode Pydantic 兼容）** · **P3.3 CI/CD 流水线（.github/workflows/ci.yml 3 jobs + Makefile 增强）**
 
 ---
 
@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · AP4 Ask ✅ · **H2 数据层 ✅** |
-| **测试** | **105+ passed**（本机可运行子集 data+memory+protocol 全绿） |
-| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · B3+E13 ✅ · **H2 数据层（Neo4j/Qdrant 双实现 + 记忆对接）✅** |
-| **待完成** | P3 容器化部署 · AP2 ReAct · CVE/攻防数据集补全 |
+| **测试** | **435 passed**（含 9 个新增 RouterAPI 接入测试） |
+| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R1.1-R1.7 Protocol→Pydantic ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · AP2 ReAct（含集成收尾，2026-08-25）✅ · B3+E13 ✅ · H2 数据层 ✅ · P3 收尾 ✅ · 低熵广播检测 ✅ · P3.2 Router 业务接入（RouterAPI + executor 守卫，2026-08-25）✅ · **P3.3 CI/CD 流水线（ci.yml 3 jobs + Makefile 增强，2026-08-25）✅** |
+| **待完成** | CVE/攻防数据集补全 · `tooling/configs/environments/` 多环境 · `tooling/configs/agents/` Agent 配置 · **P3.4 ruff baseline 治理（E402 全清 142→0，E731 全清 14→0，I001+F401 全清 18 错，剩 43 错跨多域）** |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
@@ -40,9 +40,11 @@
 > **当前无 P0 阻塞项**。所有紧急任务已在 2026-07-09 前完成。
 >
 > 下一步优先级：
-> 1. **H2** 数据层（Neo4j + Qdrant）接入 — 记忆系统所需
-> 2. **AP4 Ask** 行动范式 — 人机协同
-> 3. **H1 Docker 沙箱靶场** — 赛事演示必需
+> 1. **Protocol→Pydantic 迁移** — 长期债务清理，所有 protocol/* 迁移到 Pydantic
+> 2. **CVE/攻防数据集补全** — 提升场景 1/2 真实性（ATT&CK 完整图谱 + CVE 库扩充）
+> 3. **工程支撑** — CI/CD、HTTPS/TLS、LLM Key 安全注入、gunicorn 生产部署
+>
+> 容器化部署（H1 沙箱 + H7 交付）已明确后移。
 
 ---
 
@@ -131,20 +133,27 @@
 - [ ] H7.9 `tooling/scripts/` 靶场编排脚本
 
 ### Protocol → Pydantic 迁移
-> **优先级**：P3 · **预估**：3-5 天 · **状态**：🔲 待做
-- [ ] R1.1-R1.5 `protocol/*.py` → Pydantic（删除手写 `to_dict()` / `from_dict()`）
-- [ ] R1.6 更新所有引用 `asdict()` → `model_dump()`
-- [ ] R1.7 测试全通过
+> **优先级**：P3 · **预估**：3-5 天 · **状态**：✅ 完成（2026-08-25 R1.1-R1.7 全部完成）
+- [x] **R1.1** `protocol/message.py` → Pydantic BaseModel（NodeRef/Header/Message + `to_dict/from_dict` 兼容 shim）
+- [x] **R1.2** `protocol/event.py` → Pydantic BaseModel（Event + `to_dict/from_dict` 兼容 shim）
+- [x] **R1.3** `protocol/scheduler.py` → Pydantic BaseModel（TaskStatus/RetryPolicy/RollbackPlan/Task/Plan/Schedule + `to_dict/from_dict` 兼容 shim）
+- [x] **R1.4** `protocol/agent.py` → Pydantic BaseModel（AgentStatus/Agent + `to_dict/from_dict` 兼容 shim）
+- [x] **R1.5** `protocol/{memory,tool,heartbeat,sync,graph}.py`（5 文件批量）
+- [x] **R1.6** `protocol/cyber.py`（8 攻防类型：Asset/VulnFinding/AttackStep/AttackChain/Alert/DefenseAction/ResponsePlan/ThreatIntel）
+- [x] **R1.7** 14 个业务文件 `asdict()` → `_asdict()` shim（兼容 Pydantic 化后 dataclass `asdict` 失效）
 
 ### AP2 — ReAct 范式（工具调用循环）
-> **优先级**：P3 · **预估**：3-4 天 · **依赖**：H1 沙箱 · **状态**：✅ 完成（2026-08-12）
+> **优先级**：P3 · **预估**：3-4 天 · **依赖**：H1 沙箱 · **状态**：✅ 完成（含 2026-08-25 集成收尾）
 - [x] AP2.1 `perception/reasoning/strategies/react_mode.py` — ReAct 模式（think→act→observe 循环）
 - [x] AP2.2-AP2.6 5 个 Agent 接入 ReAct（recon/vuln_correlator/detector/threat_hunt/forensics）
 - [x] AP2.7 测试：ReAct 工具调用循环验证
+- [x] AP2.8 集成收尾（2026-08-25）：`ThreatHuntAgent.hunt_react` 接入 + `ReactMode` Pydantic `model_copy` 兼容（替 `dataclasses.replace` 修复 `ToolResult` 不可变后的 call_id 补齐回归）
 
 ### 工程支撑（P3）
-- [ ] `tooling/scripts/check_no_broadcast.py` 低熵广播检测
-- [ ] CI/CD 流水线（GitHub Actions）
+- [x] `tooling/scripts/check_no_broadcast.py` 低熵广播检测（2026-08-25）
+- [x] **P3.2** Router 业务接入（RouterAPI + 11 节点拓扑 + executor 守卫 + 9 测试，2026-08-25）
+- [x] **P3.3** CI/CD 流水线（GitHub Actions 3 jobs + Makefile `ci`/`check`/`broadcast-check` + ruff baseline 策略，2026-08-25）
+- [ ] **P3.4** ruff baseline 治理：P3.4.1+P3.4.2 ✅ 修 25 E402（6 文件），剩 117 错误跨 8 文件；按 §11 AI 范围每批 ≤1 域 ≤8 文件分 P3.4.3/4/5.../7
 - [ ] `tooling/configs/environments/` 多环境覆盖
 - [ ] `tooling/configs/agents/` Agent 配置
 - [ ] `tooling/configs/models/` 模型配置
@@ -170,6 +179,31 @@
 ---
 
 ## ✅ §7 — 已完成任务（按完成时间倒序）
+
+### 2026-08-25 P3.3 CI/CD 流水线 ✅（435 passed, ruff baseline 142）
+
+- [x] **.github/workflows/ci.yml** — GitHub Actions 3 jobs（lint + typecheck + test）
+  - lint：ruff check（baseline continue-on-error）+ `check_no_broadcast.py --strict`（必 fail）
+  - typecheck：mypy strict，路径 `protocol aegisos_agents backend`（修旧路径 bug）
+  - test：pytest 矩阵 3.12 / 3.13 + `AEGIS_USE_MOCK=true` 零外部依赖
+  - concurrency cancel-in-progress 节流 + pip cache by pyproject.toml hash + failure artifact 上传
+- [x] **Makefile 增强**：新增 `ci` / `check` / `broadcast-check` 目标；`typecheck` 路径修复；lint 注释说明 baseline
+- [x] **spec 09 §开发流程 + 11 §7 低熵铁律** 自动化执行
+- [x] **P3.4 待办**：ruff baseline 142 错误（E402/E731/F821）— CI 用 `continue-on-error` 汇报不 fail，专项治理
+- [x] 本地复现：`make check` 等价 CI 一键；当前 lint baseline 报 142 错误（已排除 .claude/.github/agents/api/docs/frontend/Makefile），broadcast 0 违规，pytest 435 passed
+
+### 2026-08-25 P3.2 Router 业务接入 ✅（435 passed）
+
+- [x] **aegisos_agents/api/__init__.py** 新增 `RouterAPI` Protocol（`select_targets` / `get_topology`）
+- [x] **aegisos_agents/planning/orchestrator/cyber_orchestrator.py** 实现 RouterAPI：
+  - `_build_topology()` 11 个 Agent 映射 GraphNode
+  - `select_targets(capability, top_k=3)` Top-K 稀疏路由
+  - `get_topology()` 暴露给前端 / observability
+  - `assert_target_routable()` 防御性守卫
+  - `_create_red/blue_agent_executor` AP3 Goal 模式前置守卫
+- [x] **tests/aegisos_agents/planning/test_cyber_router_integration.py** 9 用例：RouterAPI 签名、Top-K 截取、未知 capability 空返回、11 节点、已知/未知 target 守卫、红蓝 executor 路由守卫
+- [x] **零协议入侵**：`aegisos_agents/api` 仅导入 `protocol/{graph,message}.py`，业务侧 0 内部子包
+
 ### 2026-08-03 P2 全部补全 ✅（346 测试通过）
 
 - [x] **记忆 7 子模块**：retrieval（混合检索 RRF）+ cache（L1/L2 缓存）+ checkpoint（检查点）+ reflection（反思引擎）+ archive（归档）+ snapshot（快照）+ sync（同步）

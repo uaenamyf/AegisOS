@@ -1,3 +1,6 @@
+# date: 2026-08-25
+# dev: overwhelmingly
+# change: R1.5 Protocol→Pydantic 迁移：从 dataclass 升级为 BaseModel，保留 to_dict/from_dict 兼容
 """数据同步协议类型。
 
 定义多节点间数据同步的数据包结构与同步状态枚举，
@@ -7,11 +10,13 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class SyncStatus(str, Enum):
+class SyncStatus(StrEnum):
     """同步状态枚举。
 
     表示同步数据包在同步流程中的当前阶段。
@@ -24,8 +29,7 @@ class SyncStatus(str, Enum):
     Failed = "failed"        # 失败：同步出错
 
 
-@dataclass
-class SyncPacket:
+class SyncPacket(BaseModel):
     """同步数据包。
 
     封装需要在节点间同步的负载数据，附带向量时钟用于冲突检测。
@@ -40,10 +44,19 @@ class SyncPacket:
         timestamp: 包生成时间（Unix 时间戳，秒）。
     """
 
-    sync_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    model_config = ConfigDict(extra="ignore")
+
+    sync_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     source: str = ""
     target: str = ""
-    payload: dict = field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
     status: SyncStatus = SyncStatus.Pending
-    vector_clock: dict = field(default_factory=dict)
-    timestamp: float = field(default_factory=time.time)
+    vector_clock: dict[str, int] = Field(default_factory=dict)
+    timestamp: float = Field(default_factory=time.time)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SyncPacket:
+        return cls.model_validate(data)

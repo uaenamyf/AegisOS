@@ -1,3 +1,6 @@
+# date: 2026-08-25
+# dev: overwhelmingly
+# change: R1.5 Protocol→Pydantic 迁移：从 dataclass 升级为 BaseModel，保留 to_dict/from_dict 兼容
 """记忆协议类型。
 
 定义 Agent 记忆系统的数据包结构，涵盖工作记忆、语义记忆、
@@ -5,11 +8,12 @@
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-@dataclass
-class MemoryPacket:
+class MemoryPacket(BaseModel):
     """记忆数据包。
 
     封装 Agent 记忆系统各层的内容，用于记忆读写、压缩与传输。
@@ -28,14 +32,23 @@ class MemoryPacket:
         recent: 是否最近步记忆，压缩时优先保留。
     """
 
-    working: dict = field(default_factory=dict)
-    semantic: dict = field(default_factory=dict)
-    episodic: dict = field(default_factory=dict)
-    archive: dict = field(default_factory=dict)
-    embedding: list = field(default_factory=list)
+    model_config = ConfigDict(extra="ignore")
+
+    working: dict[str, Any] = Field(default_factory=dict)
+    semantic: dict[str, Any] = Field(default_factory=dict)
+    episodic: dict[str, Any] = Field(default_factory=dict)
+    archive: dict[str, Any] = Field(default_factory=dict)
+    embedding: list[float] = Field(default_factory=list)
     summary: str = ""
-    compression: dict = field(default_factory=dict)
+    compression: dict[str, Any] = Field(default_factory=dict)
     session_id: str = ""
     task_id: str = ""
     kind: str = "normal"  # normal | decision | digest
     recent: bool = False  # 是否最近步（压缩时保留）
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MemoryPacket:
+        return cls.model_validate(data)

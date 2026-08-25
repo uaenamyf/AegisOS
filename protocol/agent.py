@@ -1,3 +1,6 @@
+# date: 2026-08-25
+# dev: overwhelmingly
+# change: R1.4 Protocol→Pydantic 迁移：从 dataclass 升级为 BaseModel，保留 to_dict/from_dict 兼容
 """Agent 身份与状态协议类型。
 
 定义智能体（Agent）的基本身份信息与运行状态枚举，用于在
@@ -5,13 +8,15 @@ AegisOS 中统一描述参与协作的智能体。
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from .message import NodeRef
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     """Agent 运行状态枚举。
 
     表示 Agent 在调度生命周期中的当前阶段，用于调度器决定
@@ -25,8 +30,7 @@ class AgentStatus(str, Enum):
     Offline = "offline"  # 离线：不可达，不参与调度
 
 
-@dataclass
-class Agent:
+class Agent(BaseModel):
     """Agent 身份与能力描述。
 
     描述单个智能体的唯一标识、角色、能力清单及运行时指标，
@@ -43,11 +47,22 @@ class Agent:
         success_rate: 历史成功率，0.0-1.0，用于调度优先级评估。
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     agent_id: str
     name: str
     role: str
-    ref: NodeRef = field(default_factory=lambda: NodeRef("", "agent"))
-    capabilities: list = field(default_factory=list)
+    ref: NodeRef = Field(default_factory=lambda: NodeRef("", "agent"))
+    capabilities: list[str] = Field(default_factory=list)
     status: AgentStatus = AgentStatus.Idle
     trust_score: float = 1.0
     success_rate: float = 1.0
+
+    def to_dict(self) -> dict[str, Any]:
+        """序列化为 dict（与旧 dataclass 接口兼容）。"""
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Agent:
+        """从 dict 反序列化（与旧 dataclass 接口兼容）。"""
+        return cls.model_validate(data)

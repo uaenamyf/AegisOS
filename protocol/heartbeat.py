@@ -1,3 +1,6 @@
+# date: 2026-08-25
+# dev: overwhelmingly
+# change: R1.5 Protocol→Pydantic 迁移：从 dataclass 升级为 BaseModel，保留 to_dict/from_dict 兼容
 """心跳协议类型。
 
 定义节点心跳数据结构，用于监控 Agent 与节点的资源占用与
@@ -6,13 +9,14 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from .message import NodeRef
 
 
-@dataclass
-class Heartbeat:
+class Heartbeat(BaseModel):
     """节点心跳。
 
     携带节点资源指标与健康状态，由各节点定期上报。
@@ -28,11 +32,20 @@ class Heartbeat:
         timestamp: 心跳生成时间（Unix 时间戳，秒）。
     """
 
-    node: NodeRef = field(default_factory=lambda: NodeRef("", ""))
+    model_config = ConfigDict(extra="ignore")
+
+    node: NodeRef = Field(default_factory=lambda: NodeRef("", ""))
     cpu: float = 0.0
     gpu: float = 0.0
     latency: float = 0.0
     memory: float = 0.0
     token: int = 0
     status: str = "healthy"
-    timestamp: float = field(default_factory=time.time)
+    timestamp: float = Field(default_factory=time.time)
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Heartbeat:
+        return cls.model_validate(data)
