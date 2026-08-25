@@ -11,13 +11,16 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncGenerator
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from backend.core.composition import EventBusDep
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 # SSE 路由器，标签用于 OpenAPI 文档分组
 router = APIRouter(tags=["events"])

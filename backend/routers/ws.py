@@ -12,13 +12,16 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
 from backend.core.composition import EventBusDep
 from protocol import Message
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 # WebSocket 路由器，标签用于 OpenAPI 文档分组
 router = APIRouter(tags=["ws"])

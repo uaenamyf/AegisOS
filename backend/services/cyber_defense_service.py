@@ -15,14 +15,18 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
+
+from pydantic import BaseModel
 
 from aegisos_agents.memory.memory_store import MemoryStore
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
 from backend.mocks.cyber_provider import _CyberMockProvider
 from protocol.cyber import AttackChain, ResponsePlan, ThreatIntel
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 
 class CyberDefenseService:
@@ -307,7 +311,6 @@ class CyberDefenseService:
     @staticmethod
     def _serialize_blue(result: dict[str, Any]) -> dict[str, Any]:
         """将蓝队结果中的 dataclass 序列化为 dict。"""
-        from protocol.cyber import Alert
 
         alerts = result.get("alerts", [])
         triaged = result.get("triaged", [])

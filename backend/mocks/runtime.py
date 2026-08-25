@@ -11,9 +11,9 @@ R4.6 重构：删除 85 行手写 ``_cyber_dispatch_map()``，内部委托
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
+
+from pydantic import BaseModel
 
 from aegisos_agents.action.critic.agent import CriticAgent
 from aegisos_agents.action.detector.agent import DetectorAgent
@@ -31,6 +31,10 @@ from backend.mocks.cyber_provider import _CyberMockProvider
 from protocol import Heartbeat, NodeRef, Task, TaskStatus
 from protocol.cyber import Alert, Asset, AttackChain, ResponsePlan, VulnFinding
 from protocol.graph import Graph
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 
 class MockRuntime:
@@ -148,18 +152,18 @@ class MockRuntime:
                     goal if "/" in goal or goal.replace(".", "").isdigit() else "10.0.0.0/24"
                 )
             assets = self._recon.scan(target_range)
-            return {"target_range": target_range, "assets": [__asdict(a) for a in assets]}
+            return {"target_range": target_range, "assets": [_asdict(a) for a in assets]}
 
         def _handle_detector(goal: str, payload: dict) -> dict:
             event_stream = payload.get("event_stream", [])
             alerts = self._detector.detect(event_stream)
-            return {"alerts": [__asdict(a) for a in alerts]}
+            return {"alerts": [_asdict(a) for a in alerts]}
 
         def _handle_vuln_correlator(goal: str, payload: dict) -> dict:
             assets_data = payload.get("assets", [])
             assets = [Asset(**a) if isinstance(a, dict) else a for a in assets_data]
             findings = self._vuln_correlator.correlate(assets)
-            return {"findings": [__asdict(f) for f in findings]}
+            return {"findings": [_asdict(f) for f in findings]}
 
         def _handle_exploit_planner(goal: str, payload: dict) -> dict:
             findings_data = payload.get("findings", [])
@@ -173,13 +177,13 @@ class MockRuntime:
             topology = payload.get("topology")
             graph = Graph(nodes={}) if topology is None else Graph(**topology)
             steps = self._lateral_move.plan_moves(chain, graph)
-            return {"steps": [__asdict(s) for s in steps]}
+            return {"steps": [_asdict(s) for s in steps]}
 
         def _handle_triage(goal: str, payload: dict) -> dict:
             alerts_data = payload.get("alerts", [])
             alerts = [Alert(**a) if isinstance(a, dict) else a for a in alerts_data]
             triaged = self._triage.triage(alerts)
-            return {"alerts": [__asdict(a) for a in triaged]}
+            return {"alerts": [_asdict(a) for a in triaged]}
 
         def _handle_threat_hunt(goal: str, payload: dict) -> dict:
             alerts_data = payload.get("alerts", [])
@@ -190,7 +194,7 @@ class MockRuntime:
         def _handle_ir_planner(goal: str, payload: dict) -> dict:
             hypotheses = payload.get("hypotheses", [])
             plan = self._ir_planner.plan_response(hypotheses)
-            return __asdict(plan)
+            return _asdict(plan)
 
         def _handle_forensics(goal: str, payload: dict) -> dict:
             plan_data = payload.get("response_plan", {})
@@ -242,8 +246,8 @@ class MockRuntime:
     def _serialize_red(result: dict) -> dict:
         """序列化红队链产出：dataclass 列表转 dict。"""
         return {
-            "assets": [__asdict(a) for a in result["assets"]],
-            "findings": [__asdict(f) for f in result["findings"]],
+            "assets": [_asdict(a) for a in result["assets"]],
+            "findings": [_asdict(f) for f in result["findings"]],
             "chain": result["chain"].to_dict(),
         }
 
@@ -251,8 +255,8 @@ class MockRuntime:
     def _serialize_blue(result: dict) -> dict:
         """序列化蓝队链产出：dataclass 列表转 dict。"""
         return {
-            "alerts": [__asdict(a) for a in result["alerts"]],
-            "triaged": [__asdict(a) for a in result["triaged"]],
+            "alerts": [_asdict(a) for a in result["alerts"]],
+            "triaged": [_asdict(a) for a in result["triaged"]],
             "hypotheses": result["hypotheses"],
-            "plan": __asdict(result["plan"]),
+            "plan": _asdict(result["plan"]),
         }

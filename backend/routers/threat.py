@@ -7,19 +7,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated
 
-from backend.core.composition import get_cyber_defense_service
+from fastapi import APIRouter, Query
+
+from backend.core.composition import CyberDefenseServiceDep
 from backend.schemas import ThreatIntelResponse
-from backend.services.cyber_defense_service import CyberDefenseService
 
 router = APIRouter(prefix="/threat", tags=["cyber-defense"])
 
 
 @router.get("/attack-techniques", response_model=list[ThreatIntelResponse])
 async def get_attack_techniques(
-    tactic: str | None = Query(None, description="Filter by ATT&CK tactic"),
-    service: CyberDefenseService = Depends(get_cyber_defense_service),
+    tactic: Annotated[str | None, Query(description="Filter by ATT&CK tactic")] = None,
+    service: CyberDefenseServiceDep = None,  # type: ignore[assignment]
 ) -> list[ThreatIntelResponse]:
     """查询 ATT&CK 威胁情报。
 

@@ -274,3 +274,7 @@ MemoryServiceDep = Annotated[MemoryService, Depends(get_memory_service)]
 GraphServiceDep = Annotated[GraphService, Depends(get_graph_service)]
 EventBusDep = Annotated[MockEventBusAPI, Depends(get_event_bus)]
 ExecutionApiDep = Annotated[MockExecutionAPI, Depends(get_execution_api)]
+# date: 2026-08-25
+# dev: myf
+# changelog: CyberDefenseService 依赖别名（避免 router 层 B008）
+CyberDefenseServiceDep = Annotated[CyberDefenseService, Depends(get_cyber_defense_service)]

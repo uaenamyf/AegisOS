@@ -7,11 +7,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from backend.core.composition import get_cyber_defense_service
-from backend.schemas import BlueDefenseRequest, BlueDefenseResponse, PurpleReviewRequest, PurpleReviewResponse
-from backend.services.cyber_defense_service import CyberDefenseService
+from backend.core.composition import CyberDefenseServiceDep
+from backend.schemas import (
+    BlueDefenseRequest,
+    BlueDefenseResponse,
+    PurpleReviewRequest,
+    PurpleReviewResponse,
+)
 
 router = APIRouter(prefix="/defense", tags=["cyber-defense"])
 
@@ -19,7 +23,7 @@ router = APIRouter(prefix="/defense", tags=["cyber-defense"])
 @router.post("", response_model=BlueDefenseResponse)
 async def blue_defense(
     body: BlueDefenseRequest,
-    service: CyberDefenseService = Depends(get_cyber_defense_service),
+    service: CyberDefenseServiceDep,
 ) -> BlueDefenseResponse:
     """执行蓝队防御链。
 
@@ -39,7 +43,7 @@ async def blue_defense(
 @router.get("/{range_id}", response_model=BlueDefenseResponse)
 async def get_defense(
     range_id: str,
-    service: CyberDefenseService = Depends(get_cyber_defense_service),
+    service: CyberDefenseServiceDep,
 ) -> BlueDefenseResponse:
     """获取指定靶场的防御响应。
 
@@ -59,7 +63,7 @@ async def get_defense(
 @router.post("/purple-review", response_model=PurpleReviewResponse)
 async def purple_review(
     body: PurpleReviewRequest,
-    service: CyberDefenseService = Depends(get_cyber_defense_service),
+    service: CyberDefenseServiceDep,
 ) -> PurpleReviewResponse:
     """执行紫队对抗校验。
 

@@ -7,11 +7,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from backend.core.composition import get_cyber_defense_service
+from backend.core.composition import CyberDefenseServiceDep
 from backend.schemas import RedAttackRequest, RedAttackResponse
-from backend.services.cyber_defense_service import CyberDefenseService
 
 router = APIRouter(prefix="/attack", tags=["cyber-defense"])
 
@@ -19,7 +18,7 @@ router = APIRouter(prefix="/attack", tags=["cyber-defense"])
 @router.post("", response_model=RedAttackResponse)
 async def red_attack(
     body: RedAttackRequest,
-    service: CyberDefenseService = Depends(get_cyber_defense_service),
+    service: CyberDefenseServiceDep,
 ) -> RedAttackResponse:
     """执行红队攻击链。
 
@@ -39,7 +38,7 @@ async def red_attack(
 @router.get("/chain/{range_id}", response_model=RedAttackResponse)
 async def get_attack_chain(
     range_id: str,
-    service: CyberDefenseService = Depends(get_cyber_defense_service),
+    service: CyberDefenseServiceDep,
 ) -> RedAttackResponse:
     """获取指定靶场的攻击链 DAG。
 

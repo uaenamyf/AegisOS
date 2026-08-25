@@ -28,12 +28,9 @@ SSE 帧格式::
 """
 from __future__ import annotations
 
-import asyncio
 import json
 from collections.abc import AsyncGenerator
 from dataclasses import is_dataclass
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from fastapi import APIRouter
@@ -41,6 +38,10 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.core.composition import get_composition
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 router = APIRouter(prefix="/stream", tags=["stream"])
 

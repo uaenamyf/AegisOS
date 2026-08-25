@@ -8,13 +8,15 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
-
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from backend.core.composition import GraphServiceDep
 from backend.schemas import GraphResponse
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 # 拓扑图路由器，统一前缀 /graph，标签用于 OpenAPI 文档分组
 router = APIRouter(prefix="/graph", tags=["graph"])

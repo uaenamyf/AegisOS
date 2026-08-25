@@ -8,14 +8,17 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-_asdict = lambda obj: obj.model_dump() if isinstance(obj, BaseModel) else obj
 from typing import Any
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from backend.core.composition import EventBusDep
 from protocol import Event
+
+
+def _asdict(obj):
+    return obj.model_dump() if isinstance(obj, BaseModel) else obj
 
 # 回放路由器，统一前缀 /replay，标签用于 OpenAPI 文档分组
 router = APIRouter(prefix="/replay", tags=["replay"])
