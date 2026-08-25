@@ -2,6 +2,17 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P3.4.8] 2026-08-25 CI 启用 ruff 严格模式（continue-on-error 移除）
+
+> 配套 P3.4.7x ruff baseline 治理（185→0 错），CI lint job 移除 `continue-on-error: true`，新增 ruff 错误即 fail。守护 P3.4 治理成果，防止回归。
+
+### 修改
+- `.github/workflows/ci.yml` — Ruff check step 移除 `continue-on-error: true`，注释更新为 P3.4.7x 完成状态
+
+### 验证
+- 本地 `python -m ruff check .` → All checks passed（0 错）
+- push 后 CI lint job 应 fail on 任何新增 ruff 错误
+
 ## [P3.4.7e] 2026-08-25 ruff baseline 治理（I001+F401 自动修 18 错）
 
 > 15 个 unsorted-imports 自动排序（ruff --fix 安全）+ 3 个 cyber_orchestrator.py 跨 try/except 块未用 SDK import 移除。零行为变更，pytest 全量 435 passed。

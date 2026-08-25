@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-08-25 · **P3.4.7e ruff baseline 治理 I001+F401 自动修（18 错 61→43）** · **P3.4.7d ruff baseline 治理 E731 全部清零（tests 域 1 文件，14→0；4 批完成）** · **P3.4.7c ruff baseline 治理 E731 observability 域 3 文件（3 E731）** · **P3.4.7b ruff baseline 治理 E731 aegisos_agents 域 3 文件（3 E731）** · **P3.4.7a ruff baseline 治理 E731 backend 域 7 文件（routers 4 + mocks + services + replay，7 E731，lambda→def）** · **P3.4.6 ruff baseline 治理 E402 全部清零（observability 2 文件 5 错，65→0；142→0 全完成 6 批）** · **P3.4.5 ruff baseline 治理 E402 第 5 批（tests 域 1 文件 13 错，78→65）** · **P3.4.4 ruff baseline 治理 E402 第 4 批（aegisos_agents/orchestrator 2 文件 17 错，多 try/except import 块重构，95→78）** · **P3.4.3 ruff baseline 治理 E402 第 3 批（backend/mocks/runtime.py + backend/services/cyber_defense_service.py，2 文件 22 错，117→95）** · **R1.1-R1.7 Protocol→Pydantic 迁移完成**（7 步 9 文件 + 14 业务文件 asdict shim）· **AP2 ReAct 范式确认完成（AP2.1 内核 + AP2.2-6 5 Agent 接入 + AP2.7 测试 + AP2.8 集成收尾：hunt_react + ReactMode Pydantic 兼容）** · **P3.3 CI/CD 流水线（.github/workflows/ci.yml 3 jobs + Makefile 增强）**
+> 最后更新：2026-08-25 · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true）** · **P3.4.7x ruff baseline 全清 0 错（13 类规则：I001/F401/E731/E402/F821/B008/UP042/F841/B007/B904/SIM102/SIM105/B905；14→5 squash 重写为 Conventional Commits）** · **R1.1-R1.7 Protocol→Pydantic 迁移完成**（7 步 9 文件 + 14 业务文件 asdict shim）· **AP2 ReAct 范式确认完成（AP2.1 内核 + AP2.2-6 5 Agent 接入 + AP2.7 测试 + AP2.8 集成收尾：hunt_react + ReactMode Pydantic 兼容）** · **P3.3 CI/CD 流水线（.github/workflows/ci.yml 3 jobs + Makefile 增强）**
 
 ---
 
@@ -21,8 +21,8 @@
 |------|------|
 | **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · AP4 Ask ✅ · **H2 数据层 ✅** |
 | **测试** | **435 passed**（含 9 个新增 RouterAPI 接入测试） |
-| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R1.1-R1.7 Protocol→Pydantic ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · AP2 ReAct（含集成收尾，2026-08-25）✅ · B3+E13 ✅ · H2 数据层 ✅ · P3 收尾 ✅ · 低熵广播检测 ✅ · P3.2 Router 业务接入（RouterAPI + executor 守卫，2026-08-25）✅ · **P3.3 CI/CD 流水线（ci.yml 3 jobs + Makefile 增强，2026-08-25）✅** |
-| **待完成** | CVE/攻防数据集补全 · `tooling/configs/environments/` 多环境 · `tooling/configs/agents/` Agent 配置 · **P3.4 ruff baseline 治理（E402 全清 142→0，E731 全清 14→0，I001+F401 全清 18 错，剩 43 错跨多域）** |
+| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R1.1-R1.7 Protocol→Pydantic ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · AP2 ReAct（含集成收尾，2026-08-25）✅ · B3+E13 ✅ · H2 数据层 ✅ · P3 收尾 ✅ · 低熵广播检测 ✅ · P3.2 Router 业务接入（RouterAPI + executor 守卫，2026-08-25）✅ · **P3.3 CI/CD 流水线（ci.yml 3 jobs + Makefile 增强，2026-08-25）✅** · **P3.4.1-7x ruff baseline 全清 0 错（13 类规则，14→5 squash 重写为 Conventional Commits，2026-08-25）✅** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true，2026-08-25）✅** |
+| **待完成** | CVE/攻防数据集补全 · `tooling/configs/environments/` 多环境 · `tooling/configs/agents/` Agent 配置 · **P3.4 ruff baseline 治理 ✅ 全部清零（13 类规则 185→0）** · **P3.4.8 CI 严格 ruff 模式 ✅** |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
