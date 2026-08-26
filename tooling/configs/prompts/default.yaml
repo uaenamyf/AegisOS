@@ -1,0 +1,87 @@
+# AegisOS Prompt 模板注册（版本化）
+# =============================================================================
+# 用途：声明所有 Prompt 模板的版本与对应路径
+# 加载方：aegisos_agents/tools/prompts/PromptRegistry
+# 模板内容存放在 aegisos_agents/tools/prompts/ 下的 .md/.j2 文件
+# 变更需经 aegisos_agents/perception/reflection 评估（AGENT.md 约束）
+# =============================================================================
+
+# 模板注册表（template_id → 文件路径 + 当前激活版本）
+templates:
+  # ----- 通用 Agent -----
+  coder.system:
+    path: "aegisos_agents/tools/prompts/coder/system.md"
+    version: "1.0.0"
+    description: "Coder Agent 系统提示"
+
+  reviewer.system:
+    path: "aegisos_agents/tools/prompts/reviewer/system.md"
+    version: "1.0.0"
+    description: "Reviewer Agent 系统提示"
+
+  researcher.system:
+    path: "aegisos_agents/tools/prompts/researcher/system.md"
+    version: "1.0.0"
+    description: "Researcher Agent 系统提示"
+
+  # ----- 攻防 Agent（11 个）-----
+  recon.system:
+    path: "aegisos_agents/tools/prompts/recon/system.md"
+    version: "1.0.0"
+    description: "Recon 侦察系统提示"
+
+  vuln_correlator.system:
+    path: "aegisos_agents/tools/prompts/vuln_correlator/system.md"
+    version: "1.0.0"
+    description: "CVE 关联系统提示"
+
+  exploit_planner.system:
+    path: "aegisos_agents/tools/prompts/exploit_planner/system.md"
+    version: "1.0.0"
+    description: "攻击链规划系统提示"
+
+  lateral_move.system:
+    path: "aegisos_agents/tools/prompts/lateral_move/system.md"
+    version: "1.0.0"
+    description: "横向移动系统提示"
+
+  detector.system:
+    path: "aegisos_agents/tools/prompts/detector/system.md"
+    version: "1.0.0"
+    description: "入侵检测系统提示"
+
+  triage.system:
+    path: "aegisos_agents/tools/prompts/triage/system.md"
+    version: "1.0.0"
+    description: "告警分诊系统提示"
+
+  threat_hunt.system:
+    path: "aegisos_agents/tools/prompts/threat_hunt/system.md"
+    version: "1.0.0"
+    description: "威胁狩猎系统提示"
+
+  ir_planner.system:
+    path: "aegisos_agents/tools/prompts/ir_planner/system.md"
+    version: "1.0.0"
+    description: "事件响应规划系统提示"
+
+  forensics.system:
+    path: "aegisos_agents/tools/prompts/forensics/system.md"
+    version: "1.0.0"
+    description: "数字取证系统提示"
+
+  critic.system:
+    path: "aegisos_agents/tools/prompts/critic/system.md"
+    version: "1.0.0"
+    description: "对抗评审系统提示"
+
+  reviewer_defense.system:
+    path: "aegisos_agents/tools/prompts/reviewer_defense/system.md"
+    version: "1.0.0"
+    description: "防御侧评审系统提示"
+
+# 渲染器配置
+renderer:
+  default_engine: jinja2
+  strict_undefined: true        # 模板变量未定义时报错
+  strip_trailing_newlines: true

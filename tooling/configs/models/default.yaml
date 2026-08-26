@@ -1,0 +1,67 @@
+# AegisOS LLM 模型配置
+# =============================================================================
+# 用途：声明 LLM 提供方与模型清单
+# 加载方：aegisos_agents/tools/llms/ 的 provider 适配层
+# 密钥：API Key 一律经环境变量注入（AEGIS_LLM_<PROVIDER>_API_KEY）
+# =============================================================================
+
+# 提供方清单
+providers:
+  openai:
+    type: openai
+    base_url: "https://api.openai.com/v1"
+    api_key_env: "AEGIS_LLM_OPENAI_API_KEY"     # 密钥由 env 注入
+    timeout_s: 30
+    max_retries: 3
+
+  azure:
+    type: azure
+    base_url_env: "AEGIS_LLM_AZURE_BASE_URL"   # 形如 https://<resource>.openai.azure.com
+    api_key_env: "AEGIS_LLM_AZURE_API_KEY"
+    api_version: "2024-08-01-preview"
+    timeout_s: 30
+
+  ollama:                                       # 本地 / 离线靶场用
+    type: ollama
+    base_url: "http://localhost:11434"
+    timeout_s: 60
+    # ollama 无需 api_key
+
+# 模型清单
+models:
+  # 主力：成本/性能平衡
+  - id: gpt-4o-mini
+    provider: openai
+    context_window: 128000
+    max_output_tokens: 16384
+    pricing_tier: economy
+
+  # 主力：高质量攻防推理
+  - id: gpt-4o
+    provider: openai
+    context_window: 128000
+    max_output_tokens: 16384
+    pricing_tier: standard
+
+  # 推理增强（可选）
+  - id: o1-mini
+    provider: openai
+    context_window: 128000
+    max_output_tokens: 65536
+    pricing_tier: premium
+
+  # 本地（离线靶场/CI）
+  - id: qwen2.5:7b
+    provider: ollama
+    context_window: 32768
+    max_output_tokens: 8192
+    pricing_tier: free
+
+# 默认路由（未指定 model 的 Agent 走这里）
+routing:
+  default: gpt-4o-mini
+  by_tier:
+    device: gpt-4o-mini         # 端侧偏好小模型
+    edge: gpt-4o-mini
+    cloud: gpt-4o               # 云侧用大模型
+  fallback: qwen2.5:7b          # 离线/赛事现场用 ollama

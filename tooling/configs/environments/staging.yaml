@@ -1,0 +1,50 @@
+# AegisOS staging 环境配置
+# =============================================================================
+# 用途：预发布/演示环境（与生产相同拓扑，但数据可重置）
+# 启用方式：export AEGIS_ENV=staging
+# =============================================================================
+
+environment: staging
+
+backend:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+
+frontend:
+  host: "0.0.0.0"
+  port: 5173
+
+cors:
+  enabled: true
+  origins:
+    - "https://staging.aegisos.example.com"
+
+auth:
+  enabled: true
+  mode: "api-key"
+  api_key_header: "X-API-Key"
+  # 实际 key 由环境变量 AEGIS_AUTH_DEFAULT_KEY 注入，yaml 不放敏感值
+
+database:
+  url: "postgresql+asyncpg://aegis:***@staging-db:5432/aegisos"
+  echo: false
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+rate_limit:
+  enabled: true
+  rpm: 300                    # staging 比 prod 宽松
+
+# 数据层：staging 启用真库，验证持久化路径
+storage:
+  graph_mode: "neo4j"
+  vector_mode: "qdrant"
+  neo4j_uri: "bolt://staging-neo4j:7687"
+  neo4j_user: "neo4j"
+  neo4j_password: ""          # 密码由环境变量 AEGIS_STORAGE_NEO4J_PASSWORD 注入
+  qdrant_url: "http://staging-qdrant:6333"
+  qdrant_api_key: ""          # 同上
+  qdrant_collection: "memory_vectors_staging"

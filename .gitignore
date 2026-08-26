@@ -1,0 +1,47 @@
+
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# --- Lint / type / test caches ---
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.cache/
+.coverage
+htmlcov/
+
+# --- Runtime databases & logs ---
+*.db
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# --- OS / editor artifacts ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Frontend (also covered by frontend/.gitignore) ---
+frontend/node_modules/
+.vite/
+frontend/dist/
+frontend/.tsbuildinfo
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# --- Environment files（保留 .env.example，忽略实际 .env）---
+.env
+tooling/configs/.env
+frontend/.env
+frontend/.env.local
