@@ -2,6 +2,34 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P3.5] 2026-08-26 配置中心补全（environments + agents + models + prompts + deployment）
+
+> 补齐 `tooling/configs/` 规划中的 5 个子目录/文件。零行为变更（settings.py 仅新增 EnvironmentConfig 字段，默认回退 dev，不影响现有模块）。
+
+### 新增
+- `tooling/configs/environments/dev.yaml` — 本地开发（关闭 auth/rate_limit，DB echo，DEBUG 日志，进程内存）
+- `tooling/configs/environments/staging.yaml` — 预发布/演示（真库 Neo4j+Qdrant，INFO 日志，限流 300 rpm）
+- `tooling/configs/environments/prod.yaml` — 生产（HTTPS/反代前置，WARNING 日志，限流 120 rpm）
+- `tooling/configs/agents/default.yaml` — 3 通用 Agent + 11 攻防 Agent 元数据（id/role/capabilities/tier/default_model）
+- `tooling/configs/models/default.yaml` — 3 provider（openai/azure/ollama）+ 4 model + 路由策略（按 tier）+ fallback
+- `tooling/configs/prompts/default.yaml` — 14 个 Prompt 模板注册表（coder/reviewer/researcher + 11 攻防）+ jinja2 渲染器配置
+- `tooling/configs/deployment.yaml` — dev/staging/prod 部署拓扑（节点规格/副本数/健康检查）+ 安全基线
+
+### 修改
+- `tooling/configs/settings.py` — 新增 `EnvironmentConfig` dataclass + `Settings.environment` 字段 + `AEGIS_ENV` 注入
+
+### 验证
+- `python -m ruff check tooling/configs/` → All checks passed
+- `python -m pytest tests/tooling/ -q` → 11 passed
+- `python -c "from tooling.configs.settings import settings; print(settings.environment.name)"` → `dev`
+- `AEGIS_ENV=staging python -c "..."` → `staging`
+- 现有所有 pytest（435 passed）无回归
+
+### 设计原则
+- 配置 schema 与现有 `defaults.yaml` 字段对齐（backend/cors/auth/database/logging/rate_limit/storage）
+- 所有敏感值（DB 密码/API Key）yaml 中留空，由环境变量注入
+- 不引入强制加载逻辑——environments/*.yaml 是文档化基线，未来按需 `pyyaml` 加载
+
 ## [P3.4.8] 2026-08-25 CI 启用 ruff 严格模式（continue-on-error 移除）
 
 > 配套 P3.4.7x ruff baseline 治理（185→0 错），CI lint job 移除 `continue-on-error: true`，新增 ruff 错误即 fail。守护 P3.4 治理成果，防止回归。

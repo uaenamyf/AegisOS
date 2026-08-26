@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-08-25 · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true）** · **P3.4.7x ruff baseline 全清 0 错（13 类规则：I001/F401/E731/E402/F821/B008/UP042/F841/B007/B904/SIM102/SIM105/B905；14→5 squash 重写为 Conventional Commits）** · **R1.1-R1.7 Protocol→Pydantic 迁移完成**（7 步 9 文件 + 14 业务文件 asdict shim）· **AP2 ReAct 范式确认完成（AP2.1 内核 + AP2.2-6 5 Agent 接入 + AP2.7 测试 + AP2.8 集成收尾：hunt_react + ReactMode Pydantic 兼容）** · **P3.3 CI/CD 流水线（.github/workflows/ci.yml 3 jobs + Makefile 增强）**
+> 最后更新：2026-08-26 · **P3.5 配置中心补全（environments/agents/models/prompts/deployment 7 yaml + EnvironmentConfig + AEGIS_ENV 注入）** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true）** · **P3.4.7x ruff baseline 全清 0 错（13 类规则：I001/F401/E731/E402/F821/B008/UP042/F841/B007/B904/SIM102/SIM105/B905；14→5 squash 重写为 Conventional Commits）** · **R1.1-R1.7 Protocol→Pydantic 迁移完成**（7 步 9 文件 + 14 业务文件 asdict shim）· **AP2 ReAct 范式确认完成（AP2.1 内核 + AP2.2-6 5 Agent 接入 + AP2.7 测试 + AP2.8 集成收尾：hunt_react + ReactMode Pydantic 兼容）** · **P3.3 CI/CD 流水线（.github/workflows/ci.yml 3 jobs + Makefile 增强）**
 
 ---
 
@@ -21,8 +21,8 @@
 |------|------|
 | **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · AP4 Ask ✅ · **H2 数据层 ✅** |
 | **测试** | **435 passed**（含 9 个新增 RouterAPI 接入测试） |
-| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R1.1-R1.7 Protocol→Pydantic ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · AP2 ReAct（含集成收尾，2026-08-25）✅ · B3+E13 ✅ · H2 数据层 ✅ · P3 收尾 ✅ · 低熵广播检测 ✅ · P3.2 Router 业务接入（RouterAPI + executor 守卫，2026-08-25）✅ · **P3.3 CI/CD 流水线（ci.yml 3 jobs + Makefile 增强，2026-08-25）✅** · **P3.4.1-7x ruff baseline 全清 0 错（13 类规则，14→5 squash 重写为 Conventional Commits，2026-08-25）✅** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true，2026-08-25）✅** |
-| **待完成** | CVE/攻防数据集补全 · `tooling/configs/environments/` 多环境 · `tooling/configs/agents/` Agent 配置 · **P3.4 ruff baseline 治理 ✅ 全部清零（13 类规则 185→0）** · **P3.4.8 CI 严格 ruff 模式 ✅** |
+| **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R1.1-R1.7 Protocol→Pydantic ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · AP2 ReAct（含集成收尾，2026-08-25）✅ · B3+E13 ✅ · H2 数据层 ✅ · P3 收尾 ✅ · 低熵广播检测 ✅ · P3.2 Router 业务接入（RouterAPI + executor 守卫，2026-08-25）✅ · **P3.3 CI/CD 流水线（ci.yml 3 jobs + Makefile 增强，2026-08-25）✅** · **P3.4.1-7x ruff baseline 全清 0 错（13 类规则，14→5 squash 重写为 Conventional Commits，2026-08-25）✅** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true，2026-08-25）✅** · **P3.5 配置中心补全（environments/agents/models/prompts/deployment 7 yaml + EnvironmentConfig，2026-08-26）✅** |
+| **待完成** | CVE/攻防数据集补全 · **P3.4 ruff baseline 治理 ✅ 全部清零（13 类规则 185→0）** · **P3.4.8 CI 严格 ruff 模式 ✅** · **P3.5 配置中心补全 ✅（dev/staging/prod + agents/models/prompts/deployment 7 个 yaml + settings 注入 AEGIS_ENV）** · H1 沙箱靶场 · H7 容器化部署 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
@@ -153,12 +153,13 @@
 - [x] `tooling/scripts/check_no_broadcast.py` 低熵广播检测（2026-08-25）
 - [x] **P3.2** Router 业务接入（RouterAPI + 11 节点拓扑 + executor 守卫 + 9 测试，2026-08-25）
 - [x] **P3.3** CI/CD 流水线（GitHub Actions 3 jobs + Makefile `ci`/`check`/`broadcast-check` + ruff baseline 策略，2026-08-25）
-- [ ] **P3.4** ruff baseline 治理：P3.4.1+P3.4.2 ✅ 修 25 E402（6 文件），剩 117 错误跨 8 文件；按 §11 AI 范围每批 ≤1 域 ≤8 文件分 P3.4.3/4/5.../7
-- [ ] `tooling/configs/environments/` 多环境覆盖
-- [ ] `tooling/configs/agents/` Agent 配置
-- [ ] `tooling/configs/models/` 模型配置
-- [ ] `tooling/configs/prompts/` Prompt 配置
-- [ ] `tooling/configs/deployment.yaml` 部署配置
+- [x] **P3.4** ruff baseline 治理 ✅ 全部清零（13 类规则 185→0；14→5 squash 重写为 Conventional Commits，详见 §7）
+- [x] `tooling/configs/environments/` 多环境覆盖（dev/staging/prod 三 yaml，2026-08-26）
+- [x] `tooling/configs/agents/` Agent 配置（3 通用 + 11 攻防，2026-08-26）
+- [x] `tooling/configs/models/` 模型配置（3 provider + 4 model + 路由策略，2026-08-26）
+- [x] `tooling/configs/prompts/` Prompt 配置（11 攻防 Agent 模板注册 + 渲染器，2026-08-26）
+- [x] `tooling/configs/deployment.yaml` 部署配置（dev/staging/prod 三环境拓扑 + 安全基线，2026-08-26）
+- [x] `tooling/configs/settings.py` EnvironmentConfig + AEGIS_ENV 注入（2026-08-26）
 - [ ] HTTPS / TLS 证书
 - [ ] LLM API Key 安全注入
 - [ ] 生产级 ASGI 服务器（gunicorn + uvicorn workers）
