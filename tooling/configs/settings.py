@@ -194,6 +194,21 @@ class StorageConfig:
     qdrant_collection: str = "memory_vectors"
 
 
+# date: 2026-08-26
+# dev: uaenamyf
+# changelog: 新增 EnvironmentConfig —— 当前运行环境标识（dev/staging/prod）
+@dataclass(frozen=True)
+class EnvironmentConfig:
+    """当前运行环境标识。
+
+    Attributes:
+        name: 环境名（dev / staging / prod），由 AEGIS_ENV 注入；
+            未设置时回退为 "dev"。
+    """
+
+    name: str = "dev"
+
+
 @dataclass(frozen=True)
 class Settings:
     """全局配置根。所有模块统一从此读取，禁直接 ``os.environ`` / 硬编码。"""
@@ -208,6 +223,7 @@ class Settings:
     trace: TraceConfig = field(default_factory=TraceConfig)
     frontend_env: FrontendEnvConfig = field(default_factory=FrontendEnvConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)  # H2：data 层存储后端
+    environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)  # 当前环境
 
 
 # --- 单例构建 ----------------------------------------------------------------
@@ -307,6 +323,9 @@ def _build_settings() -> Settings:
                 "AEGIS_STORAGE_QDRANT_COLLECTION", st.get("qdrant_collection", "memory_vectors")
             )
             or "memory_vectors",
+        ),
+        environment=EnvironmentConfig(
+            name=(_env("AEGIS_ENV") or "dev").lower(),
         ),
     )
 

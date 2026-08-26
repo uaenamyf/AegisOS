@@ -1,0 +1,112 @@
+# AegisOS Agent 配置（单一配置源）
+# =============================================================================
+# 用途：声明所有 Agent 的元数据（id/角色/能力/默认 LLM/默认 tier）
+# 加载方：aegisos_agents/api/AgentRegistryAPI 的实现（未来可注入到 Mock 替换）
+# 优先：本文件 < environment 配置 < env vars 覆盖（同名键）
+# 注意：不要在此放密钥或 prompt 内容（prompt 走 prompts/）
+# =============================================================================
+
+# 默认 LLM 模型（每 Agent 可单独覆盖 model 字段）
+defaults:
+  model: "gpt-4o-mini"          # 默认主模型
+  fallback_model: "gpt-4o"      # 失败回退
+  temperature: 0.2
+  max_tokens: 4096
+  timeout_s: 30
+
+# 通用 Agent（3 个）
+agents:
+  - agent_id: coder
+    role: coder
+    capabilities: [code, debug, test]
+    tier: device                  # 端侧优先
+    description: "代码生成、调试、单测"
+
+  - agent_id: reviewer
+    role: reviewer
+    capabilities: [review, critique]
+    tier: device
+    description: "代码评审、缺陷检测"
+
+  - agent_id: researcher
+    role: researcher
+    capabilities: [search, summarize]
+    tier: cloud                   # 检索/总结通常上云
+    description: "信息检索与总结"
+
+# 攻防 Agent（11 个）
+cyber_agents:
+  - agent_id: recon
+    role: recon
+    capabilities: [asset-discovery, port-scan, service-fingerprint]
+    tier: edge
+    description: "侦察：资产/端口/服务指纹"
+    model: "gpt-4o-mini"
+
+  - agent_id: vuln_correlator
+    role: vuln_correlator
+    capabilities: [cve-correlation, cvss-scoring, attack-surface-mapping]
+    tier: cloud
+    description: "CVE 关联 + CVSS 评分"
+    model: "gpt-4o"
+
+  - agent_id: exploit_planner
+    role: exploit_planner
+    capabilities: [exploit-chain, attack-graph, kill-chain]
+    tier: cloud
+    description: "攻击链 + 杀伤链规划"
+    model: "gpt-4o"
+
+  - agent_id: lateral_move
+    role: lateral_move
+    capabilities: [lateral-movement, privilege-escalation, pivot]
+    tier: edge
+    description: "横向移动 + 权限提升"
+
+  - agent_id: detector
+    role: detector
+    capabilities: [intrusion-detection, anomaly-detection, alerting]
+    tier: device
+    description: "入侵/异常检测"
+    model: "gpt-4o-mini"
+
+  - agent_id: triage
+    role: triage
+    capabilities: [alert-triage, deduplication, prioritization]
+    tier: edge
+    description: "告警分诊 + 去重 + 优先级"
+
+  - agent_id: threat_hunt
+    role: threat_hunt
+    capabilities: [threat-hunting, hypothesis-generation, attck-mapping]
+    tier: cloud
+    description: "威胁狩猎 + 假设生成 + ATT&CK 映射"
+    model: "gpt-4o"
+
+  - agent_id: ir_planner
+    role: ir_planner
+    capabilities: [incident-response, containment, rollback-planning]
+    tier: cloud
+    description: "事件响应 + 遏制 + 回滚规划"
+    model: "gpt-4o"
+
+  - agent_id: forensics
+    role: forensics
+    capabilities: [digital-forensics, root-cause-analysis, timeline-reconstruction]
+    tier: cloud
+    description: "取证 + 根因 + 时间线重建"
+    model: "gpt-4o"
+
+  - agent_id: critic
+    role: critic
+    capabilities: [adversarial-critique, red-blue-validation, attck-compliance]
+    tier: cloud
+    description: "对抗性评审 + 红蓝对抗验证"
+    model: "gpt-4o"
+
+  - agent_id: reviewer-defense
+    role: reviewer
+    capabilities: [consistency-review, artifact-validation, cross-check]
+    tier: edge
+    description: "防御侧一致性评审"
+    model: "gpt-4o-mini"

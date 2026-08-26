@@ -1,0 +1,53 @@
+# AegisOS prod 环境配置
+# =============================================================================
+# 用途：生产环境（赛事现场 / 客户交付）
+# 启用方式：export AEGIS_ENV=prod
+# 关键原则：所有敏感值由环境变量注入，yaml 不放任何密钥
+# =============================================================================
+
+environment: prod
+
+backend:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  workers: 4                  # gunicorn worker 数（gunicorn + uvicorn workers）
+
+frontend:
+  host: "0.0.0.0"
+  port: 5173
+
+cors:
+  enabled: true
+  origins:
+    - "https://aegisos.example.com"
+    # 多域名时继续追加
+
+auth:
+  enabled: true
+  mode: "api-key"
+  api_key_header: "X-API-Key"
+  # 实际 key 由 AEGIS_AUTH_DEFAULT_KEY 注入
+
+database:
+  url: "postgresql+asyncpg://aegis:***@prod-db:5432/aegisos"
+  echo: false
+
+logging:
+  level: "WARNING"            # prod 减少 INFO 噪音
+  format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+rate_limit:
+  enabled: true
+  rpm: 120
+
+# 数据层：prod 启用真库
+storage:
+  graph_mode: "neo4j"
+  vector_mode: "qdrant"
+  neo4j_uri: "bolt://prod-neo4j:7687"
+  neo4j_user: "neo4j"
+  neo4j_password: ""          # 密码由 AEGIS_STORAGE_NEO4J_PASSWORD 注入
+  qdrant_url: "http://prod-qdrant:6333"
+  qdrant_api_key: ""          # 同上
+  qdrant_collection: "memory_vectors"

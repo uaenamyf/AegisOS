@@ -1,0 +1,44 @@
+# AegisOS dev 环境配置
+# =============================================================================
+# 用途：本地开发（macOS / Windows / Linux 单机）
+# 启用方式：export AEGIS_ENV=dev  或  .env 中设置 AEGIS_ENV=dev
+# 覆盖范围：只覆盖与 defaults.yaml 不同的字段；同名键值优先于 defaults
+# =============================================================================
+
+environment: dev
+
+backend:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true                # 开发模式热重载
+
+frontend:
+  host: "localhost"
+  port: 5173
+
+cors:
+  enabled: true
+  origins:
+    - "http://localhost:5173"
+    - "http://127.0.0.1:5173"
+    - "http://localhost:5174"
+
+auth:
+  enabled: false              # dev 关闭鉴权，方便接口调试
+  default_key: "aegis-dev-key"
+
+database:
+  url: "sqlite+aiosqlite:///./data/aegisos.db"
+  echo: true                  # dev 打印 SQL
+
+logging:
+  level: "DEBUG"
+  format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+rate_limit:
+  enabled: false              # dev 不限流
+
+# 数据层：默认进程内存（无外部依赖）
+storage:
+  graph_mode: "in_memory"
+  vector_mode: "in_memory"
