@@ -2,6 +2,28 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P7-R1] 2026-08-26 端边云任务线启动：节点档案与配置契约
+
+> 端边云（赛题答题要求 c）补齐的第一块数据基础：三层节点统一描述类型 + 配置加载。纯数据层，零网络 IO，不影响任何现有模块行为。
+
+### 新增
+- `infrastructure/nodes/descriptor.py` — `NodeProfile`（Pydantic）+ `Tier/ProviderKind/PrivacyZone` 枚举；`load_node_profiles()` YAML 工厂（`${ENV_VAR}` 插值、未配置节点跳过并记录原因）；`select_nodes()` 过滤辅助；`to_registry_dict()`（R5 注册载荷投影）；`to_scheduler_model()`（桥接 engine.scheduler.Model）
+- `tooling/configs/infrastructure.yaml` — 三节点档案（device_local 本机 Ollama / edge_server_01 服务器 / cloud_api OpenAI 兼容 API）+ 心跳参数段（R5 启用）；兑现 infrastructure/AGENT.md 承诺的配置位置
+- `tests/infrastructure/nodes/test_descriptor.py` — 15 用例：构造校验/隐私域按 tier 推导/YAML 加载/环境插值/未解析跳过/注册投影/scheduler.Model 桥接/过滤辅助/真实配置冒烟
+- `conftest.py`（仓库根）— pytest 将仓库根加入 sys.path
+
+### 修改
+- `pyproject.toml` — dependencies 增加 `pyyaml>=6.0`（infrastructure.yaml 加载为硬依赖）
+- `infrastructure/__init__.py` · `infrastructure/nodes/__init__.py` — 新增包初始化（此前全域仅 api/ 有）
+- `infrastructure/nodes/AGENT.md` — 修正配置路径冲突（nodes.yaml → tooling/configs/infrastructure.yaml，与域根 AGENT.md 对齐）；输出清单补 device 子模块
+- `docs/P7-端边云-任务切分与执行报告.md` — 任务线 SSOT 档案（R0/R1 记录）
+
+### 验证
+- `python -m pytest tests/infrastructure/ tests/aegisos_agents/planning/test_scheduler.py tests/protocol -q` → 29 passed
+- 全量回归 `python -m pytest -q` → 449 passed, 1 failed（`tests/data/test_graph_store.py::test_neo4j_store_missing_driver_raises` 为基线预存失败，git stash 验证与本轮无关）
+- `python -m ruff check infrastructure/ tests/infrastructure/ conftest.py` → All checks passed
+- `python -c "from infrastructure.nodes.descriptor import load_node_profiles; print(load_node_profiles())"` → 正常输出档案列表
+
 ## [P3.5] 2026-08-26 配置中心补全（environments + agents + models + prompts + deployment）
 
 > 补齐 `tooling/configs/` 规划中的 5 个子目录/文件。零行为变更（settings.py 仅新增 EnvironmentConfig 字段，默认回退 dev，不影响现有模块）。

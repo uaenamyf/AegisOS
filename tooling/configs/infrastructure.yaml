@@ -1,0 +1,41 @@
+# AegisOS 基础设施节点档案（R1 —— 端边云任务线）
+# =============================================================================
+# 用途：声明端(device)/边(edge)/云(cloud)三层推理节点的静态档案
+# 加载方：infrastructure/nodes/descriptor.py::load_node_profiles()
+# 插值规则：字符串字段支持 ${ENV_VAR}；插值后仍含 ${ 的节点视为未配置，
+#           加载时自动跳过并记录原因（保证无 Key 机器可运行）
+# 环境差异：通过 tooling/configs/environments/*.yaml 覆盖（后续轮次接入）
+# =============================================================================
+
+nodes:
+  # ---- 端侧：本机 Ollama 小模型（隐私数据不出本机）----
+  device_local:
+    tier: device
+    base_url: "http://localhost:11434"
+    provider: ollama
+    model_id: "qwen2.5:0.5b"        # 按本机已 pull 的模型调整（ollama list 查看）
+    capabilities: ["chat"]
+    cost_weight: 0.1                # 本地零边际成本
+
+  # ---- 边侧：服务器（R3 部署后把地址写入环境变量）----
+  edge_server_01:
+    tier: edge
+    base_url: "${AEGIS_EDGE_BASE_URL}"   # 例：http://10.0.0.2:8900；未设置则该节点不参与调度
+    provider: ollama
+    model_id: "qwen2.5:7b"
+    capabilities: ["chat", "reasoning"]
+    cost_weight: 1.0
+
+  # ---- 云侧：OpenAI 兼容大模型 API（与 sdk_provider.py 同一环境变量约定）----
+  cloud_api:
+    tier: cloud
+    base_url: "${OPENAI_BASE_URL}"       # 未设置则该节点不参与调度（Mock 兜底见 R4）
+    provider: openai_api
+    model_id: "${OPENAI_DEFAULT_MODEL}"  # ARK 推理接入点 endpoint ID 或 OpenAI 模型名
+    capabilities: ["chat", "reasoning", "long_context"]
+    cost_weight: 10.0
+
+# ---- 心跳探活参数（R5 NodeRegistry 启用）----
+heartbeat:
+  interval_s: 15          # 探测周期
+  fail_threshold: 2       # 连续失败 N 次标记 offline

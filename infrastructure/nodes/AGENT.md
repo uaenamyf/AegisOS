@@ -19,7 +19,9 @@
 - protocol/ 类型定义
 
 ## 输出
-- infrastructure/nodes/edge/ 端侧
+- infrastructure/nodes/descriptor.py 节点档案类型与配置加载（R1）
+- infrastructure/nodes/device/ 端侧
+- infrastructure/nodes/edge/ 边侧
 - infrastructure/nodes/cloud/ 云侧
 
 ## 依赖
@@ -40,7 +42,7 @@
 `aegisos_agents/tools/prompts/nodes/`（版本化管理，变更需经 aegisos_agents/perception/reflection 评估）。
 
 ## 配置位置
-`tooling/configs/nodes.yaml`（环境差异通过 tooling/configs/environments/ 覆盖）。
+`tooling/configs/infrastructure.yaml`（节点档案 + 心跳参数；环境差异通过 tooling/configs/environments/ 覆盖）。
 
 ## 开发约定
 - 遵循 `developer/specs/11_AI_CODING_SPEC.md` 与 `developer/specs/12_TECH_STACK_SPEC.md`。
@@ -58,5 +60,7 @@
 - **相关计划**：developer/specs/plans/14_CYBERDEFENSE_SOLUTION_PLAN.md + plans/15_CYBERDEFENSE_TASKS.md（H1 沙箱靶场/端边云）
 
 ## 下辖子模块
-- infrastructure/nodes/edge/ — 端侧节点（本地推理、资源受限调度、断连续传）
+- infrastructure/nodes/descriptor.py — 节点档案类型 + infrastructure.yaml 加载（R1）
+- infrastructure/nodes/device/ — 端侧节点（本地推理、资源受限调度、断连续传）
+- infrastructure/nodes/edge/ — 边侧节点（区域聚合、中型模型）
 - infrastructure/nodes/cloud/ — 云侧节点（全局编排、模型服务、注册发现）
