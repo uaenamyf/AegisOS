@@ -113,3 +113,37 @@ def test_three_tier_all_present():
     ]
     result = schedule(task, models)
     assert result.tier == "edge"
+
+
+# --- 缺失层降级测试（R2 修正：显式层级偏好链，不再取首个候选）---
+
+
+def test_heavy_no_cloud_degrades_to_edge():
+    """重活但云侧缺失 → 按算力降级选边侧（而非任意首个候选）。"""
+    task = Task(goal="heavy", latency_budget=60.0)
+    models = [
+        Model(model_id="device_small", tier="device", size="small"),
+        Model(model_id="edge_mid", tier="edge", size="medium"),
+    ]
+    assert schedule(task, models).tier == "edge"
+
+
+def test_heavy_only_device_degrades_to_device():
+    """仅剩端侧时重活也落端侧（全降级链末端）。"""
+    task = Task(goal="heavy", latency_budget=60.0)
+    models = [Model(model_id="only", tier="device", size="small")]
+    assert schedule(task, models).tier == "device"
+
+
+def test_low_latency_no_edge_no_device_picks_cloud():
+    """低延迟但端边皆缺 → 唯一选择云侧。"""
+    task = Task(goal="x", latency_budget=3.0)
+    models = [Model(model_id="cloud_big", tier="cloud", size="large")]
+    assert schedule(task, models).tier == "cloud"
+
+
+def test_ultra_low_latency_no_tiny_picks_cloud_last():
+    """超低延迟端边皆缺 → 云侧兜底。"""
+    task = Task(goal="x", latency_budget=0.5)
+    models = [Model(model_id="cloud_big", tier="cloud", size="large")]
+    assert schedule(task, models).tier == "cloud"

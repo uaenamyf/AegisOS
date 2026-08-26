@@ -25,6 +25,28 @@ from protocol.scheduler import Task
 DEVICE_THRESHOLD = 1.0  # 秒；低于此值必须端侧处理（超低延迟）
 EDGE_THRESHOLD = 5.0  # 秒；低于此值优先边侧处理（低延迟）
 
+# --- 层级偏好链（R2 修正：缺失层不再"取首个候选"，而是按语义显式降级）---
+_ORDER_MOST_LOCAL = ("device", "edge", "cloud")  # 越靠前越贴近本地（隐私/超低延迟语义）
+_ORDER_LOW_LATENCY = ("edge", "device", "cloud")  # 低延迟语义：端优于云
+_ORDER_HEAVY = ("cloud", "edge", "device")  # 重活语义：越靠前算力越强
+
+
+def _pick_by_preference(candidates: list[Model], order: tuple[str, ...]) -> Model:
+    """按层级偏好顺序返回第一个命中者。
+
+    Args:
+        candidates: 非空候选列表。
+        order: 三层层级偏好序列（必须覆盖 device/edge/cloud 全部取值）。
+
+    Returns:
+        命中的模型；order 覆盖全部层级时必命中，末位为防御性兜底。
+    """
+    for tier in order:
+        for m in candidates:
+            if m.tier == tier:
+                return m
+    return candidates[0]
+
 # --- 三层 tier 定义 ---
 # device: 端侧（PC/手机/IoT/防火墙盒子）— 超低延迟、完全本地隐私
 # edge:   边侧（边缘网关/机架服务器/区县汇聚节点）— 中等算力、区域隔离
@@ -58,12 +80,12 @@ def schedule(
     五步调度策略（按优先级）：
         1. 能力过滤：若指定 required_capability，仅保留具备该能力的模型。
         2. 规则 1（隐私优先）：task.privacy == "local" 时必须选端侧，保障数据不出本地；
-           无端侧模型时降级为层级最低（延迟最小）的候选。
-        3. 规则 2（超低延迟）：latency_budget < DEVICE_THRESHOLD 时优先端侧，
-           端侧缺失则降级到边侧，再缺失取首个候选。
-        4. 规则 3（低延迟）：latency_budget < EDGE_THRESHOLD 时优先边侧，
-           边侧缺失取首个候选。
-        5. 规则 4（算力优先）：其余情况选云侧，云侧缺失取首个候选。
+           无端侧时按"最贴近本地"降级（edge → cloud）。
+        3. 规则 2（超低延迟）：latency_budget < DEVICE_THRESHOLD 依次选 device → edge，
+           仅当二者皆缺才落云。
+        4. 规则 3（低延迟）：latency_budget < EDGE_THRESHOLD 依次选 edge → device
+           （端侧延迟天然低于云），仅当二者皆缺才落云。
+        5. 规则 4（算力优先）：其余情况选 cloud，缺失时按算力降级 edge → device。
 
     Args:
         task: 待调度任务，含隐私约束与延迟预算。
@@ -83,34 +105,17 @@ def schedule(
     if not candidates:
         raise ValueError(f"No model with capability '{required_capability}'")
 
-    # 规则 1: 隐私敏感 → 端侧
+    # 规则 1: 隐私敏感 → 端侧，缺失按最本地降级
     if task.privacy == "local":
-        device = [m for m in candidates if m.tier == "device"]
-        if device:
-            return device[0]
-        # 降级：无端侧模型时取层级最低（延迟最小）的候选
-        return sorted(candidates, key=lambda m: {"device": 0, "edge": 1, "cloud": 2}[m.tier])[0]
+        return _pick_by_preference(candidates, _ORDER_MOST_LOCAL)
 
-    # 规则 2: 超低延迟 → 端侧
+    # 规则 2: 超低延迟 → 端侧优先，边侧次之
     if task.latency_budget < DEVICE_THRESHOLD:
-        device = [m for m in candidates if m.tier == "device"]
-        if device:
-            return device[0]
-        # 降级到边侧
-        edge = [m for m in candidates if m.tier == "edge"]
-        if edge:
-            return edge[0]
-        return candidates[0]
+        return _pick_by_preference(candidates, _ORDER_MOST_LOCAL)
 
-    # 规则 3: 低延迟 → 边侧
+    # 规则 3: 低延迟 → 边侧优先（端侧延迟亦优于云）
     if task.latency_budget < EDGE_THRESHOLD:
-        edge = [m for m in candidates if m.tier == "edge"]
-        if edge:
-            return edge[0]
-        return candidates[0]
+        return _pick_by_preference(candidates, _ORDER_LOW_LATENCY)
 
-    # 规则 4: 默认 → 云侧（算力最强）
-    cloud = [m for m in candidates if m.tier == "cloud"]
-    if cloud:
-        return cloud[0]
-    return candidates[0]
+    # 规则 4: 默认 → 云侧（算力最强），缺失按算力降级
+    return _pick_by_preference(candidates, _ORDER_HEAVY)

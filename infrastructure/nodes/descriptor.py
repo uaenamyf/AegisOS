@@ -148,6 +148,48 @@ class NodeProfile(BaseModel):
         )
 
 
+class InferenceResult(BaseModel):
+    """一次跨层推理的统一返回契约（R2 起，DeviceNode/EdgeNode/CloudNode 共用）。
+
+    失败语义：``ok=False`` 时 ``text`` 为空、``error`` 有原因；**节点实现
+    绝不向上抛网络异常**，由调用方（R6 ExecutionDispatcher）据 ok 决定降级。
+
+    Attributes:
+        ok: 是否成功。
+        text: 模型输出文本；失败时为空串。
+        node_id: 执行节点标识（如 device_local）。
+        tier: 执行层级 device | edge | cloud。
+        model_id: 实际使用的模型标识。
+        latency_ms: 端到端耗时（毫秒，含网络往返）。
+        usage: token 用量 {"prompt_tokens": int, "completion_tokens": int}；
+            无用量信息时为空 dict。
+        error: 失败原因（连接拒绝 / 超时 / HTTP 状态码 / 响应解析失败）。
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    ok: bool = True
+    text: str = ""
+    node_id: str = ""
+    tier: str = ""
+    model_id: str = ""
+    latency_ms: float = 0.0
+    usage: dict[str, int] = Field(default_factory=dict)
+    error: str = ""
+
+    @classmethod
+    def failure(
+        cls,
+        error: str,
+        *,
+        node_id: str = "",
+        tier: str = "",
+        model_id: str = "",
+    ) -> InferenceResult:
+        """构造失败结果（ok=False）的便捷工厂。"""
+        return cls(ok=False, error=error, node_id=node_id, tier=tier, model_id=model_id)
+
+
 def _expand_env_fields(raw: dict) -> dict:
     """对指定字符串字段做 ${ENV_VAR} 插值，其余字段原样透传。"""
     out = dict(raw)

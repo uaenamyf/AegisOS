@@ -2,6 +2,28 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P7-R2] 2026-08-26 端侧节点运行时 + 路由降级链修正
+
+> 端侧(device)节点实体化：本机 Ollama 小模型适配器；同时修复调度器"缺失层取首个候选"的路由随机性。新增 21 个测试（10 DeviceNode + 11 路由桥接），调度器补 4 个降级回归。
+
+### 新增
+- `infrastructure/nodes/descriptor.py` — 追加 `InferenceResult` 统一返回契约（ok/text/node_id/tier/model_id/latency_ms/usage/error）+ `failure()` 工厂；失败绝不抛网络异常，为 R6 降级链铺路
+- `infrastructure/nodes/base.py` — `BaseHttpNode` 公共底座（urllib JSON 收发 / 异常翻译 / 计时封装），R3 EdgeNode 直接复用
+- `infrastructure/nodes/device/{__init__,device_node}.py` — `DeviceNode`：health()=GET /api/tags，infer()=POST /api/generate(stream=false)，含 `__main__` 真机冒烟块
+- `tests/infrastructure/nodes/test_device_node.py` — 10 用例（happy path/参数透传/连接拒绝/超时/HTTP500/坏JSON/健康两态/构造校验/工厂）
+- `tests/infrastructure/nodes/test_routing_bridge.py` — 11 用例：档案→select_nodes→to_scheduler_model→schedule 全链路，覆盖隐私路由端侧、超低延迟端侧、低延迟边侧、重活云侧、端离线降边、能力过滤绕过端侧、禁用档案排除等
+- `tests/aegisos_agents/planning/test_scheduler.py` — 补 4 个缺失层降级回归
+
+### 修改
+- `aegisos_agents/planning/engine/scheduler/scheduler.py` — **行为修正**：四规则改为显式层级偏好链（隐私/超低延迟 device→edge→cloud；低延迟 edge→device→cloud；重活 cloud→edge→device），消除原实现"目标层缺失取 candidates[0]"的顺序随机性（重活可能在云缺时落到端侧）
+- `docs/P7-端边云-任务切分与执行报告.md` — R2 开工前详细版 + 完工报告
+
+### 验证
+- `python -m pytest tests/infrastructure/ tests/aegisos_agents/planning/test_scheduler.py -q` → 48 passed
+- 全量回归 → 474 passed / 1 failed（test_graph_store 基线预存，与本轮无关）
+- ruff 全绿
+- **真机冒烟**：Ollama 在线但 qwen2.5:0.5b 未拉取 → `[health] True` / `[infer] ok=False error=http 404`——精确验证了"节点不可用→失败结果而非异常"的降级契约；模型拉取后重跑冒烟块即可见 happy path
+
 ## [P7-R1] 2026-08-26 端边云任务线启动：节点档案与配置契约
 
 > 端边云（赛题答题要求 c）补齐的第一块数据基础：三层节点统一描述类型 + 配置加载。纯数据层，零网络 IO，不影响任何现有模块行为。
