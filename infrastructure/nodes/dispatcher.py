@@ -54,6 +54,15 @@ class ExecutionDispatcher:
         Returns:
             InferenceResult（ok=True 含 attempts 轨迹；ok=False 含 error）。
         """
+        # R7：数据敏感等级自动分级 —— 未显式声明（standard 为中间态）时
+        # 自动判读 prompt，决定能否上云。显式 local/unrestricted 尊重原值。
+        if task.privacy == "standard":
+            from aegisos_agents.planning.engine.scheduler.privacy_classifier import (
+                classify_privacy,
+            )
+
+            task.privacy = classify_privacy(prompt)
+
         online = self.registry.online_node_instances()
         if not online:
             return InferenceResult.failure(error="no online nodes registered")
