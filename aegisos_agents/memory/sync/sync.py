@@ -11,14 +11,44 @@ from __future__ import annotations
 from protocol.memory import MemoryPacket
 
 
+# ---------------- 向量时钟 ----------------
+
+
+def compare_vc(a: dict[str, int], b: dict[str, int]) -> str:
+    """比较两个向量时钟的因果关系。
+
+    Args:
+        a: 向量时钟 A，如 ``{"device": 1, "edge": 2}``。
+        b: 向量时钟 B。
+
+    Returns:
+        ``"before"`` （A 因果先于 B）、``"after"`` （A 因果后于 B）、
+        ``"equal"`` （A == B）、``"concurrent"`` （并发，不可比）。
+    """
+    keys = set(a) | set(b)
+    a_le_b = all(a.get(k, 0) <= b.get(k, 0) for k in keys)
+    b_le_a = all(b.get(k, 0) <= a.get(k, 0) for k in keys)
+
+    if a_le_b and b_le_a:
+        return "equal"
+    if a_le_b:
+        return "before"
+    if b_le_a:
+        return "after"
+    return "concurrent"
+
+
 class MemorySync:
     """端边云记忆同步管理器。
 
     维护多节点注册表，每节点独立存储一段记忆列表。
-    同步策略：推模式（push）+ 拉模式（pull）+ 合并去重（merge, last-write-wins）。
+    同步策略：推模式（push）+ 拉模式（pull）+ 合并去重（merge）。
+
+    R9 增强：push 时递增源节点向量时钟分量，merge 时先做因果比较——
+    一方支配另一方则取支配方，真正并发冲突才落到 last-write-wins 兜底。
 
     Attributes:
-        _nodes: {node_id -> {"role": str, "store": list[MemoryPacket]}} 节点注册表。
+        _nodes: {node_id -> {"role": str, "store": list[MemoryPacket], "vc": dict}} 节点注册表。
     """
 
     def __init__(self) -> None:
@@ -35,7 +65,7 @@ class MemorySync:
             role: 节点角色：``"edge"`` / ``"fog"`` / ``"cloud"``。
         """
         if node_id not in self._nodes:
-            self._nodes[node_id] = {"role": role, "store": []}
+            self._nodes[node_id] = {"role": role, "store": [], "vc": {}}
 
     def unregister_node(self, node_id: str) -> None:
         """注销一个同步节点并清理其数据。
@@ -58,6 +88,8 @@ class MemorySync:
     def push(self, node_id: str, packets: list[MemoryPacket]) -> int:
         """推模式：将本地记忆推送到目标节点。
 
+        R9：push 时递增目标节点 VC 分量，并把 VC 写入每条包的 compression。
+
         Args:
             node_id: 目标节点标识符。
             packets: 待推送的记忆列表。
@@ -68,6 +100,12 @@ class MemorySync:
         info = self._nodes.get(node_id)
         if info is None:
             return 0
+
+        vc: dict[str, int] = info.setdefault("vc", {})
+        for pkt in packets:
+            vc[node_id] = vc.get(node_id, 0) + 1
+            # 把当前 VC 快照写入包（不修改原 dict 引用，写副本）
+            pkt.compression["vector_clock"] = {**vc}
         info["store"].extend(packets)
         return len(packets)
 
@@ -94,9 +132,10 @@ class MemorySync:
         local: list[MemoryPacket],
         remote: list[MemoryPacket],
     ) -> list[MemoryPacket]:
-        """合并本地与远程记忆，按 task_id 去重（last-write-wins）。
+        """合并本地与远程记忆，按 task_id 去重。
 
-        同一 task_id 的记忆，保留 ``synced_at`` 时间戳最大的一条。
+        R9：先做向量时钟因果比较——一方支配另一方则取支配方；
+        真正并发冲突才落到 last-write-wins 时间戳兜底。
 
         Args:
             local: 本地记忆列表。
@@ -110,10 +149,32 @@ class MemorySync:
             tid = pkt.task_id or ""
             if tid not in merged:
                 merged[tid] = pkt
-            else:
-                # last-write-wins
-                existing_ts = merged[tid].compression.get("synced_at", 0.0)
-                new_ts = pkt.compression.get("synced_at", 0.0)
-                if new_ts > existing_ts:
+                continue
+
+            existing = merged[tid]
+            vc_a = existing.compression.get("vector_clock", {})
+            vc_b = pkt.compression.get("vector_clock", {})
+
+            # 双方都有 VC → 因果比较
+            if vc_a or vc_b:
+                relation = compare_vc(vc_a, vc_b)
+                if relation == "after":
+                    # existing 因果更晚 → 保留 existing
+                    continue
+                elif relation == "before":
+                    # pkt 因果更晚 → 取 pkt
                     merged[tid] = pkt
+                    continue
+                # equal 或 concurrent → 落 LWW
+                # (equal 时取 synced_at 更大的也合理)
+
+            # LWW 兜底（无 VC 或并发冲突）
+            existing_ts = existing.compression.get("synced_at", 0.0)
+            new_ts = pkt.compression.get("synced_at", 0.0)
+            if new_ts > existing_ts:
+                merged[tid] = pkt
+
         return list(merged.values())
+
+
+__all__ = ["MemorySync", "compare_vc"]
