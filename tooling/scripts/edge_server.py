@@ -79,6 +79,36 @@ def _mock_infer(prompt: str, system: str) -> dict:
     }
 
 
+def _aggregate_results(results: list[dict]) -> dict:
+    """区域聚合：合并多条推理结果，产出汇总摘要。"""
+    ok_count = sum(1 for r in results if r["ok"])
+    total_prompt = sum(r["usage"]["prompt_tokens"] for r in results)
+    total_completion = sum(r["usage"]["completion_tokens"] for r in results)
+    cached_count = sum(1 for r in results if r.get("cached"))
+
+    texts = [r["text"] for r in results if r["ok"]]
+    summary = (
+        f"[边缘区域聚合] 共接收 {len(results)} 条子请求，"
+        f"成功 {ok_count} 条，缓存命中 {cached_count} 条。"
+        f"汇总摘要：{' | '.join(texts[:3])}"
+        f"{'...' if len(texts) > 3 else ''}"
+    )
+
+    return {
+        "ok": True,
+        "aggregated_text": summary,
+        "tier": "edge",
+        "sub_count": len(results),
+        "ok_count": ok_count,
+        "cached_count": cached_count,
+        "usage": {
+            "prompt_tokens": total_prompt,
+            "completion_tokens": total_completion,
+        },
+        "sub_results": results,
+    }
+
+
 def _try_ollama_infer(prompt: str, system: str, model: str, temperature: float, max_tokens: int) -> dict | None:
     """尝试调本机 Ollama；失败返回 None。"""
     import urllib.request
@@ -138,10 +168,6 @@ class EdgeHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "not found"})
 
     def do_POST(self) -> None:
-        if self.path != "/infer":
-            self._send_json(404, {"error": "not found"})
-            return
-
         # 读取请求体
         length = int(self.headers.get("Content-Length", 0))
         try:
@@ -150,14 +176,26 @@ class EdgeHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"ok": False, "error": "invalid json"})
             return
 
+        if self.path == "/aggregate":
+            self._handle_aggregate(body)
+            return
+        if self.path != "/infer":
+            self._send_json(404, {"error": "not found"})
+            return
+
+        prompt = body.get("prompt", "")
+        if not prompt:
+            self._send_json(400, {"ok": False, "error": "missing prompt"})
+            return
+
+        self._send_json(200, self._infer_one(body))
+
+    def _infer_one(self, body: dict) -> dict:
+        """单条推理：区域聚合缓存 → Ollama → mock 回退。"""
         prompt = body.get("prompt", "")
         system = body.get("system", "")
         temperature = body.get("temperature", 0.7)
         max_tokens = body.get("max_tokens", 512)
-
-        if not prompt:
-            self._send_json(400, {"ok": False, "error": "missing prompt"})
-            return
 
         # 区域聚合缓存
         key = _cache_key(prompt, self.ollama_model)
@@ -165,8 +203,7 @@ class EdgeHandler(BaseHTTPRequestHandler):
         if key in _cache:
             _, cached = _cache[key]
             cached["cached"] = True
-            self._send_json(200, cached)
-            return
+            return cached
 
         # 尝试 Ollama → 回退 mock
         result = None
@@ -176,7 +213,21 @@ class EdgeHandler(BaseHTTPRequestHandler):
             result = _mock_infer(prompt, system)
 
         _cache[key] = (time.time(), result)
-        self._send_json(200, result)
+        return result
+
+    def _handle_aggregate(self, body: dict) -> None:
+        """区域聚合：接收多条子请求，逐条推理后合并汇总。
+
+        body: {"prompts": [str, ...], "system": str?}
+        """
+        prompts = body.get("prompts", [])
+        system = body.get("system", "")
+        if not prompts or not isinstance(prompts, list):
+            self._send_json(400, {"ok": False, "error": "missing prompts list"})
+            return
+
+        results = [self._infer_one({"prompt": p, "system": system}) for p in prompts]
+        self._send_json(200, _aggregate_results(results))
 
 
 # ---- 入口 ----

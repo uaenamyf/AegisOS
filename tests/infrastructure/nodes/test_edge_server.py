@@ -64,9 +64,12 @@ def _post(path: str, body: dict) -> tuple[int, dict]:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        raw = resp.read().decode("utf-8")
-        return resp.getcode(), json.loads(raw)
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            raw = resp.read().decode("utf-8")
+            return resp.getcode(), json.loads(raw)
+    except urllib.error.HTTPError as e:
+        return e.code, {"error": str(e)}
 
 
 # ============ /health ============
@@ -114,3 +117,30 @@ def test_cache_increments_on_repeat_request(edge_server):
 
     # 缓存至少不减少
     assert after.get("cache_size", 0) >= initial_cache
+
+
+# ============ /aggregate 区域聚合 ============
+
+
+def test_aggregate_returns_summary(edge_server):
+    """POST /aggregate 接收多条 prompts，返回汇总结果。"""
+    status, body = _post("/aggregate", {
+        "prompts": ["告警A: SSH爆破", "告警B: 端口扫描"],
+        "system": "安全分析",
+    })
+    assert status == 200
+    assert body.get("ok") is True
+    assert "aggregated_text" in body
+    assert body["sub_count"] == 2
+    assert body["ok_count"] == 2
+    assert "cached_count" in body
+
+
+def test_aggregate_empty_prompts_returns_400(edge_server):
+    status, _ = _post("/aggregate", {"prompts": []})
+    assert status == 400
+
+
+def test_aggregate_missing_prompts_returns_400(edge_server):
+    status, _ = _post("/aggregate", {})
+    assert status == 400
