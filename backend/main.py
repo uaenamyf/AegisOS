@@ -22,6 +22,7 @@ from backend.core.composition import get_composition
 from backend.core.middleware import TraceMiddleware, get_trace_id
 from backend.core.routes import router as gateway_router
 from backend.routers.health import router as health_router
+from backend.routers.infra import router as infra_router
 from backend.routers.stream import router as stream_router
 from backend.routers.ws import router as ws_router
 from tooling.configs.settings import settings
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
     """
     comp = get_composition()
     await comp.startup()
+    _init_infra_service()
     logging.getLogger("aegis.main").info("AegisOS backend started (version 0.1.0)")
     try:
         yield
@@ -80,6 +82,8 @@ def create_app() -> FastAPI:
     # --- 路由 ---
     # 健康检查为公开接口（无需鉴权），直接挂载到 app 上。
     app.include_router(health_router, prefix="/api/v1")
+    # 基础设施端点（端边云节点/派发/历史）
+    app.include_router(infra_router, prefix="/api/v1")
     # 网关（/api/v1/*，带鉴权）提供 /sessions、/tasks、/agents 等接口。
     app.include_router(gateway_router)
     # WebSocket 不在 /api/v1 下（规范：ws://host/ws/v1/stream）。
@@ -159,4 +163,22 @@ def _code_for_status(status_code: int) -> str:
 
 
 # 模块级应用实例，供 uvicorn 通过 backend.main:app 加载。
+# 模块级 infra 服务实例，供 router 通过 _get_service() 访问。
+_infra_service = None
+
 app = create_app()
+
+
+def _init_infra_service() -> None:
+    """延迟初始化 infra 服务（创建 registry + dispatcher 单例）。"""
+    global _infra_service
+    if _infra_service is not None:
+        return
+
+    from infrastructure.nodes.registry import NodeRegistry
+    from infrastructure.nodes.dispatcher import ExecutionDispatcher
+    from backend.services.infra_service import InfraService
+
+    registry = NodeRegistry()
+    dispatcher = ExecutionDispatcher(registry)
+    _infra_service = InfraService(registry=registry, dispatcher=dispatcher)
