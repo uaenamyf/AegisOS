@@ -176,6 +176,7 @@ class InferenceResult(BaseModel):
     latency_ms: float = 0.0
     usage: dict[str, int] = Field(default_factory=dict)
     error: str = ""
+    attempts: list[dict] = Field(default_factory=list)  # R6 派发器写入的降级轨迹
 
     @classmethod
     def failure(

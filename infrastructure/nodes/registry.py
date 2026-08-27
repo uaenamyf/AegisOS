@@ -129,6 +129,20 @@ class NodeRegistry:
                 })
         return result
 
+    def online_node_instances(self) -> list:
+        """返回在线节点的 (profile, node) 实例列表，供 R6 派发器构建候选。
+
+        仅返回 status == "online" 的节点；probe（未探活）按在线处理，
+        offline 过滤——保证派发器绝不把任务派给已知掉线的节点。
+        """
+        result: list = []
+        with self._lock:
+            for entry in self._entries.values():
+                if entry.status == "offline":
+                    continue
+                result.append((entry.profile, entry.node))
+        return result
+
     # ---- 心跳 ----
 
     def heartbeat(self, node_id: str) -> dict:
