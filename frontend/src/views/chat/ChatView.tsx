@@ -5,7 +5,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore, type ChatMessage, type HitlPayload } from "@/lib/store";
 import { agentApi } from "@/services/api/agents";
-import { taskApi } from "@/services/api/tasks";
 import { streamAgent } from "@/services/api/stream";
 import { humanApi } from "@/services/api/human";
 
@@ -149,9 +148,10 @@ export function ChatView() {
             ? output
             : JSON.stringify(output ?? res.result, null, 2);
       } else {
-        // 提交任务（由 agents 域内部路由决定用哪个 Agent）
-        const task = await taskApi.create({ goal, session_id: sessionId });
-        resultText = `Task created: ${task.task_id}\nStatus: ${task.status}\nPlan: ${JSON.stringify(task.plan)}`;
+        // 走端边云 infra 派发（真实 Ollama 推理）
+        const { infraApi } = await import("@/services/api/infra");
+        const res = await infraApi.dispatch({ goal, privacy: "unrestricted", latency_budget: 0.3 });
+        resultText = `[${res.tier}] ${res.text}\n\n延迟: ${res.latency_ms.toFixed(0)}ms | ${res.privacy_note || ""}`;
       }
 
       updateChatMessage(assistantMsgId, {

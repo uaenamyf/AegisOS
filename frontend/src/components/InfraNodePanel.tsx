@@ -23,6 +23,11 @@ const TIER_COLORS: Record<string, string> = {
   cloud: "#d29922",
 };
 
+function isOnline(node: InfraNode | undefined): boolean {
+  if (!node) return false;
+  return node.status !== "offline" && node.consecutive_failures < 2;
+}
+
 export function InfraNodePanel() {
   const [nodes, setNodes] = useState<InfraNode[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +62,7 @@ export function InfraNodePanel() {
       <div className="infra-panel__cards">
         {(["device", "edge", "cloud"] as const).map((tier) => {
           const node = nodes.find((n) => n.tier === tier);
-          const online = node?.online ?? false;
+          const online = isOnline(node);
           return (
             <div
               key={tier}
@@ -76,6 +81,9 @@ export function InfraNodePanel() {
                 <div className="infra-card__latency">
                   {node.last_latency_ms.toFixed(0)} ms
                 </div>
+              )}
+              {node?.model_id && (
+                <div className="infra-card__id">{node.model_id}</div>
               )}
               {node?.node_id && (
                 <div className="infra-card__id">{node.node_id}</div>

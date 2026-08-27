@@ -177,8 +177,82 @@ def _init_infra_service() -> None:
 
     from infrastructure.nodes.registry import NodeRegistry
     from infrastructure.nodes.dispatcher import ExecutionDispatcher
+    from infrastructure.nodes.descriptor import NodeProfile, load_node_profiles
     from backend.services.infra_service import InfraService
 
     registry = NodeRegistry()
+
+    # 从配置文件加载节点，未配置的用 mock fallback 补全
+    profiles, skipped = load_node_profiles()
+    has_device = False
+    has_edge = False
+    has_cloud = False
+
+    for p in profiles:
+        _register_profile(registry, p)
+        if p.tier == "device":
+            has_device = True
+        elif p.tier == "edge":
+            has_edge = True
+        elif p.tier == "cloud":
+            has_cloud = True
+
+    if not has_device:
+        _register_profile(registry, NodeProfile(
+            node_id="device_local", tier="device",
+            base_url="http://localhost:11434", provider="ollama",
+            model_id="mock:0.5b", capabilities=["chat"], cost_weight=0.1,
+        ))
+    if not has_edge:
+        _register_profile(registry, NodeProfile(
+            node_id="edge_server_01", tier="edge",
+            base_url="http://localhost:8900", provider="aegis_edge",
+            model_id="mock:7b", capabilities=["chat", "reasoning"],
+            cost_weight=1.0,
+        ))
+    if not has_cloud:
+        _register_profile(registry, NodeProfile(
+            node_id="cloud_api", tier="cloud",
+            base_url="http://localhost:8001", provider="openai_api",
+            model_id="mock:gpt-4o", capabilities=["chat", "reasoning", "long_context"],
+            cost_weight=10.0,
+        ))
+
     dispatcher = ExecutionDispatcher(registry)
     _infra_service = InfraService(registry=registry, dispatcher=dispatcher)
+
+
+def _register_profile(registry, profile: NodeProfile) -> None:
+    """用 NodeProfile 注册一个节点到 registry。
+
+    根据 provider+tier 选择合适的节点实现：
+    - device + ollama → DeviceNode（真实 Ollama 推理）
+    - 其他 → _MockNode（mock 回退，保证无环境下可演示）
+    """
+    def _make(prof: NodeProfile):
+        # 端侧：真实 Ollama 推理
+        if str(prof.tier) == "device" and prof.provider == "ollama":
+            try:
+                from infrastructure.nodes.device.device_node import DeviceNode
+                return DeviceNode(prof)
+            except Exception:
+                pass  # 构造失败，回退 mock
+
+        # 其余回退 mock
+        class _MockNode:
+            pass
+        _MockNode.profile = prof
+        _MockNode.health = lambda self, timeout_s=5.0: True
+        def _infer(self, prompt: str, system: str = "") -> dict:
+            from infrastructure.nodes.descriptor import InferenceResult
+            tier_name = prof.tier.value if hasattr(prof.tier, "value") else str(prof.tier)
+            reply = f"[{tier_name} mock] 收到: {prompt[:60]}"
+            return InferenceResult(
+                ok=True, text=reply, node_id=prof.node_id,
+                tier=tier_name, model_id=prof.model_id,
+                latency_ms=12,
+                usage={"prompt_tokens": len(prompt), "completion_tokens": len(reply)},
+            )
+        _MockNode.infer = _infer
+        return _MockNode()
+    registry.register_node(_make(profile))

@@ -6,11 +6,20 @@ import { apiClient } from "@/lib/api-client";
 
 export interface InfraNode {
   node_id: string;
-  name: string;
   tier: "device" | "edge" | "cloud";
-  online: boolean;
-  last_latency_ms: number | null;
-  last_health_ok: string | null;
+  status: string;  // "probe" | "online" | "offline"
+  last_ok_ts: number;
+  consecutive_failures: number;
+  model_id: string;
+  capabilities: string[];
+  /** 派生：status 非 offline 即在线 */
+  online?: boolean;
+  last_latency_ms?: number | null;
+}
+
+/** 后端 status → 前端 online 布尔 */
+export function isOnline(node: InfraNode): boolean {
+  return node.status !== "offline" && node.consecutive_failures < 2;
 }
 
 export interface DispatchResult {
@@ -41,7 +50,7 @@ export interface DispatchHistoryEntry extends DispatchResult {
 export const infraApi = {
   /** 获取端边云节点列表 */
   listNodes(): Promise<InfraNode[]> {
-    return apiClient.get<InfraNode[]>("/api/v1/infra/nodes");
+    return apiClient.get<InfraNode[]>("/infra/nodes");
   },
 
   /** 派发任务 */
@@ -52,13 +61,13 @@ export const infraApi = {
     capability?: string;
     system_prompt?: string;
   }): Promise<DispatchResult> {
-    return apiClient.post<DispatchResult>("/api/v1/infra/dispatch", body);
+    return apiClient.post<DispatchResult>("/infra/dispatch", body);
   },
 
   /** 派发历史 */
   dispatchHistory(limit = 20): Promise<DispatchHistoryEntry[]> {
     return apiClient.get<DispatchHistoryEntry[]>(
-      `/api/v1/infra/dispatch/history?limit=${limit}`
+      `/infra/dispatch/history?limit=${limit}`
     );
   },
 };
