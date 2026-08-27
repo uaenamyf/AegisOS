@@ -221,6 +221,30 @@ def _init_infra_service() -> None:
     dispatcher = ExecutionDispatcher(registry)
     _infra_service = InfraService(registry=registry, dispatcher=dispatcher)
 
+    # 启动时立即探活一轮——真实 ping 每个节点，不通的标记 offline
+    import logging as _logging
+    import threading as _threading
+    _log = _logging.getLogger("aegis.main")
+    registry.tick()
+    for snap in registry.snapshot():
+        _log.info(
+            "节点探活: %s (%s) → %s",
+            snap["node_id"], snap["tier"], snap["status"],
+        )
+
+    # 后台定时探活（每 15 秒），让前端看到实时状态
+    def _bg_tick():
+        while True:
+            try:
+                registry.tick()
+            except Exception:
+                pass
+            import time as _t
+            _t.sleep(15)
+
+    _t = _threading.Thread(target=_bg_tick, daemon=True)
+    _t.start()
+
 
 def _register_profile(registry, profile: NodeProfile) -> None:
     """用 NodeProfile 注册一个节点到 registry。
@@ -238,11 +262,32 @@ def _register_profile(registry, profile: NodeProfile) -> None:
             except Exception:
                 pass  # 构造失败，回退 mock
 
-        # 其余回退 mock
+        # 其余回退 mock（但 health 做真实 HTTP 探活）
         class _MockNode:
             pass
         _MockNode.profile = prof
-        _MockNode.health = lambda self, timeout_s=5.0: True
+
+        def _health(self, timeout_s=3.0):
+            """真实探活：去 ping 节点的 base_url，通才在线。"""
+            import urllib.request
+            import urllib.error
+            try:
+                req = urllib.request.Request(
+                    f"{prof.base_url}/health",
+                    method="GET",
+                )
+                urllib.request.urlopen(req, timeout=timeout_s)
+                return True
+            except Exception:
+                # base_url/health 不通，试试 base_url 本身（如 Ollama /api/tags）
+                try:
+                    req = urllib.request.Request(prof.base_url, method="GET")
+                    urllib.request.urlopen(req, timeout=timeout_s)
+                    return True
+                except Exception:
+                    return False
+
+        _MockNode.health = _health
         def _infer(self, prompt: str, system: str = "") -> dict:
             from infrastructure.nodes.descriptor import InferenceResult
             tier_name = prof.tier.value if hasattr(prof.tier, "value") else str(prof.tier)
