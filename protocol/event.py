@@ -35,6 +35,8 @@ class EventType(StrEnum):
     # AP4: 人机协同（Ask 范式）——暂停提问 + 超时降级
     HumanInputRequired = "human.input.required"  # Agent 需要人工输入/确认（阻塞决策点）
     HumanResponse = "human.response"            # 人类对上述请求的回答（含超时降级标记）
+    # P7: 端边云——节点状态变更
+    NodeStatusChange = "node.status_change"  # 基础设施节点上线/离线/恢复
 
 
 class Event(BaseModel):
