@@ -30,20 +30,43 @@ class BaseHttpNode:
 
     # ---- 底层请求 ----
 
-    def _post_json(self, path: str, payload: dict, timeout_s: float) -> dict:
-        """POST JSON 并解析响应；任何失败以异常形式抛给上层翻译。"""
+    def _post_json(
+        self, path: str, payload: dict, timeout_s: float, headers: dict | None = None
+    ) -> dict:
+        """POST JSON 并解析响应；任何失败以异常形式抛给上层翻译。
+
+        Args:
+            path: URL 路径（拼接到 base_url 后）。
+            payload: 序列化为 JSON 的请求体。
+            timeout_s: 超时秒数。
+            headers: 可选额外请求头（与 Content-Type 合并）。
+        """
+        req_headers = {"Content-Type": "application/json"}
+        if headers:
+            req_headers.update(headers)
         req = urllib.request.Request(
             f"{self.profile.base_url}{path}",
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers=req_headers,
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
-    def _get_json(self, path: str, timeout_s: float) -> tuple[int, dict]:
-        """GET 并返回 (status_code, body)；连接失败直接抛异常。"""
-        req = urllib.request.Request(f"{self.profile.base_url}{path}", method="GET")
+    def _get_json(
+        self, path: str, timeout_s: float, headers: dict | None = None
+    ) -> tuple[int, dict]:
+        """GET 并返回 (status_code, body)；连接失败直接抛异常。
+
+        Args:
+            path: URL 路径（拼接到 base_url 后）。
+            timeout_s: 超时秒数。
+            headers: 可选额外请求头。
+        """
+        req_headers = headers or {}
+        req = urllib.request.Request(
+            f"{self.profile.base_url}{path}", headers=req_headers, method="GET"
+        )
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
             raw = resp.read().decode("utf-8")
             try:
