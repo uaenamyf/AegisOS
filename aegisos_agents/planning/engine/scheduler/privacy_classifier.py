@@ -18,34 +18,40 @@ from __future__ import annotations
 
 import re
 
-# ---------------- 规则表 ----------------
+# ---------------- 规则表（带标签，用于前端反馈）----------------
 
 # 强规则：命中任意一条即判 local（不能上云）
-_STRONG_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"(?<!\d)(\d{1,3}\.){3}\d{1,3}(?!\d)"),              # IPv4
-    re.compile(r"::"),                                             # IPv6 压缩形式 fe80::1
-    re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.I),                    # CVE 编号
-    re.compile(r"\b(auth_token|bearer|password|passwd|secret|api[_-]?key|private_key|credential|token)\b", re.I),  # ASCII 凭据关键词
-    re.compile(r"\b[\w.-]+\.corp\.(local|lan|com)\b", re.I),      # 内网主机名
-    re.compile(r"\b(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)"),  # 私有网段
-    re.compile(r"\d{17}[\dXx]|\d{15}"),                            # 身份证号 18/15 位
+# (pattern, label) —— label 是给用户看的分类原因
+_STRONG_RULES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"(?<!\d)(\d{1,3}\.){3}\d{1,3}(?!\d)"), "IP地址"),
+    (re.compile(r"::"), "IPv6地址"),
+    (re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.I), "CVE漏洞编号"),
+    (re.compile(
+        r"\b(auth_token|bearer|password|passwd|secret|api[_-]?key|"
+        r"private_key|credential|token)\b",
+        re.I,
+    ), "凭据/密钥"),
+    (re.compile(r"\b[\w.-]+\.corp\.(local|lan|com)\b", re.I), "内网主机名"),
+    (re.compile(r"\b(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)"), "私有网段"),
+    (re.compile(r"\d{17}[\dXx]|\d{15}"), "身份证号"),
 ]
 
-# 强规则（中文，不用 \b 词边界——Python 对 CJK 的 \b 不可靠）：命中即 local
-_STRONG_CJK_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"身份证号?|口令|密码|密钥|令牌|社保|病历|银行卡|凭证"),
+# 强规则（中文，不用 \b 词边界）
+_STRONG_CJK_RULES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"身份证号?|口令|密码|密钥|令牌|社保|病历|银行卡|凭证"), "隐私/凭证信息"),
 ]
 
-# 弱规则：(pattern, weight) —— 中英分开，中文不用 \b
-_WEAK_RULES: list[tuple[re.Pattern[str], int]] = [
-    (re.compile(r"\b(mysql|redis|mongo|oracle|ssh|sshkey|root|admin|system|username|user|account|uid)\b", re.I), 1),
-    (re.compile(r"内网|局域网|数据中台|用户表|数据库|明文|登录名|用户名|账号"), 2),
-    (re.compile(r"手机号|住址|地址|体检|医保"), 2),
+# 弱规则：(pattern, weight, label)
+_WEAK_RULES: list[tuple[re.Pattern[str], int, str]] = [
+    (re.compile(r"\b(mysql|redis|mongo|oracle|ssh|sshkey|root|admin|system|username|user|account|uid)\b", re.I), 1, "数据库/系统凭据"),
+    (re.compile(r"内网|局域网|数据中台|用户表|数据库|明文|登录名|用户名|账号"), 2, "内网/数据库信息"),
+    (re.compile(r"手机号|住址|地址|体检|医保"), 2, "个人信息"),
 ]
 
 _WEAK_THRESHOLD = 3
 
 # ---------------- 分级 ----------------
+
 
 def classify_privacy(text: str) -> str:
     """判读文本隐私等级，返回 ``local`` 或 ``unrestricted``。
@@ -56,21 +62,42 @@ def classify_privacy(text: str) -> str:
     Returns:
         ``local``（强敏感，不上云）或 ``unrestricted``（可上云）。
     """
+    level, _ = classify_privacy_with_reason(text)
+    return level
+
+
+def classify_privacy_with_reason(text: str) -> tuple[str, str]:
+    """判读隐私等级并返回原因标注。
+
+    Args:
+        text: 待判读文本。
+
+    Returns:
+        (level, reason)：
+        - level: ``local`` 或 ``unrestricted``
+        - reason: 中文原因，如 "检测到 IP地址"、"检测到 凭据/密钥, 内网/数据库信息"
+          unrestricted 时为空串。
+    """
     if not text:
-        return "unrestricted"
+        return "unrestricted", ""
 
     # 强规则：命中即 local
-    for pattern in _STRONG_PATTERNS + _STRONG_CJK_PATTERNS:
+    for pattern, label in _STRONG_RULES + _STRONG_CJK_RULES:
         if pattern.search(text):
-            return "local"
+            return "local", f"检测到 {label}"
 
     # 弱规则：累计计分
     score = 0
-    for pattern, weight in _WEAK_RULES:
+    hit_labels: list[str] = []
+    for pattern, weight, label in _WEAK_RULES:
         if pattern.search(text):
             score += weight
+            hit_labels.append(label)
 
-    return "local" if score >= _WEAK_THRESHOLD else "unrestricted"
+    if score >= _WEAK_THRESHOLD:
+        return "local", f"检测到 {', '.join(hit_labels[:3])}"
+
+    return "unrestricted", ""
 
 
-__all__ = ["classify_privacy"]
+__all__ = ["classify_privacy", "classify_privacy_with_reason"]

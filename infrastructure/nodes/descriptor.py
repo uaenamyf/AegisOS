@@ -177,6 +177,7 @@ class InferenceResult(BaseModel):
     usage: dict[str, int] = Field(default_factory=dict)
     error: str = ""
     attempts: list[dict] = Field(default_factory=list)  # R6 派发器写入的降级轨迹
+    privacy_note: str = ""  # R7 隐私分级原因（供前端展示："检测到IP/凭据→留本地"）
 
     @classmethod
     def failure(
