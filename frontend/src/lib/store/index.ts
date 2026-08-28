@@ -47,6 +47,10 @@ export interface ChatMessage {
   status?: "sending" | "done" | "error";
   timestamp: number;
   hitl?: HitlPayload;
+  /** 端边云落点：device/edge/cloud */
+  tier?: string;
+  /** 隐私备注 */
+  privacyNote?: string;
 }
 
 export interface AppState {

@@ -503,6 +503,44 @@ body {
   border-color: var(--accent);
 }
 
+/* 端边云落点横幅 */
+.tier-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.tier-banner--device {
+  background: #3fb95022;
+  color: #3fb950;
+  border: 1px solid #3fb95044;
+}
+.tier-banner--edge {
+  background: #2f81f722;
+  color: #2f81f7;
+  border: 1px solid #2f81f744;
+}
+.tier-banner--cloud {
+  background: #d2992222;
+  color: #d29922;
+  border: 1px solid #d2992244;
+}
+.tier-banner__note {
+  font-weight: 400;
+  opacity: 0.8;
+}
+.tier-banner__latency {
+  margin-left: auto;
+  opacity: 0.6;
+  font-family: var(--font-mono);
+}
+
 .chat__input-area {
   display: flex;
   gap: 8px;

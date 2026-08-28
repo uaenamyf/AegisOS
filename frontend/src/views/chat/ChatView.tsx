@@ -4,7 +4,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore, type ChatMessage, type HitlPayload } from "@/lib/store";
-import { agentApi } from "@/services/api/agents";
 import { streamAgent } from "@/services/api/stream";
 import { humanApi } from "@/services/api/human";
 
@@ -135,28 +134,50 @@ export function ChatView() {
 
     try {
       let resultText = "";
+      let resultTier = "";
+      let resultPrivacyNote = "";
 
       if (selectedAgentId) {
-        // 直调指定 Agent
-        const res = await agentApi.invokeAgent(selectedAgentId, {
+        // 直调指定 Agent（走真实 Ollama 派发，不再 Mock）
+        const { infraApi } = await import("@/services/api/infra");
+        const res = await infraApi.dispatch({
           goal,
-          session_id: sessionId,
+          privacy: "unrestricted",
+          latency_budget: 0.3,
+          system_prompt: `你扮演网络安全专家 ${selectedAgentId}。请基于你的专业角色回答。`,
         });
-        const output = res.result?.output;
-        resultText =
-          typeof output === "string"
-            ? output
-            : JSON.stringify(output ?? res.result, null, 2);
+        resultText = res.text;
+        resultTier = res.tier;
+        resultPrivacyNote = res.privacy_note || "";
       } else {
         // 走端边云 infra 派发（真实 Ollama 推理）
         const { infraApi } = await import("@/services/api/infra");
-        const res = await infraApi.dispatch({ goal, privacy: "unrestricted", latency_budget: 0.3 });
-        resultText = `[${res.tier}] ${res.text}\n\n延迟: ${res.latency_ms.toFixed(0)}ms | ${res.privacy_note || ""}`;
+        const { taskApi } = await import("@/services/api/tasks");
+
+        // 同时创建一个 task，让 Canvas/Graph 有数据
+        let taskInfo = "";
+        try {
+          const task = await taskApi.create({ goal, session_id: sessionId });
+          taskInfo = `\nTask: ${task.task_id} (${task.status})`;
+        } catch { /* task 创建失败不影响推理 */ }
+
+        const res = await infraApi.dispatch({
+          goal,
+          privacy: "unrestricted",
+          latency_budget: 0.3,
+          system_prompt: selectedAgentId ? `你扮演 ${selectedAgentId} 角色` : "",
+        });
+        resultText = res.text;
+        resultTier = res.tier;
+        resultPrivacyNote = res.privacy_note || "";
+        resultText += taskInfo;
       }
 
       updateChatMessage(assistantMsgId, {
         content: resultText,
         status: "done",
+        tier: resultTier,
+        privacyNote: resultPrivacyNote,
       });
     } catch (err) {
       const errorMsg =
@@ -324,6 +345,12 @@ export function ChatView() {
                   </span>
                 )}
               </div>
+              {msg.tier && (
+                <div className={`tier-banner tier-banner--${msg.tier}`}>
+                  {msg.tier === "device" ? "🖥️ 端侧推理" : msg.tier === "edge" ? "🌐 边侧推理" : "☁️ 云侧推理"}
+                  {msg.privacyNote && <span className="tier-banner__note"> · {msg.privacyNote}</span>}
+                </div>
+              )}
               {msg.hitl ? (
                 // date: 2026-08-17 dev: 陈子毅 changelog: AP4.6 渲染人机协同卡片（提问/选项/结论/超时降级）
                 <HitlCard msg={msg} onAnswer={handleHitlAnswer} />
