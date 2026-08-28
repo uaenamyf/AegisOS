@@ -31,6 +31,7 @@ function isOnline(node: InfraNode | undefined): boolean {
 export function InfraNodePanel() {
   const [nodes, setNodes] = useState<InfraNode[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,9 +42,13 @@ export function InfraNodePanel() {
         if (!cancelled) {
           setNodes(data);
           setError(null);
+          setLoading(false);
         }
       } catch {
-        if (!cancelled) setError("后端未连接");
+        if (!cancelled) {
+          setLoading(false);
+          setError("后端未连接");
+        }
       }
     };
 
@@ -62,7 +67,7 @@ export function InfraNodePanel() {
       <div className="infra-panel__cards">
         {(["device", "edge", "cloud"] as const).map((tier) => {
           const node = nodes.find((n) => n.tier === tier);
-          const online = isOnline(node);
+          const online = loading ? null : isOnline(node);
           return (
             <div
               key={tier}
@@ -73,9 +78,9 @@ export function InfraNodePanel() {
               <div className="infra-card__label">{TIER_LABELS[tier]}</div>
               <div className="infra-card__status">
                 <span
-                  className={`infra-card__dot ${online ? "infra-card__dot--ok" : "infra-card__dot--dead"}`}
+                  className={`infra-card__dot ${online === true ? "infra-card__dot--ok" : online === false ? "infra-card__dot--dead" : "infra-card__dot--loading"}`}
                 />
-                {online ? "在线" : "离线"}
+                {online === null ? "加载中..." : online ? "在线" : "离线"}
               </div>
               {node?.last_latency_ms != null && (
                 <div className="infra-card__latency">

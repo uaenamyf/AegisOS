@@ -1443,6 +1443,12 @@ body {
 
   	.infra-card__dot--ok { background: var(--success); }
   	.infra-card__dot--dead { background: var(--danger); }
+  	.infra-card__dot--loading { background: var(--text-muted); animation: infra-pulse 1.2s ease-in-out infinite; }
+
+  	@keyframes infra-pulse {
+  	  0%, 100% { opacity: 0.3; }
+  	  50% { opacity: 1; }
+  	}
 
   	.infra-card__latency {
   	  font-size: 0.75rem;

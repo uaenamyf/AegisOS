@@ -165,7 +165,9 @@ export function ChatView() {
           goal,
           privacy: "unrestricted",
           latency_budget: 0.3,
-          system_prompt: selectedAgentId ? `你扮演 ${selectedAgentId} 角色` : "",
+          system_prompt: selectedAgentId
+            ? `你扮演网络安全专家 ${selectedAgentId}。请用中文回答。`
+            : "请用中文简洁回答以下问题。",
         });
         resultText = res.text;
         resultTier = res.tier;
