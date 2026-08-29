@@ -87,6 +87,12 @@ class CloudNode(BaseHttpNode):
             "max_tokens": max_tokens,
             "stream": False,
         }
+        # DeepSeek V4 系列为思考模型：默认会把 token 花在 reasoning_content 上
+        # 导致 content 为空。对 deepseek 端点显式关闭思考，保证直接产出答案。
+        if "deepseek" in (self.profile.base_url or "").lower() or "deepseek" in (
+            self.profile.model_id or ""
+        ).lower():
+            payload["thinking"] = {"type": "disabled"}
 
         auth_headers = {"Authorization": f"Bearer {self._api_key}"}
 

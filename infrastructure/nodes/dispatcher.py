@@ -54,17 +54,19 @@ class ExecutionDispatcher:
         Returns:
             InferenceResult（ok=True 含 attempts 轨迹；ok=False 含 error）。
         """
-        # R7：数据敏感等级自动分级
-        if task.privacy == "standard":
-            from aegisos_agents.planning.engine.scheduler.privacy_classifier import (
-                classify_privacy_with_reason,
-            )
+        # R7：数据敏感等级自动分级 —— 始终执行，防止显式 unrestricted 绕过检测
+        # （显式 local 保持 local；standard/unrestricted 一律跑分类器，
+        #   命中敏感规则自动降级为 local，保证敏感数据绝不上云）
+        from aegisos_agents.planning.engine.scheduler.privacy_classifier import (
+            classify_privacy_with_reason,
+        )
 
+        if task.privacy == "local":
+            self._privacy_reason = "显式指定本地推理"
+        else:
             level, reason = classify_privacy_with_reason(prompt)
             task.privacy = level
             self._privacy_reason = reason  # 写入 InferenceResult 供前端提醒
-        else:
-            self._privacy_reason = ""
 
         online = self.registry.online_node_instances()
         if not online:

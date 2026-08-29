@@ -262,6 +262,14 @@ def _register_profile(registry, profile: NodeProfile) -> None:
             except Exception:
                 pass  # 构造失败，回退 mock
 
+        # 云侧：真实 OpenAI 兼容 API（DeepSeek/OpenAI 等）
+        if str(prof.tier) == "cloud" and prof.provider == "openai_api":
+            try:
+                from infrastructure.nodes.cloud.cloud_node import CloudNode
+                return CloudNode(prof)
+            except Exception:
+                pass  # 构造失败，回退 mock
+
         # 其余回退 mock（但 health 做真实 HTTP 探活）
         class _MockNode:
             pass

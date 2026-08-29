@@ -504,6 +504,64 @@ body {
 }
 
 /* 端边云落点横幅 */
+.dispatch-sandbox__run {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.dispatch-sandbox__run:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.dispatch-sandbox__error {
+  margin-top: 8px;
+  color: var(--danger);
+  font-size: 12px;
+}
+.dispatch-sandbox__actual {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.dispatch-sandbox__actual-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dispatch-sandbox__latency {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.dispatch-sandbox__note {
+  color: #d29922;
+  font-size: 12px;
+}
+.dispatch-sandbox__text {
+  line-height: 1.6;
+  word-break: break-word;
+}
+.dispatch-sandbox__attempts {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.dispatch-sandbox__attempts summary {
+  cursor: pointer;
+}
+
 .tier-banner {
   display: inline-flex;
   align-items: center;
