@@ -12,6 +12,9 @@ export interface InfraNode {
   consecutive_failures: number;
   model_id: string;
   capabilities: string[];
+  base_url?: string;
+  /** API 厂商标签（DeepSeek / OpenAI / 火山方舟 / Ollama ...） */
+  vendor?: string;
   /** 派生：status 非 offline 即在线 */
   online?: boolean;
   last_latency_ms?: number | null;

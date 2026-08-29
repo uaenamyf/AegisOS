@@ -118,6 +118,7 @@ class NodeRegistry:
         result: list[dict] = []
         with self._lock:
             for entry in self._entries.values():
+                from infrastructure.nodes.descriptor import detect_vendor
                 result.append({
                     "node_id": entry.profile.node_id,
                     "tier": str(entry.profile.tier),
@@ -126,6 +127,10 @@ class NodeRegistry:
                     "consecutive_failures": entry.consecutive_failures,
                     "model_id": entry.profile.model_id,
                     "capabilities": entry.profile.capabilities,
+                    "base_url": entry.profile.base_url,
+                    "vendor": detect_vendor(
+                        entry.profile.base_url, str(entry.profile.provider)
+                    ),
                 })
         return result
 

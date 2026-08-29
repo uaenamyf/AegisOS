@@ -1508,6 +1508,19 @@ body {
   	  50% { opacity: 1; }
   	}
 
+  	.infra-card__vendor {
+  	  display: inline-block;
+  	  font-size: 0.7rem;
+  	  font-weight: 700;
+  	  letter-spacing: 0.4px;
+  	  padding: 1px 8px;
+  	  border-radius: 10px;
+  	  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  	  color: var(--accent);
+  	  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  	  margin: 2px 0;
+  	}
+
   	.infra-card__latency {
   	  font-size: 0.75rem;
   	  color: var(--text-secondary);

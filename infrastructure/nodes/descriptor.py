@@ -248,6 +248,49 @@ def load_node_profiles(
     return profiles, skipped
 
 
+def detect_vendor(base_url: str, provider: str = "") -> str:
+    """识别云端 API 厂商（供前端 Monitor 显示厂商徽标）。
+
+    Args:
+        base_url: 节点 base_url（如 https://api.deepseek.com/v1）。
+        provider: 协议类型（ollama / openai_api / aegis_edge 等）。
+
+    Returns:
+        厂商标签：DeepSeek / OpenAI / 火山方舟 / 阿里百炼 / 智谱AI / 月之暗面 /
+        百川智能 / 百度千帆 / 腾讯混元 / MiniMax / Ollama / AegisEdge / OpenAI兼容 / 未知
+    """
+    url = (base_url or "").lower()
+    prov = (provider or "").lower()
+    if prov == "ollama":
+        return "Ollama"
+    if prov == "aegis_edge":
+        return "AegisEdge"
+    # OpenAI 兼容 API 按域名细分厂商
+    if "deepseek" in url:
+        return "DeepSeek"
+    if "volces.com" in url:
+        return "火山方舟"
+    if "dashscope.aliyuncs.com" in url or "aliyun" in url:
+        return "阿里百炼"
+    if "bigmodel.cn" in url:
+        return "智谱AI"
+    if "moonshot" in url:
+        return "月之暗面"
+    if "baichuan" in url:
+        return "百川智能"
+    if "baidubce.com" in url:
+        return "百度千帆"
+    if "tencent" in url:
+        return "腾讯混元"
+    if "minimax" in url:
+        return "MiniMax"
+    if "openai.com" in url or "azure.com" in url:
+        return "OpenAI"
+    if url:
+        return "OpenAI兼容"
+    return "未知"
+
+
 def select_nodes(
     nodes: list[NodeProfile],
     *,

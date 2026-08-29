@@ -87,6 +87,9 @@ export function InfraNodePanel() {
                   {node.last_latency_ms.toFixed(0)} ms
                 </div>
               )}
+              {node?.vendor && (
+                <div className="infra-card__vendor">{node.vendor}</div>
+              )}
               {node?.model_id && (
                 <div className="infra-card__id">{node.model_id}</div>
               )}

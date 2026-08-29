@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -233,13 +234,63 @@ def _init_infra_service() -> None:
         )
 
     # 后台定时探活（每 15 秒），让前端看到实时状态
+    # 附带：监视 infrastructure.yaml / .env 的修改时间——配置变了自动热重载节点
+    # （换 API 厂商 / 换 Key / 换模型，无需重启后端，前端 5 秒内自动刷新显示）
     def _bg_tick():
+        import os
+        import time as _t
+
+        _cfg_path = Path("tooling/configs/infrastructure.yaml")
+        _env_path = Path("tooling/configs/.env")
+        _last_cfg = _cfg_path.stat().st_mtime if _cfg_path.exists() else 0.0
+        _last_env = _env_path.stat().st_mtime if _env_path.exists() else 0.0
+
+        def _reload_nodes() -> None:
+            """重新加载 .env + 节点档案并注册（覆盖同名节点，新增节点直接注册）。"""
+            nonlocal _last_cfg, _last_env
+            try:
+                # 先把 .env 的新值刷进 os.environ（支持换厂商/换 Key 不重启）
+                if _env_path.exists():
+                    for line in _env_path.read_text(encoding="utf-8").splitlines():
+                        line = line.strip()
+                        if not line or line.startswith("#") or "=" not in line:
+                            continue
+                        key, _, val = line.partition("=")
+                        key, val = key.strip(), val.strip().strip("'\"")
+                        if key:
+                            os.environ[key] = val
+
+                profiles, skipped = load_node_profiles()
+                _log.info(
+                    "检测到配置变更，热重载节点: %d 个加载, %d 个跳过 %s",
+                    len(profiles), len(skipped), skipped or "",
+                )
+                for p in profiles:
+                    try:
+                        _register_profile(registry, p)
+                    except Exception as exc:  # noqa: BLE001
+                        _log.warning("热重载注册 %s 失败: %s", p.node_id, exc)
+                registry.tick()
+                for snap in registry.snapshot():
+                    _log.info(
+                        "热重载探活: %s (%s) → %s [%s]",
+                        snap["node_id"], snap["tier"], snap["status"],
+                        snap.get("vendor", "?"),
+                    )
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("热重载失败: %s", exc)
+
         while True:
             try:
                 registry.tick()
+                # 配置文件 mtime 检查（每轮心跳顺带做，无需额外线程）
+                cfg_m = _cfg_path.stat().st_mtime if _cfg_path.exists() else 0.0
+                env_m = _env_path.stat().st_mtime if _env_path.exists() else 0.0
+                if cfg_m != _last_cfg or env_m != _last_env:
+                    _last_cfg, _last_env = cfg_m, env_m
+                    _reload_nodes()
             except Exception:
                 pass
-            import time as _t
             _t.sleep(15)
 
     _t = _threading.Thread(target=_bg_tick, daemon=True)
