@@ -17,6 +17,15 @@ const TIER_ICONS: Record<string, string> = {
   cloud: "☁️",
 };
 
+/** 模型名展示美化：mock 前缀收敛为待接入提示（P2-9） */
+function prettyModel(modelId: string | undefined): string {
+  if (!modelId) return "";
+  if (modelId.toLowerCase().startsWith("mock:")) {
+    return "待接入真实模型";
+  }
+  return modelId;
+}
+
 const TIER_COLORS: Record<string, string> = {
   device: "#3fb950",
   edge: "#2f81f7",
@@ -91,7 +100,7 @@ export function InfraNodePanel() {
                 <div className="infra-card__vendor">{node.vendor}</div>
               )}
               {node?.model_id && (
-                <div className="infra-card__id">{node.model_id}</div>
+                <div className="infra-card__id">{prettyModel(node.model_id)}</div>
               )}
               {node?.node_id && (
                 <div className="infra-card__id">{node.node_id}</div>

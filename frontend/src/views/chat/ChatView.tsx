@@ -137,20 +137,33 @@ export function ChatView() {
       let resultTier = "";
       let resultPrivacyNote = "";
 
+      // 智能分流：按问题复杂度估算延迟预算——复杂问题给大预算走云端，
+      // 简单问题保持端侧快答（P1-3 修复：Chat 不再永远锁死端侧）
+      const estimateBudget = (q: string): number => {
+        const len = q.length;
+        const complexPattern =
+          /分析|评估|对比|总结|解释|原理|架构|设计|方案|为什么|如何|怎样|报告|溯源|研判|write|explain|analyze|compare|summarize|why|how/i;
+        const questionMarks = (q.match(/[?？]/g) || []).length;
+        if (len > 120 || questionMarks >= 2) return 8.0; // 复杂 → 云
+        if (complexPattern.test(q) || len > 40) return 5.0; // 中等 → 云
+        return 0.3; // 简单 → 端侧快答
+      };
+      const latencyBudget = estimateBudget(goal);
+
       if (selectedAgentId) {
         // 直调指定 Agent（走真实 Ollama 派发，不再 Mock）
         const { infraApi } = await import("@/services/api/infra");
         const res = await infraApi.dispatch({
           goal,
           privacy: "unrestricted",
-          latency_budget: 0.3,
+          latency_budget: latencyBudget,
           system_prompt: `你扮演网络安全专家 ${selectedAgentId}。请基于你的专业角色回答。`,
         });
         resultText = res.text;
         resultTier = res.tier;
         resultPrivacyNote = res.privacy_note || "";
       } else {
-        // 走端边云 infra 派发（真实 Ollama 推理）
+        // 走端边云 infra 派发（真实推理 + 智能分流）
         const { infraApi } = await import("@/services/api/infra");
         const { taskApi } = await import("@/services/api/tasks");
 
@@ -164,7 +177,7 @@ export function ChatView() {
         const res = await infraApi.dispatch({
           goal,
           privacy: "unrestricted",
-          latency_budget: 0.3,
+          latency_budget: latencyBudget,
           system_prompt: selectedAgentId
             ? `你扮演网络安全专家 ${selectedAgentId}。请用中文回答。`
             : "请用中文简洁回答以下问题。",
@@ -175,11 +188,26 @@ export function ChatView() {
         resultText += taskInfo;
       }
 
-      updateChatMessage(assistantMsgId, {
-        content: resultText,
-        status: "done",
-        tier: resultTier,
-        privacyNote: resultPrivacyNote,
+      // 伪流式：整段结果到达后按字符渐进渲染（打字机效果），
+      // 后续接 SSE 流式后此段可直接替换为真实流式渲染
+      const fullText = resultText;
+      await new Promise<void>((resolve) => {
+        let i = 0;
+        let cancelled = false;
+        const step = Math.max(1, Math.ceil(fullText.length / 150));
+        const timer = setInterval(() => {
+          if (cancelled) { clearInterval(timer); resolve(); return; }
+          i = Math.min(fullText.length, i + step);
+          updateChatMessage(assistantMsgId, {
+            content: fullText.slice(0, i),
+            status: i >= fullText.length ? "done" : "sending",
+            tier: resultTier,
+            privacyNote: resultPrivacyNote,
+          });
+          if (i >= fullText.length) { clearInterval(timer); resolve(); }
+        }, 16);
+        // 组件卸载时中止动画（守卫：路由切换不留悬挂定时器）
+        window.addEventListener("beforeunload", () => { cancelled = true; }, { once: true });
       });
     } catch (err) {
       const errorMsg =

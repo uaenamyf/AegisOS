@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,7 +27,15 @@ from protocol.scheduler import Task
 # ---- 置信度启发式 ----
 
 
-def assess_confidence(result: InferenceResult) -> float:
+def _cjk_bigrams(text: str) -> set[str]:
+    """提取中文 bigram 集合（用于答案-问题相关性粗判，零 token）。"""
+    cjk = "".join(re.findall(r"[\u4e00-\u9fff]", text))
+    if len(cjk) < 2:
+        return {cjk} if cjk else set()
+    return {cjk[i : i + 2] for i in range(len(cjk) - 1)}
+
+
+def assess_confidence(result: InferenceResult, prompt: str = "") -> float:
     """廉价评估一次推理结果的置信度（0.0-1.0）。
 
     不需要调模型——纯规则判断，零额外 token 消耗。
@@ -35,6 +44,8 @@ def assess_confidence(result: InferenceResult) -> float:
         - ok=False → 0.0
         - 文本长度过短 → 降分
         - 重复字符占比过高 → 降分（模型退化）
+        - 答案与问题相关性过低 → 封顶 0.4（小模型常见"流畅但答非所问"幻觉，
+          中文 bigram 覆盖率 < 30% 时强制级联升级）
 
     阈值推荐：0.6 为升级分界（保守），0.7 宽松。
     """
@@ -49,13 +60,18 @@ def assess_confidence(result: InferenceResult) -> float:
 
     # 过短——可能截断或无意义
     if char_count < 10:
-        return 0.1
-    if char_count < 30:
-        return 0.3
+        base = 0.1
+    elif char_count < 30:
+        base = 0.3
+    elif char_count < 60:
+        base = 0.5
+    elif char_count < 120:
+        base = 0.7
+    else:
+        base = 0.85
 
     # 重复字符检测：连续相同字符占比
     if char_count > 0:
-        # 统计最长连续重复
         max_run = 1
         current_run = 1
         for i in range(1, char_count):
@@ -67,18 +83,18 @@ def assess_confidence(result: InferenceResult) -> float:
 
         repeat_ratio = max_run / char_count
         if repeat_ratio > 0.5:
-            # 一半以上是重复 → 退化
-            return 0.2
-        if repeat_ratio > 0.3:
-            return 0.4
+            base = min(base, 0.2)
+        elif repeat_ratio > 0.3:
+            base = min(base, 0.4)
 
-    # 基础分：长度越长约可信
-    if char_count < 60:
-        base = 0.5
-    elif char_count < 120:
-        base = 0.7
-    else:
-        base = 0.85
+    # 相关性检测：答案对问题关键词（中文 bigram）覆盖率过低 → 封顶 0.4
+    if prompt:
+        q_terms = _cjk_bigrams(prompt)
+        if q_terms:
+            a_terms = _cjk_bigrams(text)
+            coverage = len(q_terms & a_terms) / len(q_terms)
+            if coverage < 0.3:
+                base = min(base, 0.4)
 
     return min(base, 0.95)
 

@@ -219,7 +219,11 @@ def _init_infra_service() -> None:
             cost_weight=10.0,
         ))
 
-    dispatcher = ExecutionDispatcher(registry)
+    dispatcher = ExecutionDispatcher(
+        registry,
+        enable_cascade=True,
+        confidence_threshold=0.6,
+    )
     _infra_service = InfraService(registry=registry, dispatcher=dispatcher)
 
     # 启动时立即探活一轮——真实 ping 每个节点，不通的标记 offline
@@ -283,7 +287,8 @@ def _init_infra_service() -> None:
         while True:
             try:
                 registry.tick()
-                # 配置文件 mtime 检查（每轮心跳顺带做，无需额外线程）
+                # 配置文件 mtime 检查——3 秒轮询（只 stat 两个文件，开销可忽略；
+                # 探活仍是 15s 一轮，换厂商最多 3 秒生效）
                 cfg_m = _cfg_path.stat().st_mtime if _cfg_path.exists() else 0.0
                 env_m = _env_path.stat().st_mtime if _env_path.exists() else 0.0
                 if cfg_m != _last_cfg or env_m != _last_env:
@@ -291,7 +296,7 @@ def _init_infra_service() -> None:
                     _reload_nodes()
             except Exception:
                 pass
-            _t.sleep(15)
+            _t.sleep(3)
 
     _t = _threading.Thread(target=_bg_tick, daemon=True)
     _t.start()

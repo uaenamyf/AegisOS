@@ -12,12 +12,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from backend.core.auth import verify_api_key
 from backend.services.infra_service import InfraService
 
-router = APIRouter(prefix="/infra", tags=["infra"])
+router = APIRouter(prefix="/infra", tags=["infra"], dependencies=[Depends(verify_api_key)])
 
 
 # ---- Schema ----
