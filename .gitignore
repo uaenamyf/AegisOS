@@ -45,3 +45,6 @@ frontend/test-results/
 tooling/configs/.env
 frontend/.env
 frontend/.env.local
+
+# --- Agent local notes ---
+memory/
