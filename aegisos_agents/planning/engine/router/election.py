@@ -38,7 +38,7 @@ def elect(
     if not instances:
         return NodeRef(node_id="", node_type="agent")
 
-    best_node = None
+    best_node: GraphNode = instances[0]  # instances 非空（上方已检查）
     best_score = float("-inf")  # 初始负无穷，保证首个实例必被选中
 
     for inst in instances:

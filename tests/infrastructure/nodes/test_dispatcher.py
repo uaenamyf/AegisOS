@@ -11,13 +11,9 @@
 from __future__ import annotations
 
 from infrastructure.nodes.descriptor import NodeProfile, Tier
-from infrastructure.nodes.device.device_node import DeviceNode
-from infrastructure.nodes.edge.edge_node import EdgeNode
-from infrastructure.nodes.registry import NodeRegistry
-from infrastructure.nodes.cloud.cloud_node import CloudNode
-from protocol.scheduler import Task
-
 from infrastructure.nodes.dispatcher import ExecutionDispatcher
+from infrastructure.nodes.registry import NodeRegistry
+from protocol.scheduler import Task
 
 
 class _FakeNode:

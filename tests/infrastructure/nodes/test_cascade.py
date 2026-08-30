@@ -11,9 +11,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
-
-import pytest
 
 from aegisos_agents.planning.engine.scheduler.cascade import (
     CascadePolicy,
@@ -22,7 +19,6 @@ from aegisos_agents.planning.engine.scheduler.cascade import (
 )
 from infrastructure.nodes.descriptor import InferenceResult
 from protocol.scheduler import Task
-
 
 # ---- Fake Dispatcher ----
 
@@ -42,6 +38,7 @@ class FakeDispatcher:
         *,
         required_capability: str | None = None,
         system_prompt: str = "",
+        node_refs: list[str] | None = None,
     ) -> InferenceResult:
         self.prompts_seen.append(prompt)
         if self.call_count < len(self.results):

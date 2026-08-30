@@ -24,10 +24,9 @@ class MockEventBusAPI:
             with contextlib.suppress(Exception):
                 handler(event)
 
-    def subscribe(self, topic: str, handler: Any) -> str:
-        """订阅指定 topic，返回订阅 ID。"""
+    def subscribe(self, topic: str, handler: Any) -> None:
+        """订阅指定 topic（接口对齐：无返回值）。"""
         self._subscriptions.setdefault(topic, []).append(handler)
-        return f"sub:{topic}:{id(handler)}"
 
     def unsubscribe(self, subscription_id: str) -> bool:
         """取消订阅（mock 实现总是返回成功）。"""

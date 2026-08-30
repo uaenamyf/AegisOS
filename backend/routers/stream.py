@@ -37,6 +37,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from aegisos_agents.action.structured_agent import StructuredAgent
 from backend.core.composition import get_composition
 
 
@@ -102,7 +103,7 @@ async def stream_agent(
                 "reviewer": runtime._reviewer,
             }
             agent = agent_map.get(agent_id)
-            if agent is None:
+            if not isinstance(agent, StructuredAgent):
                 yield _event_to_sse({"error": f"Unknown agent: {agent_id}"}, "error")
                 return
 

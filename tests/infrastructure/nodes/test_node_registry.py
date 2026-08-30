@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from infrastructure.nodes.descriptor import NodeProfile, Tier
-from infrastructure.nodes.registry import NodeRegistry, _NodeEntry
+from infrastructure.nodes.registry import NodeRegistry
 from protocol.event import Event, EventType
 
 

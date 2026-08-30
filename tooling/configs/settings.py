@@ -52,9 +52,9 @@ def _load_dotenv() -> None:
             if key and key not in os.environ:
                 os.environ[key] = val
         return
-    for key, val in dotenv_values(env_path).items():
-        if key and val is not None and key not in os.environ:
-            os.environ[key] = val
+    for env_key, env_val in dotenv_values(env_path).items():
+        if env_key and env_val is not None and env_key not in os.environ:
+            os.environ[env_key] = env_val
 
 
 def _load_yaml_defaults() -> dict:

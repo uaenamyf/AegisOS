@@ -67,7 +67,7 @@ class Model:
     model_id: str
     tier: str = "cloud"  # device | edge | cloud
     size: str = "medium"  # small | medium | large
-    capabilities: list = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
 
 
 def schedule(

@@ -6,13 +6,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from aegisos_agents.planning.engine.scheduler.privacy_classifier import (
     classify_privacy,
     classify_privacy_with_reason,
 )
-
 
 # ---------- 强规则：命中即 local（不能上云） ----------
 

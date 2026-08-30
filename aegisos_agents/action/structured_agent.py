@@ -33,9 +33,10 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Generic, TypeVar
 
+from agents import Agent, Model, ModelProvider, Runner
+
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from aegisos_agents.tools.llms.mock_sdk_model import MockSDKModel
-from agents import Agent, Model, ModelProvider, Runner
 
 T = TypeVar("T")  # output_type 的 Pydantic 类型
 

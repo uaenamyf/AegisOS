@@ -258,15 +258,16 @@ class GoalMode(Generic[T]):
             ValueError: scenario 不在已知模板中且未提供 custom_template。
         """
         # 优先使用自定义模板
-        if custom_template is not None:
-            template = custom_template
-        else:
-            template = _GOAL_TEMPLATES.get(scenario)
-            if template is None:
-                raise ValueError(
-                    f"Unknown scenario '{scenario}'; "
-                    f"available: {list(_GOAL_TEMPLATES.keys())}"
-                )
+        template = (
+            custom_template
+            if custom_template is not None
+            else _GOAL_TEMPLATES.get(scenario)
+        )
+        if template is None:
+            raise ValueError(
+                f"Unknown scenario '{scenario}'; "
+                f"available: {list(_GOAL_TEMPLATES.keys())}"
+            )
 
         # 构建根节点
         root = GoalNode(

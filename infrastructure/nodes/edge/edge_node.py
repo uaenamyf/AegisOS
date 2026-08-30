@@ -16,7 +16,7 @@ privacy=standard 子任务的区域隔离保证。
 from __future__ import annotations
 
 from infrastructure.nodes.base import BaseHttpNode
-from infrastructure.nodes.descriptor import InferenceResult, NodeProfile, Tier
+from infrastructure.nodes.descriptor import InferenceResult, NodeProfile, ProviderKind, Tier
 
 
 class EdgeNode(BaseHttpNode):
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         node_id="edge_server_01",
         tier=Tier.EDGE,
         base_url="http://localhost:8900",
-        provider="aegis_edge",
+        provider=ProviderKind.AEGIS_EDGE,
         model_id="qwen2.5:7b",
         capabilities=["chat", "reasoning"],
         timeout_s=10.0,

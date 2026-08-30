@@ -13,7 +13,7 @@ privacy=local 子任务的物理隔离保证（数据不出网卡）。
 from __future__ import annotations
 
 from infrastructure.nodes.base import BaseHttpNode
-from infrastructure.nodes.descriptor import InferenceResult, NodeProfile, Tier
+from infrastructure.nodes.descriptor import InferenceResult, NodeProfile, ProviderKind, Tier
 
 
 class DeviceNode(BaseHttpNode):
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         node_id="device_local",
         tier=Tier.DEVICE,
         base_url="http://localhost:11434",
-        provider="ollama",
+        provider=ProviderKind.OLLAMA,
         model_id="qwen2.5:0.5b",
     )
     _n = DeviceNode(_p)

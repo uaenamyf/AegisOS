@@ -14,9 +14,10 @@ C-3 "自动完成推理位置的动态选择"在此闭环。
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any, cast
 
-from aegisos_agents.planning.engine.scheduler.scheduler import schedule
-from infrastructure.nodes.descriptor import InferenceResult, NodeProfile, Tier
+from aegisos_agents.planning.engine.scheduler.scheduler import Model, schedule
+from infrastructure.nodes.descriptor import InferenceResult, NodeProfile
 from infrastructure.nodes.registry import NodeRegistry
 from protocol.scheduler import Task
 
@@ -53,6 +54,7 @@ class ExecutionDispatcher:
         *,
         required_capability: str | None = None,
         system_prompt: str = "",
+        node_refs: list[str] | None = None,
     ) -> InferenceResult:
         """为 task 选择最优节点执行推理，含降级重试。
 
@@ -61,6 +63,8 @@ class ExecutionDispatcher:
             prompt: 推理 prompt 文本。
             required_capability: 可选能力过滤（如 "reasoning"）。
             system_prompt: 可选系统提示。
+            node_refs: 可选目标节点子集（协议 §16 定向派发）；
+                None 表示不过滤，全部在线节点参与调度。
 
         Returns:
             InferenceResult（ok=True 含 attempts 轨迹；ok=False 含 error）。
@@ -99,10 +103,19 @@ class ExecutionDispatcher:
         if not online:
             return InferenceResult.failure(error="no online nodes registered")
 
+        # 协议 §16 定向派发：显式给出 node_refs 时，仅在目标节点子集内调度
+        if node_refs is not None:
+            allowed = set(node_refs)
+            online = [pn for pn in online if pn[0].node_id in allowed]
+            if not online:
+                return InferenceResult.failure(
+                    error="no online node matches node_refs"
+                )
+
         # 构建候选模型 + tier→(profile,node) 索引
         models, tier_index = self._build_candidates(online)
 
-        attempts: list[dict] = []
+        attempts: list[dict[str, object]] = []
         tried_tiers: set[str] = set()
         best_result: InferenceResult | None = None
 
@@ -111,7 +124,7 @@ class ExecutionDispatcher:
             assess_confidence,
         )
 
-        _TIER_RANK = {"device": 0, "edge": 1, "cloud": 2}
+        tier_rank = {"device": 0, "edge": 1, "cloud": 2}
 
         remaining = list(models)
         for _round in range(self.max_attempts):
@@ -144,7 +157,8 @@ class ExecutionDispatcher:
                 effective_prompt if str(profile.tier) == "cloud" else prompt
             )
             try:
-                result = node.infer(send_prompt, system=system_prompt)
+                infer_fn = node.infer
+                result = cast(InferenceResult, infer_fn(send_prompt, system=system_prompt))
             except Exception:
                 result = InferenceResult.failure(
                     error="infer exception",
@@ -193,18 +207,18 @@ class ExecutionDispatcher:
                         result.attempts = attempts
                         result.privacy_note = self._privacy_reason
                         return result
-                    rank = _TIER_RANK.get(str(profile.tier), 0)
+                    rank = tier_rank.get(str(profile.tier), 0)
                     tried_tiers.update(
                         t for t in tier_index
-                        if _TIER_RANK.get(t, 0) <= rank
+                        if tier_rank.get(t, 0) <= rank
                     )
                     continue
 
                 if self.enable_cascade and is_mock:
-                    rank = _TIER_RANK.get(str(profile.tier), 0)
+                    rank = tier_rank.get(str(profile.tier), 0)
                     tried_tiers.update(
                         t for t in tier_index
-                        if _TIER_RANK.get(t, 0) <= rank
+                        if tier_rank.get(t, 0) <= rank
                     )
                     continue
 
@@ -230,15 +244,15 @@ class ExecutionDispatcher:
     # ---- 内部 ----
 
     def _build_candidates(
-        self, online: list
-    ) -> tuple[list, dict[str, tuple[NodeProfile, Callable]]]:
+        self, online: list[tuple[NodeProfile, Any]]
+    ) -> tuple[list[Model], dict[str, tuple[NodeProfile, Any]]]:
         """从在线节点列表构建 scheduler.Model 候选列表 + tier 索引。
 
         Returns:
             (models, tier_index) 其中 tier_index 为 {tier_str: (profile, node)}。
         """
-        models = []
-        tier_index: dict[str, tuple[NodeProfile, Callable]] = {}
+        models: list[Model] = []
+        tier_index: dict[str, tuple[NodeProfile, Callable[..., Any]]] = {}
         for profile, node in online:
             models.append(profile.to_scheduler_model())
             tier = str(profile.tier)

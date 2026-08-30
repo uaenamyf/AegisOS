@@ -7,13 +7,12 @@
 from __future__ import annotations
 
 import json
-import os
 import urllib.request
 
 import pytest
 
-from infrastructure.nodes.descriptor import NodeProfile, ProviderKind, Tier
 from infrastructure.nodes.cloud.cloud_node import CloudNode
+from infrastructure.nodes.descriptor import NodeProfile, ProviderKind, Tier
 
 REPO = "https://api.openai.com/v1"
 
@@ -206,9 +205,6 @@ def test_tier_guard_rejects_non_cloud():
 
 
 def test_latency_measured(node: CloudNode, monkeypatch: pytest.MonkeyPatch):
-    import time
-
-    real_time = time.time
 
     def fake_urlopen(req, timeout=None):
         return FakeResponse(json.dumps(CHAT_OK).encode("utf-8"))

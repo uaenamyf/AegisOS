@@ -61,16 +61,23 @@ from aegisos_agents.action.threat_hunt.agent import ThreatHuntAgent
 # P3.2: 低熵稀疏路由（spec 04 §16 / 11 §7 铁律接入）
 from aegisos_agents.planning.engine.router.router import route as _route
 from aegisos_agents.tools.llms.mock_provider import MockProvider
-from protocol.cyber import Alert, Asset, AttackChain, AttackStep, ResponsePlan, VulnFinding
+from protocol.cyber import (
+    Alert,
+    Asset,
+    AttackChain,
+    AttackStep,
+    DefenseAction,
+    ResponsePlan,
+    VulnFinding,
+)
 from protocol.graph import Graph, GraphNode, NodeKind
 from protocol.message import Message, NodeRef
 
 # R4.2: SDK handoffs 依赖
 try:
-    from agents.handoffs import handoff
-
     from agents import Agent as SDKAgent
     from agents import RunContextWrapper
+    from agents.handoffs import handoff
 
     _SDK_HANDOFF_AVAILABLE = True
 except ImportError:
@@ -78,9 +85,8 @@ except ImportError:
 
 # R4.3: SDK output_guardrail 依赖
 try:
-    from agents.guardrail import GuardrailFunctionOutput, output_guardrail
-
     from agents import OutputGuardrailTripwireTriggered
+    from agents.guardrail import GuardrailFunctionOutput, output_guardrail
 
     _SDK_GUARDRAIL_AVAILABLE = True
 except ImportError:
@@ -497,7 +503,10 @@ class CyberOrchestrator(GoalMode[dict]):
         ir_result = self.ir_planner._run(f"Plan response for: {json.dumps(hypotheses)}")
         plan = ResponsePlan(
             plan_id=ir_result.plan_id,
-            actions=[a.model_dump() for a in ir_result.actions],
+            actions=[
+                DefenseAction.model_validate(a.model_dump())
+                for a in ir_result.actions
+            ],
             confidence=ir_result.confidence,
             rollback=ir_result.rollback,
         )
@@ -1214,7 +1223,7 @@ class CyberOrchestrator(GoalMode[dict]):
         Returns:
             安装的 :class:`CyberAgentHooks` 列表（9 个）。
         """
-        agents = [
+        hooked: list[StructuredAgent[Any]] = [
             self.recon,
             self.vuln_correlator,
             self.exploit_planner,
@@ -1226,7 +1235,7 @@ class CyberOrchestrator(GoalMode[dict]):
             self.reviewer,
         ]
         self._hooks = []
-        for agent in agents:
+        for agent in hooked:
             hook = CyberAgentHooks(
                 agent_name=agent.__class__.__name__,
                 eventbus=eventbus,
@@ -1468,7 +1477,7 @@ class CyberOrchestrator(GoalMode[dict]):
 
         将所有 Agent 的 ``Agent.tools`` 重置为空列表。
         """
-        agents = [
+        cleared: list[StructuredAgent[Any]] = [
             self.recon,
             self.vuln_correlator,
             self.exploit_planner,
@@ -1479,7 +1488,7 @@ class CyberOrchestrator(GoalMode[dict]):
             self.critic,
             self.reviewer,
         ]
-        for agent in agents:
+        for agent in cleared:
             agent._sdk_agent.tools = []
 
     def get_agent_tools(self, agent_name: str) -> list[Any]:
@@ -1713,7 +1722,7 @@ class CyberOrchestrator(GoalMode[dict]):
             elif agent_name == "lateral_move":
                 from aegisos_agents.action.lateral_move.agent import LateralMoveAgent
 
-                chain = context.get("exploit", AttackChain())
+                chain = context.get("exploit", AttackChain(chain_id=""))
                 lateral_agent = LateralMoveAgent(
                     mock=self._mock,
                 )
@@ -1817,7 +1826,10 @@ class CyberOrchestrator(GoalMode[dict]):
                 ir_result = self.ir_planner._run(prompt)
                 return ResponsePlan(
                     plan_id=ir_result.plan_id,
-                    actions=[a.model_dump() for a in ir_result.actions],
+                    actions=[
+                        DefenseAction.model_validate(a.model_dump())
+                        for a in ir_result.actions
+                    ],
                     confidence=ir_result.confidence,
                     rollback=ir_result.rollback,
                 )

@@ -21,11 +21,12 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-from infrastructure.nodes.descriptor import NodeProfile, Tier
-from protocol.event import Event, EventType, NodeRef
+from infrastructure.nodes.descriptor import NodeProfile
+from protocol.event import Event, EventType
+from protocol.message import NodeRef
 
 
 @dataclass
@@ -86,7 +87,7 @@ class NodeRegistry:
 
     # ---- 查询 ----
 
-    def discover_nodes(self, tier: str = "") -> list[dict]:
+    def discover_nodes(self, tier: str = "") -> list[dict[str, object]]:
         """返回在线节点列表（供 R6 派发器过滤离线节点）。
 
         Args:
@@ -95,7 +96,7 @@ class NodeRegistry:
         Returns:
             每个元素为 {node_id, tier, status, ...} 字典。
         """
-        result: list[dict] = []
+        result: list[dict[str, object]] = []
         with self._lock:
             for entry in self._entries.values():
                 if tier and str(entry.profile.tier) != tier:
@@ -109,13 +110,13 @@ class NodeRegistry:
                 })
         return result
 
-    def snapshot(self) -> list[dict]:
+    def snapshot(self) -> list[dict[str, object]]:
         """返回所有节点全量状态快照。
 
         Returns:
             每个元素含 node_id/tier/status/last_ok_ts/consecutive_failures/model_id。
         """
-        result: list[dict] = []
+        result: list[dict[str, object]] = []
         with self._lock:
             for entry in self._entries.values():
                 from infrastructure.nodes.descriptor import detect_vendor
@@ -134,13 +135,13 @@ class NodeRegistry:
                 })
         return result
 
-    def online_node_instances(self) -> list:
+    def online_node_instances(self) -> list[tuple[NodeProfile, Any]]:
         """返回在线节点的 (profile, node) 实例列表，供 R6 派发器构建候选。
 
         仅返回 status == "online" 的节点；probe（未探活）按在线处理，
         offline 过滤——保证派发器绝不把任务派给已知掉线的节点。
         """
-        result: list = []
+        result: list[tuple[NodeProfile, Any]] = []
         with self._lock:
             for entry in self._entries.values():
                 if entry.status == "offline":
@@ -150,7 +151,7 @@ class NodeRegistry:
 
     # ---- 心跳 ----
 
-    def heartbeat(self, node_id: str) -> dict:
+    def heartbeat(self, node_id: str) -> dict[str, object]:
         """对指定节点执行一次探活（供外部按需调用）。
 
         Returns:
@@ -169,7 +170,7 @@ class NodeRegistry:
         for entry in entries:
             self._probe_one(entry)
 
-    def _probe_one(self, entry: _NodeEntry) -> dict:
+    def _probe_one(self, entry: _NodeEntry) -> dict[str, object]:
         """对单个节点探活 + 状态机迁移 + 事件广播。"""
         import time as _time
         ok = False
@@ -183,10 +184,7 @@ class NodeRegistry:
 
         if ok:
             entry.last_ok_ts = now
-            if entry.status == "offline":
-                entry.status = "online"
-                entry.consecutive_failures = 0
-            elif entry.status == "probe":
+            if entry.status == "offline" or entry.status == "probe":
                 entry.status = "online"
                 entry.consecutive_failures = 0
             else:

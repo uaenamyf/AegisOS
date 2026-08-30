@@ -24,10 +24,9 @@ from __future__ import annotations
 
 import os
 
+from agents import set_default_openai_api, set_tracing_disabled
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
-
-from agents import set_default_openai_api, set_tracing_disabled
 
 from .mock_provider import MockProvider
 

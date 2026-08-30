@@ -175,19 +175,16 @@ def _build_cyber_mock_responses() -> dict[str, str]:
     }
 
 
-class _CyberMockProvider:
-    """对 :class:`MockProvider` 的包装，提供基于前缀的 prompt 匹配能力。
+class _CyberMockProvider(MockProvider):
+    """:class:`MockProvider` 的攻防场景特化，提供基于前缀的 prompt 匹配能力。
 
     攻防 Agent 会把动态内容（JSON payload）嵌入到 prompt 中，导致精确匹配
-    经常失败。该包装先尝试精确匹配；若未命中（响应以 ``[mock]`` 开头或为空），
+    经常失败。先尝试精确匹配；若未命中（响应以 ``[mock]`` 开头或为空），
     再回退为：检查任一预置 key 是否为输入 prompt 的前缀。
-
-    Attributes:
-        _inner: 被包装的 :class:`MockProvider` 实例，持有预置响应表。
     """
 
     def __init__(self) -> None:
-        self._inner = MockProvider(_build_cyber_mock_responses())
+        super().__init__(_build_cyber_mock_responses())
 
     def complete(self, request: LLMRequest) -> LLMResponse:
         """完成一次 LLM 调用，支持精确匹配与前缀回退。
@@ -200,11 +197,11 @@ class _CyberMockProvider:
             的默认 mock 响应。
         """
         # 先尝试精确匹配。
-        resp = self._inner.complete(request)
+        resp = MockProvider.complete(self, request)
         if resp.ok and resp.text and not resp.text.startswith("[mock]"):
             return resp
         # 回退：对预置 key 做前缀匹配（攻防 prompt 含动态 JSON，需前缀匹配）。
-        for key, text in self._inner.responses.items():
+        for key, text in self.responses.items():
             if request.prompt.startswith(key):
                 return LLMResponse(
                     text=text,
@@ -216,4 +213,4 @@ class _CyberMockProvider:
                     },
                 )
         # Final fallback: default mock
-        return self._inner.complete(request)
+        return MockProvider.complete(self, request)

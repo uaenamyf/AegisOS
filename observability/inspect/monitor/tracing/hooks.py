@@ -38,6 +38,9 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from agents import Agent  # noqa: F401  （字符串泛型参数引用）
+
 from agents.lifecycle import AgentHooksBase
 
 if TYPE_CHECKING:
@@ -76,7 +79,7 @@ class HookEvent:
         }
 
 
-class CyberAgentHooks(AgentHooksBase):
+class CyberAgentHooks(AgentHooksBase[Any, "Agent[Any]"]):
     """Agent 生命周期钩子 —— 采集 Agent 各阶段事件 + 可选发布到 EventBus。
 
     设置到 SDK ``Agent.hooks`` 属性后，SDK Runner 在执行该 Agent 时

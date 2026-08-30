@@ -16,11 +16,20 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def client():
-    """创建测试客户端，初始化 infra 服务。"""
-    from backend.main import app, _init_infra_service
+    """创建测试客户端，初始化 infra 服务。
 
-    _init_infra_service()
-    return TestClient(app)
+    测试环境用 dependency_overrides 绕过 API Key 鉴权
+    （鉴权逻辑本身由 backend/core/auth 的单测覆盖）。
+    """
+    from backend.core.auth import verify_api_key
+    from backend.main import _init_infra_service, app
+
+    app.dependency_overrides[verify_api_key] = lambda: "test-key"
+    try:
+        _init_infra_service()
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(verify_api_key, None)
 
 
 # ---- GET /api/v1/infra/nodes ----

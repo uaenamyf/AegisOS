@@ -51,7 +51,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from protocol.event import Event, EventType, NodeRef
+from protocol.event import Event, EventType
+from protocol.message import NodeRef
 
 # 严重度有序枚举（供 critic 阈值比较复用）
 _SEVERITY_ORDER: dict[str, int] = {

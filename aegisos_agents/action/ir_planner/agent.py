@@ -23,7 +23,7 @@ from aegisos_agents.perception.reasoning.strategies import (
     PlanMode,
 )
 from aegisos_agents.tools.llms.mock_provider import MockProvider
-from protocol.cyber import ResponsePlan
+from protocol.cyber import DefenseAction, ResponsePlan
 
 SYSTEM_PROMPT = (
     "You are an incident response planner. Given threat hypotheses, "
@@ -94,7 +94,10 @@ class IRPlannerAgent(
         # R1.6: DefenseActionModel → protocol.cyber.DefenseAction（Pydantic 自动校验）
         return ResponsePlan(
             plan_id=result.plan_id,
-            actions=[a.model_dump() for a in result.actions],
+            actions=[
+                DefenseAction.model_validate(a.model_dump())
+                for a in result.actions
+            ],
             confidence=result.confidence,
             rollback=result.rollback,
         )
@@ -120,7 +123,10 @@ class IRPlannerAgent(
         # R1.6: DefenseActionModel → protocol.cyber.DefenseAction（Pydantic 自动校验）
         return ResponsePlan(
             plan_id=result.plan_id,
-            actions=[a.model_dump() for a in result.actions],
+            actions=[
+                DefenseAction.model_validate(a.model_dump())
+                for a in result.actions
+            ],
             confidence=result.confidence,
             rollback=result.rollback,
         )

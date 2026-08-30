@@ -12,8 +12,10 @@ Trace ID 中间件、健康检查/网关/WebSocket 路由挂载、统一错误�
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +28,11 @@ from backend.routers.health import router as health_router
 from backend.routers.infra import router as infra_router
 from backend.routers.stream import router as stream_router
 from backend.routers.ws import router as ws_router
+from infrastructure.nodes.descriptor import NodeProfile, ProviderKind, Tier
 from tooling.configs.settings import settings
+
+if TYPE_CHECKING:
+    from infrastructure.nodes.registry import NodeRegistry
 
 # 日志级别与格式从统一配置读取；级别字符串映射到 logging 模块常量。
 logging.basicConfig(
@@ -39,7 +45,7 @@ _CORS_ORIGINS = list(settings.cors.origins)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """应用生命周期：启动时初始化数据库，停止时释放引擎。
 
     Args:
@@ -176,10 +182,10 @@ def _init_infra_service() -> None:
     if _infra_service is not None:
         return
 
-    from infrastructure.nodes.registry import NodeRegistry
-    from infrastructure.nodes.dispatcher import ExecutionDispatcher
-    from infrastructure.nodes.descriptor import NodeProfile, load_node_profiles
     from backend.services.infra_service import InfraService
+    from infrastructure.nodes.descriptor import NodeProfile, load_node_profiles
+    from infrastructure.nodes.dispatcher import ExecutionDispatcher
+    from infrastructure.nodes.registry import NodeRegistry
 
     registry = NodeRegistry()
 
@@ -200,21 +206,21 @@ def _init_infra_service() -> None:
 
     if not has_device:
         _register_profile(registry, NodeProfile(
-            node_id="device_local", tier="device",
-            base_url="http://localhost:11434", provider="ollama",
+            node_id="device_local", tier=Tier.DEVICE,
+            base_url="http://localhost:11434", provider=ProviderKind.OLLAMA,
             model_id="mock:0.5b", capabilities=["chat"], cost_weight=0.1,
         ))
     if not has_edge:
         _register_profile(registry, NodeProfile(
-            node_id="edge_server_01", tier="edge",
-            base_url="http://localhost:8900", provider="aegis_edge",
+            node_id="edge_server_01", tier=Tier.EDGE,
+            base_url="http://localhost:8900", provider=ProviderKind.AEGIS_EDGE,
             model_id="mock:7b", capabilities=["chat", "reasoning"],
             cost_weight=1.0,
         ))
     if not has_cloud:
         _register_profile(registry, NodeProfile(
-            node_id="cloud_api", tier="cloud",
-            base_url="http://localhost:8001", provider="openai_api",
+            node_id="cloud_api", tier=Tier.CLOUD,
+            base_url="http://localhost:8001", provider=ProviderKind.OPENAI_API,
             model_id="mock:gpt-4o", capabilities=["chat", "reasoning", "long_context"],
             cost_weight=10.0,
         ))
@@ -240,7 +246,7 @@ def _init_infra_service() -> None:
     # 后台定时探活（每 15 秒），让前端看到实时状态
     # 附带：监视 infrastructure.yaml / .env 的修改时间——配置变了自动热重载节点
     # （换 API 厂商 / 换 Key / 换模型，无需重启后端，前端 5 秒内自动刷新显示）
-    def _bg_tick():
+    def _bg_tick() -> None:
         import os
         import time as _t
 
@@ -302,14 +308,14 @@ def _init_infra_service() -> None:
     _t.start()
 
 
-def _register_profile(registry, profile: NodeProfile) -> None:
+def _register_profile(registry: NodeRegistry, profile: NodeProfile) -> None:
     """用 NodeProfile 注册一个节点到 registry。
 
     根据 provider+tier 选择合适的节点实现：
     - device + ollama → DeviceNode（真实 Ollama 推理）
     - 其他 → _MockNode（mock 回退，保证无环境下可演示）
     """
-    def _make(prof: NodeProfile):
+    def _make(prof: NodeProfile) -> object:
         # 端侧：真实 Ollama 推理
         if str(prof.tier) == "device" and prof.provider == "ollama":
             try:
@@ -328,13 +334,14 @@ def _register_profile(registry, profile: NodeProfile) -> None:
 
         # 其余回退 mock（但 health 做真实 HTTP 探活）
         class _MockNode:
-            pass
-        _MockNode.profile = prof
+            profile: NodeProfile = prof
+            health: Any = None
+            infer: Any = None
 
-        def _health(self, timeout_s=3.0):
+        def _health(self: object, timeout_s: float = 3.0) -> bool:
             """真实探活：去 ping 节点的 base_url，通才在线。"""
-            import urllib.request
             import urllib.error
+            import urllib.request
             try:
                 req = urllib.request.Request(
                     f"{prof.base_url}/health",
@@ -352,7 +359,7 @@ def _register_profile(registry, profile: NodeProfile) -> None:
                     return False
 
         _MockNode.health = _health
-        def _infer(self, prompt: str, system: str = "") -> dict:
+        def _infer(self: object, prompt: str, system: str = "") -> object:
             from infrastructure.nodes.descriptor import InferenceResult
             tier_name = prof.tier.value if hasattr(prof.tier, "value") else str(prof.tier)
             reply = f"[{tier_name} mock] 收到: {prompt[:60]}"

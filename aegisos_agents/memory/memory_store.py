@@ -299,7 +299,7 @@ class MemoryStore:
         Returns:
             快照标识符。
         """
-        stats = {
+        stats: dict[str, Any] = {
             "working_sessions": len(self.working.sessions()),
             "episodic_total": len(self.episodic),
             "semantic_total": len(self.semantic),

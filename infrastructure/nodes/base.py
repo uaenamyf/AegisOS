@@ -14,6 +14,8 @@ import json
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
+from typing import Any
 
 from infrastructure.nodes.descriptor import InferenceResult, NodeProfile
 
@@ -31,8 +33,8 @@ class BaseHttpNode:
     # ---- 底层请求 ----
 
     def _post_json(
-        self, path: str, payload: dict, timeout_s: float, headers: dict | None = None
-    ) -> dict:
+        self, path: str, payload: dict[str, Any], timeout_s: float, headers: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         """POST JSON 并解析响应；任何失败以异常形式抛给上层翻译。
 
         Args:
@@ -51,11 +53,12 @@ class BaseHttpNode:
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            parsed: Any = json.loads(resp.read().decode("utf-8"))
+            return dict(parsed)
 
     def _get_json(
-        self, path: str, timeout_s: float, headers: dict | None = None
-    ) -> tuple[int, dict]:
+        self, path: str, timeout_s: float, headers: dict[str, str] | None = None
+    ) -> tuple[int, dict[str, Any]]:
         """GET 并返回 (status_code, body)；连接失败直接抛异常。
 
         Args:
@@ -70,7 +73,7 @@ class BaseHttpNode:
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
             raw = resp.read().decode("utf-8")
             try:
-                body = json.loads(raw) if raw else {}
+                body: Any = json.loads(raw) if raw else {}
             except json.JSONDecodeError:
                 body = {}
             return resp.getcode(), body
@@ -89,7 +92,7 @@ class BaseHttpNode:
             return f"bad response json: {exc}"
         return f"{type(exc).__name__}: {exc}"
 
-    def _timed_infer(self, timeout_s: float, do_call) -> tuple[dict, float, str]:
+    def _timed_infer(self, timeout_s: float, do_call: Callable[[float], dict[str, Any]]) -> tuple[dict[str, Any], float, str]:
         """执行推理调用并返回 (response_dict|None, latency_ms, error_str)。"""
         start = time.perf_counter()
         try:
@@ -106,7 +109,7 @@ class BaseHttpNode:
         self,
         *,
         text: str = "",
-        usage: dict | None = None,
+        usage: dict[str, int] | None = None,
         latency_ms: float = 0.0,
         error: str = "",
     ) -> InferenceResult:

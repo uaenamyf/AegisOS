@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 
 from infrastructure.nodes.base import BaseHttpNode
-from infrastructure.nodes.descriptor import InferenceResult, NodeProfile, Tier
+from infrastructure.nodes.descriptor import InferenceResult, NodeProfile, ProviderKind, Tier
 
 
 class CloudNode(BaseHttpNode):
@@ -75,7 +75,7 @@ class CloudNode(BaseHttpNode):
             InferenceResult：ok=True 时 text 含 API 回复；
             ok=False 时 error 含失败原因，绝不抛异常。
         """
-        messages: list[dict] = []
+        messages: list[dict[str, str]] = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
@@ -107,7 +107,7 @@ class CloudNode(BaseHttpNode):
 
         # 解析 OpenAI ChatCompletions 响应
         text = ""
-        usage: dict = {}
+        usage: dict[str, int] = {}
         try:
             text = data["choices"][0]["message"]["content"]
             usage = {
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         node_id="cloud_api",
         tier=Tier.CLOUD,
         base_url="https://api.openai.com/v1",
-        provider="openai_api",
+        provider=ProviderKind.OPENAI_API,
         model_id="gpt-4o",
     )
     _n = CloudNode(_p)

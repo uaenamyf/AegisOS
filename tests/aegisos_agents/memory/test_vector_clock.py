@@ -12,8 +12,6 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from aegisos_agents.memory.sync.sync import MemorySync, compare_vc

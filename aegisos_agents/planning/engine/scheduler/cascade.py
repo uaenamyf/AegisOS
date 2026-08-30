@@ -23,7 +23,6 @@ from typing import Any
 from infrastructure.nodes.descriptor import InferenceResult
 from protocol.scheduler import Task
 
-
 # ---- 置信度启发式 ----
 
 
@@ -139,7 +138,7 @@ def run_cascade(
     """级联推理主循环：按升级链逐跳执行，低置信升级。
 
     Args:
-        dispatcher: 执行派发器（须有 dispatch(task, prompt, **kwargs) 方法）。
+        dispatcher: 执行派发器（须实现 ExecutionDispatcher 兼容的派发接口）。
         task: 待调度任务。
         prompt: 推理 prompt。
         policy: 级联策略；为 None 时默认不启用级联。
@@ -150,17 +149,21 @@ def run_cascade(
         最高置信跳的 InferenceResult（含 hops 轨迹）。
         hops 字段追加在 attempts 中。
     """
+    # 定向派发透传（协议 §16 Top-K 稀疏路由）：None = 不加目标过滤，
+    # 全部在线节点进入调度候选；非 None 时仅在目标子集内调度。
+    hop_refs: list[str] | None = None
+
     if policy is None or not policy.enable_cascade:
-        return dispatcher.dispatch(
-            task, prompt,
+        single: InferenceResult = dispatcher.dispatch(task, prompt, node_refs=hop_refs,
             required_capability=required_capability,
             system_prompt=system_prompt,
         )
+        return single
 
     chain = policy.hop_chain or _DEFAULT_CHAIN
     max_hops = min(policy.max_hops, len(chain))
 
-    all_hops: list[dict] = []
+    all_hops: list[dict[str, object]] = []
     last_result: InferenceResult | None = None
 
     for hop_idx in range(max_hops):
@@ -174,8 +177,7 @@ def run_cascade(
         else:
             task.latency_budget = 10.0  # 默认→调度器选云
 
-        result = dispatcher.dispatch(
-            task, prompt,
+        result: InferenceResult = dispatcher.dispatch(task, prompt, node_refs=hop_refs,
             required_capability=required_capability,
             system_prompt=system_prompt,
         )

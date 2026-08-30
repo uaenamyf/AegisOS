@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 from enum import StrEnum
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import (
@@ -32,6 +33,9 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
+
+if TYPE_CHECKING:
+    from aegisos_agents.planning.engine.scheduler.scheduler import Model
 
 # 允许做环境变量插值的字符串字段
 _ENV_FIELDS = ("base_url", "model_id")
@@ -125,7 +129,7 @@ class NodeProfile(BaseModel):
             return PrivacyZone(self.privacy_zone)
         return _TIER_PRIVACY[Tier(self.tier)]
 
-    def to_registry_dict(self) -> dict:
+    def to_registry_dict(self) -> dict[str, Any]:
         """投影为 R5 NodeRegistry 注册载荷（online 态由注册中心追加）。"""
         return {
             "node_id": self.node_id,
@@ -136,7 +140,7 @@ class NodeProfile(BaseModel):
             "enabled": self.enabled,
         }
 
-    def to_scheduler_model(self):
+    def to_scheduler_model(self) -> Model:
         """桥接为 engine.scheduler.Model（R6 ExecutionDispatcher 的候选形态）。"""
         from aegisos_agents.planning.engine.scheduler.scheduler import Model
 
@@ -176,7 +180,7 @@ class InferenceResult(BaseModel):
     latency_ms: float = 0.0
     usage: dict[str, int] = Field(default_factory=dict)
     error: str = ""
-    attempts: list[dict] = Field(default_factory=list)  # R6 派发器写入的降级轨迹
+    attempts: list[dict[str, Any]] = Field(default_factory=list)  # R6 派发器写入的降级轨迹
     privacy_note: str = ""  # R7 隐私分级原因（供前端展示："检测到IP/凭据→留本地"）
 
     @classmethod
@@ -192,7 +196,7 @@ class InferenceResult(BaseModel):
         return cls(ok=False, error=error, node_id=node_id, tier=tier, model_id=model_id)
 
 
-def _expand_env_fields(raw: dict) -> dict:
+def _expand_env_fields(raw: dict[str, Any]) -> dict[str, Any]:
     """对指定字符串字段做 ${ENV_VAR} 插值，其余字段原样透传。"""
     out = dict(raw)
     for key in _ENV_FIELDS:
@@ -202,7 +206,7 @@ def _expand_env_fields(raw: dict) -> dict:
     return out
 
 
-def _has_unresolved_var(raw: dict) -> bool:
+def _has_unresolved_var(raw: dict[str, Any]) -> bool:
     return any(
         isinstance(raw.get(k), str) and "${" in raw.get(k, "") for k in _ENV_FIELDS
     )

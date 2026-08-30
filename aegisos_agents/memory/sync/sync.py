@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from protocol.memory import MemoryPacket
 
-
 # ---------------- 向量时钟 ----------------
 
 

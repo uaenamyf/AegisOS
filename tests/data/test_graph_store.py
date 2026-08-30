@@ -4,8 +4,18 @@ from data.models.graph_store import InMemoryGraphStore, Neo4jGraphStore
 from protocol.cyber import Asset
 
 
-def test_neo4j_store_missing_driver_raises():
-    """未安装 neo4j 驱动时应抛 RuntimeError（惰性加载）。"""
+def test_neo4j_store_missing_driver_raises(monkeypatch: pytest.MonkeyPatch):
+    """neo4j 驱动不可用时抛 RuntimeError（惰性加载；本机装了 neo4j 时模拟缺失）。"""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def _no_neo4j(name, *args, **kwargs):
+        if name == "neo4j" or name.startswith("neo4j."):
+            raise ImportError("simulated missing neo4j driver")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _no_neo4j)
     gs = Neo4jGraphStore(uri="bolt://localhost:7687")
     with pytest.raises(RuntimeError, match="neo4j"):
         gs.get_technique("T1210")

@@ -38,13 +38,13 @@ Attributes:
 
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
+from agents import Agent, AgentOutputSchema, ModelSettings
 from pydantic import BaseModel, Field
 
 from aegisos_agents.action.structured_agent import StructuredAgent
 from aegisos_agents.tools.llms.mock_provider import MockProvider
-from agents import Agent, AgentOutputSchema, ModelSettings
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -105,6 +105,13 @@ class PlanMode(Generic[T]):
         _plan_agent: 规划阶段的 SDK ``Agent`` 实例（懒构造，首次调用时建）。
     """
 
+    if TYPE_CHECKING:
+        # Mixin 依赖宿主（StructuredAgent 子类）提供的成员；静态声明使
+        # mypy 可见，运行时由宿主类真实提供。
+        _model: Any
+
+        def _run(self, prompt: str, timeout: float = 120.0) -> T: ...
+
     _plan_agent: Agent | None = None
 
     def _get_plan_agent(self) -> Agent:
@@ -114,8 +121,7 @@ class PlanMode(Generic[T]):
             装配好的 SDK ``Agent`` 实例，``output_type=PlanResult``。
         """
         if self._plan_agent is None:
-            # type: ignore[attr-defined] —— PlanMode 与 StructuredAgent 混入使用
-            model = self._model  # 继承自 StructuredAgent
+            model: Any = self._model  # PlanMode 与 StructuredAgent 混入使用
             self._plan_agent = Agent(
                 name=f"{self.__class__.__name__}_Planner",
                 instructions=_PLAN_SYSTEM_PROMPT,
