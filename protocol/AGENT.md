@@ -167,5 +167,5 @@ Message 信封 + 强类型 Payload；详见 developer/specs/04_PROTOCOL_SPEC.md�
 ### 未实现 / 待补
 
 - `ThreatIntel` 仅有基础结构，缺 ATT&CK 技战术编号映射
-- `Task` 缺 `payload` 字段（当前 MockRuntime.run() 用 getattr 从 goal 解析）
-- 规范 `06 §12` 计划将所有 `@dataclass` 迁移为 Pydantic `BaseModel`（尚未执行）
+- `Task.payload` 已正式纳入协议，并贯通后端请求、持久化和运行时
+- `protocol/` 核心类型已迁移为 Pydantic `BaseModel`；当前待补为 `Task.payload` 正式契约化

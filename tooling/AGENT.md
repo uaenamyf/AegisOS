@@ -81,8 +81,6 @@ tooling/
 
 ### 已实现
 
-#### `api/__init__.py` — 2 个公共接口（Protocol）
-
 | 接口 | 方法 | 说明 |
 |------|------|------|
 | `ConfigAPI` | `get(key)` · `set(key, value)` · `load(profile)` | 配置管理 |

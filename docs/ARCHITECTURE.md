@@ -13,8 +13,8 @@
 | [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
 | [`aegisos_agents/`](#agents) | 99 `.py` | 346 基线 + AP2 新增 25 | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 感知/记忆/工具补全 | [AGENT.md](../aegisos_agents/AGENT.md) |
 | [`backend/`](#backend) | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F | [AGENT.md](../backend/AGENT.md) |
-| [`frontend/`](#frontend) | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay | [AGENT.md](../frontend/AGENT.md) |
-| [`infrastructure/`](#infrastructure) | 1 `.py` | 0 | 🔲 仅 API 协议定义 | [AGENT.md](../infrastructure/AGENT.md) |
+| [`frontend/`](#frontend) | 30+ `.ts/.tsx` | 21 | ✅ Chat/攻防/Monitor/Graph/Replay 基础视图；🔲 Canvas 深化 | [AGENT.md](../frontend/AGENT.md) |
+| [`infrastructure/`](#infrastructure) | 15+ `.py` | 48 | ✅ 节点档案/节点运行时/注册与派发；🔲 Docker/K8s 交付 | [AGENT.md](../infrastructure/AGENT.md) |
 | [`observability/`](#observability) | 10+ `.py` | 41 | ✅ H5 完成（监控/回放/基准/评测/可视化） | [AGENT.md](../observability/AGENT.md) |
 | [`data/`](#data) | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现 + ATT&CK 数据集 + memory 对接） | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
@@ -239,12 +239,10 @@
 |------|------|
 | [`api/__init__.py`](../infrastructure/api/__init__.py) | 4 个 Protocol 接口定义：`CommunicationAPI` · `NodeRegistryAPI` · `SyncAPI` · `DeploymentAPI` |
 
-### 未实现（全空，仅 AGENT.md）
-- 🔲 `transport/communication/` — 传输层
-- 🔲 `nodes/edge/` — 端侧节点
-- 🔲 `nodes/cloud/` — 云侧节点
-- 🔲 `delivery/deployment/` — 部署交付
-- 🔲 Docker 沙箱靶场
+### 当前未完成
+- 🔲 `transport/communication/` 的真实容器间通道与可靠性验证
+- 🟡 `delivery/deployment/` Docker Compose 基础交付已完成，Kubernetes/TLS 仍待补
+- 🟡 Docker 沙箱基础隔离已完成，攻防工具扩展与真实运行验证仍待补
 
 📎 详细文档：[`infrastructure/AGENT.md`](../infrastructure/AGENT.md) 末尾「📋 模块实现详解」
 

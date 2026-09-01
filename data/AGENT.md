@@ -110,8 +110,9 @@ data/
 ### 未实现
 
 - 🔲 真实 Neo4j/Qdrant 集成测试（需运行中 DB，留待容器化 H1/P3）
-- 🔲 CVE 漏洞数据库 / 网络资产拓扑样本 / 攻防场景测试数据（`datasets/` 其余条目）
-- 🔲 后端 range 服务把拓扑写入 `GraphStore`（本次仅提供 store 能力）
+- ✅ CVE 离线样本与资产服务匹配查询（`datasets/cve/`）
+- ✅ 后端 range 服务将生成拓扑写入 `GraphStore`
+- 🔲 更大规模 CVE/网络资产拓扑样本与真实数据导入器
 
 ### 赛事需求（来自 plans/14 · 15）
 

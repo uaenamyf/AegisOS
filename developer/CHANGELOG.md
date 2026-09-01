@@ -2,6 +2,122 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [P7-DATA-CONTRACT] 2026-09-01 CVE 数据集与任务/拓扑契约补全
+
+### 新增
+- `data/datasets/cve/`：6 条可审计离线 CVE 样本及按资产服务/操作系统匹配查询。
+- `data.api.query_cves()`：统一 CVE 查询公共边界。
+- `tests/data/test_cve_knowledge.py`：CVE 数据集和匹配规则测试。
+
+### 修改
+- `protocol.scheduler.Task`：新增正式 `payload` 字段。
+- 后端任务请求、响应、ORM 实体、转换器和服务贯通 `Task.payload`。
+- `CyberDefenseService`：range 启动时将网络拓扑写入 GraphStore；无外部数据库时默认使用内存实现。
+- 增加 range 拓扑持久化回归测试。
+
+### 验证
+- 数据、后端攻防和协议切片：`36 passed`
+
+## [P7-H1-H7-BASE] 2026-09-01 Docker 基础交付与沙箱隔离
+
+### 新增
+- `infrastructure/delivery/deployment/docker/Dockerfile.backend`：非 root 后端镜像定义与健康检查。
+- `infrastructure/delivery/deployment/docker/Dockerfile.frontend`：前端多阶段构建与 Nginx 静态服务镜像。
+- `infrastructure/delivery/deployment/docker/docker-compose.yml`：后端/前端 Compose 编排，显式 API Key 注入、健康依赖和容器加固。
+- `infrastructure/delivery/deployment/docker/nginx.conf`：SPA 回退、API 反代和 WebSocket 反代。
+- `infrastructure/delivery/deployment/docker/sandbox/docker-compose.yml`：无宿主端口、internal 网络、只读根文件系统和 capability drop 的隔离靶场基础。
+- `tests/infrastructure/delivery/deployment/test_docker_assets.py`：交付配置与安全约束测试。
+
+### 已完成子项
+- H1.1、H1.4、H7.1-H7.4、H7.6-H7.7、前端构建产物校验。
+
+### 验证
+- Docker Compose 配置解析成功（主部署和沙箱）。
+- Docker 交付测试：`115 passed`（含现有基础设施测试）。
+- 镜像构建因当前环境无法访问 Docker Hub 基础镜像仓库，暂未完成实际构建验证。
+
+## [P7-E2-E3] 2026-09-01 场景二三 Mock 端到端验收
+
+### 新增
+- `tests/e2e/test_scenarios_2_3.py`：场景 2 长程攻击链（漏洞到横向移动）和场景 3 端边云隐私路由/降级/拓扑存储验收。
+
+### 验证
+- 场景二三测试：`2 passed`
+- 当前结论：Mock 链路闭环；真实 Docker 靶场、工具容器和端边云网络联调仍待完成。
+
+## [P7-H1-COMM] 2026-09-01 Message TCP 通信基础
+
+### 新增
+- `infrastructure/transport/communication/codecs/json.py`：严格 `protocol.Message` JSON Lines 编解码。
+- `infrastructure/transport/communication/transport/tcp.py`：异步 TCP 点对点、显式目标广播和接收队列。
+- `tests/infrastructure/transport/communication/test_tcp.py`：消息往返、TTL、广播和非法载荷测试。
+- 沙箱 Compose：固定命名的 internal 网络，供容器间受控通信。
+
+### 验证
+- TCP 通信测试：`5 passed`
+- 通信 ruff 检查：通过
+
+## [P7-H1-H7-TOOLS] 2026-09-01 工具容器、HTTPS 站点与沙箱脚本
+
+### 新增
+- `infrastructure/delivery/deployment/docker/sandbox/docker-compose.yml`：补充 nmap、Metasploit、Zeek、Splunk tools profile；所有工具无宿主端口并加入 internal 网络。
+- `infrastructure/delivery/deployment/docker/conf.d/aegisos.conf`：HTTPS 站点、TLS 1.2/1.3、SPA、API 和 WebSocket 反代配置。
+- `tooling/scripts/sandbox.ps1`：沙箱 config/up/down 一键编排脚本。
+
+### 已完成子项
+- H1.2 工具容器化基础、H7.5 站点配置定义、H7.9 沙箱编排脚本。
+
+### 验证
+- 沙箱配置测试：`4 passed`
+- Compose tools profile 解析成功。
+- PowerShell 语法检查通过，Python Ruff 检查通过。
+- Splunk 因需要运行时写入数据目录保留可写根文件系统，但仍启用 `cap_drop: ALL`、`no-new-privileges`、无宿主端口和 internal 网络。
+
+## [DEMO-SCOPE] 2026-09-01 演示版范围收敛
+
+### 已完成
+- Canvas 演示版任务 DAG：依赖分层、状态筛选、选中详情和响应式布局。
+- GraphService：graph.update 事件中的节点/边增删改均转换为 protocol 类型。
+- 场景 2/3 Mock 端到端验收和 Message TCP 通信基础。
+
+### 演示版跳过
+- 真实端边云硬件/服务器联调。
+- Kubernetes、TLS 证书实测、Gunicorn 生产部署和线上 Secret 管理。
+- 真实 Docker 镜像拉取、容器启动及 Neo4j/Qdrant 服务集成实测。
+
+### 验证
+- Python 全量测试：`588 passed`
+- 前端测试：`24 passed`
+- 前端构建：成功
+
+## [DEMO-CONFIG] 2026-09-01 前端端边云配置入口
+
+### 已完成
+- 配置页提供端侧、边侧、云侧的 API / Provider、API URL、Model name、能力标签和启用开关。
+- 保存配置写入浏览器本地存储，并调用 `/api/v1/infra/configure` 同步本地演示调度器。
+- 侧边栏保留唯一“运行配置”入口。
+
+### 验证
+- 前端测试：`24 passed`
+- 前端构建：成功
+- 配置 API：浏览器实测 `200`，保存按钮进入“已保存”状态。
+
+## [P7-BASELINE] 2026-09-01 测试基线恢复与工程状态校准
+
+> 补齐当前 Python 环境缺失的 `openai-agents` 与 `aiosqlite` 依赖，恢复全量回归；同步基础设施、前端、协议、数据和部署文档的实际状态。
+
+### 验证
+- Python 全量测试：`572 passed`
+- 前端单元测试：`21 passed`
+- 前端生产构建：`vite build` 成功
+- 基础设施与工具测试：`123 passed`
+
+### 当前未完成主线
+- H1 Docker 沙箱靶场与安全隔离
+- H7 Docker/Kubernetes/HTTPS 交付与端边云生产联调
+- CVE/资产/场景数据补全、真实 Neo4j/Qdrant 集成测试
+- 场景 2/3 端到端验收
+
 ## [P7-R2] 2026-08-26 端侧节点运行时 + 路由降级链修正
 
 > 端侧(device)节点实体化：本机 Ollama 小模型适配器；同时修复调度器"缺失层取首个候选"的路由随机性。新增 21 个测试（10 DeviceNode + 11 路由桥接），调度器补 4 个降级回归。

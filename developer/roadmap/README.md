@@ -15,4 +15,4 @@
 | P4 Scheduler | ✅ 完成 | 任务调度器 |
 | P5 Planner+Agents | ✅ 完成 | 规划器 + 11 攻防 Agent（SDK S1-S4+R4-R6） |
 | P6 Frontend | ✅ 完成 | 前后端联调 + 攻防视图 |
-| P7 Deployment | ⏳ 待开始 | 容器化部署 |
+| P7 Deployment | 🟡 部分完成 | 端边云节点/注册/派发已实现；Docker/K8s/HTTPS 交付与沙箱仍待开始 |

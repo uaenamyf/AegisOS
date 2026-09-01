@@ -128,8 +128,8 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
 | 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 记忆/感知/工具补全 |
 | 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F |
-| 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 30+ `.ts/.tsx` | — | ✅ Chat 联调 / ✅ 攻防视图 G / 🔲 Canvas/Monitor/Replay |
-| 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 1 `.py` | 0 | 🔲 仅 API 协议定义 |
+| 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 30+ `.ts/.tsx` | 21 | ✅ Chat/攻防/Monitor/Graph/Replay 基础视图 / 🔲 Canvas 深化 |
+| 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 15+ `.py` | 48 | ✅ 节点档案/运行时/注册/派发 / 🔲 Docker/K8s 交付 |
 | 6 | `observability/` | 可观测层 — 监控 · 基准 · 可视化 | 10+ `.py` | 41 | ✅ H5 完成（MetricsCollector/Timeline/Benchmark/Evaluator/Visualization） |
 | 7 | `data/` | 数据层 — 数据集 · 模型 schema · 图/向量存储后端 | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现） |
 | 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
@@ -272,9 +272,9 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 #### 做了什么
 - **API 协议定义**：4 个 Protocol 接口（CommunicationAPI / NodeRegistryAPI / SyncAPI / DeploymentAPI）
 
-#### 未实现
+#### 当前未完成
 - 🔲 Docker 沙箱靶场（赛事 H1 核心需求）
-- 🔲 端边云通信与节点管理全部待实现
+- 🔲 真实容器间通信、Docker/K8s 交付与端边云生产联调
 
 📎 目录 + 赛事需求：[`infrastructure/AGENT.md`](infrastructure/AGENT.md)
 
@@ -290,8 +290,8 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 - **H5 可观测评测**：✅ 全部完成 — `MetricsCollector`（监控+告警）+ `Timeline`/`ReplayPlayer`（回放）+ `BenchmarkRunner`（性能基准）+ `Evaluator`（5 维度评测）+ `VisualizationService`（ECharts/React Flow 可视化）
 - **Tracing**：`CyberTraceProcessor` + `CyberAgentHooks`（7 个生命周期回调）
 
-#### 未实现
-- 🔲 前端 MonitorView/ReplayView 对接（数据源已完成）
+#### 当前未完成
+- 🔲 前端 MonitorView/ReplayView 的实时数据对接与交互深化
 
 📎 目录 + 赛事需求：[`observability/AGENT.md`](observability/AGENT.md)
 
@@ -327,8 +327,8 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 - **API 协议定义**：2 个 Protocol 接口（ConfigAPI / ScriptAPI）
 - **配置文件**：backend.yaml + gateway.yaml
 
-#### 未实现
-- 🔲 `check_no_broadcast.py`（C4：检测低熵全广播违规）
+#### 当前未完成
+- 🔲 部署编排和生产环境验证脚本（依赖 H1/H7）
 
 📎 脚本 + 配置详解：[`tooling/AGENT.md`](tooling/AGENT.md)
 

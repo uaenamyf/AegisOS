@@ -11,7 +11,7 @@
 > 4. 待完成区只保留未完成任务；完成后立即移到 §7 完成区
 > 5. SSOT 保留：`specs/plans/13`、`14`、`15`、`roadmap/`
 >
-> 最后更新：2026-08-26 · **P3.5 配置中心补全（environments/agents/models/prompts/deployment 7 yaml + EnvironmentConfig + AEGIS_ENV 注入）** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true）** · **P3.4.7x ruff baseline 全清 0 错（13 类规则：I001/F401/E731/E402/F821/B008/UP042/F841/B007/B904/SIM102/SIM105/B905；14→5 squash 重写为 Conventional Commits）** · **R1.1-R1.7 Protocol→Pydantic 迁移完成**（7 步 9 文件 + 14 业务文件 asdict shim）· **AP2 ReAct 范式确认完成（AP2.1 内核 + AP2.2-6 5 Agent 接入 + AP2.7 测试 + AP2.8 集成收尾：hunt_react + ReactMode Pydantic 兼容）** · **P3.3 CI/CD 流水线（.github/workflows/ci.yml 3 jobs + Makefile 增强）**
+> 最后更新：2026-09-01 · **测试环境修复（openai-agents + aiosqlite）与全量基线恢复：572 passed** · **基础设施/前端文档状态校准** · **P3.5 配置中心补全（environments/agents/models/prompts/deployment 7 yaml + EnvironmentConfig + AEGIS_ENV 注入）** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true）** · **P3.4.7x ruff baseline 全清 0 错（13 类规则：I001/F401/E731/E402/F821/B008/UP042/F841/B007/B904/SIM102/SIM105/B905；14→5 squash 重写为 Conventional Commits）** · **R1.1-R1.7 Protocol→Pydantic 迁移完成**（7 步 9 文件 + 14 业务文件 asdict shim）· **AP2 ReAct 范式确认完成（AP2.1 内核 + AP2.2-6 5 Agent 接入 + AP2.7 测试 + AP2.8 集成收尾：hunt_react + ReactMode Pydantic 兼容）** · **P3.3 CI/CD 流水线（.github/workflows/ci.yml 3 jobs + Makefile 增强）**
 
 ---
 
@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · AP4 Ask ✅ · **H2 数据层 ✅** |
-| **测试** | **435 passed**（含 9 个新增 RouterAPI 接入测试） |
+| **测试** | **588 passed**（Python 全量）· 前端 24 passed · Vite build 成功 |
 | **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R1.1-R1.7 Protocol→Pydantic ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · AP2 ReAct（含集成收尾，2026-08-25）✅ · B3+E13 ✅ · H2 数据层 ✅ · P3 收尾 ✅ · 低熵广播检测 ✅ · P3.2 Router 业务接入（RouterAPI + executor 守卫，2026-08-25）✅ · **P3.3 CI/CD 流水线（ci.yml 3 jobs + Makefile 增强，2026-08-25）✅** · **P3.4.1-7x ruff baseline 全清 0 错（13 类规则，14→5 squash 重写为 Conventional Commits，2026-08-25）✅** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true，2026-08-25）✅** · **P3.5 配置中心补全（environments/agents/models/prompts/deployment 7 yaml + EnvironmentConfig，2026-08-26）✅** |
-| **待完成** | CVE/攻防数据集补全 · **P3.4 ruff baseline 治理 ✅ 全部清零（13 类规则 185→0）** · **P3.4.8 CI 严格 ruff 模式 ✅** · **P3.5 配置中心补全 ✅（dev/staging/prod + agents/models/prompts/deployment 7 个 yaml + settings 注入 AEGIS_ENV）** · H1 沙箱靶场 · H7 容器化部署 |
+| **待完成** | 真实 Neo4j/Qdrant 集成测试 · Docker 镜像/沙箱真实启动验证 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖
@@ -30,8 +30,8 @@
 | 场景 | 描述 | 状态 |
 |------|------|------|
 | 场景 1 | 网络防御（红→蓝→紫完整链路） | ✅ 可演示 |
-| 场景 2 | 超长程攻击链（多步横向移动） | 🔲 待做（功能优先） |
-| 场景 3 | 端-边-云协同防御 | 🔲 待做（容器化后） |
+| 场景 2 | 超长程攻击链（多步横向移动） | 🟡 Mock 验收完成，真实靶场待联调 |
+| 场景 3 | 端-边-云协同防御 | 🟡 Mock 验收完成，真实容器待联调 |
 
 ---
 
@@ -115,22 +115,22 @@
 
 ### H1 — Docker 沙箱靶场
 > **优先级**：P3 · **预估**：3-5 天 · **状态**：🔲 后移
-- [ ] H1.1 `infrastructure/delivery/deployment/` Docker Compose 靶场编排
-- [ ] H1.2 攻防工具容器化（nmap/metasploit/zeek/splunk）
-- [ ] H1.3 `infrastructure/transport/communication/` 容器间通信
-- [ ] H1.4 靶场安全隔离（永不触真实网络）
+- [x] H1.1 `infrastructure/delivery/deployment/` Docker Compose 靶场编排（基础靶场 Compose 已完成）
+- [x] H1.2 攻防工具容器化基础（nmap/metasploit/zeek/splunk，tools profile；真实镜像运行验证待补）
+- [x] H1.3 `infrastructure/transport/communication/` 容器间通信基础（JSON Message + asyncio TCP；可靠队列/认证待补）
+- [x] H1.4 靶场安全隔离（internal 网络、无宿主端口、容器加固配置已完成）
 
 ### H7 — 部署交付
 > **优先级**：P3 · **预估**：3-5 天 · **状态**：🔲 后移
-- [ ] H7.1 `Dockerfile.backend` — 后端镜像
-- [ ] H7.2 `Dockerfile.frontend` — 前端镜像（多阶段构建）
-- [ ] H7.3 `docker-compose.yml` — 一键编排
-- [ ] H7.4 `nginx.conf` — Nginx 反向代理
-- [ ] H7.5 `conf.d/aegisos.conf` — 站点配置
-- [ ] H7.6 `infrastructure/nodes/edge/` 端侧节点
-- [ ] H7.7 `infrastructure/nodes/cloud/` 云侧节点
-- [ ] H7.8 端边云协同联调
-- [ ] H7.9 `tooling/scripts/` 靶场编排脚本
+- [x] H7.1 `Dockerfile.backend` — 后端镜像定义
+- [x] H7.2 `Dockerfile.frontend` — 前端镜像多阶段构建定义
+- [x] H7.3 `docker-compose.yml` — 一键编排定义
+- [x] H7.4 `nginx.conf` — Nginx HTTP 反向代理
+- [x] H7.5 `conf.d/aegisos.conf` — HTTPS/Nginx 站点配置定义（证书挂载与实测待补）
+- [x] H7.6 `infrastructure/nodes/edge/` 边侧节点运行时源码
+- [x] H7.7 `infrastructure/nodes/cloud/` 云侧节点运行时源码
+- [~] H7.8 端边云协同联调（演示版跳过真实端边云，场景 3 Mock 验收已完成）
+- [x] H7.9 `tooling/scripts/` 靶场编排脚本（sandbox.ps1；真实启动验证待补）
 
 ### Protocol → Pydantic 迁移
 > **优先级**：P3 · **预估**：3-5 天 · **状态**：✅ 完成（2026-08-25 R1.1-R1.7 全部完成）
@@ -160,10 +160,10 @@
 - [x] `tooling/configs/prompts/` Prompt 配置（11 攻防 Agent 模板注册 + 渲染器，2026-08-26）
 - [x] `tooling/configs/deployment.yaml` 部署配置（dev/staging/prod 三环境拓扑 + 安全基线，2026-08-26）
 - [x] `tooling/configs/settings.py` EnvironmentConfig + AEGIS_ENV 注入（2026-08-26）
-- [ ] HTTPS / TLS 证书
-- [ ] LLM API Key 安全注入
-- [ ] 生产级 ASGI 服务器（gunicorn + uvicorn workers）
-- [ ] `frontend/dist/` 构建产物校验
+- [~] HTTPS / TLS 证书（演示版跳过）
+- [~] LLM API Key 安全注入（演示版使用 Mock，线上 Secret 管理跳过）
+- [~] 生产级 ASGI 服务器（演示版使用 uvicorn，线上部署跳过）
+- [x] `frontend/dist/` 构建产物校验（Vite build 成功；产物按 gitignore 不入库）
 
 ---
 

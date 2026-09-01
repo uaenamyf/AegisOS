@@ -210,13 +210,13 @@ frontend/
 |------|------|------|------|
 | **ChatView** | `chat` | ✅ 完整实现 | Agent 对话 + 任务提交 |
 | **攻防视图 4 面板** | `cyber` | ✅ 完整实现 | RedTeamPanel + BlueTeamPanel + PurpleTeamPanel + ThreatIntelPanel |
-| CanvasView | `canvas` | 🔲 占位 | 攻击链 DAG 可视化（待 React Flow） |
-| MonitorView | `monitor` | 🔲 占位 | 防御看板（数据源 H5.1 已就绪） |
-| ReplayView | `replay` | 🔲 占位 | 时序回放（数据源 H5.2 已就绪） |
+| CanvasView | `canvas` | ✅ 演示版 DAG | 依赖分层、状态筛选和任务详情 |
+| MonitorView | `monitor` | ⚠️ 基础看板 | 节点面板/调度沙盒已接入，实时监控仍待深化 |
+| ReplayView | `replay` | ⚠️ 基础列表 | 时序回放控制与快照恢复仍待深化 |
 
-### 未实现
+### 当前未完成
 
-- 🔲 CanvasView：攻击链 DAG 可视化（需安装 `reactflow`）
-- 🔲 MonitorView：防御看板（告警/响应状态）
-- 🔲 ReplayView：时序回放
+- 🔲 CanvasView：拖拽编辑和后端 DAG 持久化（演示版已完成只读交互）
+- 🔲 MonitorView：实时告警/响应状态对接
+- 🔲 ReplayView：播放控制与快照恢复
 - 🔲 GraphView：动态拓扑图交互
