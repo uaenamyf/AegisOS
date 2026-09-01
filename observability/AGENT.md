@@ -117,6 +117,7 @@ observability/
 | `measure/evaluation/` | `Evaluator` 5 维度评测（accuracy/recall/latency/resource/robustness）+ 加权总分 + `EvaluationReport` |
 | `present/visualization/` | `ChartGenerator`（ECharts 兼容）+ `GraphRenderer`（React Flow 兼容）+ `DashboardAssembler` + `VisualizationService` |
 
-### 未实现
+### 当前状态
 
-- 🔲 前端 MonitorView/ReplayView 对接（数据源已就绪）
+- ✅ 后端数据源和前端基础 Monitor/Replay 视图已接入
+- 🔲 深度实时告警、交互回放和快照恢复

@@ -136,10 +136,11 @@ frontend/
 │   │   └── session/            会话管理
 │   └── views/             视图
 │       ├── chat/               ✅ 完整实现
-│       ├── canvas/             🔲 占位
-│       ├── graph/              🔲 占位
-│       ├── monitor/            🔲 占位
-│       ├── replay/             🔲 占位
+│       ├── canvas/              ✅ 演示版 DAG
+│       ├── graph/               ✅ 拓扑列表
+│       ├── monitor/             ✅ 节点面板与调度沙盒
+│       ├── replay/              ⚠️ 基础事件列表
+│       └── settings/            ✅ 端边云 API 配置
 │       └── layout/             布局组件
 ```
 
@@ -212,7 +213,7 @@ frontend/
 | **攻防视图 4 面板** | `cyber` | ✅ 完整实现 | RedTeamPanel + BlueTeamPanel + PurpleTeamPanel + ThreatIntelPanel |
 | CanvasView | `canvas` | ✅ 演示版 DAG | 依赖分层、状态筛选和任务详情 |
 | MonitorView | `monitor` | ⚠️ 基础看板 | 节点面板/调度沙盒已接入，实时监控仍待深化 |
-| ReplayView | `replay` | ⚠️ 基础列表 | 时序回放控制与快照恢复仍待深化 |
+| ReplayView | `replay` | ⚠️ 基础列表 | 事件列表已接入，播放控制与快照恢复仍待深化 |
 
 ### 当前未完成
 

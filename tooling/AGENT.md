@@ -221,6 +221,8 @@ backend:
 
 网关路由配置。
 
-### 未实现
+### 当前状态
 
-- 🔲 `check_no_broadcast.py` — 全广播违规 CI 校验脚本（C4 待做）
+- ✅ `check_no_broadcast.py` — 全广播违规 CI 校验脚本
+- ✅ `sandbox.ps1` — 本地沙箱 config/up/down 编排
+- 🔲 Docker 镜像和沙箱真实启动验证

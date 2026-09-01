@@ -247,7 +247,7 @@ curl -H "X-API-Key: aegis-dev-key" http://localhost:8000/api/v1/agents
 
 所有 `/api/v1/*` 端点需 `X-API-Key: aegis-dev-key` header（`/health` 除外）。
 
-### 未实现
+### 当前状态
 
-- 🔲 Task payload 字段（当前 MockRuntime.run() 用 getattr 从 goal 解析）
+- ✅ `Task.payload` 已贯通协议、请求/响应 schema、ORM、转换器和运行时
 - 🔲 WebSocket 双向流完善

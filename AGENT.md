@@ -128,13 +128,13 @@ Initialize -> Load Config -> Load Prompt -> Load Skills -> Receive Task -> Reaso
 | 1 | `protocol/` | 契约层 — 全系统唯一数据类型定义 | 10 `.py` | 6 | ✅ 核心完成 |
 | 2 | `aegisos_agents/` | 智能体域 — 认知核心，五层架构 | 30+ `.py` | 100+ | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 记忆/感知/工具补全 |
 | 3 | `backend/` | 应用层 — FastAPI REST + WS + SSE + DB | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F |
-| 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 30+ `.ts/.tsx` | 21 | ✅ Chat/攻防/Monitor/Graph/Replay 基础视图 / 🔲 Canvas 深化 |
-| 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 15+ `.py` | 48 | ✅ 节点档案/运行时/注册/派发 / 🔲 Docker/K8s 交付 |
+| 4 | `frontend/` | 表现层 — React + Vite AI Native IDE | 35+ `.ts/.tsx` | 24 | ✅ Chat/攻防/Canvas/Monitor/Graph/Replay/端边云配置演示 |
+| 5 | `infrastructure/` | 基建层 — 传输 · 节点 · 交付 | 15+ `.py` | 50+ | ✅ 节点/注册/派发/JSON-TCP/Docker 沙箱基础 / 🔲 真实容器实测 |
 | 6 | `observability/` | 可观测层 — 监控 · 基准 · 可视化 | 10+ `.py` | 41 | ✅ H5 完成（MetricsCollector/Timeline/Benchmark/Evaluator/Visualization） |
 | 7 | `data/` | 数据层 — 数据集 · 模型 schema · 图/向量存储后端 | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现） |
 | 8 | `tooling/` | 工程支撑 — 脚本 · 配置 | 4 `.py` | 0 | ✅ 3 脚本可用 |
 | 9 | `developer/` | 规范层 — SSOT 规范 + roadmap | 0 `.py` | — | ✅ 规范就位 |
-| 10 | `tests/` | 测试 — 105+ 通过（本机可运行子集 data+memory+protocol） | 30+ `.py` | 105+ | ✅ 全覆盖（SDK 测试需真实依赖环境） |
+| 10 | `tests/` | 测试 — 演示版全量回归 | 60+ `.py` | Python 594 + 前端 24 | ✅ 演示版全量通过 |
 
 **模块依赖关系**：
 
@@ -180,8 +180,8 @@ frontend/services ← 调用 backend REST API
 #### 测试
 `tests/protocol/test_cyber.py` — 6 个测试，验证 8 个攻防类型的字段、序列化、反序列化。
 
-#### 未实现
-- `cyber.py` 中 `ThreatIntel` 仅基础结构，无 ATT&CK 技战术映射。
+#### 当前状态
+- `cyber.py` 中 `ThreatIntel` 已包含 ATT&CK 技术映射字段。
 
 📎 各文件字段详解：[`protocol/AGENT.md`](protocol/AGENT.md) · 规范：[`04_PROTOCOL_SPEC.md`](developer/specs/04_PROTOCOL_SPEC.md)
 
@@ -309,9 +309,9 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 - **记忆子系统对接**：`memory/vector` 与 `memory/semantic` 支持 `data.api` 后端注入
 - **SQLite 数据库**：`aegisos.db` 文件（后端运行时自动生成）
 
-#### 未实现
-- 🔲 真实 Neo4j/Qdrant 集成测试（需运行中 DB，留待容器化 H1/P3）
-- 🔲 CVE 漏洞数据库 / 攻防场景测试数据
+#### 当前状态
+- ✅ CVE 离线样本和资产服务匹配查询已完成
+- 🔲 真实 Neo4j/Qdrant 集成测试和更大规模数据导入
 
 📎 目录 + 赛事需求：[`data/AGENT.md`](data/AGENT.md)
 
@@ -341,7 +341,7 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 
 #### 做了什么
 - **15 个规范文件**（00-15）
-- **roadmap P0-P7**：P0-P5 已完成，P6 部分完成，P7 未开始
+- **roadmap P0-P7**：P0-P6 已完成，P7 演示版基础完成；真实部署按范围跳过
 - **CHANGELOG.md**：变更记录
 
 📎 规范索引 + roadmap 进度：[`developer/AGENT.md`](developer/AGENT.md)
@@ -351,7 +351,7 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 ### 10. `tests/` — 测试
 
 #### 是什么
-测试目录，覆盖 Phase A-E 的全部单元测试。当前 59 个测试全部通过。
+测试目录，覆盖当前演示版功能和核心单元测试。当前 Python 594、前端 24 个测试通过。
 
 #### 测试分布
 
@@ -365,8 +365,8 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 | `tests/e2e/` | 5 | 场景 1 红→蓝→紫端到端 + B3 记忆闭环 |
 | `tests/基础/` | 4 | 基础测试 |
 
-#### 未实现
-- 🔲 `tests/e2e/` 场景 2/3 端到端测试（超长程攻击链 / 端-边-云协同防御）
+#### 当前状态
+- ✅ 场景 2/3 Mock 端到端测试已完成
 
 ---
 
@@ -376,10 +376,10 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 |----|--------|
 | 后端 | Python 3.12 · FastAPI · SQLAlchemy(async) · aiosqlite · uvicorn |
 | 前端 | React 18 · Vite 5.4.21 · Zustand 4.5 · TypeScript 5.6 |
-| 协议 | Python `@dataclass`（§12 计划迁移 Pydantic） |
+| 协议 | Python Pydantic `BaseModel` |
 | AI SDK | openai-agents SDK · `StructuredAgent[T]` + `output_type`（Pydantic）· Mock/真实 API 双模式 |
 | 数据库 | SQLite（`aegisos.db`）→ Neo4j + Qdrant（待接入） |
-| 测试 | pytest · ruff · mypy · 105+ tests passing（本机可运行子集） |
+| 测试 | pytest · ruff · mypy · Python 594 + 前端 24 tests passing |
 
 ### 快速启动
 

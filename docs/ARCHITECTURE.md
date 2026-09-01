@@ -2,7 +2,7 @@
 
 > 本文件对每个顶层域的实际**代码实现状态**做精确描述：已实现什么、未实现什么、关键文件在哪、测试覆盖如何。
 > 各域详细实现文档已合并至对应 `AGENT.md` 末尾「📋 模块实现详解」段；全局模块总览已合并至根 `AGENT.md` 末尾「📋 模块实现总览」段。
-> 最后更新：2026-08-13 · AP2 ReAct ✅（新增 25 个定向测试）· SDK S1-S4 ✅ · R4-R6 ✅ · F/G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · P2 ✅
+> 最后更新：2026-09-01 · Python 594 passed · 前端 24 passed · P5/P6 ✅ · 演示版 P7 基础 ✅
 
 ---
 
@@ -11,15 +11,15 @@
 | 域 | 代码文件 | 测试数 | 实现状态 | 模块文档 |
 |----|---------|--------|---------|---------|
 | [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
-| [`aegisos_agents/`](#agents) | 99 `.py` | 346 基线 + AP2 新增 25 | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 感知/记忆/工具补全 | [AGENT.md](../aegisos_agents/AGENT.md) |
+| [`aegisos_agents/`](#agents) | 99 `.py` | Python 全量回归的一部分 | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 感知/记忆/工具补全 | [AGENT.md](../aegisos_agents/AGENT.md) |
 | [`backend/`](#backend) | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F | [AGENT.md](../backend/AGENT.md) |
-| [`frontend/`](#frontend) | 30+ `.ts/.tsx` | 21 | ✅ Chat/攻防/Monitor/Graph/Replay 基础视图；🔲 Canvas 深化 | [AGENT.md](../frontend/AGENT.md) |
-| [`infrastructure/`](#infrastructure) | 15+ `.py` | 48 | ✅ 节点档案/节点运行时/注册与派发；🔲 Docker/K8s 交付 | [AGENT.md](../infrastructure/AGENT.md) |
+| [`frontend/`](#frontend) | 35+ `.ts/.tsx` | 24 | ✅ Chat/攻防/Canvas/Monitor/Graph/Replay/端边云配置演示 | [AGENT.md](../frontend/AGENT.md) |
+| [`infrastructure/`](#infrastructure) | 15+ `.py` | 50+ | ✅ 节点/注册/派发/JSON-TCP/Docker 沙箱基础；🔲 真实容器实测 | [AGENT.md](../infrastructure/AGENT.md) |
 | [`observability/`](#observability) | 10+ `.py` | 41 | ✅ H5 完成（监控/回放/基准/评测/可视化） | [AGENT.md](../observability/AGENT.md) |
 | [`data/`](#data) | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现 + ATT&CK 数据集 + memory 对接） | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
 | [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
-| [`tests/`](#tests) | 55 `.py` | 346 基线 + AP2 新增 25 | ⚠️ AP2 定向通过；全仓门禁有既存阻塞 | — |
+| [`tests/`](#tests) | 60+ `.py` | Python 594 + 前端 24 | ✅ 演示版全量回归通过 | — |
 
 ---
 
@@ -45,8 +45,8 @@
 ### 测试覆盖（6 个）
 `tests/protocol/test_cyber.py` — 验证 8 个攻防类型的字段、序列化、反序列化
 
-### 未实现
-- `cyber.py` 中 `ThreatIntel` 仅基础结构，无 ATT&CK 技战术映射
+### 当前状态
+- `ThreatIntel` 已包含 ATT&CK 技术映射字段
 
 📎 详细文档：[`protocol/AGENT.md`](../protocol/AGENT.md) 末尾「📋 模块实现详解」 · 规范：[`04_PROTOCOL_SPEC.md`](../developer/specs/04_PROTOCOL_SPEC.md)
 
@@ -187,8 +187,8 @@
 ### 已实现
 - ✅ 10+ REST + SSE + WS 端点 + **攻防端点**（range/attack/defense/threat）
 
-### 未实现
-- 🔲 Task payload 字段（当前 MockRuntime.run() 用 getattr 从 goal 解析）
+### 当前状态
+- ✅ `Task.payload` 已贯通协议、API、ORM、转换器和运行时
 
 📎 详细文档：[`backend/AGENT.md`](../backend/AGENT.md) 末尾「📋 模块实现详解」
 
@@ -212,7 +212,7 @@
 | | `services/session/index.ts` | 会话管理 |
 | **Controllers** | `controllers/interaction.ts` · `events.ts` · `routes.ts` | 交互/事件/路由控制 |
 | **Views** | `views/chat/ChatView.tsx` | ✅ **完整实现**：Agent 选择 + 消息收发 + 任务提交 |
-| | `views/canvas/` · `graph/` · `monitor/` · `replay/` | 🔲 占位符组件 |
+| | `views/canvas/` · `graph/` · `monitor/` · `replay/` | ✅ 演示版 DAG、拓扑、节点面板和事件列表 |
 
 ### ChatView 功能
 - Agent 下拉选择（14 个 Agent）
@@ -220,11 +220,9 @@
 - 任务创建 + 状态轮询
 - 自动滚动
 
-### 未实现
-- 🔲 CanvasView：攻击链 DAG 可视化（需 React Flow）
-- 🔲 MonitorView：防御看板
-- 🔲 ReplayView：时序回放
-- 🔲 前端 cyber 类型（protocol/cyber.py 未映射到 TS）
+### 当前状态
+- ✅ Canvas/Monitor/Replay 已有演示版基础视图，设置页支持 API/Provider、API URL、Model name
+- 🔲 拖拽编辑、实时告警、播放控制、快照恢复和后端 DAG 持久化
 
 📎 详细文档：[`frontend/AGENT.md`](../frontend/AGENT.md) 末尾「📋 模块实现详解」
 
@@ -239,10 +237,11 @@
 |------|------|
 | [`api/__init__.py`](../infrastructure/api/__init__.py) | 4 个 Protocol 接口定义：`CommunicationAPI` · `NodeRegistryAPI` · `SyncAPI` · `DeploymentAPI` |
 
-### 当前未完成
-- 🔲 `transport/communication/` 的真实容器间通道与可靠性验证
-- 🟡 `delivery/deployment/` Docker Compose 基础交付已完成，Kubernetes/TLS 仍待补
-- 🟡 Docker 沙箱基础隔离已完成，攻防工具扩展与真实运行验证仍待补
+### 当前状态
+- ✅ JSON Message + asyncio TCP 通信基础
+- ✅ Docker Compose、internal 网络和沙箱工具 profile
+- 🔲 Docker 镜像/沙箱真实启动实测
+- ⏭️ 真实端边云、Kubernetes、TLS、生产 ASGI 按演示范围跳过
 
 📎 详细文档：[`infrastructure/AGENT.md`](../infrastructure/AGENT.md) 末尾「📋 模块实现详解」
 
@@ -268,8 +267,9 @@
 | `measure/evaluation/` | `Evaluator` 5 维度评测（accuracy/recall/latency/resource/robustness） |
 | `present/visualization/` | `VisualizationService`（ECharts 兼容 + React Flow 兼容） |
 
-### 未实现
-- 🔲 前端 MonitorView/ReplayView 对接（数据源已就绪）
+### 当前状态
+- ✅ 后端数据源和前端基础 Monitor/Replay 视图已接入
+- 🔲 深度实时告警、交互回放和快照恢复
 
 📎 详细文档：[`observability/AGENT.md`](../observability/AGENT.md) 末尾「📋 模块实现详解」
 
@@ -291,9 +291,9 @@
 - `memory/semantic` → `SemanticMemory(graph_backend)` 注入 `data.api.GraphStoreAPI`（Neo4j ATT&CK）
 - 默认 in_memory 零依赖，真实库按 `settings.storage`（AEGIS_STORAGE_*）启用
 
-### 未实现
-- 🔲 真实 Neo4j/Qdrant 集成测试（需运行中 DB，留待容器化 H1/P3）
-- 🔲 CVE 漏洞数据库 / 攻防场景测试数据（`datasets/` 其余条目）
+### 当前状态
+- ✅ CVE 离线样本和资产服务匹配查询已完成
+- 🔲 真实 Neo4j/Qdrant 集成测试和更大规模数据导入
 
 📎 详细文档：[`data/AGENT.md`](../data/AGENT.md) 末尾「📋 模块实现详解」
 

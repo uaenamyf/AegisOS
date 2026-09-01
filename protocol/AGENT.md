@@ -150,7 +150,7 @@ Message 信封 + 强类型 Payload；详见 developer/specs/04_PROTOCOL_SPEC.md�
 | `Alert` | `alert_id` · `severity` · `src` · `dst` · `technique` · `raw` | 安全告警 |
 | `DefenseAction` | `action_id` · `kind`(monitor/isolate/patch/block) · `target` · `rationale` | 防御动作 |
 | `ResponsePlan` | `plan_id` · `actions` (list) · `confidence` · `rollback` (dict) | 响应计划（含回滚） |
-| `ThreatIntel` | `technique` · `tactic` · `refs` | 威胁情报（⚠️ 基础结构，无 ATT&CK 映射） |
+| `ThreatIntel` | `technique` · `tactic` · `refs` · ATT&CK 映射字段 | 威胁情报 |
 
 **AttackChain 特殊方法**：`to_dict()` / `from_dict(data)` — 支持序列化往返
 
@@ -164,8 +164,8 @@ Message 信封 + 强类型 Payload；详见 developer/specs/04_PROTOCOL_SPEC.md�
 
 ---
 
-### 未实现 / 待补
+### 当前状态
 
-- `ThreatIntel` 仅有基础结构，缺 ATT&CK 技战术编号映射
+- `ThreatIntel` 已包含 ATT&CK 技术映射字段
 - `Task.payload` 已正式纳入协议，并贯通后端请求、持久化和运行时
-- `protocol/` 核心类型已迁移为 Pydantic `BaseModel`；当前待补为 `Task.payload` 正式契约化
+- `protocol/` 核心类型已迁移为 Pydantic `BaseModel`
