@@ -10,3 +10,4 @@ export { MonitorView } from "./monitor";
 export { ReplayView } from "./replay";
 // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 新增 CyberView 导出
 export { CyberView } from "./cyber";
+export { SettingsView } from "./settings";

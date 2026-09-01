@@ -42,6 +42,15 @@ export function Sidebar() {
         />
         <span className="sidebar__status-label">{connectionStatus}</span>
       </div>
+
+      <button
+        type="button"
+        className={`sidebar__settings${activeView === "settings" ? " sidebar__settings--active" : ""}`}
+        onClick={() => handleClick("settings")}
+      >
+        <span className="sidebar__settings-icon" aria-hidden="true">⚙</span>
+        <span>运行配置</span>
+      </button>
     </aside>
   );
 }

@@ -11,6 +11,7 @@ import { CyberView } from "@/views/cyber";
 import { GraphView } from "@/views/graph";
 import { MonitorView } from "@/views/monitor";
 import { ReplayView } from "@/views/replay";
+import { SettingsView } from "@/views/settings";
 import { eventController } from "@/controllers/events";
 import { agentApi } from "@/services/api/agents";
 import { graphService } from "@/services/graph";
@@ -24,6 +25,7 @@ const VIEWS: Record<ViewName, () => JSX.Element> = {
   graph: GraphView,
   monitor: MonitorView,
   replay: ReplayView,
+  settings: SettingsView,
 };
 
 export default function App() {

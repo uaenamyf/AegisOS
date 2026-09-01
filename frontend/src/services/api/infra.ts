@@ -56,6 +56,19 @@ export const infraApi = {
     return apiClient.get<InfraNode[]>("/infra/nodes");
   },
 
+  /** 应用本地演示端边云节点配置 */
+  configureNodes(nodes: Array<{
+    node_id: string;
+    tier: "device" | "edge" | "cloud";
+    base_url: string;
+    provider: string;
+    model_id: string;
+    capabilities: string[];
+    enabled: boolean;
+  }>): Promise<InfraNode[]> {
+    return apiClient.post<InfraNode[]>("/infra/configure", { nodes });
+  },
+
   /** 派发任务 */
   dispatch(body: {
     goal: string;

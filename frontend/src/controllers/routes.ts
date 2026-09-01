@@ -13,6 +13,7 @@ export const ROUTES: { name: ViewName; label: string; key: string }[] = [
   { name: "replay", label: "Replay", key: "replay" },
   // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 新增 cyber 攻防演练路由
   { name: "cyber", label: "Cyber Defense", key: "cyber" },
+  { name: "settings", label: "运行配置", key: "settings" },
 ];
 
 export const routeController = {
