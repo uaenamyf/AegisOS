@@ -33,6 +33,12 @@ class DispatchRequest(BaseModel):
     system_prompt: str = Field(default="", description="系统提示")  # noqa: PIE110
 
 
+class ConfigureNodesRequest(BaseModel):
+    """本地演示端边云节点配置。"""
+
+    nodes: list[dict[str, Any]] = Field(..., min_length=1)
+
+
 # ---- Endpoints ----
 
 def _get_service() -> InfraService:
@@ -47,6 +53,18 @@ def _get_service() -> InfraService:
 async def list_nodes() -> list[dict[str, Any]]:
     """列出所有端边云节点及其在线状态。"""
     return _get_service().list_nodes()
+
+
+@router.post("/configure")
+async def configure_nodes(body: ConfigureNodesRequest) -> list[dict[str, Any]]:
+    """应用本地演示节点配置并返回新的节点状态。"""
+    try:
+        return _get_service().configure_nodes(body.nodes)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "INVALID_NODE_CONFIG", "message": str(exc)},
+        ) from exc
 
 
 @router.post("/dispatch")

@@ -114,7 +114,10 @@ class Composition:
         self.memory_service = MemoryService(self.memory_api)
         self.graph_service = GraphService(self.event_bus)
         # R4.7: CyberDefenseService 注入共享 orchestrator
-        self.cyber_defense_service = CyberDefenseService(orchestrator=self.orchestrator)
+        self.cyber_defense_service = CyberDefenseService(
+            orchestrator=self.orchestrator,
+            graph_store=self._build_graph_backend(),
+        )
 
         # --- DI 端口（agents.api.ports）由后端实现 ---
         self.persistence_port = PersistencePortImpl(self.task_repo)

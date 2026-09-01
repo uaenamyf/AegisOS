@@ -22,7 +22,8 @@ from pydantic import BaseModel
 from aegisos_agents.memory.memory_store import MemoryStore
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
 from backend.mocks.cyber_provider import _CyberMockProvider
-from protocol.cyber import AttackChain, ResponsePlan, ThreatIntel
+from data.api import GraphStoreAPI, create_graph_store
+from protocol.cyber import Asset, AttackChain, ResponsePlan, ThreatIntel
 
 
 def _asdict(obj):
@@ -47,15 +48,18 @@ class CyberDefenseService:
         self,
         orchestrator: CyberOrchestrator | None = None,
         memory: MemoryStore | None = None,
+        graph_store: GraphStoreAPI | None = None,
     ) -> None:
         """初始化攻防服务。
 
         Args:
             orchestrator: 编排器实例；None 时创建默认 Mock 模式实例。
             memory: 记忆存储；None 时创建临时 MemoryStore。
+            graph_store: 可选网络拓扑图存储后端。
         """
         self._orchestrator = orchestrator or CyberOrchestrator(mock=_CyberMockProvider())
         self._memory = memory or MemoryStore()
+        self._graph_store = graph_store or create_graph_store("in_memory")
         self._ranges: dict[str, dict[str, Any]] = {}
         self._intel_db = self._seed_intel_db()
 
@@ -77,6 +81,7 @@ class CyberDefenseService:
 
         range_id = f"range-{uuid.uuid4().hex[:8]}"
         topology = self._generate_topology(target_range)
+        self._persist_topology(target_range, topology)
 
         session = {
             "range_id": range_id,
@@ -272,6 +277,25 @@ class CyberDefenseService:
         return [_asdict(t) for t in self._intel_db]
 
     # ---- 内部辅助 ----
+
+    def _persist_topology(self, scope: str, topology: dict[str, Any]) -> None:
+        """将靶场拓扑投影为协议类型并写入图存储。"""
+        if self._graph_store is None:
+            return
+        assets = [
+            Asset(
+                asset_id=str(node["id"]),
+                host=str(node.get("host", "")),
+                os=str(node.get("os", "")),
+                services=[str(node["role"])] if node.get("role") else [],
+            )
+            for node in topology.get("nodes", [])
+        ]
+        links = [
+            (str(edge["src"]), str(edge.get("type", "internal")), str(edge["dst"]))
+            for edge in topology.get("edges", [])
+        ]
+        self._graph_store.save_topology(scope, assets, links)
 
     @staticmethod
     def _generate_topology(target_range: str) -> dict[str, Any]:

@@ -7,14 +7,14 @@ from __future__ import annotations
 import contextlib
 
 from aegisos_agents.api import EventBusAPI
-from protocol import Event, Graph
+from protocol import Event, Graph, GraphEdge, GraphNode
 
 
 class GraphService:
     """实现 ``backend.api.GraphAPI``，在内存中维护图缓存。
 
-    缓存通过 ``EventBusAPI.subscribe("graph.update", ...)`` 订阅事件刷新。
-    在 agents P5 阶段发出真实图差异之前，返回空的 ``Graph``。
+    缓存通过 ``EventBusAPI.subscribe("graph.update", ...)`` 订阅事件刷新，
+    将事件负载转换为协议层节点和边后应用增量变更。
 
     Attributes:
         _event_bus: 事件总线 API，用于订阅 graph.update 事件。
@@ -36,12 +36,32 @@ class GraphService:
         Args:
             event: 携带 GraphDiff payload 的事件对象。
         """
-        # 占位实现：待 agents 发出真实图差异后，将其应用到缓存图。
         payload = event.payload or {}
-        for node in payload.get("added_nodes", []):  # 新增节点
-            self._graph.add_node(node)
-        for edge in payload.get("added_edges", []):  # 新增边
-            self._graph.add_edge(edge)
+        for node in payload.get("added_nodes", []):
+            graph_node = node if isinstance(node, GraphNode) else GraphNode.model_validate(node)
+            self._graph.add_node(graph_node)
+
+        for node_id in payload.get("removed_nodes", []):
+            self._graph.nodes.pop(str(node_id), None)
+
+        for edge in payload.get("removed_edges", []):
+            removed = edge if isinstance(edge, GraphEdge) else GraphEdge.model_validate(edge)
+            self._graph.edges = [
+                current
+                for current in self._graph.edges
+                if not (current.src == removed.src and current.dst == removed.dst)
+            ]
+
+        for edge in payload.get("updated_edges", []):
+            updated = edge if isinstance(edge, GraphEdge) else GraphEdge.model_validate(edge)
+            self._graph.edges = [
+                updated if current.src == updated.src and current.dst == updated.dst else current
+                for current in self._graph.edges
+            ]
+
+        for edge in payload.get("added_edges", []):
+            graph_edge = edge if isinstance(edge, GraphEdge) else GraphEdge.model_validate(edge)
+            self._graph.add_edge(graph_edge)
 
     async def get_graph(self) -> Graph:
         """获取当前的图缓存。

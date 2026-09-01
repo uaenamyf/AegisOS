@@ -48,6 +48,39 @@ def test_list_nodes_accepts_ok(client):
     assert resp.status_code == 200
 
 
+def test_configure_nodes_updates_demo_runtime(client):
+    """配置接口应替换本地演示节点并反映新的模型和启用状态。"""
+    resp = client.post(
+        "/api/v1/infra/configure",
+        json={
+            "nodes": [
+                {
+                    "node_id": "device_local",
+                    "tier": "device",
+                    "base_url": "http://demo-device:11434",
+                    "provider": "ollama",
+                    "model_id": "demo-device-model",
+                    "capabilities": ["chat"],
+                    "enabled": True,
+                },
+                {
+                    "node_id": "edge_server_01",
+                    "tier": "edge",
+                    "base_url": "http://demo-edge:8900",
+                    "provider": "aegis_edge",
+                    "model_id": "demo-edge-model",
+                    "capabilities": ["chat", "reasoning"],
+                    "enabled": False,
+                },
+            ]
+        },
+    )
+    assert resp.status_code == 200
+    nodes = {node["node_id"]: node for node in resp.json()}
+    assert nodes["device_local"]["model_id"] == "demo-device-model"
+    assert nodes["edge_server_01"]["status"] == "offline"
+
+
 # ---- POST /api/v1/infra/dispatch ----
 
 

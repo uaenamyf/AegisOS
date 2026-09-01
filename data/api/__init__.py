@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from protocol.cyber import Asset
+from protocol.cyber import Asset, VulnFinding
 from protocol.memory import MemoryPacket
 
 
@@ -17,6 +17,22 @@ class DatasetAPI(Protocol):
     def load(self, name: str, version: str = "latest") -> Any: ...
     def list_datasets(self) -> list[Any]: ...
     def preprocess(self, name: str, config: dict[str, Any]) -> Any: ...
+
+
+# date: 2026-09-01
+# dev: ox-alpha
+# changelog: 新增 CVE 离线查询接口，供漏洞关联 Agent 和场景测试复用
+class CVEQueryAPI(Protocol):
+    """按资产清单查询本地 CVE 知识库。"""
+
+    def query_cves(self, assets: list[Asset]) -> list[VulnFinding]: ...
+
+
+def query_cves(assets: list[Asset]) -> list[VulnFinding]:
+    """查询内置 CVE 数据集，保持消费方只依赖 ``data.api``。"""
+    from data.datasets.cve.knowledge import query_cves as _query_cves
+
+    return _query_cves(assets)
 
 
 class ModelSchemaAPI(Protocol):

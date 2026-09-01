@@ -90,6 +90,23 @@ class TestRangeEndpoints:
         assert len(data["nodes"]) >= 1
         assert len(data["edges"]) >= 1
 
+    def test_start_range_persists_topology_in_graph_store(self, client: TestClient):
+        """启动靶场后，拓扑应可从组合根的 GraphStore 读取。"""
+        from backend.core.composition import get_composition
+
+        resp = client.post(
+            "/api/v1/range/start",
+            json={"target_range": "10.10.0.0/24"},
+            headers=_AUTH_HEADERS,
+        )
+        assert resp.status_code == 200
+
+        graph_store = get_composition().cyber_defense_service._graph_store
+        assert graph_store is not None
+        assets, links = graph_store.get_topology("10.10.0.0/24")
+        assert len(assets) == 3
+        assert len(links) == 2
+
 
 class TestAttackEndpoints:
     """红队攻击端点测试。"""

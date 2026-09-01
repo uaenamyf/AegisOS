@@ -51,6 +51,7 @@ class TaskEntity(Base):
         id: 任务唯一标识符（64 字符字符串）。
         session_id: 所属会话 ID，建立索引以加速按会话查询。
         goal: 任务目标描述文本。
+        payload: 任务执行输入数据，以 JSON 格式存储。
         status: 任务状态（pending/running/succeeded/failed 等）。
         plan: 任务执行计划，以 JSON 格式存储。
         result: 任务执行结果，以 JSON 格式存储。
@@ -63,6 +64,7 @@ class TaskEntity(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     goal: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     plan: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     result: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)

@@ -21,7 +21,9 @@ class TaskService:
         self._repo = repo
         self._runtime = runtime
 
-    async def create_task(self, goal: str, session_id: str) -> Task:
+    async def create_task(
+        self, goal: str, session_id: str, payload: dict[str, object] | None = None
+    ) -> Task:
         """创建并提交任务。
 
         将任务委托给 agents 运行时执行（当前为 mock），运行时可能就地修改
@@ -34,7 +36,7 @@ class TaskService:
         Returns:
             提交并持久化后的 ``Task`` 对象。
         """
-        task = Task(goal=goal)
+        task = Task(goal=goal, payload=payload or {})
         # 委托 agents 运行时执行任务（当前为 mock），运行时可能就地修改
         # task 的 status/plan，因此在提交之后再持久化。
         submitted = self._runtime.submit(task)

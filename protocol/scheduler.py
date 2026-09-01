@@ -87,6 +87,7 @@ class Task(BaseModel):
     Attributes:
         task_id: 任务唯一标识，自动生成 UUID hex。
         goal: 任务目标描述。
+        payload: 任务执行输入数据。
         plan: 执行计划详情。
         status: 当前任务状态，参见 TaskStatus。
         retry: 重试策略。
@@ -101,6 +102,7 @@ class Task(BaseModel):
 
     task_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     goal: str = ""
+    payload: dict[str, Any] = Field(default_factory=dict)
     plan: dict[str, Any] = Field(default_factory=dict)
     status: TaskStatus = TaskStatus.Pending
     retry: RetryPolicy = Field(default_factory=RetryPolicy)
