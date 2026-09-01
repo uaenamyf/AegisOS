@@ -1,0 +1,49 @@
+name: aegisos
+
+services:
+  backend:
+    build:
+      context: ../../../../
+      dockerfile: infrastructure/delivery/deployment/docker/Dockerfile.backend
+    environment:
+      AEGIS_ENV: prod
+      AEGIS_USE_MOCK: "true"
+      AEGIS_AUTH_DEFAULT_KEY: ${AEGIS_AUTH_DEFAULT_KEY:?set AEGIS_AUTH_DEFAULT_KEY}
+    expose:
+      - "8000"
+    networks:
+      - app
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../../../../
+      dockerfile: infrastructure/delivery/deployment/docker/Dockerfile.frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+networks:
+  app:
+    driver: bridge

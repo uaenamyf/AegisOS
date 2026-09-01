@@ -1,0 +1,89 @@
+name: aegisos-sandbox
+
+services:
+  target-web:
+    image: nginx:1.27-alpine
+    networks:
+      - range
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  target-db:
+    image: redis:7-alpine
+    networks:
+      - range
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  scanner:
+    image: instrumentisto/nmap:7.95
+    profiles: [tools]
+    networks:
+      - range
+    depends_on:
+      - target-web
+      - target-db
+    entrypoint: ["sleep", "infinity"]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  metasploit:
+    image: metasploitframework/metasploit-framework:latest
+    profiles: [tools]
+    networks:
+      - range
+    entrypoint: ["sleep", "infinity"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  zeek:
+    image: zeek/zeek:latest
+    profiles: [tools]
+    networks:
+      - range
+    entrypoint: ["sleep", "infinity"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  splunk:
+    image: splunk/splunk:latest
+    profiles: [tools]
+    networks:
+      - range
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:?set SPLUNK_PASSWORD for sandbox}
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+networks:
+  range:
+    name: aegisos-sandbox-range
+    internal: true
+    driver: bridge
