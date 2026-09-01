@@ -81,7 +81,11 @@ class NodeRegistry:
             node: 具有 health(timeout_s) -> bool 和 profile 属性的节点实例。
         """
         profile: NodeProfile = node.profile
-        entry = _NodeEntry(profile=profile, node=node, status="probe")
+        entry = _NodeEntry(
+            profile=profile,
+            node=node,
+            status="offline" if profile.enabled is False else "probe",
+        )
         with self._lock:
             self._entries[profile.node_id] = entry
 
