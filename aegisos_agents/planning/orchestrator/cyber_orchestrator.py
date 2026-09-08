@@ -40,10 +40,64 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
 from pydantic import BaseModel
+
+# R16（WarfareMaster 共享 state 事实源强约束 · 跨 agent 一致性）：
+# 真实 LLM 模式下 exploit_planner 的自由文本输出需要确定性修正，确保写回
+# state 的攻击链能被蓝队事件流与紫队检阅端一致消费。以下为离线映射表，
+# 均不调用 LLM。
+_CVE_TECH_ID_RE = re.compile(r"\b(CVE-\d{4}-\d{4,7})\b", re.IGNORECASE)
+
+# CVE → ATT&CK 技法编号（确定性，威胁情报本地库同源）。键统一为大写 CVE。
+ATTACK_TECH_BY_CVE: dict[str, str] = {
+    "CVE-2023-23397": "T1187",   # Outlook 日历 → NTLM 哈希窃取（凭据访问）
+    "CVE-2021-3156": "T1068",    # sudo 堆溢出提权（利用提权漏洞）
+    "CVE-2021-4034": "T1068",    # pkexec 提权
+    "CVE-2021-41773": "T1190",   # Apache 路径穿越（利用公网应用漏洞）
+    "CVE-2021-42013": "T1190",   # Apache 路径穿越 + RCE 变体
+    "CVE-2022-0543": "T1203",    # Redis Lua RCE
+    "CVE-2017-0144": "T1210",    # 永恒之蓝（利用远程服务漏洞）
+    "CVE-2019-0708": "T1210",    # 蓝屏 RDP
+    "CVE-2020-1472": "T1210",    # Zerologon
+    "CVE-2021-44228": "T1190",   # Log4Shell 初始访问
+    "CVE-2017-7494": "T1210",    # Samba RCE
+    "CVE-2014-0160": "T1555",    # Heartbleed → 凭据泄露（凭据访问）
+    "CVE-2015-7547": "T1068",    # glibc DNS 提权
+    "CVE-2018-15473": "T1110",   # OpenSSH 用户枚举 → 爆破
+    "CVE-2021-3449": "T1499",    # OpenSSL 拒绝服务
+    "CVE-2018-0171": "T1190",    # Smart Install 远程执行
+    "CVE-2022-0778": "T1499",    # OpenSSL 无限循环 DoS（端点拒绝服务）
+    "CVE-2021-26855": "T1190",    # Exchange SSRF（初始访问）
+    "CVE-2019-0211": "T1068",    # Apache 提权
+    "CVE-2016-6210": "T1110",    # OpenSSH 用户枚举 → 爆破
+    "CVE-2020-1350": "T1499",    # Windows DNS SIGRed 远程 DoS
+    "CVE-2019-15846": "T1190",   # Exim 远程命令执行
+    "CVE-2014-0160": "T1555",    # Heartbleed → 凭据泄露
+    "CVE-2021-44228": "T1190",   # Log4Shell 初始访问
+    "CVE-2020-1472": "T1210",    # Zerologon 提权/横向
+}
+
+# 关键词 → ATT&CK 技法编号（长描述启发式，按顺序匹配首个命中）。
+_TECH_BY_KEYWORD: list[tuple[str, str]] = [
+    ("brute", "T1110"),                # 凭据爆破
+    ("password spray", "T1110"),
+    ("ntlm", "T1187"),                 # NTLM 窃取/哈希
+    ("hash", "T1550"),                 # 哈希传递
+    ("pass-the-hash", "T1550.002"),
+    ("privilege escalation", "T1068"), # 提权
+    ("exploit", "T1210"),              # 漏洞利用
+    ("lateral movement", "T1021"),     # 横向移动
+    ("remote service", "T1021"),
+    ("phishing", "T1566"),             # 钓鱼
+    ("command", "T1059"),              # 命令执行
+    ("script", "T1059"),
+    ("credential", "T1110"),           # 凭据访问
+    ("execution", "T1203"),
+]
 
 # AP4: 复用规范层（action/）定义的红蓝紫 Agent 作为链上实例，单一事实来源，
 # 使 AP4 的 Ask 人机协同方法在运行时编排链路中直接生效（避免编排器内重复定义）。
@@ -466,6 +520,7 @@ class CyberOrchestrator(GoalMode[dict]):
         target_range: str,
         round: int | None = None,
         abort: Callable[[], bool] | None = None,
+        critique_feedback: str | None = None,
     ) -> dict[str, Any]:
         """执行红队攻击链：recon → vuln_correlator → exploit_planner。
 
@@ -474,18 +529,34 @@ class CyberOrchestrator(GoalMode[dict]):
         （第 N 轮才暴露新资产/新利用步骤），驱动多轮对抗收敛真实可演示。
         默认 round=None 完全保持旧行为，既有调用/测试零破坏。
 
+        R16（WarfareMaster 共享 state 事实源强约束）：新增可选
+        ``critique_feedback`` —— 由 run_drill 传入上一轮紫队 critique 的
+        issues 摘要，注入 exploit prompt 让红队按评审要求修正（消除
+        self-loop/技法重复/目标不一致等），实现"紫队反馈驱动红队演化"闭环；
+        同时 exploit 输出经资产命名归一化 + ATT&CK 技法编号兜底后写回 state，
+        保证蓝队事件流与紫队检阅端一致消费。
+
         R14：返回字典附加 ``agent_trace``——每个 agent 的输入 prompt 与结构化
         输出（用于 Auto Drill 运行记录报告，排查每个 agent 的输入输出）。
 
         Args:
             target_range: 目标网络范围，如 ``"10.0.0.0/24"``。
             round: 显式演练轮次（>=2 触发演化）；None 表示不演化。
+            abort: 可选中止回调。
+            critique_feedback: 上一轮紫队 critique 的 issues 摘要（None 不注入）。
 
         Returns:
             含 ``assets`` / ``findings`` / ``chain`` / ``agent_trace`` 的字典
             （值为 protocol dataclass）。
         """
         round_tag = f" [round={round}]" if round is not None and round >= 2 else ""
+        fb_tag = (
+            f"\n[上一轮紫队评审意见——请修正缺陷,但保留完整的攻击链路径]\n"
+            f"不要删减步骤或只保留初始访问;根据意见修正技法编号/消除自环/补齐横向移动与提权,"
+            f"输出一条从外部到最终目标 agent 资产的完整多步链。\n{critique_feedback}"
+            if critique_feedback
+            else ""
+        )
         trace: list[dict[str, Any]] = []
         if abort is not None and abort():
             raise DrillAborted()
@@ -495,11 +566,29 @@ class CyberOrchestrator(GoalMode[dict]):
         trace.append(self._trace_entry("recon", recon_prompt, recon_result))
         if abort is not None and abort():
             raise DrillAborted()
+        # R16（WarfareMaster 共享 state 单一事实源）：recon 是自由文本 LLM 输出，
+        # asset_id 在真实模式下不可靠（R2 直接拿 IP 当 ID、R3 幻觉 asset-006）。
+        # 因此由编排器统一分配稳定资产 ID（asset-001…按 host 去重排序），
+        # recon 的 asset_id 仅作参考、一律以编排器分配为准；host 才是资产事实锚点。
+        recon_raw = recon_result.assets[:8]
+        _host_order: list[str] = []
+        for a in recon_raw:
+            h = (a.host or "").strip()
+            if h and h not in _host_order:
+                _host_order.append(h)
+        _host_to_id = {h: f"asset-{i + 1:03d}" for i, h in enumerate(_host_order)}
+        _id_to_host = {v: k for k, v in _host_to_id.items()}
         assets = [
             Asset(
-                asset_id=a.asset_id, host=a.host, services=a.services, os=a.os, exposure=a.exposure
+                # 用编排器分配的稳定 ID 覆盖 LLM 自由生成的 asset_id（host 才是事实）
+                asset_id=_host_to_id[h],
+                host=h,
+                services=a.services,
+                os=a.os,
+                exposure=a.exposure,
             )
-            for a in recon_result.assets[:8]
+            for a, h in ((a, (a.host or "").strip()) for a in recon_raw)
+            if h in _host_to_id
         ]
 
         # 2) 漏洞关联
@@ -518,7 +607,8 @@ class CyberOrchestrator(GoalMode[dict]):
             VulnFinding(
                 finding_id=f.finding_id,
                 cve_id=f.cve_id,
-                asset_id=f.asset_id,
+                # asset_id 可能也是自由文本（IP/幻觉 ID），统一归一化到编排器分配的稳定 ID
+                asset_id=self._resolve_asset_id(f.asset_id, _host_to_id, _id_to_host),
                 cvss=f.cvss,
                 attack_surface=f.attack_surface,
             )
@@ -537,7 +627,7 @@ class CyberOrchestrator(GoalMode[dict]):
                 for f in findings
             ]
         )
-        exploit_prompt = f"Plan exploit chain for: {findings_desc}{round_tag}"
+        exploit_prompt = f"Plan exploit chain for: {findings_desc}{round_tag}{fb_tag}"
         exploit_result = self.exploit_planner._run(exploit_prompt)
         trace.append(self._trace_entry("exploit_planner", exploit_prompt, exploit_result))
         if abort is not None and abort():
@@ -549,7 +639,107 @@ class CyberOrchestrator(GoalMode[dict]):
             status=exploit_result.status,
         )
 
+        # WarfareMaster 共享 state 事实源强约束（跨 agent 一致性，R16）：
+        # exploit_planner 是自由文本 LLM 输出，from/to_asset 可能产出 host IP 而非
+        # asset_id、technique 可能是长描述而非 ATT&CK 编号 —— 若直接写入 state，
+        # _synthesize_event_stream 合成的蓝队事件流与紫队检阅的链路就会与
+        # recon 资产对上 / 对不上（reviewer 判 inconsistent 的真凶）。
+        # 因此在写回 state 前做两个确定性修正：
+        #   1) 资产命名归一：host → canonical asset_id；匹配不到的孤立步骤丢弃。
+        #   2) ATT&CK 技法编号补齐：长描述/CVE → 确定性 T1xxx（离线映射，不调 LLM）。
+        assets_by_host = {a.host.lower(): a.asset_id for a in assets}
+        assets_by_id = {a.asset_id: a.asset_id for a in assets}
+        # 兼容命名差异（real LLM 偶发 asset-2 vs asset-002 / asset_1）：数字指纹模糊匹配
+        def _id_match(token: str) -> str | None:
+            direct = _id_to_host.get(token)
+            if direct:
+                return token
+            m = re.search(r"(\d+)", token)
+            if m:
+                want = m.group(1).lstrip("0")
+                for aid in _id_to_host:
+                    am = re.search(r"(\d+)", aid)
+                    if am and am.group(1).lstrip("0") == want:
+                        return aid
+            return None
+        # 外部攻击起点（非资产）合法标识：from_asset 匹配不到资产时归一化为统一标记
+        _EXTERNAL_TOKENS = {"attacker", "attacker-controlled", "external", "internet", "public"}
+        normal_steps: list[AttackStep] = []
+        for s in chain.steps:
+            src = (s.from_asset or "").strip()
+            dst = (s.to_asset or "").strip()
+            src_norm = assets_by_host.get(src.lower()) or _id_match(src)
+            dst_norm = assets_by_host.get(dst.lower()) or _id_match(dst)
+            # 目标资产必须可解析 —— 否则该步骤无法进入蓝队事件流，丢弃
+            if not dst_norm:
+                continue
+            # 起点：匹配不到资产时，若是外部攻击者标识则归一化为 "external"，否则丢弃
+            if not src_norm:
+                if src.lower() not in _EXTERNAL_TOKENS:
+                    continue
+                src_norm = "external"
+            s.from_asset = src_norm
+            s.to_asset = dst_norm
+            s.technique = self._ensure_technique_id(s.technique)
+            normal_steps.append(s)
+        chain.steps = normal_steps
+
         return {"assets": assets, "findings": findings, "chain": chain, "agent_trace": trace}
+
+    @staticmethod
+    def _resolve_asset_id(
+        raw: str,
+        host_to_id: dict[str, str],
+        id_to_host: dict[str, str],
+    ) -> str:
+        """把自由文本资产引用归一化到编排器分配的稳定 asset_id。
+
+        - 已是稳定 ID（asset-001…）→ 原样返回。
+        - 是 host/IP（10.0.0.1…）→ 查 host_to_id 映射。
+        - 数字指纹模糊匹配（asset-2 / asset_2 → asset-002）。
+        - 均不匹配 → 返回原始值（由后续步骤级归一化丢弃孤立步骤）。
+        """
+        tok = (raw or "").strip()
+        if not tok:
+            return ""
+        if tok in id_to_host:
+            return tok
+        low = tok.lower()
+        if low in host_to_id:
+            return host_to_id[low]
+        m = re.search(r"(\d+)", tok)
+        if m:
+            want = m.group(1).lstrip("0")
+            for aid in id_to_host:
+                am = re.search(r"(\d+)", aid)
+                if am and am.group(1).lstrip("0") == want:
+                    return aid
+        return tok
+
+    @staticmethod
+    def _ensure_technique_id(technique: str) -> str:
+        """ATT&CK 技法编号兜底：真实 LLM 输出长描述/仅 CVE 时，映射到确定性 T 编号。
+
+        - 已是 ``T\\d+(?:.\\d+)?`` 形式 → 原样返回。
+        - 长描述里含 CVE 编号 → 查 CVE→T 映射表。
+        - 其余 → 按关键漏洞/攻击面关键词启发式映射（ATT&CK Enterprise 语义）。
+        """
+        t = technique.strip()
+        if re.match(r"^T\d+(?:\.\d+)?$", t):
+            return t
+        cve = _CVE_TECH_ID_RE.search(t)
+        if cve:
+            key = cve.group(1).upper()
+            mapped = ATTACK_TECH_BY_CVE.get(key)
+            if mapped:
+                return mapped
+        # 关键词启发式（黑名单/凭据/漏洞利用/横向移动等）
+        low = t.lower()
+        for pattern, tech in _TECH_BY_KEYWORD:
+            if pattern in low:
+                return tech
+        # 兜底：保留原文，但至少确保首字母规范（不会因缺编号被判无效）
+        return t
 
     @staticmethod
     def _trace_entry(agent: str, prompt: str, result: Any) -> dict[str, Any]:
@@ -2340,6 +2530,7 @@ class CyberOrchestrator(GoalMode[dict]):
         memory_trace: list[dict[str, Any]] = []
         prior_rounds_summary: str | None = None
         code = "running"
+        critique_feedback: str | None = None
 
         for r in range(1, max_rounds + 1):
             # 中止检查点 1：轮开始前——abort 后立即停止，不再启动新一轮
@@ -2352,6 +2543,7 @@ class CyberOrchestrator(GoalMode[dict]):
                     target_range,
                     round=r if r >= 2 else None,
                     abort=abort if callable(abort) else None,
+                    critique_feedback=critique_feedback,
                 )
             except DrillAborted:
                 code = "aborted"
@@ -2413,6 +2605,14 @@ class CyberOrchestrator(GoalMode[dict]):
                 break
             critique = purple["critique"]
             valid = bool(critique.get("valid"))
+            # R16：把本轮紫队 issues 摘要存为下一轮红队的反馈（驱动演化闭环；
+            # 只看反馈必要信息，控制 token，避免把全场历史都塞给 exploit）
+            if critique_feedback or (critique.get("issues") and not valid):
+                _issues = critique.get("issues") or []
+                _fb_lines = [f"- {i}" for i in _issues[:4]]
+                critique_feedback = (
+                    " ".join(_fb_lines)[:800] if _fb_lines else None
+                )
 
             should_abort = bool(abort() if callable(abort) else False)
             stop, code = self._evaluate_stop(
