@@ -136,7 +136,7 @@ export function DemoSettingsView() {
               <label><span>Model name</span><input value={node.modelName} onChange={(event) => update(tier, { modelName: event.target.value })} /></label>
               <label className="node-config__field--wide"><span>能力标签</span><input value={node.capabilities} onChange={(event) => update(tier, { capabilities: event.target.value })} /></label>
             </div>
-            {tier === "cloud" && (
+            {node.api === "openai_api" && (
               <div className="node-config__apikey">
                 <div className="node-config__apikey-head">
                   <span>OpenAI 兼容 API Key（DeepSeek / OpenAI）</span>
@@ -168,7 +168,7 @@ export function DemoSettingsView() {
           </article>;
         })}
       </div>
-      <div className="settings-note"><span className="settings-note__mark">i</span><p>在「03 云侧」卡片输入 API Key 并「同步到后端」，即写入 <code>tooling/configs/.env</code> 并即时生效；端/边暂不单独配置，统一走云 API。</p></div>
+      <div className="settings-note"><span className="settings-note__mark">i</span><p>任一层卡片选择 <code>OpenAI API</code> 时会出现 API Key 输入框；Key 全局共享，同步后写入 <code>tooling/configs/.env</code> 并即时生效。自部署 Ollama 走 URL 直连（<code>http://&lt;IP&gt;:11434/v1</code>），默认无需 Key。</p></div>
     </section>
   );
 }

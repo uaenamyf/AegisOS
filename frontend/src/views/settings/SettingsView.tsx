@@ -203,7 +203,7 @@ export function SettingsView() {
               </div>
 
               {/* 云侧节点：API Key 输入框（端/边暂不单独配置，统一走云 API） */}
-              {tier === "cloud" ? (
+              {node.provider === "openai_api" ? (
                 <div className="node-config__apikey">
                   <div className="node-config__apikey-head">
                     <span>OpenAI 兼容 API Key</span>
@@ -245,9 +245,9 @@ export function SettingsView() {
       <div className="settings-note">
         <span className="settings-note__mark">i</span>
         <p>
-          云侧节点卡片内固定提供 <code>API Key</code> 输入框（端/边暂不单独配置，
-          统一走云 API），输入后点「同步到后端」即写入 <code>tooling/configs/.env</code>
-          并即时生效，真实 LLM 模式直接可用。节点其余配置仅保存在当前浏览器，用于本地演示。
+          任一层卡片选择 <code>OpenAI API</code> 时会出现 <code>API Key</code> 输入框；Key 全局共享，
+          输入后点「同步到后端」即写入 <code>tooling/configs/.env</code> 并即时生效。自部署 Ollama
+          走 URL 直连（<code>http://&lt;IP&gt;:11434/v1</code>），默认无需 Key。节点其余配置仅保存在当前浏览器，用于本地演示。
         </p>
       </div>
     </section>
