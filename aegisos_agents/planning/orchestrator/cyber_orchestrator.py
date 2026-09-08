@@ -2604,10 +2604,12 @@ class CyberOrchestrator(GoalMode[dict]):
     ) -> tuple[bool, str]:
         """证据驱动收敛判定（R1 评审修订：不依赖恒真的 valid/consistent）。
 
-        任一条件满足即停止，按优先级：
+        任一条件满足即停止，按优先级（R18b 修订：真收敛优先于轮次上限）：
         1. 显式中止         → ``aborted``
-        2. 达到轮次上限 M    → ``max_rounds``
-        3. 本轮无新步骤且紫队 valid → ``converged``（多轮对抗后攻击链自洽）
+        2. 本轮无新步骤且紫队 valid → ``converged``（多轮对抗后攻击链自洽；
+           即使恰好发生在最后一轮也应报告收敛，不得被 max_rounds 掩盖——
+           "第 M 轮收敛"与"打满 M 轮未收敛"是两种完全不同的结论）
+        3. 达到轮次上限 M    → ``max_rounds``
         4. 连续 ≥2 轮无新步骤 → ``no_progress``（红队挖不出新证据，避免空转）
         其余继续。
 
@@ -2624,10 +2626,10 @@ class CyberOrchestrator(GoalMode[dict]):
         """
         if aborted:
             return True, "aborted"
-        if round >= max_rounds:
-            return True, "max_rounds"
         if not new_steps and purple_critique_valid:
             return True, "converged"
+        if round >= max_rounds:
+            return True, "max_rounds"
         if not new_steps and consecutive_no_new >= 2:
             return True, "no_progress"
         return False, "running"
