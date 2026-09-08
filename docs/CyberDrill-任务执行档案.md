@@ -49,7 +49,7 @@
 | **R2** | Service 层透出 `run_drill` + 演练记录持久化（`data/drills/`） | 核心 | R1 | e / 回放 | ✅ 已完成 |
 | **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ✅ 已完成 |
 | **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ✅ 已完成 |
-| **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ⬜ |
+| **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ✅ 已完成 |
 | **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ⬜ |
 | **R7** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R6 | a（重点加分） | ⬜ |
 | **R8** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R6 | b（技术分10） | 🔶 已修订 |
@@ -329,14 +329,14 @@
 - **风险与对策**：SSE 断线/重连 → 轮询兜底；多轮数据量大 → 时间线默认折叠详情、只展示摘要行。
 - **可延申点**：R7 总结报告加「跨轮记忆摘要」区；R9 轮次卡加执行位置徽标。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
-  - 改动文件清单：
-  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+  - 改动文件清单：`frontend/src/views/cyber/CyberDrillPanel.tsx`（新建：开始/停止 + SSE 轮次时间线 + 总结卡 + 断线轮询兜底）；`frontend/src/views/cyber/CyberView.tsx`（TABS 追加 Drill + 渲染分支）；`frontend/src/index.css`（drill 面板/轮次卡/徽标/总结样式）；`frontend/src/services/api/cyber.ts`（`openDrillStream` 加可选 `onError` 回调通道——SSE 断开后通知面板走 `getDrill` 轮询）；`frontend/src/views/cyber/__tests__/CyberDrillPanel.test.tsx`（新建 6 例）；`frontend/src/views/cyber/__tests__/cyber-views.test.tsx`（tab 断言 4→5 + cyberApi mock 补 drill 方法 + Drill tab 切换例）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：侧边栏 Cyber → 新增 `Drill` tab；面板一键「开始演练」→ `cyberApi.startDrill` → `openDrillStream` 订阅 SSE（EventSource + query api_key）→ 逐轮卡片实时追加（红 findings/new_steps、蓝 triaged/plan actions、紫 valid/issues/convergence_code，可展开）→ 收敛后总结卡（conclusion/code/rounds）；「停止」→ `abortDrill`；SSE 断开 → `onError` → `getDrill` 2s 轮询补拉；卸载时关流+停轮询
+  - 测试结果：新增 7 例（面板 6 + Drill tab 1）；全量前端 5 文件 39 passed（上轮 32 + 7）；`tsc -b` 通过；eslint 全清
+  - git commit：`fdce5a7`（`feat(cyber-drill): R5 前端 Drill 演练视图——开始/停止 + SSE 轮次时间线 + 总结报告`）
+  - 实测结果：单测覆盖开始→逐轮时间线→总结→停止→断线兜底全链路；修复一个真实闭包 bug——`handleStreamError` 在 `setDrillId` 前渲染创建、捕获旧 `drillId=null` 导致断线轮询永不触发，改用 `drillIdRef` 镜像解决（测试暴露）
+  - 遗留问题 / 下一步：进入 R6（端到端联调 + 全量回归 + 实测指南定稿）
 
 ---
 
@@ -518,5 +518,7 @@
 | 2026-09-04 | R2 | Service 层透出 drill + 演练记录持久化 `data/drills/`；全量 614 passed | `8276490` |
 | 2026-09-04 | R3 | drill 路由 REST+SSE 5 端点（to_thread 并发 + 事件队列）；全量 624 passed | `b09bb2e` |
 | 2026-09-04 | R4 | 前端 drill 类型 + cyberApi 客户端（SSE 订阅封装）；前端 vitest 32 passed、tsc -b 通过 | `9b4f2f0` |
+| 2026-09-04 | R5 | 前端 Drill 演练视图（开始/停止 + SSE 轮次时间线 + 总结报告）；前端 vitest 39 passed、tsc -b/eslint 通过 | `fdce5a7` |
+| | | | |
 | | | | |
 | | | | |
