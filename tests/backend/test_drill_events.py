@@ -93,16 +93,16 @@ class TestDrillRoundEventPublish:
         assert isinstance(payload["valid"], bool)
         assert isinstance(payload["converged"], bool)
 
-    def test_carry_forward_count_reflects_increment_only(self):
-        """carry_forward_count 统计本轮增量事件数（首轮为 0）。"""
+    def test_event_stream_same_source_as_chain(self):
+        """R18：事件流与本轮链同源（carry_forward_count 恒为 0）。"""
         bus = MockEventBusAPI()
         _make_runtime(bus)
         events = [e for e in bus.recent_events(1000) if e.topic == EventType.DrillRound.value]
         assert events
-        first = events[0].payload
-        assert first["carry_forward_count"] == 0  # 首轮全量，无 carry
-        # 后续轮次应出现 carry 增量
-        assert any(e.payload["carry_forward_count"] > 0 for e in events[1:])
+        # 新契约：蓝队告警与本轮攻击链同源，不再有跨轮 carry 事件
+        assert all(e.payload["carry_forward_count"] == 0 for e in events)
+        # 首轮事件流非空（与本轮链步骤数一致，可观测）
+        assert events[0].payload["new_steps"] >= 1
 
 
 @pytest.fixture()

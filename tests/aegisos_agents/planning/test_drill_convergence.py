@@ -49,8 +49,14 @@ def test_synthesize_event_stream_round1_full():
     assert {e["step_id"] for e in events} == {"step-1", "step-2"}
 
 
-def test_synthesize_event_stream_carry_incremental():
-    """后续轮：carry 上一轮（打标 True）+ 仅追加新增步骤（按 step_id 去重）。"""
+def test_synthesize_event_stream_incremental_only_current_round():
+    """R18：后续轮事件流仅含本轮链步骤，不跨轮 carry 旧事件。
+
+    真实 LLM 每轮重新编号 S-001..N 但内容全新，旧版 carry 会把上一轮旧事件
+    残留在本轮事件流里，导致蓝队告警与本轮攻击链不同源、紫队 reviewer 必然
+    判 inconsistent（drill-e7ada3a1 根因）。现契约：事件流恒为本轮全量、
+    carry_forward 恒为 False。
+    """
     prev = CyberOrchestrator._synthesize_event_stream(
         _chain(_step("step-1")), [], 1
     )
@@ -58,22 +64,20 @@ def test_synthesize_event_stream_carry_incremental():
         _chain(_step("step-1"), _step("step-2")), prev, 2
     )
     ids = {e["step_id"] for e in events}
-    assert "step-2" in ids
-    # carry 的事件数 = 上一轮 1 条，新增 1 条
-    carries = [e for e in events if e["carry_forward"]]
-    news = [e for e in events if not e["carry_forward"]]
-    assert len(carries) == 1 and len(news) == 1
+    assert ids == {"step-1", "step-2"}
+    assert all(not e["carry_forward"] for e in events)
+    assert all(e["round"] == 2 for e in events)
 
 
-def test_synthesize_event_stream_no_new_round():
-    """本轮无新步骤：仅 carry 上一轮（carry_forward=True），不新增事件。"""
+def test_synthesize_event_stream_repeat_round_still_full():
+    """R18：本轮链步骤与上轮相同也全量输出（事件流与本轮链严格同源）。"""
     prev = CyberOrchestrator._synthesize_event_stream(
         _chain(_step("step-1")), [], 1
     )
     events = CyberOrchestrator._synthesize_event_stream(_chain(_step("step-1")), prev, 2)
-    # 仅 carry 上一步骤，无新增
+    # 不再 carry：本轮链 1 步→1 事件，且不标 carry_forward
     assert len(events) == 1
-    assert events[0]["carry_forward"] is True
+    assert events[0]["carry_forward"] is False
     assert events[0]["step_id"] == "step-1"
 
 

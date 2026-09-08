@@ -75,10 +75,47 @@ ATTACK_TECH_BY_CVE: dict[str, str] = {
     "CVE-2019-0211": "T1068",    # Apache 提权
     "CVE-2016-6210": "T1110",    # OpenSSH 用户枚举 → 爆破
     "CVE-2020-1350": "T1499",    # Windows DNS SIGRed 远程 DoS
+    "CVE-2022-21907": "T1190",   # HTTP.sys RCE
+    "CVE-2011-3192": "T1499",    # Apache Range DoS
+    "CVE-2019-15642": "T1190",   # Cacti RCE
+    "CVE-2020-0796": "T1210",    # SMBGhost 远程 RCE
+    "CVE-2022-22965": "T1190",   # Spring4Shell RCE
+    "CVE-2020-15778": "T1190",   # Mongo Express RCE
+    "CVE-2020-1938": "T1210",    # AJP Ghostcat 文件读取/RCE
+    "CVE-2023-29491": "T1190",   # Langflow 代码执行
+    "CVE-2021-20316": "T1190",   # OpenStack 漏洞利用
     "CVE-2019-15846": "T1190",   # Exim 远程命令执行
-    "CVE-2014-0160": "T1555",    # Heartbleed → 凭据泄露
-    "CVE-2021-44228": "T1190",   # Log4Shell 初始访问
-    "CVE-2020-1472": "T1210",    # Zerologon 提权/横向
+    # ---- R18b：补全威胁情报种子库（_seed_intel_db）出现的全部 CVE ----
+    # 初始访问类：面向公网的应用/服务漏洞
+    "CVE-2008-4246": "T1190",    # IIS SVG 解析器远程执行
+    "CVE-2010-1429": "T1190",    # Novell iManager 路径穿越
+    "CVE-2017-5638": "T1190",    # Apache Struts Multipart OGNL
+    "CVE-2017-1000117": "T1190",  # Jenkins CLI 反序列化 RCE
+    "CVE-2017-1000410": "T1190",  # Jenkins CLI 反序列化 RCE
+    "CVE-2017-12615": "T1190",    # Tomcat PUT 上传 webshell
+    "CVE-2018-7600": "T1190",     # Drupalgeddon2 RCE
+    "CVE-2019-10149": "T1190",    # Exim 命令注入（MTA）
+    "CVE-2019-11510": "T1190",    # Pulse Secure VPN 任意文件读取
+    "CVE-2019-15107": "T1190",    # Webmin 远程执行
+    "CVE-2020-3452": "T1190",     # Cisco ASA/Firepower 任意文件读取
+    "CVE-2020-3580": "T1190",     # Cisco ASA XSS→命令注入
+    "CVE-2021-21972": "T1190",    # vCenter 任意文件上传 RCE
+    "CVE-2021-26084": "T1190",    # Confluence OGNL 注入 RCE
+    "CVE-2023-35332": "T1190",    # MoveIt Transplant 认证绕过上传
+    "CVE-2024-3400": "T1190",     # PAN-OS GlobalProtect 命令注入
+    "CVE-2024-3094": "T1190",     # XZ Utils 后门（受影响 SSH 服务）
+    # 远程服务漏洞利用类
+    "CVE-2017-0143": "T1210",     # SMB 家族（EternalRomance 同族）
+    "CVE-2017-0145": "T1210",     # SMB 家族
+    "CVE-2017-17215": "T1210",    # Huawei UPnP RCE
+    "CVE-2024-38063": "T1210",    # Windows TCP RCE
+    "CVE-2024-6387": "T1210",     # OpenSSH regreSSHion RCE
+    # 客户端执行 / 凭据与中间人 / 拒绝服务
+    "CVE-2021-22986": "T1203",    # curl SMB 协议注入（客户端执行）
+    "CVE-2016-2183": "T1557",     # SWEET32（TLS DES 会话信息泄露）
+    "CVE-2011-4862": "T1499",     # DoS 类
+    "CVE-2023-44487": "T1499",    # HTTP/2 Rapid Reset DoS
+    "CVE-2023-50387": "T1499",    # DNSSEC RRSIG DoS
 }
 
 # 关键词 → ATT&CK 技法编号（长描述启发式，按顺序匹配首个命中）。
@@ -665,6 +702,7 @@ class CyberOrchestrator(GoalMode[dict]):
         # 外部攻击起点（非资产）合法标识：from_asset 匹配不到资产时归一化为统一标记
         _EXTERNAL_TOKENS = {"attacker", "attacker-controlled", "external", "internet", "public"}
         normal_steps: list[AttackStep] = []
+        used_cves: set[str] = set()
         for s in chain.steps:
             src = (s.from_asset or "").strip()
             dst = (s.to_asset or "").strip()
@@ -681,8 +719,15 @@ class CyberOrchestrator(GoalMode[dict]):
             s.from_asset = src_norm
             s.to_asset = dst_norm
             s.technique = self._ensure_technique_id(s.technique)
+            # R18：技法纯编号时补 CVE 证据（紫队要求每步有漏洞/凭据论证），
+            # 全链 CVE 不复用（used_cves 记账）
+            s.technique = self._step_evidence(findings, s, used_cves)
             normal_steps.append(s)
         chain.steps = normal_steps
+        # R18：字段自洽确定性修正——全部步骤 success=true 但 status 仍 planned 时，
+        # 改为 completed（紫队挑"全成功却计划中"矛盾；prompt 第 3 条的硬保险）
+        if chain.steps and all(s.success for s in chain.steps) and chain.status == "planned":
+            chain.status = "completed"
 
         return {"assets": assets, "findings": findings, "chain": chain, "agent_trace": trace}
 
@@ -745,6 +790,73 @@ class CyberOrchestrator(GoalMode[dict]):
                 return tech
         # 兜底：保留原文，但至少确保首字母规范（不会因缺编号被判无效）
         return t
+
+    @staticmethod
+    def _step_evidence(
+        findings: list[VulnFinding], step: AttackStep, used_cves: set[str]
+    ) -> str:
+        """把 technique 字段规范化为 "<Txxxxx> (<CVE> on <资产>)" 落地格式。
+
+        R18b：deepseek 频繁违反 prompt 契约——只给纯编号（缺证据）、幻觉
+        findings 之外的 CVE、CVE 与编号语义不匹配，都会招紫队批评。这里做
+        确定性规范化：
+        - 证据 CVE 只认 findings 里的真实漏洞，且全链不复用（used_cves 记账）；
+        - CVE→技法映射存在时以 CVE 反推编号（保证 "编号 vs CVE" 语义一致，
+          紫队不再挑矛盾）；模型自述编号次之，关键词启发再次，T1210 通用兜底；
+        - 模型自带证据但 CVE 是幻觉的 → 换成落地 CVE。
+        """
+        tech = (step.technique or "").strip()
+        to_a = (step.to_asset or "").strip()
+        cve_set = {
+            (f.cve_id or "").strip().upper() for f in findings if (f.cve_id or "").strip()
+        }
+        # 模型自述的开头 T 编号（若有）
+        t_own = re.match(r"^(T\d+(?:\.\d+)?)\b", tech)
+        # 模型自述的、且在 findings 中落地、且未被前面步骤占用的 CVE
+        cve = next(
+            (
+                c.upper()
+                for c in re.findall(r"CVE-\d{4}-\d{4,7}", tech, re.IGNORECASE)
+                if c.upper() in cve_set and c.upper() not in used_cves
+            ),
+            "",
+        )
+        if not cve:
+            tl = to_a.lower()
+            cve = next(
+                (
+                    f.cve_id.upper()
+                    for f in findings
+                    if (f.cve_id or "").strip()
+                    and (f.asset_id or "").strip().lower() == tl
+                    and f.cve_id.upper() not in used_cves
+                ),
+                "",
+            ) or next(
+                (
+                    f.cve_id.upper()
+                    for f in findings
+                    if (f.cve_id or "").strip() and f.cve_id.upper() not in used_cves
+                ),
+                "",
+            )
+        if cve:
+            used_cves.add(cve)
+        # 编号：CVE 反推优先（语义一致硬保证）→ 模型自述编号 → 关键词 → 通用
+        mapped = ATTACK_TECH_BY_CVE.get(cve) if cve else None
+        tc = mapped or (t_own.group(1) if t_own else "")
+        if not tc:
+            for pattern, tech_id in _TECH_BY_KEYWORD:
+                if pattern in tech.lower():
+                    tc = tech_id
+                    break
+        if not tc and cve:
+            tc = "T1210"
+        if tc and cve:
+            return f"{tc} ({cve} on {to_a})" if to_a else f"{tc} ({cve})"
+        if tc:
+            return tc
+        return tech
 
     @staticmethod
     def _trace_entry(agent: str, prompt: str, result: Any) -> dict[str, Any]:
@@ -1035,8 +1147,14 @@ class CyberOrchestrator(GoalMode[dict]):
         round: int | None = None,
         prior_rounds_summary: str | None = None,
         abort: Callable[[], bool] | None = None,
+        assets: list[Asset] | None = None,
     ) -> dict[str, Any]:
         """执行紫队校验：critic 校验攻击链 + reviewer 跨产出一致性审查。
+
+        R18b：新增可选 ``assets``——把侦察得到的资产清单（host/os/services/
+        exposure）作为共享事实注入 critic 与 reviewer 的 prompt。之前紫队拿不到
+        资产属性，只能臆测"asset-001 未标明是否为 Linux"而反复判不合格；现
+        以编排器 state 的资产事实为准绳，critic 可据实校验 CVE 与资产类型是否自洽。
 
         R1/R1.5：新增可选 ``round`` 参数——显式传入时 critic 的 prompt 注入
         ``[round=N]`` 触发 mock 按轮演化（round=1 判缺口 valid=False，>=2 补齐
@@ -1067,7 +1185,7 @@ class CyberOrchestrator(GoalMode[dict]):
             if prior_rounds_summary
             else ""
         )
-        critique_prompt = f"Critique: {json.dumps(chain.to_dict())}{round_tag}{prior_tag}"
+        critique_prompt = f"Critique: {json.dumps(chain.to_dict())}{round_tag}{prior_tag}{self._assets_tag(assets)}"
         critique_result = self.critic._run(critique_prompt)
         trace.append(self._trace_entry("critic", critique_prompt, critique_result))
         critique = critique_result.model_dump()
@@ -1079,6 +1197,17 @@ class CyberOrchestrator(GoalMode[dict]):
             "alerts": [_asdict(a) for a in alerts],
             "prior_rounds_summary": prior_rounds_summary,
         }
+        if assets:
+            artifacts["assets_context"] = [
+                {
+                    "asset_id": a.asset_id,
+                    "host": a.host,
+                    "os": a.os,
+                    "services": a.services,
+                    "exposure": a.exposure,
+                }
+                for a in assets
+            ]
         review_prompt = f"Review consistency: {json.dumps(artifacts, default=str)}"
         review_result = self.reviewer._run(review_prompt)
         trace.append(self._trace_entry("reviewer", review_prompt, review_result))
@@ -1087,6 +1216,18 @@ class CyberOrchestrator(GoalMode[dict]):
         review = review_result.model_dump()
 
         return {"critique": critique, "review": review, "agent_trace": trace}
+
+    @staticmethod
+    def _assets_tag(assets: list[Asset] | None) -> str:
+        """资产清单事实源片段（R18b）：供紫队据实校验 CVE×资产类型。"""
+        if not assets:
+            return ""
+        rows = "; ".join(
+            f"{a.asset_id}(os={a.os or 'unknown'}, exposure={a.exposure or 'unknown'}, "
+            f"services={','.join(a.services) if a.services else 'none'})"
+            for a in assets
+        )
+        return f"\n[assets context — ground truth for OS/exposure checks] {rows}"
 
     # ==================================================================
     # AP4: 带人机协同（Ask 范式）的攻防编排方法
@@ -2396,31 +2537,25 @@ class CyberOrchestrator(GoalMode[dict]):
     ) -> list[dict[str, Any]]:
         """跨轮事件合成：把红队攻击链步骤翻译为蓝队可消费的"事件流"。
 
-        R1：首轮（round==1 或 prev 为空）将本轮全部步骤映射为事件；
-        后续轮则 carry 上一轮全部事件（carry_forward=True 打标，保证蓝队有
-        完整上下文记忆），再追加本轮新出现的步骤（按 step_id 去重）。
-        始终返回 ``list[dict]``，与既有 :meth:`run_blue_chain` 契约兼容。
+        R18（真实模型修复）：
+        1. 去重键从 step_id 改为步骤内容指纹（from,to,technique）——真实 LLM
+           每轮重新编号 S-001..N 但内容全新，按 step_id 去重会把新链误判为
+           "无新增"（假 no_progress 收敛）。mock 链内容稳定，两种键行为一致。
+        2. 事件流不再跨轮 carry 旧事件：蓝队告警必须与本轮攻击链同源，
+           否则紫队 reviewer 拿旧事件告警对比新链必然判不一致（drill-e7ada3a1
+           的 R2-R5 consistent=False 根因）。跨轮上下文已由 R8 记忆摘要与
+           critique_feedback 承载，无需旧事件。
 
         Args:
             chain: 本轮红队攻击链。
-            prev_event_stream: 上一轮合成的事件流；空表示首轮。
+            prev_event_stream: 上一轮合成的事件流（R18 起不再 carry，仅保持签名兼容）。
             round: 当前演练轮次。
 
         Returns:
-            事件流列表。
+            事件流列表（仅本轮链步骤）。
         """
-        known_step_ids = {
-            ev.get("step_id") for ev in prev_event_stream if ev.get("step_id")
-        }
         events: list[dict[str, Any]] = []
-        # 首个非空轮次：全量映射；否则 carry 上一轮（打标保留上下文）
-        if prev_event_stream:
-            events = [
-                {**ev, "carry_forward": True} for ev in prev_event_stream
-            ]
         for i, step in enumerate(chain.steps):
-            if step.step_id in known_step_ids:
-                continue
             events.append(
                 {
                     "round": round,
@@ -2437,12 +2572,25 @@ class CyberOrchestrator(GoalMode[dict]):
         return events
 
     @staticmethod
+    def _step_fingerprint(step: AttackStep) -> tuple:
+        """步骤内容指纹（R18）：真实 LLM 每轮重新编号 step_id，内容才是事实。"""
+        return (
+            (step.from_asset or "").strip().lower(),
+            (step.to_asset or "").strip().lower(),
+            (step.technique or "").strip().lower(),
+        )
+
+    @classmethod
     def _diff_chain_steps(
-        prev_chain: AttackChain | None, new_chain: AttackChain
+        cls, prev_chain: AttackChain | None, new_chain: AttackChain
     ) -> list[AttackStep]:
-        """对比上一轮与本轮，返回本轮新增的步骤（按 step_id 去重）。"""
-        prev_ids = {s.step_id for s in prev_chain.steps} if prev_chain else set()
-        return [s for s in new_chain.steps if s.step_id not in prev_ids]
+        """对比上一轮与本轮，返回本轮新增的步骤（R18：按步骤内容指纹去重）。
+
+        真实 LLM 每轮输出相同的 step_id（S-001..N）但内容全新，旧版按 step_id
+        去重会把全新链误判为"无新增"；mock 链内容稳定，两种键行为一致。
+        """
+        prev_fps = {cls._step_fingerprint(s) for s in prev_chain.steps} if prev_chain else set()
+        return [s for s in new_chain.steps if cls._step_fingerprint(s) not in prev_fps]
 
     @classmethod
     def _evaluate_stop(
@@ -2604,6 +2752,7 @@ class CyberOrchestrator(GoalMode[dict]):
                     round=r,
                     prior_rounds_summary=prior_rounds_summary,
                     abort=abort if callable(abort) else None,
+                    assets=red.get("assets"),
                 )
             except DrillAborted:
                 code = "aborted"

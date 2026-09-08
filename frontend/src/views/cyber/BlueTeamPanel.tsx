@@ -221,8 +221,8 @@ export function BlueTeamPanel() {
   const detectTechs = [...new Set(alerts.map((a) => a.technique).filter(Boolean))];
   // T18：技法可能是 "T1190 (CVE-2021-26855) — 证据" 混合格式，提取纯 T 编号对齐后再比，
   // 否则红队带证据文本 / 蓝队纯编号的精确匹配会误判覆盖率偏低。
-  const techId = (t: string) => {
-    const m = /^(T\d+(?:\.\d+)?)/.exec(t);
+  const techId = (t: any) => {
+    const m = /^(T\d+(?:\.\d+)?)/.exec(String(t));
     return m ? m[1] : t;
   };
   const attackTechIds = [...new Set(attackTechs.map(techId))];
