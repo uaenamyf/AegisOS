@@ -20,6 +20,7 @@ from fastapi import Depends
 # changelog: 导入 MemoryStore（v2 记忆系统，含 7 个新模块）
 from aegisos_agents.memory.memory_store import MemoryStore
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
+from backend.core import runtime_mode
 from backend.mocks import (
     MockAgentRegistry,
     MockEventBusAPI,
@@ -101,8 +102,8 @@ class Composition:
         self.execution_api = MockExecutionAPI()
         self.event_bus = MockEventBusAPI()
 
-        # R4.7: 创建共享 CyberOrchestrator（Mock / 真实模式自动切换）
-        self.orchestrator = self._create_orchestrator()
+        # R4.7/R7: 共享 CyberOrchestrator 走运行时模式缓存（mock/real 可切换）
+        self.orchestrator = runtime_mode.get_orchestrator()
 
         # MockRuntime 注入共享 orchestrator，避免创建重复实例
         self.runtime = MockRuntime(orchestrator=self.orchestrator)
@@ -113,9 +114,9 @@ class Composition:
         self.agent_service = AgentService(self.agent_registry, self.runtime)
         self.memory_service = MemoryService(self.memory_api)
         self.graph_service = GraphService(self.event_bus)
-        # R4.7: CyberDefenseService 注入共享 orchestrator
+        # R4.7/R7: CyberDefenseService 动态跟随运行时模式（不传固定 orchestrator，
+        # 由 service 每次调用经 runtime_mode.get_orchestrator() 解析）。
         self.cyber_defense_service = CyberDefenseService(
-            orchestrator=self.orchestrator,
             graph_store=self._build_graph_backend(),
         )
 

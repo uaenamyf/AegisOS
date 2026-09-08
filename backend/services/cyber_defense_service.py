@@ -24,7 +24,7 @@ from pydantic import BaseModel
 
 from aegisos_agents.memory.memory_store import MemoryStore
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
-from backend.mocks.cyber_provider import _CyberMockProvider
+from backend.core import runtime_mode
 from data.api import GraphStoreAPI, create_graph_store
 from protocol.cyber import Asset, AttackChain, ResponsePlan, ThreatIntel
 
@@ -56,16 +56,24 @@ class CyberDefenseService:
         """初始化攻防服务。
 
         Args:
-            orchestrator: 编排器实例；None 时创建默认 Mock 模式实例。
+            orchestrator: 显式编排器实例；None 时每次调用动态跟随
+                :func:`runtime_mode.get_orchestrator`（mock/real 可随时切换）。
             memory: 记忆存储；None 时创建临时 MemoryStore。
             graph_store: 可选网络拓扑图存储后端。
         """
-        self._orchestrator = orchestrator or CyberOrchestrator(mock=_CyberMockProvider())
+        # R7: 显式注入优先（测试传 mock 编排器）；否则存 None，
+        # 由 _orchestrator 属性按当前运行时模式动态获取。
+        self._explicit_orchestrator = orchestrator
         self._memory = memory or MemoryStore()
         self._graph_store = graph_store or create_graph_store("in_memory")
         self._ranges: dict[str, dict[str, Any]] = {}
         self._intel_db = self._seed_intel_db()
         self._drill_dir = Path(__file__).resolve().parent.parent.parent / "data" / "drills"
+
+    @property
+    def _orchestrator(self):
+        """当前编排器：显式注入优先，否则按运行时模式动态获取。"""
+        return self._explicit_orchestrator or runtime_mode.get_orchestrator()
 
     # ---- 靶场管理 ----
 

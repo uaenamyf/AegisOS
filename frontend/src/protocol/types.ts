@@ -283,8 +283,19 @@ export interface PurpleReviewResponse {
 // date: 2026-09-04 dev: AegisOS Dev
 // changelog: R4 新增 drill 类型——与 backend/routers/drill.py 契约严格对齐（事件名锚点）
 
-export type DrillStatus = "running" | "done" | "aborted";
+// ---- 运行时模式（R7：mock / 真实 LLM 切换）----
+// date: 2026-09-04 dev: AegisOS Dev
+// changelog: R7 新增——与 backend/routers/system.py 契约对齐
 
+export type RuntimeMode = "mock" | "real";
+
+export interface SystemModeInfo {
+  mode: RuntimeMode;
+  model: string;
+  provider: string;
+  has_key: boolean;
+  available: RuntimeMode[];
+}
 export interface StartDrillRequest {
   target_range?: string;
   max_rounds?: number;

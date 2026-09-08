@@ -2,10 +2,12 @@
 // dev: Claude Code (glm-5.2)
 // changelog: 新建 views/cyber/CyberView.tsx，攻防演练主视图（红/蓝/紫面板 + 威胁情报）
 // changelog: 2026-09-04 R5 追加 Drill tab（多轮攻防演练面板）
+// changelog: 2026-09-04 R7 头部加运行时模式徽标（mock/真实 LLM 切换）
 
 import { useState, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
+import { LlmModeBadge } from "./LlmModeBadge";
 import { CyberDrillPanel } from "./CyberDrillPanel";
 import { RedTeamPanel } from "./RedTeamPanel";
 import { BlueTeamPanel } from "./BlueTeamPanel";
@@ -50,6 +52,7 @@ export function CyberView() {
     <section className="view cyber-view">
       <header className="view__header">
         <h2 className="view__title">Cyber Defense Operations</h2>
+        <LlmModeBadge />
         <p className="view__desc">
           Red→Blue→Purple team orchestration with ATT&CK threat intelligence.
           Start a range session, execute attack/defense chains, and review

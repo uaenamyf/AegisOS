@@ -2,6 +2,8 @@
 // dev: Claude Code (glm-5.2)
 // changelog: 新建 G6 cyber 视图组件渲染测试（mock store + render 断言）
 // changelog: 2026-09-04 R5 追加 Drill tab 断言 + cyberApi drill mock
+// changelog: 2026-09-04 R7 补 systemApi mock（LlmModeBadge 挂载即请求 /system/mode）
+// changelog: 2026-09-04 R7 补 systemApi mock（LlmModeBadge 挂载即请求 /system/mode）
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -24,6 +26,22 @@ vi.mock("@/services/api/cyber", () => ({
     getDrillSummary: vi.fn(),
     abortDrill: vi.fn(),
     openDrillStream: vi.fn(),
+  },
+}));
+
+// Mock systemApi so LlmModeBadge doesn't hit the network on mount
+vi.mock("@/services/api/system", () => ({
+  systemApi: {
+    getMode: vi.fn(),
+    setMode: vi.fn(),
+  },
+}));
+
+// Mock systemApi so LlmModeBadge doesn't hit the network on mount
+vi.mock("@/services/api/system", () => ({
+  systemApi: {
+    getMode: vi.fn(),
+    setMode: vi.fn(),
   },
 }));
 
