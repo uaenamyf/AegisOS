@@ -48,7 +48,7 @@
 | **R1.5** | Mock Provider 按轮演化升级（让多轮收敛真实可演示） | 核心 | R0 | a / d（前置） | ✅ 已完成 |
 | **R2** | Service 层透出 `run_drill` + 演练记录持久化（`data/drills/`） | 核心 | R1 | e / 回放 | ✅ 已完成 |
 | **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ✅ 已完成 |
-| **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ⬜ |
+| **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ✅ 已完成 |
 | **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ⬜ |
 | **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ⬜ |
 | **R7** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R6 | a（重点加分） | ⬜ |
@@ -282,14 +282,14 @@
 - **风险与对策**：SSE 事件名拼写不一致 → 以 R3 后端契约为唯一事实源，前端类型注解加注释锚点。
 - **可延申点**：R8 后可在 Monitor 视图复用同一订阅封装。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
-  - 改动文件清单：
-  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+  - 改动文件清单：`frontend/src/protocol/types.ts`（新增 drill 类型族：StartDrillRequest/Response、DrillRound/Record、DrillSummaryResponse、DrillEventName/Event）；`frontend/src/services/api/cyber.ts`（新增 startDrill/getDrill/getDrillSummary/abortDrill/openDrillStream）；`frontend/src/services/api/__tests__/cyber.drill.test.ts`（新建，8 例）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：类型与 API 方法在 `@/protocol/types` 与 `@/services/api/cyber`；openDrillStream 用 EventSource 连 `/api/v1/drill/{id}/stream?api_key=…`（EventSource 无法带 Header，走后端 Query 兜底鉴权），按 `event:` 名分发 5 类事件，返回关闭函数；UI 尚不可见（R5 视图消费）
+  - 测试结果：vitest 新增 8 例全绿（mock apiClient 断言路径/编码 + mock EventSource 断言 URL、事件分发、畸形载荷忽略、close）；全量前端 4 文件 32 tests 全过；`tsc -b` 类型检查通过（`tsc --noEmit` 与 composite 项目冲突 TS6305，改用 build 模式验证）
+  - git commit：`9b4f2f0`（`feat(cyber-drill): R4 前端 drill 类型 + cyberApi 客户端（SSE 订阅封装）`）
+  - 实测结果：`npm test` 全绿（32 passed）；`npx tsc -b` exit 0；R5 可直接 `cyberApi.startDrill()` 起演练、`openDrillStream()` 收战报
+  - 遗留问题 / 下一步：进入 R5（前端 Drill 演练视图：开始/停止 + 轮次时间线 + 总结报告）
 
 ---
 
@@ -517,4 +517,6 @@
 | 2026-09-04 | R1 | 收敛式演练内核 `run_drill` + 证据驱动收敛 + 跨轮事件合成；全量 608 passed | `58e8a43` |
 | 2026-09-04 | R2 | Service 层透出 drill + 演练记录持久化 `data/drills/`；全量 614 passed | `8276490` |
 | 2026-09-04 | R3 | drill 路由 REST+SSE 5 端点（to_thread 并发 + 事件队列）；全量 624 passed | `b09bb2e` |
+| 2026-09-04 | R4 | 前端 drill 类型 + cyberApi 客户端（SSE 订阅封装）；前端 vitest 32 passed、tsc -b 通过 | `9b4f2f0` |
+| | | | |
 | | | | |
