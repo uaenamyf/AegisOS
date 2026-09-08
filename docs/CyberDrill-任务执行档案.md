@@ -44,8 +44,8 @@
 | 轮次 | 任务 | 阶段 | 依赖 | 比赛维度 | 状态 |
 |---|---|---|---|---|---|
 | **R0** | git 仓库初始化 + 本档案建档 + 全量初始提交 | 基线 | — | 工程保障 | ✅ 本轮完成 |
-| **R1** | 编排器收敛式演练内核（`run_drill` + **证据化**事件合成/收敛纯函数，红队带轮次上下文可选） | 核心 | **R1.5** → R0 | a / 完整性40 / 技术20 / 效率15 | 🔶 已修订待开工 |
-| **R1.5** | Mock Provider 按轮演化升级（让多轮收敛真实可演示） | 核心 | R0 | a / d（前置） | 🔶 新增 |
+| **R1** | 编排器收敛式演练内核（`run_drill` + **证据化**事件合成/收敛纯函数，红队带轮次上下文可选） | 核心 | **R1.5** → R0 | a / 完整性40 / 技术20 / 效率15 | ✅ 已完成 |
+| **R1.5** | Mock Provider 按轮演化升级（让多轮收敛真实可演示） | 核心 | R0 | a / d（前置） | ✅ 已完成 |
 | **R2** | Service 层透出 `run_drill` + 演练记录持久化（`data/drills/`） | 核心 | R1 | e / 回放 | ⬜ |
 | **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ⬜ |
 | **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ⬜ |
@@ -148,14 +148,14 @@
 - **风险与对策**：真实 LLM 下每轮结果天然变化大，收敛判定必须有上限兜底（规则 3）；mock 非演化时断言会退化 → 收敛测试必须挂在 R1.5 的演化 mock 上，并保留一例「非演化 mock → 规则 3 兜底 max_rounds」作回归。
 - **可延申点**：R7 在循环内注入记忆摘要；R9 在每阶段标注 placement。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
-  - 改动文件清单：
-  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+  - 改动文件清单：`aegisos_agents/planning/orchestrator/cyber_orchestrator.py`（新增 `run_drill` + `_synthesize_event_stream`/`_diff_chain_steps`/`_evaluate_stop` 纯函数；`run_red_chain` 增可选 `round`、`run_purple_review` 增可选 `round`）；`tests/aegisos_agents/planning/test_drill_convergence.py`（新建，9 例）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：后端编排层新增 `CyberOrchestrator.run_drill(...)`——整个多轮演练的总循环，后续被 R2 `CyberDefenseService` 包装、被 R3 drill 路由调用推 SSE；前端目前尚不可见（R5 才做 Drill tab）；`run_red_chain`/`run_purple_review` 新增可选 `round` 参数，只在 run_drill 内显式传入时注入 `[round=N]` 触发 mock 演化，默认 `None` 保持旧签名，既有调用零破坏
+  - 测试结果：新增 9 例全绿；全量 `608 passed`（基线 594 + 14 新增）；既有 `tests/e2e/test_scenario1.py` 与 `tests/aegisos_agents/planning/` 全部 130 例不破；ruff 全清
+  - git commit：`58e8a43`（`feat(cyber-drill): R1 收敛式演练内核 run_drill——证据驱动收敛与跨轮事件合成`）
+  - 实测结果：REPL `run_drill("10.0.0.0/24")` 返回 `rounds_executed=3`、`convergence_code="converged"`（R1：1步/valid=False/1缺口 → R2：2步(新step-2)/valid=True → R3：0新增/valid=True 收敛），多轮对抗→补齐→收敛叙事真实可演示
+  - 遗留问题 / 下一步：进入 R2（Service 层包装 + 演练记录持久化），沿用本轮 `on_round` 回调喂 SSE；`prev_context`（R7 记忆注入）已预留，本轮先不加
 
 ---
 
@@ -176,14 +176,14 @@
 - **风险与对策**：改 mock 影响面广 → 严格保证「无 round 上下文→旧行为」的兼容分支；演化表显式、可预期（单测断言 asset 数递增）。
 - **可延申点**：真实 LLM 模式自动获得「逐轮演化」能力（无需 mock）；可为演示版提供可调演化步长。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
-  - 改动文件清单：
-  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+  - 改动文件清单：`backend/mocks/cyber_provider.py`（新增 `_round_from_prompt` + `_evolve_recon`/`_evolve_exploit`/`_evolve_critic`，`complete()` 按 prompt 前缀分发轮次演化）；`tests/backend/test_cyber_provider_evolution.py`（新建，5 例）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：仅后端 mock 层；既有 `POST /api/v1/attack` 等端点经 `CyberDefenseService` 默认 `_CyberMockProvider()` 无 `[round]` 标记 → 完全回退旧静态响应（前端表现不变）；演化仅在 `run_drill` 显式传轮次时触发，为多轮收敛演示提供逐轮新证据
+  - 测试结果：新增 5 例全绿；全量 `608 passed`；既有 `test_scenario1.py`、`test_cyber_endpoints.py`（含 `CyberDefenseService` 默认实例）不破；ruff 全清
+  - git commit：`debf047`（`feat(cyber-drill): R1.5 攻防 mock 按轮演化——多轮收敛演练可真实演示`）
+  - 实测结果：`pytest tests/backend/test_cyber_provider_evolution.py` 5 例通过；无 round 时 recon 仍 2 资产、critic 仍 valid=True（兼容分支生效）
+  - 遗留问题 / 下一步：与 R1 一并交付；真实 LLM 模式天然获得逐轮演化能力，无需 mock
 
 ---
 
@@ -511,5 +511,7 @@
 | 日期 | 轮次 | 变更 | commit |
 |---|---|---|---|
 | 2026-09-04 | R0 | 建档：任务切分 R0-R10 + 每轮设计档案/开工前报告模板 + git 约定 + 仓库初始化 | `7c3b690` |
-| 2026-09-04 | 修订 | 评审修订：①新增 R1.5 mock 按轮演化；②R1 收敛改证据驱动；③R3 并发改 asyncio.to_thread；④R8 复用既有 EventBus；⑤补齐 R2 行 | （本轮文档修订，随 R1.5 合并提交） |
+| 2026-09-04 | 修订 | 评审修订：①新增 R1.5 mock 按轮演化；②R1 收敛改证据驱动；③R3 并发改 asyncio.to_thread；④R8 复用既有 EventBus；⑤补齐 R2 行 | `9bde203` |
+| 2026-09-04 | R1.5 | mock 按轮演化（asset-3/step-2/紫队缺口补齐），无 round 回退静态零破坏 | `debf047` |
+| 2026-09-04 | R1 | 收敛式演练内核 `run_drill` + 证据驱动收敛 + 跨轮事件合成；全量 608 passed | `58e8a43` |
 | | | | |
