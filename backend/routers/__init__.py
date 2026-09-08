@@ -9,6 +9,7 @@ from backend.routers import (
     agents,
     attack,
     defense,
+    drill,
     graph,
     memory,
     metrics,
@@ -32,6 +33,7 @@ router.include_router(replay.router)
 # date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 挂载攻防端点路由
 router.include_router(range.router)
 router.include_router(attack.router)
+router.include_router(drill.router)
 router.include_router(defense.router)
 router.include_router(threat.router)
 

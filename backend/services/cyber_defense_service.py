@@ -271,6 +271,8 @@ class CyberDefenseService:
         max_rounds: int = 5,
         on_round=None,
         summary_factory=None,
+        abort=None,
+        drill_id: str | None = None,
     ) -> dict[str, Any]:
         """执行一键多轮攻防演练并持久化演练记录。
 
@@ -283,13 +285,21 @@ class CyberDefenseService:
             max_rounds: 最大轮数，默认 5。
             on_round: 可选回调 ``on_round(round_data, round_no)``，供 SSE 实时推送。
             summary_factory: 可选总结定制回调；None 时用编排器默认总结。
+            abort: 可选 ``abort() -> bool`` 轮询中止回调；置真时演练在下一轮
+                边界终止（配合收敛规则 4），返回已收敛部分记录。
+            drill_id: 可选演练 ID；None 时由编排器按目标范围自动生成。
+                路由层传入可保证 registry / 落盘文件 / SSE 事件三者 ID 一致。
 
         Returns:
             含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
             ``rounds`` / ``summary`` 的演练结果字典，并已落盘。
         """
         result = self._orchestrator.run_drill(
-            target_range, max_rounds=max_rounds, on_round=on_round
+            target_range,
+            max_rounds=max_rounds,
+            on_round=on_round,
+            abort=abort,
+            drill_id=drill_id,
         )
         drill_id = result["drill_id"]
         record = {

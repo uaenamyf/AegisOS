@@ -1956,6 +1956,7 @@ class CyberOrchestrator(GoalMode[dict]):
         max_rounds: int = 5,
         on_round=None,
         abort=None,
+        drill_id: str | None = None,
     ) -> dict[str, Any]:
         """多轮收敛演练主循环（CyberDrill R1）。
 
@@ -1970,6 +1971,9 @@ class CyberOrchestrator(GoalMode[dict]):
             on_round: 可选回调 ``on_round(round_data: dict, round_idx: int)``，
                       每轮完成后调用（同步）。
             abort: 可选可调用对象 ``abort() -> bool``；返回 True 表示应中止。
+            drill_id: 可选演练 ID；None 时按目标范围自动生成
+                （``drill_<target_range 去斜杠>``）。由路由层传入可保证
+                registry / 落盘文件 / SSE 事件三者 ID 一致。
 
         Returns:
             含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
@@ -2061,7 +2065,7 @@ class CyberOrchestrator(GoalMode[dict]):
         }
 
         return {
-            "drill_id": f"drill_{target_range.replace('/', '_')}",
+            "drill_id": drill_id or f"drill_{target_range.replace('/', '_')}",
             "rounds_executed": len(rounds),
             "convergence_code": code,
             "rounds": rounds,
