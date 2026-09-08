@@ -359,12 +359,31 @@ export function CyberDrillPanel() {
                         {round.blue.plan?.actions ? (
                           <ul className="cyber-issue-list cyber-issue-list--review">
                             {(round.blue.plan.actions as any[]).map(
-                              (a: any, i: number) => (
-                                <li key={i} className="cyber-issue cyber-issue--review">
-                                  <span className="cyber-issue__icon">i</span>
-                                  <span>{String(a.action ?? a)}</span>
-                                </li>
-                              ),
+                              (a: any, i: number) => {
+                                // 兼容字符串与对象两种 action 结构，避免 [object Object]
+                                let text: string;
+                                if (typeof a === "string") {
+                                  text = a;
+                                } else {
+                                  const head = [a.kind, a.target]
+                                    .filter(Boolean)
+                                    .join(" → ");
+                                  text = head
+                                    ? a.rationale
+                                      ? `${head}：${a.rationale}`
+                                      : head
+                                    : JSON.stringify(a);
+                                }
+                                return (
+                                  <li
+                                    key={a.action_id ?? i}
+                                    className="cyber-issue cyber-issue--review"
+                                  >
+                                    <span className="cyber-issue__icon">i</span>
+                                    <span>{text}</span>
+                                  </li>
+                                );
+                              },
                             )}
                           </ul>
                         ) : (
