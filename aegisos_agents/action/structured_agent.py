@@ -99,31 +99,57 @@ class StructuredAgent(Generic[T]):
                     parts.append(f'"{name}": {t}' + (f" ({desc})" if desc else ""))
                 json_hint += " 必须仅包含以下字段: " + ", ".join(parts) + "。"
         instructions = f"{self.SYSTEM_PROMPT}{json_hint}"
+        self._instructions = instructions
 
+        # Mock / 非 DeepSeek 路径：复用同一个 SDK Agent（共享 model）
+        self._sdk_agent: Agent = self._build_agent(self._model)
+
+    def _build_agent(self, model) -> Agent:
+        """用给定 model 构造 SDK Agent（复用 __init__ 的构造逻辑）。
+
+        真实模式（``_plain_json``）每次调用用独立 model + client 时也会
+        走到这里，因此 instructions 提前存到 ``self._instructions``。
+        """
         from agents import AgentOutputSchema, ModelSettings
 
-        # OUTPUT_TYPE 为 None 时用 str 兜底（SDK 要求非 None）
-        output_type = self.OUTPUT_TYPE or str
         if self._plain_json:
             # DeepSeek：不设 output_type → SDK 不传 response_format，避免 400
-            self._sdk_agent: Agent = Agent(
+            return Agent(
                 name=self.__class__.__name__,
-                instructions=instructions,
-                model=self._model,
+                instructions=self._instructions,
+                model=model,
                 model_settings=ModelSettings(temperature=self.TEMPERATURE),
             )
-        else:
-            # 构造 SDK Agent：instructions + output_type + model + temperature
-            # 用 AgentOutputSchema(strict_json_schema=False) 包装 output_type，
-            # 允许含 dict 字段（如 AlertModel.raw / IRPlannerResult.rollback /
-            # ForensicsResult.timeline）的类型通过 SDK 的 JSON schema 校验。
-            self._sdk_agent: Agent = Agent(
-                name=self.__class__.__name__,
-                instructions=instructions,
-                output_type=AgentOutputSchema(output_type, strict_json_schema=False),
-                model=self._model,
-                model_settings=ModelSettings(temperature=self.TEMPERATURE),
-            )
+        # 构造 SDK Agent：instructions + output_type + model + temperature
+        # 用 AgentOutputSchema(strict_json_schema=False) 包装 output_type，
+        # 允许含 dict 字段（如 AlertModel.raw / IRPlannerResult.rollback /
+        # ForensicsResult.timeline）的类型通过 SDK 的 JSON schema 校验。
+        return Agent(
+            name=self.__class__.__name__,
+            instructions=self._instructions,
+            output_type=AgentOutputSchema(self.OUTPUT_TYPE or str, strict_json_schema=False),
+            model=model,
+            model_settings=ModelSettings(temperature=self.TEMPERATURE),
+        )
+
+    def _fresh_model(self):
+        """真实模式：构造独立的 Model + AsyncOpenAI client。
+
+        共享的 AsyncOpenAI 客户端（SDKProvider 单例）跨线程/跨事件循环
+        （``asyncio.run`` 每次调用新建循环）复用时，httpx 连接池可能挂起
+        （实测：API 层第二次调用后第三次请求永不发起，curl 超时 000）。
+        每次调用用独立 client 从根上消除该风险；client 由 GC 回收连接。
+        """
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        from openai import AsyncOpenAI
+
+        return OpenAIChatCompletionsModel(
+            model=str(self._model.model),
+            openai_client=AsyncOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY", ""),
+                base_url=os.getenv("OPENAI_BASE_URL") or None,
+            ),
+        )
 
     def _run(self, prompt: str, timeout: float = 120.0) -> T:
         """执行一次结构化 LLM 调用，返回 ``OUTPUT_TYPE`` 实例。
@@ -153,7 +179,14 @@ class StructuredAgent(Generic[T]):
             # 无运行中的事件循环 → 直接同步执行
             return self._run_sync(prompt)
 
-        # 事件循环已运行（FastAPI / uvicorn）→ 线程池隔离执行
+        # 事件循环已运行（FastAPI / uvicorn）→ 线程池隔离执行。
+        # DeepSeek 真实链路：单 Agent 一次调用 30-60s，解析失败纠错重试后
+        # 可达 120s+，默认 120s 超时会导致链路中途抛 RuntimeError → 500
+        # （实测：real 模式跑约 2 分钟后 internal server error）。纯文本路径
+        # 放宽到 600s 覆盖 3 次串行调用 + 重试；mock 模式不受影响（<1s）。
+        if self._plain_json:
+            timeout = max(timeout, 600.0)
+
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(self._run_sync, prompt)
             try:
@@ -167,8 +200,11 @@ class StructuredAgent(Generic[T]):
         """同步执行结构化调用；DeepSeek 纯文本路径解析失败时带纠错提示重试一次。"""
         max_attempts = 2 if self._plain_json else 1
         last_error: ValueError | None = None
+        # 真实模式每次调用用独立 client，避免共享 AsyncOpenAI 跨线程/
+        # 跨事件循环复用连接池时挂起（实测 API 层第三次调用永不发起）。
+        agent = self._build_agent(self._fresh_model()) if self._plain_json else self._sdk_agent
         for attempt in range(max_attempts):
-            result = Runner.run_sync(self._sdk_agent, prompt)
+            result = Runner.run_sync(agent, prompt)
             try:
                 return self._finalize(result)  # type: ignore[no-any-return]
             except ValueError as exc:
