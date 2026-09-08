@@ -261,10 +261,18 @@ export interface TopologyResponse {
   edges: Record<string, any>[];
 }
 
+// ---- R15 可观测性：逐 agent 输入输出追踪 ----
+export interface AgentTraceEntry {
+  agent: string;
+  input: string;
+  output: Record<string, any>;
+}
+
 export interface RedAttackResponse {
   assets: Asset[];
   findings: VulnFinding[];
   chain: Record<string, any>;
+  agent_trace?: AgentTraceEntry[];
 }
 
 // ---- 红队攻击流式（SSE 渐进展示）----
@@ -287,11 +295,13 @@ export interface BlueDefenseResponse {
   triaged: Alert[];
   hypotheses: Record<string, any>[];
   plan: Record<string, any>;
+  agent_trace?: AgentTraceEntry[];
 }
 
 export interface PurpleReviewResponse {
   critique: Record<string, any>;
   review: Record<string, any>;
+  agent_trace?: AgentTraceEntry[];
 }
 
 // ---- CyberDrill（多轮攻防演练）----

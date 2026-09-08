@@ -523,6 +523,7 @@ class CyberDefenseService:
             "assets": [_asdict(a) if not isinstance(a, dict) else a for a in assets],
             "findings": [_asdict(f) if not isinstance(f, dict) else f for f in findings],
             "chain": chain.to_dict() if isinstance(chain, AttackChain) else chain,
+            "agent_trace": result.get("agent_trace", []),
         }
 
     @staticmethod
@@ -538,6 +539,7 @@ class CyberDefenseService:
             "triaged": [_asdict(a) if not isinstance(a, dict) else a for a in triaged],
             "hypotheses": hypotheses,
             "plan": _asdict(plan) if isinstance(plan, ResponsePlan) else plan,
+            "agent_trace": result.get("agent_trace", []),
         }
 
     @staticmethod

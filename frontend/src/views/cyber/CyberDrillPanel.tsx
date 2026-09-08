@@ -13,11 +13,50 @@ import type {
 
 type DrillPhase = "idle" | "running" | "done" | "aborted" | "error";
 
+/** 最近一轮演练的浏览器快照（sessionStorage）：切 tab/刷新后仍可恢复展示，
+ *  只有开启新一轮时才被清除/覆盖。 */
+const DRILL_SNAPSHOT_KEY = "aegis.cyber-drill.snapshot";
+
+interface DrillSnapshot {
+  drillId: string | null;
+  phase: DrillPhase;
+  rounds: DrillRound[];
+  summary: DrillSummaryResponse | null;
+  reportMd: string | null;
+}
+
+function loadSnapshot(): DrillSnapshot | null {
+  try {
+    const raw = sessionStorage.getItem(DRILL_SNAPSHOT_KEY);
+    return raw ? (JSON.parse(raw) as DrillSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSnapshot(snap: DrillSnapshot): void {
+  try {
+    sessionStorage.setItem(DRILL_SNAPSHOT_KEY, JSON.stringify(snap));
+  } catch {
+    /* 存储不可用（隐私模式等）时静默降级，仅影响跨页恢复 */
+  }
+}
+
+function clearSnapshot(): void {
+  try {
+    sessionStorage.removeItem(DRILL_SNAPSHOT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * 多轮攻防演练面板（CyberDrill R5）。
  *
  * 一键「开始演练 → SSE 实时轮次时间线 → 收敛总结报告」，可随时停止。
  * 断线兜底：SSE onError 后改用 getDrill 轮询补拉已发生轮次。
+ * 结果持久化：最近一轮结果存 sessionStorage，切换页面/刷新后恢复展示，
+ * 开启新一轮时才清除旧结果。
  */
 export function CyberDrillPanel() {
   const cyberLoading = useAppStore((s) => s.cyberLoading);
@@ -25,24 +64,48 @@ export function CyberDrillPanel() {
   const setCyberLoading = useAppStore((s) => s.setCyberLoading);
   const setCyberError = useAppStore((s) => s.setCyberError);
 
+  // 首次渲染读一次快照，之后组件生命周期内不再变化（开新轮才覆盖）
+  const initialSnapshotRef = useRef<DrillSnapshot | null>(null);
+  if (initialSnapshotRef.current === null) {
+    initialSnapshotRef.current = loadSnapshot();
+  }
+  const initialSnapshot = initialSnapshotRef.current;
+
   const [targetRange, setTargetRange] = useState("10.0.0.0/24");
   const [maxRounds, setMaxRounds] = useState(5);
-  const [phase, setPhase] = useState<DrillPhase>("idle");
-  const [drillId, setDrillId] = useState<string | null>(null);
-  const [rounds, setRounds] = useState<DrillRound[]>([]);
-  const [summary, setSummary] = useState<DrillSummaryResponse | null>(null);
+  const [phase, setPhase] = useState<DrillPhase>(() => {
+    if (!initialSnapshot) return "idle";
+    // 旧会话遗留的 running 无意义（SSE 已断）：有 summary 视为已完成，
+    // 否则视为被中断
+    if (initialSnapshot.phase === "running") {
+      return initialSnapshot.summary ? "done" : "aborted";
+    }
+    return initialSnapshot.phase;
+  });
+  const [drillId, setDrillId] = useState<string | null>(
+    initialSnapshot?.drillId ?? null,
+  );
+  const [rounds, setRounds] = useState<DrillRound[]>(
+    initialSnapshot?.rounds ?? [],
+  );
+  const [summary, setSummary] = useState<DrillSummaryResponse | null>(
+    initialSnapshot?.summary ?? null,
+  );
   const [expandedRound, setExpandedRound] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [reportMd, setReportMd] = useState<string | null>(null);
+  const [reportMd, setReportMd] = useState<string | null>(
+    initialSnapshot?.reportMd ?? null,
+  );
   const [reportOpen, setReportOpen] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+  const [stopping, setStopping] = useState(false);
 
   const streamCloseRef = useRef<(() => void) | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   // drillId 的 ref 镜像：SSE onError 回调在 setDrillId 之前的渲染里创建，
   // 闭包拿不到最新 state，必须走 ref 才能触发断线轮询兜底。
-  const drillIdRef = useRef<string | null>(null);
+  const drillIdRef = useRef<string | null>(initialSnapshot?.drillId ?? null);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current) {
@@ -71,6 +134,7 @@ export function CyberDrillPanel() {
         break;
       case "drill_done":
         setPhase(ev.data?.error ? "error" : "done");
+        setStopping(false);
         streamCloseRef.current?.();
         streamCloseRef.current = null;
         stopPolling();
@@ -105,6 +169,9 @@ export function CyberDrillPanel() {
     setCyberLoading(true);
     setCyberError(null);
     setError(null);
+    setStopping(false);
+    // 开启新一轮：清除上一轮快照，避免旧结果串场
+    clearSnapshot();
     try {
       const resp = await cyberApi.startDrill({
         target_range: targetRange,
@@ -115,6 +182,8 @@ export function CyberDrillPanel() {
       setPhase("running");
       setRounds([]);
       setSummary(null);
+      setReportMd(null);
+      setReportOpen(false);
       streamCloseRef.current = cyberApi.openDrillStream(
         resp.drill_id,
         handleEvent,
@@ -130,18 +199,21 @@ export function CyberDrillPanel() {
     }
   }, [targetRange, maxRounds, handleEvent, handleStreamError, setCyberLoading, setCyberError]);
 
+  /** 停止演练：防重复点击（stopping 期间按钮禁用），abort 幂等。 */
   const handleStop = useCallback(async () => {
     const id = drillIdRef.current;
-    if (!id) return;
+    if (!id || stopping) return;
+    setStopping(true);
     try {
       await cyberApi.abortDrill(id);
-      // 编排器在下一轮边界中止，SSE 会继续收到 summary/done
+      // 编排器在阶段/轮边界中止，SSE 会继续收到 summary/done
     } catch (err) {
       setCyberError(
         err instanceof Error ? err.message : "Failed to abort drill",
       );
+      setStopping(false);
     }
-  }, [setCyberError]);
+  }, [stopping, setCyberError]);
 
   /** 拉取并切换展示运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）。 */
   const handleViewReport = useCallback(async () => {
@@ -170,6 +242,16 @@ export function CyberDrillPanel() {
     }
   }, [rounds.length]);
 
+  // 结果持久化：drillId 存在时持续把最近一轮结果写入 sessionStorage，
+  // 切 tab/刷新后恢复；开启新一轮时 handleStart 已清除旧快照
+  useEffect(() => {
+    if (!drillId) {
+      clearSnapshot();
+      return;
+    }
+    saveSnapshot({ drillId, phase, rounds, summary, reportMd });
+  }, [drillId, phase, rounds, summary, reportMd]);
+
   // 卸载清理：关闭 SSE + 停止轮询
   useEffect(() => {
     return () => {
@@ -178,6 +260,34 @@ export function CyberDrillPanel() {
       stopPolling();
     };
   }, [stopPolling]);
+
+  // R15 中断恢复增强：恢复出的快照若缺少 summary（中断/中止场景），
+  // 挂载时尝试从服务端补拉完整记录（后台线程可能已落盘）
+  useEffect(() => {
+    const id = drillIdRef.current;
+    if (!id || summary) return;
+    if (phase !== "done" && phase !== "aborted") return;
+    let cancelled = false;
+    cyberApi
+      .getDrill(id)
+      .then((rec) => {
+        if (cancelled) return;
+        if (rec.rounds.length > 0) setRounds(rec.rounds);
+        if (rec.summary) {
+          setSummary(rec.summary);
+          setPhase(rec.convergence_code === "aborted" ? "aborted" : "done");
+        } else if (rec.convergence_code) {
+          setPhase(rec.convergence_code === "aborted" ? "aborted" : "done");
+        }
+      })
+      .catch(() => {
+        /* 服务端无记录则保持快照现状 */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const running = phase === "running";
 
@@ -211,8 +321,9 @@ export function CyberDrillPanel() {
           <button
             className="cyber-view__btn cyber-view__btn--danger"
             onClick={() => void handleStop()}
+            disabled={stopping}
           >
-            ⏹ Stop
+            {stopping ? "⏹ 停止中…" : "⏹ Stop"}
           </button>
         ) : (
           <button
@@ -453,7 +564,7 @@ export function CyberDrillPanel() {
               ))}
             </div>
           ) : null}
-          {phase === "done" && drillId ? (
+          {(phase === "done" || phase === "aborted") && drillId ? (
             <div className="cyber-drill__report-bar">
               <button
                 type="button"

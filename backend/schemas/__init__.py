@@ -198,6 +198,8 @@ class RedAttackResponse(BaseModel):
     assets: list[AssetResponse] = Field(default_factory=list)
     findings: list[VulnFindingResponse] = Field(default_factory=list)
     chain: dict[str, Any] = Field(default_factory=dict)
+    # R15 可观测性：逐 agent 输入输出追踪（recon/vuln_correlator/exploit_planner）
+    agent_trace: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class BlueDefenseResponse(BaseModel):
@@ -205,8 +207,12 @@ class BlueDefenseResponse(BaseModel):
     triaged: list[AlertResponse] = Field(default_factory=list)
     hypotheses: list[dict[str, Any]] = Field(default_factory=list)
     plan: dict[str, Any] = Field(default_factory=dict)
+    # R15 可观测性：逐 agent 输入输出追踪（detector/triage/threat_hunt/ir_planner）
+    agent_trace: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class PurpleReviewResponse(BaseModel):
     critique: dict[str, Any] = Field(default_factory=dict)
     review: dict[str, Any] = Field(default_factory=dict)
+    # R15 可观测性：逐 agent 输入输出追踪（critic/reviewer）
+    agent_trace: list[dict[str, Any]] = Field(default_factory=list)

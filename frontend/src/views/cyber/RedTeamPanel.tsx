@@ -9,6 +9,7 @@ import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
 import { systemApi } from "@/services/api/system";
 import type { RedAttackResponse } from "@/protocol/types";
+import { AgentTraceSection } from "./AgentTraceSection";
 
 const STAGE_LABELS: Record<string, string> = {
   recon: "侦察资产",
@@ -39,7 +40,9 @@ export function RedTeamPanel() {
   const [streamStage, setStreamStage] = useState<string | null>(null);
   const [partial, setPartial] = useState<Record<string, any>>({});
   const [cacheMode, setCacheMode] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState<number | null>(null);
   const closeStreamRef = useRef<(() => void) | null>(null);
+  const startRef = useRef<number>(0);
 
   // 组件卸载时中止进行中的流
   useEffect(() => {
@@ -54,6 +57,8 @@ export function RedTeamPanel() {
     setStreamStage(null);
     setPartial({});
     setCacheMode(null);
+    setElapsed(null);
+    startRef.current = Date.now();
 
     // 1) 浏览器持久缓存：同 mode + 同目标命中直接秒回（真实模式演示友好）
     let mode = "mock";
@@ -63,7 +68,7 @@ export function RedTeamPanel() {
     } catch {
       /* 后端离线时按 mock 处理 */
     }
-    const cacheKey = `aegis.redAttack.v1.${mode}.${target}`;
+    const cacheKey = `aegis.redAttack.v2.${mode}.${target}`;
     try {
       const raw = localStorage.getItem(cacheKey);
       if (raw) {
@@ -91,6 +96,7 @@ export function RedTeamPanel() {
           setRedAttackResult(result);
           setStreamStage(null);
           setCyberLoading(false);
+          setElapsed((Date.now() - startRef.current) / 1000);
           try {
             localStorage.setItem(cacheKey, JSON.stringify(result));
           } catch {
@@ -100,12 +106,14 @@ export function RedTeamPanel() {
           setCyberError(String((ev.data as any)?.message ?? "attack stream failed"));
           setStreamStage(null);
           setCyberLoading(false);
+          setElapsed((Date.now() - startRef.current) / 1000);
         }
       },
       (err) => {
         setCyberError(err?.message ?? "attack stream failed");
         setStreamStage(null);
         setCyberLoading(false);
+        setElapsed((Date.now() - startRef.current) / 1000);
       },
     );
     closeStreamRef.current = close;
@@ -220,6 +228,16 @@ export function RedTeamPanel() {
         </div>
       ) : null}
 
+      {/* 执行耗时（R15 可观测性） */}
+      {elapsed != null ? (
+        <div className="cyber-meta">
+          <span className="cyber-meta__chip">⏱ 执行耗时 {elapsed.toFixed(1)}s</span>
+          <span className="cyber-meta__chip cyber-meta__chip--accent">
+            mode: {cacheMode ?? "live"}
+          </span>
+        </div>
+      ) : null}
+
       {/* DAG Visualization */}
       <div className="cyber-dag">
         <svg
@@ -326,6 +344,9 @@ export function RedTeamPanel() {
           </div>
         </div>
       ) : null}
+
+      {/* R15 可观测性：逐 agent 输入输出追踪 */}
+      <AgentTraceSection trace={redAttackResult?.agent_trace} />
     </div>
   );
 }

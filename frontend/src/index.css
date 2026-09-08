@@ -2505,3 +2505,167 @@ body {
           .settings-actions__buttons { width: 100%; }
           .settings-button { flex: 1; }
         }
+
+/* ============ R15 可观测性 & 可视化增强 ============ */
+/* Agent 运行记录（逐 agent 输入输出追踪） */
+.cyber-trace {
+  margin-top: 16px;
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-secondary, #171a21);
+}
+.cyber-trace__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary, #e6e9ef);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.cyber-trace__header:hover { background: var(--bg-tertiary, #1e232c); }
+.cyber-trace__toggle { color: var(--accent, #4f8cff); font-size: 10px; }
+.cyber-trace__count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted, #8a93a3);
+  background: var(--bg-tertiary, #1e232c);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.cyber-trace__body { border-top: 1px solid var(--border, #2a2f3a); }
+.cyber-trace__entry { border-bottom: 1px solid var(--border, #2a2f3a); }
+.cyber-trace__entry:last-child { border-bottom: none; }
+.cyber-trace__entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary, #e6e9ef);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.cyber-trace__entry-header:hover { background: var(--bg-tertiary, #1e232c); }
+.cyber-trace__step {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent, #4f8cff);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cyber-trace__agent {
+  flex: none;
+  font-weight: 600;
+  color: var(--accent, #4f8cff);
+  min-width: 150px;
+}
+.cyber-trace__summary {
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted, #8a93a3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cyber-trace__detail { padding: 10px 12px; background: var(--bg-tertiary, #1e232c); }
+.cyber-trace__block { margin-bottom: 8px; }
+.cyber-trace__block:last-child { margin-bottom: 0; }
+.cyber-trace__block-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted, #8a93a3);
+  margin-bottom: 4px;
+}
+.cyber-trace__pre {
+  margin: 0;
+  padding: 8px 10px;
+  background: #10131a;
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary, #b8c0cc);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}
+
+/* 分布条（严重度 / 动作类型） */
+.cyber-dist { margin-top: 12px; }
+.cyber-dist__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.cyber-dist__label {
+  flex: none;
+  width: 64px;
+  color: var(--text-muted, #8a93a3);
+  text-transform: capitalize;
+}
+.cyber-dist__track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg-tertiary, #1e232c);
+  overflow: hidden;
+}
+.cyber-dist__fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+.cyber-dist__fill--danger { background: var(--danger, #e5484d); }
+.cyber-dist__fill--warning { background: var(--warning, #f5a524); }
+.cyber-dist__fill--success { background: var(--success, #28a745); }
+.cyber-dist__fill--accent { background: var(--accent, #4f8cff); }
+.cyber-dist__count {
+  flex: none;
+  min-width: 28px;
+  text-align: right;
+  color: var(--text-primary, #e6e9ef);
+  font-weight: 600;
+}
+
+/* 执行耗时徽章 / 缓存来源徽章 */
+.cyber-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.cyber-meta__chip {
+  font-size: 11px;
+  color: var(--text-muted, #8a93a3);
+  background: var(--bg-tertiary, #1e232c);
+  padding: 3px 10px;
+  border-radius: 10px;
+}
+.cyber-meta__chip--accent { color: var(--accent, #4f8cff); }
+.cyber-meta__chip--warn { color: var(--warning, #f5a524); }

@@ -41,7 +41,7 @@ import asyncio
 import json
 import os
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from pydantic import BaseModel
 
@@ -174,11 +174,17 @@ _DRILL_PHASE_FEATURES: dict[str, dict[str, Any]] = {
 }
 
 # 层级语义（供卸载理由展示）
-_DRILL_TIER_SEMANTICS: dict[str, str] = {
-    "device": "端侧·超低延迟/本地隐私",
+_DRILL_TIER_SEMANTICS: dict[str, str] = {    "device": "端侧·超低延迟/本地隐私",
     "edge": "边侧·低延迟/区域隔离",
     "cloud": "云侧·强算力/可脱敏",
 }
+
+
+class DrillAborted(Exception):
+    """演练被用户显式中止（abort）时抛出，用于在 agent 调用边界快速退出。
+
+    由 :meth:`run_drill` 捕获并转为 ``convergence_code="aborted"`` 的收敛结果。
+    """
 
 # ==================================================================
 # R4.2: ChainContext —— handoff 链共享上下文
@@ -455,7 +461,12 @@ class CyberOrchestrator(GoalMode[dict]):
             )
     # ---------------------------------------------------------------------
 
-    def run_red_chain(self, target_range: str, round: int | None = None) -> dict[str, Any]:
+    def run_red_chain(
+        self,
+        target_range: str,
+        round: int | None = None,
+        abort: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
         """执行红队攻击链：recon → vuln_correlator → exploit_planner。
 
         R1/R1.5：新增可选 ``round`` 参数用于多轮收敛演练——显式传入且 >=2 时
@@ -476,10 +487,14 @@ class CyberOrchestrator(GoalMode[dict]):
         """
         round_tag = f" [round={round}]" if round is not None and round >= 2 else ""
         trace: list[dict[str, Any]] = []
+        if abort is not None and abort():
+            raise DrillAborted()
         # 1) 侦察（数量上限截断：提速——限制 DeepSeek 输出规模，下同）
         recon_prompt = f"Scan target range: {target_range}{round_tag}"
         recon_result = self.recon._run(recon_prompt)
         trace.append(self._trace_entry("recon", recon_prompt, recon_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         assets = [
             Asset(
                 asset_id=a.asset_id, host=a.host, services=a.services, os=a.os, exposure=a.exposure
@@ -497,6 +512,8 @@ class CyberOrchestrator(GoalMode[dict]):
         vuln_prompt = f"Correlate vulnerabilities for these assets: {assets_desc}"
         vuln_result = self.vuln_correlator._run(vuln_prompt)
         trace.append(self._trace_entry("vuln_correlator", vuln_prompt, vuln_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         findings = [
             VulnFinding(
                 finding_id=f.finding_id,
@@ -523,6 +540,8 @@ class CyberOrchestrator(GoalMode[dict]):
         exploit_prompt = f"Plan exploit chain for: {findings_desc}{round_tag}"
         exploit_result = self.exploit_planner._run(exploit_prompt)
         trace.append(self._trace_entry("exploit_planner", exploit_prompt, exploit_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         chain = AttackChain(
             chain_id=exploit_result.chain_id,
             target=exploit_result.target,
@@ -635,7 +654,11 @@ class CyberOrchestrator(GoalMode[dict]):
         yield {"event": "stage_done", "data": {"stage": "exploit", "chain": chain}}
         yield {"event": "done", "data": {"assets": assets, "findings": findings, "chain": chain}}
 
-    def run_blue_chain(self, event_stream: list[dict[str, Any]]) -> dict[str, Any]:
+    def run_blue_chain(
+        self,
+        event_stream: list[dict[str, Any]],
+        abort: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
         """执行蓝队防御链：detector → triage → threat_hunt → ir_planner。
 
         Args:
@@ -645,10 +668,14 @@ class CyberOrchestrator(GoalMode[dict]):
             含 ``alerts`` / ``triaged`` / ``hypotheses`` / ``plan`` / ``agent_trace`` 的字典。
         """
         trace: list[dict[str, Any]] = []
+        if abort is not None and abort():
+            raise DrillAborted()
         # 1) 入侵检测
         detector_prompt = f"Detect anomalies in: {json.dumps(event_stream)}"
         detector_result = self.detector._run(detector_prompt)
         trace.append(self._trace_entry("detector", detector_prompt, detector_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         alerts = [
             Alert(
                 alert_id=a.alert_id,
@@ -664,25 +691,37 @@ class CyberOrchestrator(GoalMode[dict]):
         # 2) 告警分诊
         alerts_desc = json.dumps(
             [
-                {"alert_id": a.alert_id, "severity": a.severity, "src": a.src, "dst": a.dst}
+                {
+                    "alert_id": a.alert_id,
+                    "severity": a.severity,
+                    "src": a.src,
+                    "dst": a.dst,
+                    "technique": a.technique,
+                }
                 for a in alerts
             ]
         )
         triage_prompt = f"Triage these alerts: {alerts_desc}"
         triage_result = self.triage._run(triage_prompt)
         trace.append(self._trace_entry("triage", triage_prompt, triage_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         triaged = [Alert(**t.model_dump()) for t in triage_result.alerts] or alerts
 
         # 3) 威胁狩猎
         hunt_prompt = f"Generate hunting hypotheses for: {alerts_desc}"
         hunt_result = self.threat_hunt._run(hunt_prompt)
         trace.append(self._trace_entry("threat_hunt", hunt_prompt, hunt_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         hypotheses = [h.model_dump() for h in hunt_result.hypotheses]
 
         # 4) 响应规划
         ir_prompt = f"Plan response for: {json.dumps(hypotheses)}"
         ir_result = self.ir_planner._run(ir_prompt)
         trace.append(self._trace_entry("ir_planner", ir_prompt, ir_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         plan = ResponsePlan(
             plan_id=ir_result.plan_id,
             actions=[
@@ -708,6 +747,7 @@ class CyberOrchestrator(GoalMode[dict]):
         alerts: list[Alert],
         round: int | None = None,
         prior_rounds_summary: str | None = None,
+        abort: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         """执行紫队校验：critic 校验攻击链 + reviewer 跨产出一致性审查。
 
@@ -732,6 +772,8 @@ class CyberOrchestrator(GoalMode[dict]):
         """
         trace: list[dict[str, Any]] = []
         # 紫队批判红队攻击链
+        if abort is not None and abort():
+            raise DrillAborted()
         round_tag = f" [round={round}]" if round is not None else ""
         prior_tag = (
             f"\n[prior_rounds_summary] {prior_rounds_summary}"
@@ -753,6 +795,8 @@ class CyberOrchestrator(GoalMode[dict]):
         review_prompt = f"Review consistency: {json.dumps(artifacts, default=str)}"
         review_result = self.reviewer._run(review_prompt)
         trace.append(self._trace_entry("reviewer", review_prompt, review_result))
+        if abort is not None and abort():
+            raise DrillAborted()
         review = review_result.model_dump()
 
         return {"critique": critique, "review": review, "agent_trace": trace}
@@ -2203,13 +2247,31 @@ class CyberOrchestrator(GoalMode[dict]):
         rounds: list[dict[str, Any]] = []
         memory_trace: list[dict[str, Any]] = []
         prior_rounds_summary: str | None = None
+        code = "running"
 
         for r in range(1, max_rounds + 1):
-            # 红队攻击（r>=2 触发 mock 按轮演化）
-            red = self.run_red_chain(target_range, round=r if r >= 2 else None)
+            # 中止检查点 1：轮开始前——abort 后立即停止，不再启动新一轮
+            if callable(abort) and abort():
+                code = "aborted"
+                break
+            # 红队攻击（r>=2 触发 mock 按轮演化）；agent 调用边界亦检查 abort
+            try:
+                red = self.run_red_chain(
+                    target_range,
+                    round=r if r >= 2 else None,
+                    abort=abort if callable(abort) else None,
+                )
+            except DrillAborted:
+                code = "aborted"
+                break
             chain: AttackChain = red["chain"]
             new_steps = self._diff_chain_steps(prev_chain, chain)
             consecutive_no_new = 0 if new_steps else consecutive_no_new + 1
+
+            # 中止检查点 2：红队阶段后——跳过蓝/紫，保留已完成的红队产物
+            if callable(abort) and abort():
+                code = "aborted"
+                break
 
             # 事件合成：首轮全量，后续 carry 增量
             event_stream = self._synthesize_event_stream(
@@ -2218,9 +2280,15 @@ class CyberOrchestrator(GoalMode[dict]):
 
             # 蓝队防御（失败兜底：单阶段弱化不中断整场演练，战报标记 ok=false）
             try:
-                blue = self.run_blue_chain(event_stream)
+                blue = self.run_blue_chain(
+                    event_stream,
+                    abort=abort if callable(abort) else None,
+                )
                 blue_ok: bool = True
                 blue_error: str | None = None
+            except DrillAborted:
+                code = "aborted"
+                break
             except Exception as exc:  # noqa: BLE001
                 blue = {
                     "alerts": [],
@@ -2233,14 +2301,24 @@ class CyberOrchestrator(GoalMode[dict]):
                 blue_ok = False
                 blue_error = str(exc)
 
+            # 中止检查点 3：蓝队阶段后——跳过紫队评审
+            if callable(abort) and abort():
+                code = "aborted"
+                break
+
             # 紫队评审（显式传入轮次以触发按轮演化；R8 附加跨轮记忆摘要）
-            purple = self.run_purple_review(
-                chain=chain,
-                plan=blue["plan"],
-                alerts=blue["alerts"],
-                round=r,
-                prior_rounds_summary=prior_rounds_summary,
-            )
+            try:
+                purple = self.run_purple_review(
+                    chain=chain,
+                    plan=blue["plan"],
+                    alerts=blue["alerts"],
+                    round=r,
+                    prior_rounds_summary=prior_rounds_summary,
+                    abort=abort if callable(abort) else None,
+                )
+            except DrillAborted:
+                code = "aborted"
+                break
             critique = purple["critique"]
             valid = bool(critique.get("valid"))
 
@@ -2269,6 +2347,7 @@ class CyberOrchestrator(GoalMode[dict]):
                     "error": blue_error,
                     "alerts": [_asdict(a) for a in blue["alerts"]],
                     "triaged_count": len(blue["triaged"]),
+                    "hypotheses": blue.get("hypotheses", []),
                     "plan": _asdict(blue["plan"]),
                     "agent_trace": blue.get("agent_trace", []),
                 },
