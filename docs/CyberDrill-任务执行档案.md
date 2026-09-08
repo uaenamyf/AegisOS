@@ -54,7 +54,7 @@
 | **R7** | **真实 LLM 接入 drill** + 运行时模式切换（mock/real）+ 前端徽标 | 核心升级 | R6 | d / 演示核心 | ✅ 已完成 |
 | **R8** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R7 | a（重点加分） | ✅ 已完成 |
 | **R9** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R7 | b（技术分10） | ✅ 已完成 |
-| **R10** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R9 | c | ⬜ |
+| **R10** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R9 | c | ✅ 已完成 |
 | **R11** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R7-R10 | d / e | ⬜ |
 > **（2026-09-04 评审修订）** 原开工审查报告方案经代码核查发现 3 处硬伤，已修订见各轮「评审记录」：
 > ① **R1 收敛判定**：mock 下 `valid/consistent` 恒真会首轮"完全收敛"，多轮收敛跑不出来 → 改为**证据驱动**（锚定新资产/新步骤）+ 新增 **R1.5 mock 按轮演化**；
@@ -516,14 +516,21 @@
 - **风险与对策**：调度器为 mock 语义 → 标注真实调度结果即可，不强求真实异构节点（与项目"演示版跳过真实端边云"一致）。
 - **可延申点**：与 `infrastructure/nodes/` 真实节点注册联动（演示版不做）。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-05）
 - **开工后记录**：
   - 改动文件清单：
+    - `aegisos_agents/planning/orchestrator/cyber_orchestrator.py`（改）——新增 R10 模块常量（`_DRILL_MODEL_POOL` 三层候选池 / `_DRILL_PHASE_FEATURES` 各阶段任务特征 / `_DRILL_TIER_SEMANTICS` 层级语义）；新增 `_phase_placements()` 辅助（构造 Task → 调 `scheduler.schedule()` → 得 tier/model_id/reason，调度异常回退云侧）；round_data 注入 `phase.{red,blue,purple}`
+    - `frontend/src/protocol/types.ts`（改）——`DrillPhasePlacement` / `DrillRoundPhases` 类型，`DrillRound.phase` 可选字段
+    - `frontend/src/views/cyber/CyberDrillPanel.tsx`（改）——轮次卡三阶段 tier 徽标（device/edge/cloud 配色），title 含卸载理由
+    - `frontend/src/index.css`（改）——`.badge--tier*` 三色徽标样式 + `.cyber-drill__placement`
+    - `tests/aegisos_agents/planning/test_drill_placement.py`（新）——R10 单测 4 个
   - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+    - 前端 Drill tab 轮次卡：red/blue/purple 三枚 tier 徽标（device 绿 / edge 黄 / cloud 蓝），悬停看卸载理由（如"攻击链实时生成（超低延迟） → 端侧·超低延迟/本地隐私"）
+    - 内部：`run_drill` 每轮 `round_data["phase"] = self._phase_placements()`；复用既有 `scheduler.schedule()` 五步策略 + `Task` 契约 + `Tier` 语义，未新造调度逻辑
+  - 测试结果：后端全量 `pytest` 642 passed（新增 4 个）；前端 `tsc -b` + `vitest` 43 passed；既有 drill 测试零破坏
+  - git commit：`79f963c` feat(cyber-drill): R10 演练阶段 placement 联动——端-边-云自适应调度标注
+  - 实测结果：3 轮演练各阶段稳定——red→device（device_firewall，超低延迟）、blue→edge（edge_gateway，低延迟）、purple→cloud（cloud_gpu，高算力），卸载理由语义清晰，跨轮稳定
+  - 遗留问题 / 下一步：演示版用候选池非真实节点（档案风险对策已声明）；下一步 R11「无人干预演示脚本 + 赛事材料文档补全」（能力维度 d/e，截止 2026-09-15）
 
 ---
 
@@ -583,6 +590,7 @@
 | 2026-09-04 | R7 | 真实 LLM 接入 drill + 运行时模式切换（mock/real）+ 前端徽标；后端 627/front 43 全绿；DeepSeek 连通性冒烟通过 | `54f45de` |
 | 2026-09-05 | R8 | 跨轮记忆与上下文压缩（紫队带历史决策摘要）；后端 634/front 43 全绿；mock 实测 3 轮收敛携带前轮摘要 | `0959d05` |
 | 2026-09-05 | R9 | 演练事件总线化（drill.round 低熵增量事件可订阅）；后端 638 全绿；API 实测 3 轮事件 + carry 增量 + 跨轮摘要联动 | `72d3d13` |
+| 2026-09-05 | R10 | 演练阶段 placement 联动（red→device / blue→edge / purple→cloud 三阶段标注）；后端 642 全绿；前端 43 全绿 | `79f963c` |
 | | | | |
 | | | | |
 | | | | |
