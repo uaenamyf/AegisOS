@@ -111,7 +111,14 @@ def _build_cyber_mock_responses() -> dict[str, str]:
         "Triage these alerts: ": _json.dumps(
             {
                 "alerts": [
-                    {"alert_id": "alert-1", "severity": "high"},
+                    {
+                        "alert_id": "alert-1",
+                        "severity": "high",
+                        "src": "10.0.0.99",
+                        "dst": "10.0.0.5",
+                        "technique": "T1110",
+                        "raw": {"event": "brute-force"},
+                    },
                 ]
             }
         ),

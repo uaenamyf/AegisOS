@@ -45,6 +45,29 @@ def _fmt_action(action: dict[str, Any]) -> str:
     return f"- {action.get('action', action)}"
 
 
+def _compact(text: Any, limit: int = 500) -> str:
+    """截断长文本，保留可读性并标注总长度。"""
+    s = str(text)
+    if len(s) <= limit:
+        return s
+    return f"{s[:limit]}…（截断，共 {len(s)} 字符）"
+
+
+def _fmt_agent_trace(trace: list[dict[str, Any]]) -> str:
+    """格式化 agent 级调用追踪（每个 agent 的输入 prompt 与结构化输出）。"""
+    if not trace:
+        return "- 无 agent 调用记录。"
+    lines: list[str] = []
+    for t in trace:
+        agent = t.get("agent", "?")
+        inp = _compact(t.get("input", ""))
+        out = _compact(json.dumps(t.get("output", {}), ensure_ascii=False, default=str))
+        lines.append(f"- **{agent}**")
+        lines.append(f"  - 输入: `{inp}`")
+        lines.append(f"  - 输出: `{out}`")
+    return "\n".join(lines)
+
+
 def _fmt_phase_table(phases: dict[str, dict[str, Any]]) -> str:
     """渲染端-边-云卸载位置表格。"""
     rows = ["| 阶段 | 执行层 | 理由 |", "|---|---|---|"]
@@ -139,6 +162,10 @@ def build_drill_report(record: dict[str, Any]) -> str:
         else:
             lines.append("- 红队链执行失败。")
         lines.append("")
+        lines.append("#### 🔍 Agent 调用追踪（红队）")
+        lines.append("")
+        lines.append(_fmt_agent_trace(red.get("agent_trace") or []))
+        lines.append("")
 
         # 蓝队
         lines.append("### 🟦 蓝队防御")
@@ -162,6 +189,10 @@ def build_drill_report(record: dict[str, Any]) -> str:
                 lines.append("- 响应计划：无动作（可能因事件流无新增告警）。")
         else:
             lines.append(f"- 蓝队链执行失败：{blue.get('error', 'unknown')}")
+        lines.append("")
+        lines.append("#### 🔍 Agent 调用追踪（蓝队）")
+        lines.append("")
+        lines.append(_fmt_agent_trace(blue.get("agent_trace") or []))
         lines.append("")
 
         # 紫队
@@ -187,6 +218,10 @@ def build_drill_report(record: dict[str, Any]) -> str:
                 lines.append(f"- 总评：{review.get('overall_assessment')}")
         else:
             lines.append("- 紫队链执行失败。")
+        lines.append("")
+        lines.append("#### 🔍 Agent 调用追踪（紫队）")
+        lines.append("")
+        lines.append(_fmt_agent_trace(purple.get("agent_trace") or []))
         lines.append("")
 
         # 跨轮记忆

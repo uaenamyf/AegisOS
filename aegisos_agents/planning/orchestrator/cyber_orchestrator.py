@@ -463,16 +463,23 @@ class CyberOrchestrator(GoalMode[dict]):
         （第 N 轮才暴露新资产/新利用步骤），驱动多轮对抗收敛真实可演示。
         默认 round=None 完全保持旧行为，既有调用/测试零破坏。
 
+        R14：返回字典附加 ``agent_trace``——每个 agent 的输入 prompt 与结构化
+        输出（用于 Auto Drill 运行记录报告，排查每个 agent 的输入输出）。
+
         Args:
             target_range: 目标网络范围，如 ``"10.0.0.0/24"``。
             round: 显式演练轮次（>=2 触发演化）；None 表示不演化。
 
         Returns:
-            含 ``assets`` / ``findings`` / ``chain`` 的字典（值为 protocol dataclass）。
+            含 ``assets`` / ``findings`` / ``chain`` / ``agent_trace`` 的字典
+            （值为 protocol dataclass）。
         """
         round_tag = f" [round={round}]" if round is not None and round >= 2 else ""
+        trace: list[dict[str, Any]] = []
         # 1) 侦察（数量上限截断：提速——限制 DeepSeek 输出规模，下同）
-        recon_result = self.recon._run(f"Scan target range: {target_range}{round_tag}")
+        recon_prompt = f"Scan target range: {target_range}{round_tag}"
+        recon_result = self.recon._run(recon_prompt)
+        trace.append(self._trace_entry("recon", recon_prompt, recon_result))
         assets = [
             Asset(
                 asset_id=a.asset_id, host=a.host, services=a.services, os=a.os, exposure=a.exposure
@@ -487,9 +494,9 @@ class CyberOrchestrator(GoalMode[dict]):
                 for a in assets
             ]
         )
-        vuln_result = self.vuln_correlator._run(
-            f"Correlate vulnerabilities for these assets: {assets_desc}"
-        )
+        vuln_prompt = f"Correlate vulnerabilities for these assets: {assets_desc}"
+        vuln_result = self.vuln_correlator._run(vuln_prompt)
+        trace.append(self._trace_entry("vuln_correlator", vuln_prompt, vuln_result))
         findings = [
             VulnFinding(
                 finding_id=f.finding_id,
@@ -513,7 +520,9 @@ class CyberOrchestrator(GoalMode[dict]):
                 for f in findings
             ]
         )
-        exploit_result = self.exploit_planner._run(f"Plan exploit chain for: {findings_desc}{round_tag}")
+        exploit_prompt = f"Plan exploit chain for: {findings_desc}{round_tag}"
+        exploit_result = self.exploit_planner._run(exploit_prompt)
+        trace.append(self._trace_entry("exploit_planner", exploit_prompt, exploit_result))
         chain = AttackChain(
             chain_id=exploit_result.chain_id,
             target=exploit_result.target,
@@ -521,7 +530,27 @@ class CyberOrchestrator(GoalMode[dict]):
             status=exploit_result.status,
         )
 
-        return {"assets": assets, "findings": findings, "chain": chain}
+        return {"assets": assets, "findings": findings, "chain": chain, "agent_trace": trace}
+
+    @staticmethod
+    def _trace_entry(agent: str, prompt: str, result: Any) -> dict[str, Any]:
+        """构造 agent 级调用追踪条目（输入 prompt + 结构化输出）。
+
+        Args:
+            agent: agent 标识（如 ``recon`` / ``detector`` / ``ir_planner``）。
+            prompt: 实际发送给 LLM/mock 的输入文本。
+            result: agent 的 ``_run`` 返回结果（pydantic 模型或 dataclass）。
+
+        Returns:
+            ``{"agent", "input", "output"}`` 字典，输出为 JSON 兼容结构。
+        """
+        if hasattr(result, "model_dump"):
+            output = result.model_dump()
+        elif hasattr(result, "to_dict"):
+            output = result.to_dict()
+        else:
+            output = _asdict(result)
+        return {"agent": agent, "input": prompt, "output": output}
 
     async def stream_red_chain(self, target_range: str, round: int | None = None):
         """红队链流式执行（供 SSE 渐进展示）。
@@ -613,10 +642,13 @@ class CyberOrchestrator(GoalMode[dict]):
             event_stream: 原始事件流列表。
 
         Returns:
-            含 ``alerts`` / ``triaged`` / ``hypotheses`` / ``plan`` 的字典。
+            含 ``alerts`` / ``triaged`` / ``hypotheses`` / ``plan`` / ``agent_trace`` 的字典。
         """
+        trace: list[dict[str, Any]] = []
         # 1) 入侵检测
-        detector_result = self.detector._run(f"Detect anomalies in: {json.dumps(event_stream)}")
+        detector_prompt = f"Detect anomalies in: {json.dumps(event_stream)}"
+        detector_result = self.detector._run(detector_prompt)
+        trace.append(self._trace_entry("detector", detector_prompt, detector_result))
         alerts = [
             Alert(
                 alert_id=a.alert_id,
@@ -636,15 +668,21 @@ class CyberOrchestrator(GoalMode[dict]):
                 for a in alerts
             ]
         )
-        triage_result = self.triage._run(f"Triage these alerts: {alerts_desc}")
+        triage_prompt = f"Triage these alerts: {alerts_desc}"
+        triage_result = self.triage._run(triage_prompt)
+        trace.append(self._trace_entry("triage", triage_prompt, triage_result))
         triaged = [Alert(**t.model_dump()) for t in triage_result.alerts] or alerts
 
         # 3) 威胁狩猎
-        hunt_result = self.threat_hunt._run(f"Generate hunting hypotheses for: {alerts_desc}")
+        hunt_prompt = f"Generate hunting hypotheses for: {alerts_desc}"
+        hunt_result = self.threat_hunt._run(hunt_prompt)
+        trace.append(self._trace_entry("threat_hunt", hunt_prompt, hunt_result))
         hypotheses = [h.model_dump() for h in hunt_result.hypotheses]
 
         # 4) 响应规划
-        ir_result = self.ir_planner._run(f"Plan response for: {json.dumps(hypotheses)}")
+        ir_prompt = f"Plan response for: {json.dumps(hypotheses)}"
+        ir_result = self.ir_planner._run(ir_prompt)
+        trace.append(self._trace_entry("ir_planner", ir_prompt, ir_result))
         plan = ResponsePlan(
             plan_id=ir_result.plan_id,
             actions=[
@@ -655,7 +693,13 @@ class CyberOrchestrator(GoalMode[dict]):
             rollback=ir_result.rollback,
         )
 
-        return {"alerts": alerts, "triaged": triaged, "hypotheses": hypotheses, "plan": plan}
+        return {
+            "alerts": alerts,
+            "triaged": triaged,
+            "hypotheses": hypotheses,
+            "plan": plan,
+            "agent_trace": trace,
+        }
 
     def run_purple_review(
         self,
@@ -684,8 +728,9 @@ class CyberOrchestrator(GoalMode[dict]):
             prior_rounds_summary: 前序轮次压缩摘要文本；None 表示不注入（默认）。
 
         Returns:
-            含 ``critique`` / ``review`` 的字典（均为 dict）。
+            含 ``critique`` / ``review`` / ``agent_trace`` 的字典（均为 dict）。
         """
+        trace: list[dict[str, Any]] = []
         # 紫队批判红队攻击链
         round_tag = f" [round={round}]" if round is not None else ""
         prior_tag = (
@@ -693,9 +738,9 @@ class CyberOrchestrator(GoalMode[dict]):
             if prior_rounds_summary
             else ""
         )
-        critique_result = self.critic._run(
-            f"Critique: {json.dumps(chain.to_dict())}{round_tag}{prior_tag}"
-        )
+        critique_prompt = f"Critique: {json.dumps(chain.to_dict())}{round_tag}{prior_tag}"
+        critique_result = self.critic._run(critique_prompt)
+        trace.append(self._trace_entry("critic", critique_prompt, critique_result))
         critique = critique_result.model_dump()
 
         # 紫队跨产出一致性审查
@@ -705,12 +750,12 @@ class CyberOrchestrator(GoalMode[dict]):
             "alerts": [_asdict(a) for a in alerts],
             "prior_rounds_summary": prior_rounds_summary,
         }
-        review_result = self.reviewer._run(
-            f"Review consistency: {json.dumps(artifacts, default=str)}"
-        )
+        review_prompt = f"Review consistency: {json.dumps(artifacts, default=str)}"
+        review_result = self.reviewer._run(review_prompt)
+        trace.append(self._trace_entry("reviewer", review_prompt, review_result))
         review = review_result.model_dump()
 
-        return {"critique": critique, "review": review}
+        return {"critique": critique, "review": review, "agent_trace": trace}
 
     # ==================================================================
     # AP4: 带人机协同（Ask 范式）的攻防编排方法
@@ -2217,6 +2262,7 @@ class CyberOrchestrator(GoalMode[dict]):
                     "finding_count": len(red["findings"]),
                     "steps": [s.to_dict() for s in chain.steps],
                     "new_steps": [s.to_dict() for s in new_steps],
+                    "agent_trace": red.get("agent_trace", []),
                 },
                 "blue": {
                     "ok": blue_ok,
@@ -2224,6 +2270,7 @@ class CyberOrchestrator(GoalMode[dict]):
                     "alerts": [_asdict(a) for a in blue["alerts"]],
                     "triaged_count": len(blue["triaged"]),
                     "plan": _asdict(blue["plan"]),
+                    "agent_trace": blue.get("agent_trace", []),
                 },
                 "purple": {
                     "ok": True,
@@ -2232,6 +2279,7 @@ class CyberOrchestrator(GoalMode[dict]):
                     "converged": stop,
                     "valid": valid,
                     "new_issue_count": len(critique.get("issues", []) or []),
+                    "agent_trace": purple.get("agent_trace", []),
                 },
                 "event_stream": event_stream,
                 "convergence_code": code,

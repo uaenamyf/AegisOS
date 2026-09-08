@@ -61,7 +61,11 @@ def test_switch_to_mock_then_back(client: TestClient):
         assert resp.json()["mode"] == "real"
     else:
         assert resp.status_code == 400
-        assert "INVALID_MODE" in resp.json()["detail"]["code"]
+        body = resp.json()
+        # 项目统一错误格式：{"code", "message", "trace_id"}（无 FastAPI 默认 detail）
+        detail = body.get("detail")
+        code = detail.get("code") if isinstance(detail, dict) else body.get("code")
+        assert "INVALID_MODE" in str(code)
 
     # 收尾：切回 mock，避免把 real 模式泄漏给同进程后续测试
     resp = client.post("/api/v1/system/mode", json={"mode": "mock"}, headers=_AUTH_HEADERS)
