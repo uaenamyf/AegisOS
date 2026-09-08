@@ -44,18 +44,24 @@
 | 轮次 | 任务 | 阶段 | 依赖 | 比赛维度 | 状态 |
 |---|---|---|---|---|---|
 | **R0** | git 仓库初始化 + 本档案建档 + 全量初始提交 | 基线 | — | 工程保障 | ✅ 本轮完成 |
-| **R1** | 编排器收敛式演练内核（`run_drill` + 事件合成 + 收敛判定纯函数） | 核心 | R0 | a / 完整性40 / 技术20 / 效率15 | ⬜ 待开工 |
+| **R1** | 编排器收敛式演练内核（`run_drill` + **证据化**事件合成/收敛纯函数，红队带轮次上下文可选） | 核心 | **R1.5** → R0 | a / 完整性40 / 技术20 / 效率15 | 🔶 已修订待开工 |
+| **R1.5** | Mock Provider 按轮演化升级（让多轮收敛真实可演示） | 核心 | R0 | a / d（前置） | 🔶 新增 |
 | **R2** | Service 层透出 `run_drill` + 演练记录持久化（`data/drills/`） | 核心 | R1 | e / 回放 | ⬜ |
 | **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ⬜ |
 | **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ⬜ |
 | **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ⬜ |
-| **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | R1-R5 | d | ⬜ |
+| **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ⬜ |
 | **R7** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R6 | a（重点加分） | ⬜ |
-| **R8** | 演练事件总线化 + 低熵增量推送（EventBus 联动） | 延申 P1 | R6 | b（技术分10） | ⬜ |
+| **R8** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R6 | b（技术分10） | 🔶 已修订 |
 | **R9** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R8 | c | ⬜ |
 | **R10** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R6-R9 | d / e | ⬜ |
 
-> 优先级策略：**R1-R6 为必做**（9-15 截止前保证一键闭环可演示）；**R7-R8 为强加分**（直接命中维度 a/b，优先于 R9）；**R9-R10 视剩余时间与稳定性决定**。
+> 优先级策略：**R1 + R1.5-R6 为必做**（9-15 截止前保证一键闭环可演示）；**R7-R8 为强加分**（直接命中维度 a/b，优先于 R9）；**R9-R10 视剩余时间与稳定性决定**。
+
+> **（2026-09-04 评审修订）** 原开工审查报告方案经代码核查发现 3 处硬伤，已修订见各轮「评审记录」：
+> ① **R1 收敛判定**：mock 下 `valid/consistent` 恒真会首轮"完全收敛"，多轮收敛跑不出来 → 改为**证据驱动**（锚定新资产/新步骤）+ 新增 **R1.5 mock 按轮演化**；
+> ② **R3 并发**：编排器是同步的，直接 `asyncio.create_task` 会阻塞事件循环 → 改 `asyncio.to_thread`；
+> ③ **R8 不发新总线**：复用既有 `CyberOrchestrator.eventbus` + `install_hooks`，不新造。
 
 ---
 
@@ -86,51 +92,89 @@
 
 ## 2. Phase 1 · 一键闭环基础版（核心交付，对应开工审查报告 T1-T7）
 
-### R1 · 编排器收敛式演练内核
+### R1 · 编排器收敛式演练内核（先做「批判性修订」，见下方评审记录）
 
-- **一句话目标**：在 `CyberOrchestrator` 上新增 `run_drill` 主循环——一次调用自动跑完「红→蓝→紫」≤M 轮并提前收敛，配套两个纯函数（事件合成、收敛判定）保证可单测。
+- **一句话目标**：在 `CyberOrchestrator` 上新增 `run_drill` 主循环——一次调用自动跑完「红→蓝→紫」≤M 轮并提前收敛，配套纯函数（事件合成、收敛判定）保证可单测。**同时修正原方案两个会让演示跑不通的硬伤**：① mock 下收敛恒真首轮即完，② 红队每轮无演化 → 多轮收敛无法真实推进。
+
+> **评审记录：为什么原方案要改（基于代码核查，非臆测）**
+> - **硬伤 A（收敛恒真）**：`backend/mocks/cyber_provider.py` 的 `_CyberMockProvider` 返回**静态固定**响应：`Critique.valid=True`（L161）、`Reviewer.consistent=True`（L170）恒定。原方案收敛规则 1（`valid and consistent → converged`）在 mock/演示模式下**第一轮就触发**，多轮对抗→收敛的过程根本跑不出来，时间线只有一张卡片——恰恰是评委最想看的亮点。
+> - **硬伤 B（无演化）**：`run_red_chain(target_range)` 只吃 `target_range`（L402），同一目标每轮得到相同结果 → `AttackChain.steps` 恒定，增量事件合成永远无新步骤，「无进展收敛」「跨轮 carry」都失去意义。
+> - **修正方向（不偏离主线）**：① 收敛判定从「状态恒真」改为「**证据驱动**」——锚定本轮是否产出**新资产/新发现/新步骤**，紫队对新增量给出评价；② 给 `run_red_chain` 增加**可选** `round`/`prev_context`（红队可带上一轮紫队反馈继续探测，默认不传=原行为，**既有调用零破坏**）；③ R1.5 把 mock 升级为**按轮演化**（第 r 轮才有机会发现新资产/新步骤），使收敛循环真实可演示。三者合起来让同一套代码在 mock（聚变演示）与真实 LLM（动态演化）下都能工作。
+
 - **比赛要求映射**：
-  - 能力维度 a：多轮循环 + 事件 `carry_forward`，跨轮上下文连续；
+  - 能力维度 a：多轮循环 + 逐轮事件 carry + 「上一轮紫队反馈喂下一轮红队」，跨轮上下文连续、目标不漂移；
   - 完整性 40：「感知-规划-执行-反馈」闭环一次跑通；
-  - 技术创新 20 / 效率 15：原创收敛判定（4 规则提前终止，不空转）+ 增量事件合成（不重放全量，控制 token 膨胀）。
+  - 技术创新 20 / 效率 15：证据化收敛判定（4 规则提前终止）+ 增量事件合成（不重放全量）。
 - **与其他模块的联系**：
   - 复用既有 `run_red_chain`（L402）/`run_blue_chain`（L465）/`run_purple_review`（L516）及其变体（guardrail/handoffs/traced/goal/human-check 全部保留、语义不变）；
+  - **可选增强** `run_red_chain` 签名加 `round: int = 1, prev_context: dict | None = None`（默认值保持原语义，既有调用与测试零改动）；
   - 协议契约 `protocol/cyber.py` 只读复用（`AttackChain`/`Alert`/`ResponsePlan`/`PurpleReviewResponse`）；
-  - 被 R2 Service 层包装、被 R3 路由经回调推送 SSE、被 R7 记忆注入扩展。
+  - 被 R1.5 mock 演化驱动、被 R2 Service 包装、被 R3 路由经回调推送 SSE、被 R7 记忆注入扩展。
 - **模块内部逻辑**：
   ```
-  run_drill(target_range, max_rounds=5, on_round=None) -> dict
-    history = []                                  # 每轮收敛判定历史
-    prev_stream = []                              # 事件流累计（跨轮 carry）
-    chain = None
+  run_drill(target_range, max_rounds=5, on_round=None, eventbus=None) -> dict
+    history     = []      # 每轮收敛判定历史（含 new_assets/new_steps/new_issues）
+    prev_stream = []      # 事件流累计（跨轮 carry）
+    purples     = []      # 前序紫队评审（喂下一轮红队 prev_context）
     for round in 1..max_rounds:
       event_stream = _synthesize_event_stream(chain, prev_stream, round)   # 纯函数①
-      red   = run_red_chain(target_range)         # 复用；后续轮可带上一轮紫队反馈
-      blue  = run_blue_chain(event_stream)        # 复用，契约 list[dict]
-      purple= run_purple_review(red, blue)        # 复用
-      stop, code = _evaluate_stop(purple.critique, purple.review, round, history)  # 纯函数②
+      red    = run_red_chain(target_range, round=round, prev_context=折紫队摘要)  # 演化式红队
+      blue   = run_blue_chain(event_stream)        # 复用，契约 list[dict]（不变）
+      purple = run_purple_review(red["chain"], blue["plan"], blue["alerts"])  # 复用
+      new_assets, new_steps = _diff_vs_prev(red, prev_round)   # 新增：本轮新发现
+      stop, code = _evaluate_stop(purple, new_assets=new_assets, new_steps=new_steps,
+                                  round=round, history=history)                # 纯函数②（证据驱动）
       on_round(round_payload)                     # 回调供上层推 SSE
+      if eventbus: eventbus.publish(topic="drill.round", payload=增量)          # 每轮增量事件（为 R8 预留）
       if stop: break
     聚合 PurpleReviewResponse + 跨轮摘要（conclusion / convergence_code /
     rounds_executed / red_summary / blue_summary / purple_summary / remaining_risks）
   ```
   - 纯函数① `_synthesize_event_stream(chain, prev_stream, round)`：
     - Round 1：`AttackChain.steps` 逐条映射为事件 `{round, seq, type:"attack_step", source, target, technique, success}`；
-    - Round N+1：上一轮事件全部 `carry_forward: true` 保留 + 追加本轮 `step_id` 未出现过的新步骤为增量事件；
-    - 无新步骤 → 仅 carry，配合收敛规则 2 触发"无进展"结束；
-    - 返回 `list[dict]` 副本，不改动红队原始链。
-  - 纯函数② `_evaluate_stop(critique, review, round, history) -> (stop: bool, code: str)`，满足其一即停：
-    1. 完全收敛：`critique.valid == True and review.consistent == True` → `converged`；
-    2. 无进展：连续 2 轮 `new_issue_count == 0` 且 severity 不升高 → `no_progress`；
+    - Round N+1：上一轮事件全部 `carry_forward: true` 保留 + 追加本轮 `step_id` 未出现过的新步骤为增量；
+    - 无新步骤 → 仅 carry；返回 `list[dict]` 副本，不改动原始链。
+  - 纯函数② `_evaluate_stop(purple, new_assets, new_steps, round, history) -> (stop, code)`，**证据驱动**，满足其一即停：
+    1. **无新发现收敛**：本轮红队 `new_assets==0 and new_steps==0` 且紫队 `critique.valid and review.consistent` → `converged`（真实 LLM 下=攻击面已穷尽）；
+    2. **持续收敛**：紫队连续 2 轮新问题 `new_issue_count==0` 且 severity 不升高，同时已稳定（无新发现）→ `no_progress`；
     3. 轮次上限：`round >= max_rounds` → `max_rounds`；
     4. 显式中止：外部 `abort_flag` → `aborted`。
+    （不再依赖恒真的 `valid/consistent` 判断，改用「是否还有新证据可挖」驱动收敛。）
 - **落盘文件清单**：
-  - `aegisos_agents/planning/orchestrator/cyber_orchestrator.py`（新增 3 个方法）
-  - `tests/aegisos_agents/planning/orchestrator/test_drill_convergence.py`（新建：事件合成 3 场景 + 收敛 4 规则 + max_rounds 边界）
-- **验收标准**：单测全绿；默认 5 轮，未收敛恰在 5 轮结束，收敛提前结束；既有 594 项 Python 回归不破。
-- **实测位置**：`pytest tests/aegisos_agents/planning/orchestrator/test_drill_convergence.py`；或 Python REPL：`CyberOrchestrator(mock=...).run_drill("10.0.0.0/24", max_rounds=5)` 看返回结构。
-- **风险与对策**：mock 模式下多轮产出变化小 → 收敛判定基于结构字段而非文本相似；回调 `on_round` 抛异常 → 捕获后转 `drill_error` 并中止。
+  - `aegisos_agents/planning/orchestrator/cyber_orchestrator.py`（新增 `run_drill` + 纯函数①`_synthesize_event_stream`/②`_evaluate_stop`/`_diff_vs_prev`；`run_red_chain` 可选参数 `round/prev_context`）
+  - `tests/aegisos_agents/planning/orchestrator/test_drill_convergence.py`（新建：事件合成多轮 + 证据化收敛 4 规则 + max_rounds 边界 + 真实性回归）
+- **验收标准**：单测全绿；同一测试在「mock 按轮演化（R1.5）」下能真实跑出 ≥2 轮且**确实在某轮收敛**（非首轮恒收敛）；默认 5 轮，未收敛恰在 5 轮结束；`run_red_chain` 不带新参时行为与旧版完全一致（既有 `tests/e2e/test_scenario1.py` 不破）；既有 594 项 Python 回归不破。
+- **实测位置**：`pytest tests/aegisos_agents/planning/orchestrator/test_drill_convergence.py`；或 REPL：`CyberOrchestrator(mock=_CyberMockProvider()).run_drill("10.0.0.0/24", max_rounds=5)` 观察返回 `rounds_executed>1` 且含 `convergence_code`。
+- **风险与对策**：真实 LLM 下每轮结果天然变化大，收敛判定必须有上限兜底（规则 3）；mock 非演化时断言会退化 → 收敛测试必须挂在 R1.5 的演化 mock 上，并保留一例「非演化 mock → 规则 3 兜底 max_rounds」作回归。
 - **可延申点**：R7 在循环内注入记忆摘要；R9 在每阶段标注 placement。
+
+- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工后记录**：
+  - 改动文件清单：
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
+  - 测试结果：
+  - git commit：
+  - 实测结果：
+  - 遗留问题 / 下一步：
+
+---
+
+### R1.5 · Mock Provider 按轮演化升级（让多轮收敛真实可演示）
+
+- **一句话目标**：把 `_CyberMockProvider` 从「静态固定响应」升级为「按轮演化」——第 r 轮才暴露 asset-r / vuln-r / step-r，且第 1 轮让紫队先判 `valid=False`（留缺口），后续轮补齐后转 `valid=True`。这样 `run_drill` 的多轮对抗→收敛、增量事件、无进展判定全部**真实触发**，演示与单测都有意义。
+- **比赛要求映射**：能力维度 a/d —— 无此项，`run_drill` 多轮收敛根本跑不起来，故这是 R1 能否验收的**前置**；同时让「逐轮演化出新证据」更贴近真实攻击面扩展。
+- **与其他模块的联系**：只改 `backend/mocks/cyber_provider.py`（mock 层），不动 `aegisos_agents/tools/llms/mock_provider.py` 基类；**后端 mocks 需能从请求中读轮次上下文**（`run_red_chain` 传入 `round`）。影响面：`CyberDefenseService` 默认实例（`mock=_CyberMockProvider()`）与既有测试（非演化场景）需向后兼容——演化只在该 mock 收到含 round 上下文的 prompt 时触发，否则回退旧静态响应。
+- **模块内部逻辑**：
+  - 为 `/backend/mocks/cyber_provider.py` 增加**轮次上下文感知**：从 `run_red_chain` 注入的 `round` 拼进 recon/correlate/exploit 的 prompt 或 request.metadata；
+  - 演绎规则：`assets` 规模随 round 增长（round r 才新增 asset-r），`findings`/`steps` 增量对应；第 1 轮让 critic 返回 `valid=False + issues:[...]`（缺口：未覆盖 asset-2 风险），第 2 轮红队补齐后 critic 返回 `valid=True`；
+  - 保持「前缀匹配」回退机制不变，确保未显式传 round 的既有调用仍命中旧静态 key。
+- **落盘文件清单**：
+  - `backend/mocks/cyber_provider.py`（改：轮次演化响应）
+  - `tests/backend/mocks/test_cyber_provider_evolution.py`（新建：r1 缺资产→r2 补齐；无 round 上下文时回退静态）
+- **验收标准**：轮次演化 mock 单测通过；「演化 mock」驱动 `run_drill` 能稳定跑出多轮并在第 2 轮收敛；「旧静态 key」下既有 `test_scenario1.py` 与 `CyberDefenseService` 默认行为不变。
+- **实测位置**：`pytest tests/backend/mocks/test_cyber_provider_evolution.py`；并在 R1 的 `test_drill_convergence.py` 里用演化 mock 验证 `convergence_code=="converged"` 且 `rounds_executed==2`。
+- **风险与对策**：改 mock 影响面广 → 严格保证「无 round 上下文→旧行为」的兼容分支；演化表显式、可预期（单测断言 asset 数递增）。
+- **可延申点**：真实 LLM 模式自动获得「逐轮演化」能力（无需 mock）；可为演示版提供可调演化步长。
 
 - **开工确认**：[ ] 用户已确认（日期：____）
 - **开工后记录**：
@@ -198,12 +242,7 @@
   | `GET /api/v1/drill/{id}` | — | 已发生轮次 + 当前状态（SSE 断开轮询兜底） |
   | `GET /api/v1/drill/{id}/summary` | — | 最终总结报告；未收敛 `409` + 当前中间态 |
   | `POST /api/v1/drill/{id}/abort` | — | `{status:"aborted"}`（收敛规则 4） |
-  后台任务用 `asyncio.create_task` 跑 R2 `run_drill`；SSE 生成器从事件队列消费（asyncio.Queue 或 service 内存 list + 游标）。
-- **落盘文件清单**：
-  - `backend/routers/drill.py`（新建）
-  - `backend/routers/__init__.py`（改：include drill）
-  - `tests/backend/routers/test_drill_api.py`（新建：TestClient 覆盖 start→stream→summary→abort 全流程 + 409 分支）
-- **验收标准**：curl 全端点可用；SSE 从 `drill_start` 到 `drill_done` 完整推送；既有 `/attack` `/defense` `/defense/purple-review` 回归不变。
+  > **并发关键（评审修订）**：现有编排器 `run_drill` 为**同步**逻辑，若直接 `asyncio.create_task` 会在事件循环里阻塞其他请求 → 用 `asyncio.to_thread(run_drill, ...)`（或 `run_in_executor`）把同步编排放到线程池，SSE 生成器用 `asyncio.Queue` + 线程→队列回调解耦；这样同时保留 FastAPI 异步响应模型。
 - **实测位置**：`uvicorn backend.main:app` 起服务后：
   - `curl -X POST http://localhost:8000/api/v1/drill/start -H "X-API-Key: <key>" -H "Content-Type: application/json" -d '{"target_range":"10.0.0.0/24"}'`
   - 浏览器打开 `http://localhost:8000/api/v1/drill/<id>/stream` 看 SSE 流；FastAPI `/docs` 页面可直接调试 5 个端点。
@@ -304,7 +343,7 @@
 
 - **一句话目标**：把 R1-R5 串起来跑通完整演示链路，全量回归，并把「实测指南」定稿写进本档案。
 - **比赛要求映射**：能力维度 d —— 可运行系统的完整验证；系统性能与效率 15 —— 回归证明鲁棒性/兼容性。
-- **与其他模块的联系**：覆盖 backend（R1-R3）、frontend（R4-R5）、tests（全量）、docs（本档案实测指南区）。
+- **与其他模块的联系**：覆盖 backend（R1、R1.5、R2、R3）、frontend（R4-R5）、tests（全量）、docs（本档案实测指南区）。
 - **模块内部逻辑**：按 `start.ps1` 启动 → 前端 Drill tab 完整跑一次演练 → 逐条核对开工审查报告 §5 验收表 → `pytest` 全量 + 前端测试 + `tsc`/build → 修复联调中暴露的小问题。
 - **落盘文件清单**：可能的小修 bug；本档案「实测指南」区定稿；必要时 `README.md` 补演示入口说明。
 - **验收标准**：开工审查报告 §5 六条验收全勾；Python 全量 + 前端测试全绿。
@@ -472,4 +511,5 @@
 | 日期 | 轮次 | 变更 | commit |
 |---|---|---|---|
 | 2026-09-04 | R0 | 建档：任务切分 R0-R10 + 每轮设计档案/开工前报告模板 + git 约定 + 仓库初始化 | `7c3b690` |
+| 2026-09-04 | 修订 | 评审修订：①新增 R1.5 mock 按轮演化；②R1 收敛改证据驱动；③R3 并发改 asyncio.to_thread；④R8 复用既有 EventBus；⑤补齐 R2 行 | （本轮文档修订，随 R1.5 合并提交） |
 | | | | |
