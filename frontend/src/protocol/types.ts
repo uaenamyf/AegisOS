@@ -335,6 +335,8 @@ export interface SystemModeInfo {
   provider: string;
   has_key: boolean;
   available: RuntimeMode[];
+  /** Key 是否已落盘 .env（false = 仅后端进程内存，重启失效）。 */
+  persisted?: boolean;
 }
 export interface StartDrillRequest {
   target_range?: string;

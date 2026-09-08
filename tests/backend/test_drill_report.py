@@ -179,6 +179,101 @@ class TestSystemApiKeyEndpoint:
         )
         assert resp.status_code == 400
 
+    def test_set_api_key_memory_only_does_not_touch_disk(self, client, tmp_path, monkeypatch):
+        """persist=False：只写进程环境，不落盘；且删掉 .env 里的旧副本。"""
+        import os
+
+        import backend.routers.system as system_mod
+
+        fake_env = tmp_path / ".env"
+        # 预置一个旧落盘 Key，验证仅内存模式会把它剔除
+        fake_env.write_text("OPENAI_API_KEY=sk-old-persisted-111\nFOO=bar\n", encoding="utf-8")
+        monkeypatch.setattr(system_mod, "_ENV_PATH", fake_env)
+
+        old = os.environ.get("OPENAI_API_KEY")
+        try:
+            resp = client.post(
+                "/api/v1/system/api-key",
+                json={"api_key": "sk-memory-only-9999", "persist": False},
+                headers=_AUTH_HEADERS,
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["has_key"] is True
+            assert data["persisted"] is False
+            assert "sk-memory-only-9999" not in str(data)
+            # 内存生效
+            assert os.environ.get("OPENAI_API_KEY") == "sk-memory-only-9999"
+            # 磁盘：旧副本已删除，新 Key 未写入，其余行保留
+            text = fake_env.read_text(encoding="utf-8")
+            assert "OPENAI_API_KEY" not in text
+            assert "sk-memory-only-9999" not in text
+            assert "FOO=bar" in text
+        finally:
+            if old is not None:
+                os.environ["OPENAI_API_KEY"] = old
+            else:
+                os.environ.pop("OPENAI_API_KEY", None)
+
+    def test_delete_api_key_clears_disk_and_memory(self, client, tmp_path, monkeypatch):
+        """DELETE /system/api-key：同时抹掉 .env 落盘副本与进程环境变量。
+
+        注意：必须在 finally 里恢复原进程环境变量，否则会把跑测试的解释器进程里
+        继承的真实 Key 抹掉，污染同一进程内后续测试的 has_key 断言。
+        """
+        import os
+
+        import backend.routers.system as system_mod
+
+        fake_env = tmp_path / ".env"
+        fake_env.write_text("OPENAI_API_KEY=sk-to-be-cleared-1\nFOO=bar\n", encoding="utf-8")
+        monkeypatch.setattr(system_mod, "_ENV_PATH", fake_env)
+        old = os.environ.get("OPENAI_API_KEY")
+        os.environ["OPENAI_API_KEY"] = "sk-to-be-cleared-1"
+
+        try:
+            resp = client.delete("/api/v1/system/api-key", headers=_AUTH_HEADERS)
+            assert resp.status_code == 200
+            assert resp.json()["has_key"] is False
+            assert "OPENAI_API_KEY" not in fake_env.read_text(encoding="utf-8")
+            assert "FOO=bar" in fake_env.read_text(encoding="utf-8")
+            assert os.environ.get("OPENAI_API_KEY") is None
+        finally:
+            if old is not None:
+                os.environ["OPENAI_API_KEY"] = old
+            else:
+                os.environ.pop("OPENAI_API_KEY", None)
+
+    def test_api_key_status_reports_persisted(self, client, tmp_path, monkeypatch):
+        """GET /system/api-key/status：区分已落盘 / 仅内存。"""
+        import os
+
+        import backend.routers.system as system_mod
+
+        fake_env = tmp_path / ".env"
+        monkeypatch.setattr(system_mod, "_ENV_PATH", fake_env)
+        old = os.environ.get("OPENAI_API_KEY")
+        try:
+            # 仅内存：环境有 Key，文件无副本
+            fake_env.write_text("FOO=bar\n", encoding="utf-8")
+            os.environ["OPENAI_API_KEY"] = "sk-status-memory-123"
+            data = client.get(
+                "/api/v1/system/api-key/status", headers=_AUTH_HEADERS
+            ).json()
+            assert data == {"has_key": True, "persisted": False}
+
+            # 已落盘
+            fake_env.write_text("OPENAI_API_KEY=sk-status-disk-123\n", encoding="utf-8")
+            data = client.get(
+                "/api/v1/system/api-key/status", headers=_AUTH_HEADERS
+            ).json()
+            assert data == {"has_key": True, "persisted": True}
+        finally:
+            if old is not None:
+                os.environ["OPENAI_API_KEY"] = old
+            else:
+                os.environ.pop("OPENAI_API_KEY", None)
+
 
 class TestDrillReportEndpoint:
     @pytest.fixture()
