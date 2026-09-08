@@ -2832,3 +2832,49 @@ body {
   opacity: 0.7;
   margin-left: 4px;
 }
+
+/* ============ T3: 收敛趋势图 ============ */
+.cyber-trend {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #3a4a5f);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-trend__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.cyber-trend__head .cyber-panel__subtitle { margin: 0; }
+.cyber-trend__legend {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+  flex-wrap: wrap;
+}
+.cyber-trend__legend i {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.cyber-trend__ln--red { background: #e05252; }
+.cyber-trend__ln--blue { background: #2f7de1; }
+.cyber-trend__ln--green { background: #2e9e5b; }
+.cyber-trend__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.cyber-trend__note {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+}

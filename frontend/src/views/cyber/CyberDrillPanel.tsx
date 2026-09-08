@@ -13,6 +13,210 @@ import type {
 
 type DrillPhase = "idle" | "running" | "done" | "aborted" | "error";
 
+// T3 收敛趋势图：每轮指标计算
+// 防御覆盖率复用 T6 算法：该轮红队新增步骤技法 ∩ 蓝队告警技法 / 红队技法
+function roundCoverage(round: DrillRound): number | null {
+  const attackTechs = [
+    ...new Set(
+      (round.red.new_steps ?? [])
+        .map((s: any) => s.technique)
+        .filter(Boolean),
+    ),
+  ];
+  const detectTechs = [
+    ...new Set(
+      (round.blue.alerts ?? [])
+        .map((a: any) => a.technique)
+        .filter(Boolean),
+    ),
+  ];
+  if (attackTechs.length === 0) return null;
+  const covered = attackTechs.filter((t) => detectTechs.includes(t)).length;
+  return Math.round((covered / attackTechs.length) * 100);
+}
+
+/** T3 收敛趋势图：SVG 多折线（红队新增步骤/蓝队动作/覆盖率 + 紫队判定 + 收敛标注）。 */
+function TrendChart({ rounds }: { rounds: DrillRound[] }) {
+  const W = 560;
+  const H = 178;
+  const PAD_L = 36;
+  const PAD_R = 46;
+  const PAD_T = 20;
+  const PAD_B = 26;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+  const n = rounds.length;
+
+  const series = rounds.map((r) => ({
+    round: r.round,
+    red: (r.red.new_steps ?? []).length,
+    blue: (r.blue.plan?.actions?.length ?? 0),
+    cov: roundCoverage(r),
+    valid: r.purple?.valid,
+  }));
+
+  const maxVal = Math.max(
+    1,
+    ...series.map((s) => Math.max(s.red, s.blue)),
+  );
+  const x = (i: number) =>
+    PAD_L + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const y = (v: number, max: number) =>
+    PAD_T + plotH - (v / max) * plotH;
+  const line = (key: "red" | "blue") =>
+    series
+      .map((s, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(s[key], maxVal)}`)
+      .join(" ");
+  // 覆盖率单独缩放到 0-100
+  const covLine = series
+    .map((s, i) => {
+      const v = s.cov ?? 0;
+      return `${i === 0 ? "M" : "L"} ${x(i)} ${y(v, 100)}`;
+    })
+    .join(" ");
+
+  const lastRound = rounds[rounds.length - 1];
+
+  return (
+    <div className="cyber-trend">
+      <div className="cyber-trend__head">
+        <h5 className="cyber-panel__subtitle">
+          📈 收敛趋势 · 证据驱动对抗
+        </h5>
+        <div className="cyber-trend__legend">
+          <span><i className="cyber-trend__ln--red" />红队新增步骤</span>
+          <span><i className="cyber-trend__ln--blue" />蓝队动作</span>
+          <span><i className="cyber-trend__ln--green" />防御覆盖率 %</span>
+          <span>● 紫队判定 ✓/✗</span>
+        </div>
+      </div>
+      <svg className="cyber-trend__svg" viewBox={`0 0 ${W} ${H}`}>
+        {/* 网格线 */}
+        {[0, 0.5, 1].map((t) => (
+          <line
+            key={t}
+            x1={PAD_L}
+            x2={W - PAD_R}
+            y1={PAD_T + plotH * (1 - t)}
+            y2={PAD_T + plotH * (1 - t)}
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="1"
+          />
+        ))}
+        {/* X 轴 */}
+        <line
+          x1={PAD_L}
+          x2={W - PAD_R}
+          y1={PAD_T + plotH}
+          y2={PAD_T + plotH}
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth="1"
+        />
+        {series.map((s, i) => (
+          <text
+            key={`x${i}`}
+            x={x(i)}
+            y={H - 8}
+            fill="var(--text-secondary)"
+            fontSize="10"
+            textAnchor="middle"
+          >
+            R{s.round}
+          </text>
+        ))}
+        {/* 收敛标注：最后一轮高亮竖线 */}
+        <line
+          x1={x(n - 1)}
+          x2={x(n - 1)}
+          y1={PAD_T - 4}
+          y2={PAD_T + plotH}
+          stroke="#d9a13b"
+          strokeWidth="1.5"
+          strokeDasharray="4 3"
+        />
+        <text
+          x={x(n - 1)}
+          y={PAD_T - 8}
+          fill="#d9a13b"
+          fontSize="11"
+          fontWeight="600"
+          textAnchor="middle"
+        >
+          ⚑ 收敛
+        </text>
+        {/* 三条趋势线 */}
+        <path d={line("red")} fill="none" stroke="#e05252" strokeWidth="2" />
+        <path d={line("blue")} fill="none" stroke="#2f7de1" strokeWidth="2" />
+        <path d={covLine} fill="none" stroke="#2e9e5b" strokeWidth="2" />
+        {/* 数据点 + 紫队判定 */}
+        {series.map((s, i) => (
+          <g key={`p${i}`}>
+            <circle cx={x(i)} cy={y(s.red, maxVal)} r="3" fill="#e05252" />
+            <circle cx={x(i)} cy={y(s.blue, maxVal)} r="3" fill="#2f7de1" />
+            {s.cov != null && (
+              <circle cx={x(i)} cy={y(s.cov, 100)} r="3" fill="#2e9e5b" />
+            )}
+            <text
+              x={x(i)}
+              y={PAD_T - 2}
+              fill={s.valid ? "#2e9e5b" : "#e05252"}
+              fontSize="12"
+              fontWeight="700"
+              textAnchor="middle"
+            >
+              {s.valid ? "✓" : "✗"}
+            </text>
+            <text
+              x={x(i)}
+              y={y(s.red, maxVal) - 6}
+              fill="var(--text-secondary)"
+              fontSize="9"
+              textAnchor="middle"
+            >
+              {s.red}
+            </text>
+            <text
+              x={x(i)}
+              y={y(s.blue, maxVal) + 11}
+              fill="var(--text-secondary)"
+              fontSize="9"
+              textAnchor="middle"
+            >
+              {s.blue}
+            </text>
+            {s.cov != null && (
+              <text
+                x={x(i)}
+                y={y(s.cov, 100) - 6}
+                fill="var(--text-secondary)"
+                fontSize="9"
+                textAnchor="middle"
+              >
+                {s.cov}%
+              </text>
+            )}
+          </g>
+        ))}
+        {/* 轮次标签轴说明 */}
+        <text
+          x={W - PAD_R}
+          y={PAD_T + plotH + 16}
+          fill="var(--text-dim)"
+          fontSize="9"
+          textAnchor="end"
+        >
+          round
+        </text>
+      </svg>
+      <p className="cyber-trend__note">
+        {lastRound.convergence_code === "max_rounds"
+          ? `已达最大轮次上限收敛（${lastRound.convergence_code}）`
+          : `证据驱动收敛（${lastRound.convergence_code ?? "converged"}）：紫队反馈驱动红队演化，缺口逐步闭合`}
+      </p>
+    </div>
+  );
+}
+
 /** 最近一轮演练的浏览器快照（sessionStorage）：切 tab/刷新后仍可恢复展示，
  *  只有开启新一轮时才被清除/覆盖。 */
 const DRILL_SNAPSHOT_KEY = "aegis.cyber-drill.snapshot";
@@ -380,6 +584,9 @@ export function CyberDrillPanel() {
           </p>
         </div>
       ) : null}
+
+      {/* T3 收敛趋势图：≥2 轮才显示 */}
+      {rounds.length >= 2 ? <TrendChart rounds={rounds} /> : null}
 
       {/* 轮次时间线 */}
       {rounds.length > 0 || running ? (
