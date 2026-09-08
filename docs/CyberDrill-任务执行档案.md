@@ -55,7 +55,7 @@
 | **R8** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R7 | a（重点加分） | ✅ 已完成 |
 | **R9** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R7 | b（技术分10） | ✅ 已完成 |
 | **R10** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R9 | c | ✅ 已完成 |
-| **R11** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R7-R10 | d / e | ⬜ |
+| **R11** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R7-R10 | d / e | ✅ 已完成 |
 > **（2026-09-04 评审修订）** 原开工审查报告方案经代码核查发现 3 处硬伤，已修订见各轮「评审记录」：
 > ① **R1 收敛判定**：mock 下 `valid/consistent` 恒真会首轮"完全收敛"，多轮收敛跑不出来 → 改为**证据驱动**（锚定新资产/新步骤）+ 新增 **R1.5 mock 按轮演化**；
 > ② **R3 并发**：编排器是同步的，直接 `asyncio.create_task` 会阻塞事件循环 → 改 `asyncio.to_thread`；
@@ -548,14 +548,20 @@
 - **风险与对策**：脚本依赖 mock 模型即可跑通（真实模型可选）；文档与代码版本一致性由 0.1 规则保证。
 - **可延申点**：录制演示视频素材。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-05）
 - **开工后记录**：
   - 改动文件清单：
+    - `tooling/scripts/drill_demo.ps1`（新）——无人干预演示脚本：探测 Python（支持 `$env:AEGIS_PYTHON`）→ 自动启动 uvicorn（默认 mock，`-UseRealModel` 切真实）→ `POST /drill/start` → 轮询至收敛 → 输出总结/跨轮记忆/落盘路径 → 自动停止自启后端（`-KeepRunning` 保留）；uvicorn 日志重定向到 `.drill_backend.*.log`
+    - `README.md`（改）——新增「CyberDrill 攻防演练演示」章节：一键演示用法 + 手动演示 + R1-R11 能力落点表 + 实测指引
+    - `developer/CHANGELOG.md`（改）——顶部新增 `[CYBER-DRILL] 2026-09-05` 条目汇总 R8-R11
+    - 本档案「实测指南」区（改）——补一键演示行、前端徽标（mem/placement）说明
   - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+    - 命令行 `powershell -ExecutionPolicy Bypass -File tooling/scripts/drill_demo.ps1` 一条命令无人干预跑完整 drill（赛事演示主入口）
+    - 内部：脚本调用 R3 drill 端点 + R9 事件流端点，依赖 R2 落盘（`data/drills/`）与 R7 运行时模式（`AEGIS_USE_MOCK`）
+  - 测试结果：既有测试零改动；脚本实测全流程跑通（详见实测结果）
+  - git commit：`<R11 commit>`
+  - 实测结果：脚本实测 3 场演练全部无人干预跑通——`rounds_executed=3`、`convergence=converged`、`memory_trace=3 rounds`、落盘 `data/drills/<id>.json` 存在、自动停后端、退出码 0；默认 mock 模式（真实 LLM 400 问题已规避，`-UseRealModel` 可选）
+  - 遗留问题 / 下一步：终端中文乱码可 `chcp 65001` 或 Windows Terminal（数据本身 UTF-8 完好）；可选延申——录制演示视频素材
 
 ---
 
@@ -565,8 +571,9 @@
 
 | 层 | 怎么启动 | 在哪测 | 看什么 |
 |---|---|---|---|
+| 一键演示 | `powershell -ExecutionPolicy Bypass -File tooling/scripts/drill_demo.ps1` | 命令行 | 无人干预全流程：自动起后端 → 发演练 → 收敛 → 总结/记忆轨迹/落盘路径（R11） |
 | 后端 | `uvicorn backend.main:app`（或 start.ps1） | `http://localhost:8000/api/v1/...`（需 `X-API-Key`，见 `.env.example`） | R3 五个 drill 端点；`/docs` 页面直接调试 |
-| 前端 | `npm run dev` | `http://localhost:5173` → 侧边栏 Cyber → **Drill tab** | 开始/停止按钮、轮次时间线、总结报告（R5） |
+| 前端 | `npm run dev` | `http://localhost:5173` → 侧边栏 Cyber → **Drill tab** | 开始/停止按钮、轮次时间线、总结报告（R5）、🧠 mem 徽标（R8）、tier placement 徽标（R10） |
 | 事件流 | 后端运行中 | `GET /api/v1/events?stream=drill.round` | drill 增量战报（R9 后） |
 | 数据落盘 | 演练结束后 | `data/drills/<drill_id>.json` | 各轮战报 + 总结（R2） |
 | 测试 | 命令行 | `pytest`（Python 全量）、前端测试命令、`npm run build` | 回归结果（R6） |
@@ -591,6 +598,7 @@
 | 2026-09-05 | R8 | 跨轮记忆与上下文压缩（紫队带历史决策摘要）；后端 634/front 43 全绿；mock 实测 3 轮收敛携带前轮摘要 | `0959d05` |
 | 2026-09-05 | R9 | 演练事件总线化（drill.round 低熵增量事件可订阅）；后端 638 全绿；API 实测 3 轮事件 + carry 增量 + 跨轮摘要联动 | `72d3d13` |
 | 2026-09-05 | R10 | 演练阶段 placement 联动（red→device / blue→edge / purple→cloud 三阶段标注）；后端 642 全绿；前端 43 全绿 | `79f963c` |
+| 2026-09-05 | R11 | 无人干预演示脚本 drill_demo.ps1 + README/CHANGELOG/实测指南收尾；脚本实测 3 场全自动跑通 | `R11-commit` |
 | | | | |
 | | | | |
 | | | | |

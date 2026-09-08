@@ -2,6 +2,30 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [CYBER-DRILL] 2026-09-05 R8-R11 跨轮记忆/事件总线/端边云调度/无人干预演示（收尾）
+
+### R8 · 跨轮记忆与上下文压缩（能力维度 a）
+- `CyberOrchestrator.run_drill` 新增 `memory` / `memory_budget` 可选参数；每轮紫队评审后写决策记忆（working+episodic）并按 token 预算压缩（决策保留 + 细节 digest），下一轮紫队注入 `prior_rounds_summary` 摘要。
+- `run_purple_review` 新增 `prior_rounds_summary` 可选参数（默认 None 零破坏）。
+- `CyberDefenseService.drill` 透传记忆（默认注入服务持有 `_memory`）。
+- 前端：轮次卡 🧠 mem 徽标 + 总结报告「Cross-Round Memory」区；`DrillRound.prior_rounds_summary` / `DrillSummaryResponse.memory_trace` 类型。
+- 验证：后端 634 passed（+7），前端 tsc+vitest 43 passed；mock 实测 3 轮收敛携带前轮结论摘要，小预算触发 digest 压缩。
+
+### R9 · 演练事件总线化（能力维度 b）
+- `protocol.event.EventType` 新增 `DrillRound = "drill.round"`；`DrillRuntime` on_round 发布低熵增量事件（round/new_steps/new_issues/valid/converged/carry_forward_count/prior_summary，不含全量链/计划）。
+- `GET /api/v1/events?stream=drill.round` 即可订阅演练心跳（复用既有 EventBus，未新造总线）。
+- 验证：后端 638 passed（+4）；API 实测 3 轮事件 + carry 增量 0→1→2 + 跨轮摘要联动。
+
+### R10 · 演练阶段 placement 联动（能力维度 c）
+- `run_drill` 每轮为红/蓝/紫三阶段构造任务特征（延迟预算+隐私级别），复用 `scheduler.schedule()` 选定端/边/云层级，写入 `round_data.phase.{red,blue,purple}`（tier/model_id/reason）。
+- 前端：轮次卡三阶段 tier 徽标（device 绿/edge 黄/cloud 蓝）+ 卸载理由 title。
+- 验证：后端 642 passed（+4），前端 43 passed；实测 red→device、blue→edge、purple→cloud 跨轮稳定。
+
+### R11 · 无人干预演示脚本 + 赛事材料收尾（能力维度 d/e）
+- 新增 `tooling/scripts/drill_demo.ps1`：自动启动后端（默认 mock）→ POST /drill/start → 轮询至收敛 → 输出总结/跨轮记忆/落盘路径 → 自动停止自启后端；`-UseRealModel` 可选切真实 LLM。
+- README 新增「CyberDrill 攻防演练演示」章节；档案「实测指南」补最终版。
+- 验证：脚本实测全流程无人干预跑通（3 轮 converged + memory_trace + 落盘），退出码 0。
+
 ## [DOCS-STATUS] 2026-09-01 文档状态统一与演示范围收敛
 
 ### 修改
