@@ -217,6 +217,121 @@ function TrendChart({ rounds }: { rounds: DrillRound[] }) {
   );
 }
 
+// T5 紫队缺口闭环：把「紫队挑缺口 → 红队补攻击 → 紫队判定通过」串成闭环链。
+// 纯前端从演练每轮战报配对（缺口文本里的资产编号 ↔ 后续轮次新增攻击的目标资产）。
+function GapClosureChart({ rounds }: { rounds: DrillRound[] }) {
+  if (rounds.length < 2) return null;
+
+  // 提取缺口资产：缺口文本中的 asset-N 编号
+  const extractAssets = (text: string): string[] =>
+    [...new Set(text.match(/asset-\d+/g) ?? [])];
+
+  // 1) 收集所有缺口（紫队提出问题且数量 > 0 的轮次）
+  interface GapItem {
+    issueRound: number;
+    issue: string;
+    assets: string[];
+    resolvedRound: number | null;
+    resolvedStep: any | null;
+    verdictRound: number | null;
+    verdictValid: boolean | null;
+  }
+  const gaps: GapItem[] = [];
+
+  rounds.forEach((rd) => {
+    const issues: string[] = rd.purple?.critique?.issues ?? [];
+    if (rd.purple?.new_issue_count > 0 || issues.length > 0) {
+      const list = issues.length > 0 ? issues : [`存在 ${rd.purple.new_issue_count} 个未覆盖缺口`];
+      list.forEach((issue) => {
+        gaps.push({
+          issueRound: rd.round,
+          issue,
+          assets: extractAssets(issue),
+          resolvedRound: null,
+          resolvedStep: null,
+          verdictRound: null,
+          verdictValid: null,
+        });
+      });
+      return;
+    }
+    // 2) 本轮无新缺口：若上一轮缺口未配对，尝试用本轮新增攻击配对
+    const pending = gaps.filter((g) => g.resolvedRound == null);
+    const newSteps: any[] = rd.red?.new_steps ?? [];
+    pending.forEach((g) => {
+      if (g.resolvedRound != null) return;
+      const hit = newSteps.find((s) =>
+        g.assets.length > 0
+          ? g.assets.includes(s.to_asset)
+          : s.to_asset !== "external",
+      );
+      if (hit) {
+        g.resolvedRound = rd.round;
+        g.resolvedStep = hit;
+        g.verdictRound = rd.round;
+        g.verdictValid = rd.purple?.valid ?? null;
+      }
+    });
+  });
+
+  // 3) 无任何缺口则整块不渲染（只有对抗无反馈时）
+  if (gaps.length === 0) return null;
+
+  return (
+    <div className="cyber-closure">
+      <h4 className="cyber-panel__subtitle">
+        🔗 缺口闭环 · 紫队反馈驱动红队演化
+      </h4>
+      <div className="cyber-closure__list">
+        {gaps.map((g, i) => (
+          <div key={i} className="cyber-closure__item">
+            <div className="cyber-closure__step cyber-closure__step--issue">
+              <span className="cyber-closure__badge cyber-closure__badge--red">
+                第 {g.issueRound} 轮 · 紫队挑缺口
+              </span>
+              <span className="cyber-closure__text">{g.issue}</span>
+            </div>
+            {g.resolvedRound != null && g.resolvedStep ? (
+              <>
+                <div className="cyber-closure__arrow">↓ 红队响应</div>
+                <div className="cyber-closure__step cyber-closure__step--fix">
+                  <span className="cyber-closure__badge cyber-closure__badge--blue">
+                    第 {g.resolvedRound} 轮 · 红队补充
+                  </span>
+                  <span className="cyber-closure__text">
+                    {g.resolvedStep.technique}: {g.resolvedStep.from_asset} →{" "}
+                    {g.resolvedStep.to_asset}
+                  </span>
+                </div>
+                <div className="cyber-closure__arrow">↓ 复核</div>
+                <div className="cyber-closure__step cyber-closure__step--verdict">
+                  <span
+                    className={`cyber-closure__badge cyber-closure__badge--${g.verdictValid ? "green" : "yellow"}`}
+                  >
+                    第 {g.verdictRound} 轮 · 紫队判定
+                  </span>
+                  <span className="cyber-closure__text">
+                    {g.verdictValid ? "✓ 通过，缺口闭合" : "✗ 仍有问题，继续演化"}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="cyber-closure__step cyber-closure__step--open">
+                <span className="cyber-closure__badge cyber-closure__badge--yellow">
+                  ⚠ 未闭合
+                </span>
+                <span className="cyber-closure__text">
+                  后续轮次未见针对该缺口的补充攻击
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** 最近一轮演练的浏览器快照（sessionStorage）：切 tab/刷新后仍可恢复展示，
  *  只有开启新一轮时才被清除/覆盖。 */
 const DRILL_SNAPSHOT_KEY = "aegis.cyber-drill.snapshot";
@@ -664,6 +779,9 @@ export function CyberDrillPanel() {
 
       {/* T3 收敛趋势图：≥2 轮才显示 */}
       {rounds.length >= 2 ? <TrendChart rounds={rounds} /> : null}
+
+      {/* T5 紫队缺口闭环：反馈驱动演化证据链 */}
+      {rounds.length >= 2 ? <GapClosureChart rounds={rounds} /> : null}
 
       {/* 轮次时间线 */}
       {rounds.length > 0 || running ? (

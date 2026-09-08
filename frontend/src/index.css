@@ -2878,3 +2878,55 @@ body {
   font-size: 11px;
   color: var(--text-dim, #9db2c6);
 }
+
+/* ============ T5: 缺口闭环图 ============ */
+.cyber-closure {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #3a4a5f);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-closure__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+.cyber-closure__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cyber-closure__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.cyber-closure__step--issue { border-left: 3px solid #e05252; }
+.cyber-closure__step--fix { border-left: 3px solid #2f7de1; }
+.cyber-closure__step--verdict { border-left: 3px solid #2e9e5b; }
+.cyber-closure__step--open { border-left: 3px solid #d9a13b; }
+.cyber-closure__badge {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+.cyber-closure__badge--red { background: #e05252; }
+.cyber-closure__badge--blue { background: #2f7de1; }
+.cyber-closure__badge--green { background: #2e9e5b; }
+.cyber-closure__badge--yellow { background: #d9a13b; }
+.cyber-closure__text { color: var(--text-primary, #e8eef7); }
+.cyber-closure__arrow {
+  font-size: 10px;
+  color: var(--text-dim, #9db2c6);
+  padding-left: 12px;
+}
