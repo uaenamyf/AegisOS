@@ -186,8 +186,86 @@ class _CyberMockProvider(MockProvider):
     def __init__(self) -> None:
         super().__init__(_build_cyber_mock_responses())
 
+    # ---- R1.5: 按轮演化的轮次上下文解析与响应合成 ----
+    @staticmethod
+    def _round_from_prompt(prompt: str) -> int:
+        """从 prompt 中解析 ``[round=N]`` 标记；无标记返回 0。"""
+        import re
+
+        m = re.search(r"\[round=(\d+)\]", prompt)
+        return int(m.group(1)) if m else 0
+
+    def _evolve_recon(self, base_text: str, round_no: int) -> str:
+        """侦察演化：round>=2 时才暴露高风险内部资产 asset-3。"""
+        import json as _json
+
+        if round_no < 2:
+            return base_text
+        data = _json.loads(base_text)
+        data["assets"] = data["assets"] + [
+            {
+                "asset_id": "asset-3",
+                "host": "10.0.0.15",
+                "services": ["redis:6379"],
+                "os": "Ubuntu 20.04",
+                "exposure": "internal",
+            }
+        ]
+        return _json.dumps(data)
+
+    def _evolve_exploit(self, base_text: str, round_no: int) -> str:
+        """利用链演化：round>=2 时红队针对新资产 asset-3 追加利用步骤 step-2。"""
+        import json as _json
+
+        if round_no < 2:
+            return base_text
+        data = _json.loads(base_text)
+        data["steps"] = data["steps"] + [
+            {
+                "step_id": "step-2",
+                "technique": "T1210",
+                "from_asset": "asset-1",
+                "to_asset": "asset-3",
+                "success": True,
+            }
+        ]
+        return _json.dumps(data)
+
+    def _evolve_critic(self, base_text: str, round_no: int) -> str:
+        """紫队批判演化：round=1 留缺口(valid=False)，>=2 补齐(valid=True)。"""
+        import json as _json
+
+        if round_no <= 0:
+            return base_text
+        data = _json.loads(base_text)
+        if round_no == 1:
+            data.update(
+                {
+                    "valid": False,
+                    "issues": [
+                        "攻击链未覆盖内部资产 asset-3（10.0.0.15:redis 高危入口），需补充利用步骤再评估"
+                    ],
+                    "severity": "high",
+                    "suggestion": "补充对 asset-3 的利用路径后重新校验",
+                }
+            )
+        else:
+            data.update(
+                {
+                    "valid": True,
+                    "issues": [],
+                    "severity": "none",
+                    "suggestion": "攻击链已覆盖全部暴露面并通过 ATT&CK 映射校验。",
+                }
+            )
+        return _json.dumps(data)
+
     def complete(self, request: LLMRequest) -> LLMResponse:
         """完成一次 LLM 调用，支持精确匹配与前缀回退。
+
+        R1.5：命中前缀后，若 prompt 带 ``[round=N]`` 标记，则按轮次套用
+        演化响应（侦察/利用链/紫队批判），驱动多轮收敛演练真实可演示；
+        无标记或 round<2 时完全回退旧静态响应，保证既有调用零破坏。
 
         Args:
             request: LLM 请求对象，至少包含 ``prompt`` 与 ``model_id``。
@@ -203,6 +281,13 @@ class _CyberMockProvider(MockProvider):
         # 回退：对预置 key 做前缀匹配（攻防 prompt 含动态 JSON，需前缀匹配）。
         for key, text in self.responses.items():
             if request.prompt.startswith(key):
+                round_no = self._round_from_prompt(request.prompt)
+                if request.prompt.startswith("Scan target range:"):
+                    text = self._evolve_recon(text, round_no)
+                elif request.prompt.startswith("Plan exploit chain for:"):
+                    text = self._evolve_exploit(text, round_no)
+                elif request.prompt.startswith("Critique: "):
+                    text = self._evolve_critic(text, round_no)
                 return LLMResponse(
                     text=text,
                     ok=True,
