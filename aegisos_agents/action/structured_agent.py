@@ -29,6 +29,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Generic, TypeVar
@@ -69,21 +71,59 @@ class StructuredAgent(Generic[T]):
         else:
             self._model = model
 
-        # 构造 SDK Agent：instructions + output_type + model + temperature
-        # 用 AgentOutputSchema(strict_json_schema=False) 包装 output_type，
-        # 允许含 dict 字段（如 AlertModel.raw / IRPlannerResult.rollback /
-        # ForensicsResult.timeline）的类型通过 SDK 的 JSON schema 校验。
+        # DeepSeek 检测：base_url 含 deepseek 且非 Mock 模型时，SDK 的
+        # json_schema response_format 不被 DeepSeek 支持 → 纯文本输出 + 本地解析。
+        base_url = os.getenv("OPENAI_BASE_URL", "") or ""
+        host = base_url.split("//")[-1].split("/")[0] if base_url else ""
+        self._plain_json = (
+            self._model.__class__.__name__ != "MockSDKModel" and "deepseek" in host
+        )
+
+        # DeepSeek 平台限制：① response_format=json_object 时 prompt 必须含
+        # "json" 字样（否则 400）；② 仅支持 json_object，不支持 SDK 硬编码的
+        # json_schema 类型。统一追加 JSON 提示（OpenAI/ARK 无此限制，追加
+        # 无害）；纯文本模式下把输出结构写入提示，引导模型按 schema 输出。
+        json_hint = (
+            "\n\n输出必须为合法 JSON 对象，字段与类型严格遵循既定结构。"
+            if self.SYSTEM_PROMPT
+            else "Always respond in valid JSON."
+        )
+        if self._plain_json and self.OUTPUT_TYPE is not None:
+            schema = self.OUTPUT_TYPE.model_json_schema()
+            props = schema.get("properties", {})
+            if props:
+                parts = []
+                for name, meta in props.items():
+                    t = meta.get("type", "any")
+                    desc = meta.get("description", "")
+                    parts.append(f'"{name}": {t}' + (f" ({desc})" if desc else ""))
+                json_hint += " 必须仅包含以下字段: " + ", ".join(parts) + "。"
+        instructions = f"{self.SYSTEM_PROMPT}{json_hint}"
+
         from agents import AgentOutputSchema, ModelSettings
 
         # OUTPUT_TYPE 为 None 时用 str 兜底（SDK 要求非 None）
         output_type = self.OUTPUT_TYPE or str
-        self._sdk_agent: Agent = Agent(
-            name=self.__class__.__name__,
-            instructions=self.SYSTEM_PROMPT,
-            output_type=AgentOutputSchema(output_type, strict_json_schema=False),
-            model=self._model,
-            model_settings=ModelSettings(temperature=self.TEMPERATURE),
-        )
+        if self._plain_json:
+            # DeepSeek：不设 output_type → SDK 不传 response_format，避免 400
+            self._sdk_agent: Agent = Agent(
+                name=self.__class__.__name__,
+                instructions=instructions,
+                model=self._model,
+                model_settings=ModelSettings(temperature=self.TEMPERATURE),
+            )
+        else:
+            # 构造 SDK Agent：instructions + output_type + model + temperature
+            # 用 AgentOutputSchema(strict_json_schema=False) 包装 output_type，
+            # 允许含 dict 字段（如 AlertModel.raw / IRPlannerResult.rollback /
+            # ForensicsResult.timeline）的类型通过 SDK 的 JSON schema 校验。
+            self._sdk_agent: Agent = Agent(
+                name=self.__class__.__name__,
+                instructions=instructions,
+                output_type=AgentOutputSchema(output_type, strict_json_schema=False),
+                model=self._model,
+                model_settings=ModelSettings(temperature=self.TEMPERATURE),
+            )
 
     def _run(self, prompt: str, timeout: float = 120.0) -> T:
         """执行一次结构化 LLM 调用，返回 ``OUTPUT_TYPE`` 实例。
@@ -111,22 +151,87 @@ class StructuredAgent(Generic[T]):
             asyncio.get_running_loop()  # 探测有无运行中的事件循环
         except RuntimeError:
             # 无运行中的事件循环 → 直接同步执行
-            result = Runner.run_sync(self._sdk_agent, prompt)
-            return result.final_output  # type: ignore[no-any-return]
+            return self._run_sync(prompt)
 
         # 事件循环已运行（FastAPI / uvicorn）→ 线程池隔离执行
-        def _sync_call() -> T:
-            result = Runner.run_sync(self._sdk_agent, prompt)
-            return result.final_output  # type: ignore[no-any-return]
-
         with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(_sync_call)
+            future = pool.submit(self._run_sync, prompt)
             try:
                 return future.result(timeout=timeout)
             except FutureTimeoutError as err:
                 raise RuntimeError(
                     f"StructuredAgent._run timed out after {timeout}s for prompt: {prompt[:200]}"
                 ) from err
+
+    def _run_sync(self, prompt: str) -> T:
+        """同步执行结构化调用；DeepSeek 纯文本路径解析失败时带纠错提示重试一次。"""
+        max_attempts = 2 if self._plain_json else 1
+        last_error: ValueError | None = None
+        for attempt in range(max_attempts):
+            result = Runner.run_sync(self._sdk_agent, prompt)
+            try:
+                return self._finalize(result)  # type: ignore[no-any-return]
+            except ValueError as exc:
+                last_error = exc
+                if attempt == max_attempts - 1:
+                    break
+                prompt = (
+                    f"{prompt}\n\n上次输出无效：{exc}\n"
+                    "请重新输出，必须是严格合法的单个 JSON 对象，不要附加任何解释文字或代码块标记。"
+                )
+        raise last_error or ValueError("structured output failed")  # type: ignore[misc]
+
+    def _finalize(self, result) -> T:
+        """把 SDK 运行结果转换为 ``OUTPUT_TYPE`` 实例。
+
+        普通路径：SDK 已按 ``output_type`` 解析，直接返回 ``final_output``。
+        DeepSeek 路径（``_plain_json``）：SDK 返回纯文本 JSON，本地解析 +
+        Pydantic 校验（剥离可能的 markdown 代码块包裹）。
+
+        Args:
+            result: ``Runner.run_sync`` 的返回结果。
+
+        Returns:
+            ``OUTPUT_TYPE`` 类型的结构化输出实例。
+
+        Raises:
+            ValueError: DeepSeek 返回非 JSON 文本且无法恢复时。
+        """
+        if not self._plain_json:
+            return result.final_output  # type: ignore[no-any-return]
+        text = result.final_output
+        data = None
+        if isinstance(text, str):
+            candidates: list[str] = []
+            # 候选 1：全文
+            candidates.append(text)
+            # 候选 2：第一个 { 到最后一个 }（模型常在 JSON 前后夹带解释文字）
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end > start:
+                candidates.append(text[start : end + 1])
+            # 候选 3：```json ... ``` 代码块内
+            fence = text.find("```")
+            if fence != -1:
+                inner = text[fence + 3 :]
+                end_f = inner.rfind("```")
+                if end_f != -1:
+                    inner = inner[:end_f].lstrip()
+                    if inner.startswith("json"):
+                        inner = inner[4:].lstrip()
+                    candidates.append(inner)
+            for cand in candidates:
+                try:
+                    data = json.loads(cand)
+                    if isinstance(data, dict):
+                        break
+                except (json.JSONDecodeError, TypeError):
+                    continue
+        if not isinstance(data, dict):
+            raise ValueError(f"model returned non-JSON output: {text[:200]!r}")
+        if self.OUTPUT_TYPE is None:
+            return data  # type: ignore[no-any-return]
+        return self.OUTPUT_TYPE.model_validate(data)
 
     async def _run_streamed(self, prompt: str):
         """异步流式执行，逐事件 yield SDK ``RunResultStreaming.stream_events()``。

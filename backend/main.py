@@ -80,6 +80,10 @@ def create_app() -> FastAPI:
     app = FastAPI(title="AegisOS Backend", version=settings.backend.version, lifespan=lifespan)
 
     # --- 中间件 ---
+    # 注意顺序：Starlette 中间件按 LIFO 执行（最后添加的最先执行）。
+    # CORSMiddleware 必须最外层（最后 add），否则 ServerErrorMiddleware 生成的
+    # 500 响应不经过 CORS，浏览器会误报“无 Access-Control-Allow-Origin”。
+    app.add_middleware(TraceMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_CORS_ORIGINS,
@@ -87,7 +91,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.add_middleware(TraceMiddleware)
 
     # --- 路由 ---
     # 健康检查为公开接口（无需鉴权），直接挂载到 app 上。

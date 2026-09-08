@@ -82,6 +82,9 @@ def set_mode(mode: str) -> None:
         raise ValueError("real mode requires OPENAI_API_KEY")
     with _lock:
         _current = mode
+        # 同步环境变量：SDKProvider / MockProvider 均读 AEGIS_USE_MOCK 决定内部行为，
+        # 不同步会导致 real 模式构建时 SDKProvider 仍按 mock 初始化而报错（实测 500）。
+        os.environ["AEGIS_USE_MOCK"] = "true" if mode == _MODE_MOCK else "false"
 
 
 def get_orchestrator() -> Any:
