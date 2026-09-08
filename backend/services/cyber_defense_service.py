@@ -15,6 +15,9 @@
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -62,6 +65,7 @@ class CyberDefenseService:
         self._graph_store = graph_store or create_graph_store("in_memory")
         self._ranges: dict[str, dict[str, Any]] = {}
         self._intel_db = self._seed_intel_db()
+        self._drill_dir = Path(__file__).resolve().parent.parent.parent / "data" / "drills"
 
     # ---- 靶场管理 ----
 
@@ -258,6 +262,117 @@ class CyberDefenseService:
 
         result = self._orchestrator.run_purple_review(chain, plan, alert_objs)
         return result
+
+    # ---- 多轮演练（R1/R2） ----
+
+    def drill(
+        self,
+        target_range: str,
+        max_rounds: int = 5,
+        on_round=None,
+        summary_factory=None,
+    ) -> dict[str, Any]:
+        """执行一键多轮攻防演练并持久化演练记录。
+
+        委托 :meth:`CyberOrchestrator.run_drill` 跑完「红→蓝→紫」≤max_rounds
+        轮并证据驱动收敛；演练结束后将完整记录（每轮战报 + 收敛码 + 总结）
+        写入 ``data/drills/<drill_id>.json``，便于回放与审计。
+
+        Args:
+            target_range: 目标网络范围（如 ``10.0.0.0/24``）。
+            max_rounds: 最大轮数，默认 5。
+            on_round: 可选回调 ``on_round(round_data, round_no)``，供 SSE 实时推送。
+            summary_factory: 可选总结定制回调；None 时用编排器默认总结。
+
+        Returns:
+            含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
+            ``rounds`` / ``summary`` 的演练结果字典，并已落盘。
+        """
+        result = self._orchestrator.run_drill(
+            target_range, max_rounds=max_rounds, on_round=on_round
+        )
+        drill_id = result["drill_id"]
+        record = {
+            "drill_id": drill_id,
+            "target_range": target_range,
+            "max_rounds": max_rounds,
+            "rounds_executed": result["rounds_executed"],
+            "convergence_code": result["convergence_code"],
+            "rounds": result["rounds"],
+            "summary": result["summary"],
+        }
+        self._persist_drill(record)
+        return record
+
+    def get_drill(self, drill_id: str) -> dict[str, Any] | None:
+        """读取已持久化的演练记录。
+
+        Args:
+            drill_id: 演练 ID。
+
+        Returns:
+            演练记录字典；不存在返回 None。
+        """
+        path = self._drill_record_path(drill_id)
+        if not path.exists():
+            return None
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    def list_drills(self) -> list[dict[str, Any]]:
+        """列出所有持久化演练记录的元信息（不含完整战报）。
+
+        Returns:
+            每个元素含 ``drill_id`` / ``target_range`` / ``rounds_executed`` /
+            ``convergence_code`` 的列表，按生成时间倒序。
+        """
+        if not self._drill_dir.exists():
+            return []
+        meta: list[dict[str, Any]] = []
+        for path in sorted(self._drill_dir.glob("drill_*.json"), reverse=True):
+            rec = self.get_drill(path.stem)
+            if rec is None:
+                continue
+            meta.append(
+                {
+                    "drill_id": rec.get("drill_id"),
+                    "target_range": rec.get("target_range"),
+                    "rounds_executed": rec.get("rounds_executed"),
+                    "convergence_code": rec.get("convergence_code"),
+                    "created_at": rec.get("created_at"),
+                }
+            )
+        return meta
+
+    def _persist_drill(self, record: dict[str, Any]) -> str:
+        """将演练记录以 JSON 落盘到 ``data/drills/``。
+
+        Args:
+            record: 演练记录字典（须为 JSON 兼容结构）。
+
+        Returns:
+            落盘文件路径字符串。
+        """
+        self._drill_dir.mkdir(parents=True, exist_ok=True)
+        path = self._drill_record_path(record["drill_id"])
+        record.setdefault("created_at", datetime.now(UTC).isoformat())
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False, indent=2)
+        return str(path)
+
+    def _drill_record_path(self, drill_id: str) -> Path:
+        """计算演练记录的落盘路径。
+
+        Args:
+            drill_id: 演练 ID。
+
+        Returns:
+            ``data/drills/<drill_id>.json`` 的 Path。
+        """
+        return self._drill_dir / f"{drill_id}.json"
 
     # ---- 威胁情报 ----
 

@@ -25,6 +25,9 @@ htmlcov/
 logs/
 *.log
 
+# --- Generated drill records (runtime) ---
+data/drills/
+
 # --- OS / editor artifacts ---
 .DS_Store
 Thumbs.db
