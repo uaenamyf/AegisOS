@@ -559,7 +559,7 @@
     - 命令行 `powershell -ExecutionPolicy Bypass -File tooling/scripts/drill_demo.ps1` 一条命令无人干预跑完整 drill（赛事演示主入口）
     - 内部：脚本调用 R3 drill 端点 + R9 事件流端点，依赖 R2 落盘（`data/drills/`）与 R7 运行时模式（`AEGIS_USE_MOCK`）
   - 测试结果：既有测试零改动；脚本实测全流程跑通（详见实测结果）
-  - git commit：`<R11 commit>`
+  - git commit：`1cd9ffe` docs(demo): R11 无人干预演示脚本 + 赛事材料收尾
   - 实测结果：脚本实测 3 场演练全部无人干预跑通——`rounds_executed=3`、`convergence=converged`、`memory_trace=3 rounds`、落盘 `data/drills/<id>.json` 存在、自动停后端、退出码 0；默认 mock 模式（真实 LLM 400 问题已规避，`-UseRealModel` 可选）
   - 遗留问题 / 下一步：终端中文乱码可 `chcp 65001` 或 Windows Terminal（数据本身 UTF-8 完好）；可选延申——录制演示视频素材
 
@@ -598,7 +598,7 @@
 | 2026-09-05 | R8 | 跨轮记忆与上下文压缩（紫队带历史决策摘要）；后端 634/front 43 全绿；mock 实测 3 轮收敛携带前轮摘要 | `0959d05` |
 | 2026-09-05 | R9 | 演练事件总线化（drill.round 低熵增量事件可订阅）；后端 638 全绿；API 实测 3 轮事件 + carry 增量 + 跨轮摘要联动 | `72d3d13` |
 | 2026-09-05 | R10 | 演练阶段 placement 联动（red→device / blue→edge / purple→cloud 三阶段标注）；后端 642 全绿；前端 43 全绿 | `79f963c` |
-| 2026-09-05 | R11 | 无人干预演示脚本 drill_demo.ps1 + README/CHANGELOG/实测指南收尾；脚本实测 3 场全自动跑通 | `R11-commit` |
+| 2026-09-05 | R11 | 无人干预演示脚本 drill_demo.ps1 + README/CHANGELOG/实测指南收尾；脚本实测 3 场全自动跑通 | `1cd9ffe` |
 | | | | |
 | | | | |
 | | | | |

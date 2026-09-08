@@ -16,8 +16,8 @@
 ## 2. 当前 Git 状态
 
 - **分支**:master
-- **HEAD**:`79f963c` — feat(cyber-drill): R10 演练阶段 placement 联动——端-边-云自适应调度标注
-- **工作树**:档案文档待提交(见下);代码已提交,无未提交代码改动
+- **HEAD**:`1cd9ffe` — docs(demo): R11 无人干预演示脚本 + 赛事材料收尾
+- **工作树**:档案 commit 回填待提交(见下);无其他未提交改动
 
 ## 3. 最近交付:cyber-drill(收敛式演练)全链路 R1→R8 ✅
 
@@ -34,8 +34,9 @@
 | R8 | **跨轮记忆与上下文压缩** —— 紫队带历史决策摘要(decision+digest 压缩 + memory_trace) | `0959d05` |
 | R9 | **演练事件总线化** —— drill.round 低熵增量事件可订阅(carry 增量 + 跨轮摘要联动) | `72d3d13` |
 | R10 | **端-边-云 placement 联动** —— red→device / blue→edge / purple→cloud 三阶段标注 + 徽标 | `79f963c` |
+| R11 | **无人干预演示脚本** —— drill_demo.ps1 一键全自动 + README/CHANGELOG/实测指南收尾 | `1cd9ffe` |
 
-**当前状态:cyber-drill 功能线已完整交付(含跨轮记忆),可运行演示。**
+**当前状态:cyber-drill 功能线 R1-R11 全部完成(收敛内核/持久化/SSE/真实LLM/跨轮记忆/事件总线/端边云调度/无人干预演示),可运行演示。**
 
 ## 4. 场景覆盖状态
 
@@ -47,19 +48,21 @@
 
 ## 5. 下一步优先级(来自 plan.md §1 + CyberDrill 档案)
 
-> 当前无 P0 阻塞项。cyber-drill 功能线(含 R8 跨轮记忆)已完成,建议按此顺序继续:
+> cyber-drill R1-R11 已全部完成。剩余可选收尾:
 
-1. **R11 无人干预演示脚本 + 赛事材料文档补全**(档案 Phase 5,能力维度 d/e)——截止 2026-09-15,功能线(R1-R10)已全部完成,本轮为收尾交付
-2. **Protocol→Pydantic 迁移** / **CVE 数据集补全** / **工程支撑**(plan.md §1 长期项)
+1. **演示视频素材**(档案 R11 可延申点)——录制一键演示视频,可选
+2. **Protocol→Pydantic 迁移** / **CVE 数据集补全** / **工程支撑**(plan.md §1 长期项)——截止 9-15 后的可选优化
+3. 赛事材料最终校对(README/档案/方案 PDF 一致性,截止 2026-09-15)
 
 容器化部署(H1 沙箱 + H7 交付)已明确后移,暂不安排。
 
 ## 6. 恢复工作指引
 
 1. 读取本文件 + `developer/plan.md`(尤其 §1 下一步优先级)
-2. `git status` / `git log --oneline -15` 确认状态(应停在 `79f963c`)
-3. 启动方式见 `README.md` 与根目录 `start.ps1` / `start.sh`
-4. 如有未决问题,先在 `developer/CHANGELOG.md` 中查历史记录
+2. `git status` / `git log --oneline -20` 确认状态(应停在 `1cd9ffe`)
+3. 演示入口:`.\tooling\scripts\drill_demo.ps1`(无人干预一键跑完整 drill,详见 README「CyberDrill 攻防演练演示」)
+4. 启动方式见 `README.md` 与根目录 `start.ps1` / `start.sh`
+5. 如有未决问题,先在 `developer/CHANGELOG.md` 中查历史记录
 
 ## 7. 其他备注
 
