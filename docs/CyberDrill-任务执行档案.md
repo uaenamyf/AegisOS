@@ -52,7 +52,7 @@
 | **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ✅ 已完成 |
 | **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ✅ 已完成 |
 | **R7** | **真实 LLM 接入 drill** + 运行时模式切换（mock/real）+ 前端徽标 | 核心升级 | R6 | d / 演示核心 | ✅ 已完成 |
-| **R8** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R7 | a（重点加分） | ⬜ |
+| **R8** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R7 | a（重点加分） | ✅ 已完成 |
 | **R9** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R7 | b（技术分10） | 🔶 已修订 |
 | **R10** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R9 | c | ⬜ |
 | **R11** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R7-R10 | d / e | ⬜ |
@@ -435,14 +435,23 @@
 - **风险与对策**：摘要质量依赖 compactor → 先验证字段链路（摘要确实生成并注入），语义质量用真实模型抽检。
 - **可延申点**：演练结束后把整场经验写回 episodic，供下次演练 recall（形成跨演练学习）。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-05）
 - **开工后记录**：
   - 改动文件清单：
+    - `aegisos_agents/planning/orchestrator/cyber_orchestrator.py`（改）——`run_drill` 新增 `memory` / `memory_budget` 可选参数；`run_purple_review` 新增 `prior_rounds_summary` 可选参数；新增 `_store_round_memory` 辅助（写 decision 决策包 + normal 细节包 → `MemoryStore.compress` 压缩 → 生成下轮摘要）；round_data 条件性携带 `prior_rounds_summary`，summary 新增 `memory_trace`
+    - `backend/services/cyber_defense_service.py`（改）——`drill` 透传 `memory` / `memory_budget`，默认注入服务持有 `_memory`（零破坏）
+    - `frontend/src/protocol/types.ts`（改）——`DrillRound.prior_rounds_summary`、`DrillSummaryResponse.memory_trace` + `DrillMemoryTraceEntry`
+    - `frontend/src/views/cyber/CyberDrillPanel.tsx`（改）——轮次卡记忆徽标 🧠 mem（title 含摘要）、总结报告「跨轮记忆摘要」区
+    - `frontend/src/index.css`（改）——`badge--info` + `.cyber-drill__memory*` 样式
+    - `tests/aegisos_agents/planning/test_drill_memory.py`（新）——R8 单测 5 个
+    - `tests/backend/test_drill_service.py`（改）——新增默认启用记忆 / 自定义注入 2 个测试
   - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+    - 前端 Drill tab：每轮卡片出现 🧠 mem 徽标（第 2 轮起）；总结报告新增「Cross-Round Memory（跨轮记忆摘要）」区逐轮展示摘要
+    - 内部：`run_drill` 循环内每轮 purple 后调用 `_store_round_memory`；下一轮 `run_purple_review(..., prior_rounds_summary=...)` 注入 critic/reviewer prompt；Service `drill` 默认携带记忆
+  - 测试结果：后端全量 `pytest` 634 passed（新增 7 个）；前端 `tsc -b` 通过 + `vitest` 43 passed；既有 drill/memory 测试零破坏
+  - git commit：`0959d05` feat(cyber-drill): R8 跨轮记忆与上下文压缩——紫队带历史决策摘要
+  - 实测结果：mock 实测 3 轮收敛；第 2 轮摘要含第 1 轮结论（"攻击链未覆盖内部资产 asset-3（10.0.0.15:redis 高危入口）"）；`memory_trace` 每轮一条（stored_task_id / compressed_count / next_round_summary）；`memory_budget=10` 时 6 包压成 4 包（3 decision 保留 + 1 digest 溯源 :detail）——决策保留 + 细节压缩生效
+  - 遗留问题 / 下一步：摘要语义质量依赖 compactor，真实 LLM 模式抽检未做（mock 已验证字段链路）；下一步 R9「演练事件总线化 + 低熵增量推送」（能力维度 b）
 
 ---
 
@@ -567,6 +576,7 @@
 | 2026-09-04 | R5 | 前端 Drill 演练视图（开始/停止 + SSE 轮次时间线 + 总结报告）；前端 vitest 39 passed、tsc -b/eslint 通过 | `fdce5a7` |
 | 2026-09-04 | R6 | 端到端联调 + 六条验收全勾 + 联调小修（GET /drill/{id} 补字段）；后端 624/front 39/tsc 全绿 | `9888236` |
 | 2026-09-04 | R7 | 真实 LLM 接入 drill + 运行时模式切换（mock/real）+ 前端徽标；后端 627/front 43 全绿；DeepSeek 连通性冒烟通过 | `54f45de` |
+| 2026-09-05 | R8 | 跨轮记忆与上下文压缩（紫队带历史决策摘要）；后端 634/front 43 全绿；mock 实测 3 轮收敛携带前轮摘要 | `0959d05` |
 | | | | |
 | | | | |
 | | | | |
