@@ -47,7 +47,7 @@
 | **R1** | 编排器收敛式演练内核（`run_drill` + **证据化**事件合成/收敛纯函数，红队带轮次上下文可选） | 核心 | **R1.5** → R0 | a / 完整性40 / 技术20 / 效率15 | ✅ 已完成 |
 | **R1.5** | Mock Provider 按轮演化升级（让多轮收敛真实可演示） | 核心 | R0 | a / d（前置） | ✅ 已完成 |
 | **R2** | Service 层透出 `run_drill` + 演练记录持久化（`data/drills/`） | 核心 | R1 | e / 回放 | ✅ 已完成 |
-| **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ⬜ |
+| **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ✅ 已完成 |
 | **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ⬜ |
 | **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ⬜ |
 | **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ⬜ |
@@ -220,10 +220,8 @@
   - git commit：`8276490`（`feat(cyber-drill): R2 Service 层透出 drill + 演练记录持久化到 data/drills`）
   - 实测结果：REPL `CyberDefenseService().drill('10.0.0.0/24')` 落盘 `data/drills/drill_10.0.0.0_24.json`（3 轮收敛，含每轮战报+总结）；`get_drill` 能还原、`list_drills` 返回元信息、缺失返回 None
   - 遗留问题 / 下一步：`status` 字段留给 R3 异步路由层管理（同步编排完成即返回，无 running 态）；进入 R3（后端 drill 路由 + SSE）
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
 
+---
 ---
 
 ### R3 · 后端 drill 路由（REST + SSE）
@@ -252,14 +250,14 @@
 - **风险与对策**：SSE 连接断开后任务仍在跑 → 状态/总结走 R2 磁盘与内存兜底；后台任务异常 → `drill_error` 事件 + 状态置 failed。
 - **可延申点**：R8 将 drill_round 同时发布到 EventBus，Monitor 视图可订阅。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
-  - 改动文件清单：
-  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+  - 改动文件清单：`backend/routers/drill.py`（新建：`DrillRuntime` 线程安全事件队列 + 5 端点）；`backend/routers/__init__.py`（挂载 drill）；`backend/services/cyber_defense_service.py`（`drill()` 增可选 `drill_id` 透传，保证 registry/落盘/SSE 三处 ID 一致）；`aegisos_agents/planning/orchestrator/cyber_orchestrator.py`（`run_drill` 增可选 `drill_id` 透传）；`tests/backend/test_drill_api.py`（新建，10 例）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：新增 `/api/v1/drill/*` 5 端点（带 `X-API-Key` 鉴权，走既有网关前缀）；SSE `GET /api/v1/drill/{id}/stream` 实时推 `drill_start→drill_round*→drill_summary→drill_done`；前端目前尚不可见（R4/R5 才接前端）；内部调用链：路由 → `service.drill()` → `orchestrator.run_drill()` → 红蓝紫链；SSE 生成器从 `queue.Queue` 消费（`asyncio.to_thread` 解耦，不阻塞事件循环）
+  - 测试结果：新增 10 例全绿（start 201/stream 生命周期/404 各端点/summary 收敛码/abort）；全量 `624 passed`（上轮 614 + 10）；ruff 全清
+  - git commit：`b09bb2e`（`feat(cyber-drill): R3 drill 路由——REST+SSE 5 端点（to_thread 并发 + 事件队列）`）
+  - 实测结果：TestClient 冒烟——start 201 返回 `drill-<uuid>`；队列事件 `[drill_start, drill_round×3, drill_summary, drill_done]` 无重复；get 返回 done+3 轮；summary 返回 convergence_code=converged；abort 200；未知 id 全 404
+  - 遗留问题 / 下一步：进入 R4（前端类型 + cyberApi drill 客户端 + SSE 订阅）；R8 将 drill_round 发布到 EventBus 已预留（`_run` 内 emit 点）
 
 ---
 
@@ -518,4 +516,5 @@
 | 2026-09-04 | R1.5 | mock 按轮演化（asset-3/step-2/紫队缺口补齐），无 round 回退静态零破坏 | `debf047` |
 | 2026-09-04 | R1 | 收敛式演练内核 `run_drill` + 证据驱动收敛 + 跨轮事件合成；全量 608 passed | `58e8a43` |
 | 2026-09-04 | R2 | Service 层透出 drill + 演练记录持久化 `data/drills/`；全量 614 passed | `8276490` |
+| 2026-09-04 | R3 | drill 路由 REST+SSE 5 端点（to_thread 并发 + 事件队列）；全量 624 passed | `b09bb2e` |
 | | | | |
