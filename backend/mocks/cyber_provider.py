@@ -242,11 +242,14 @@ def _extract_technique(payload: object) -> str | None:
     return hits[0] if hits else None
 
 
-def _extract_techniques(payload: object, limit: int = 3) -> list[str]:
+def _extract_techniques(payload: object, limit: int = 8) -> list[str]:
     """从负载里提取去重保序的技法编号列表（最多 ``limit`` 个）。
 
     事件流/告警/假设里可能包含多个 ATT&CK 技法（多步攻击链），按出现顺序
     去重返回，供蓝队 mock 生成多告警/多假设/复合动作。
+
+    R18e：上限从 3 放宽到 8——红队链逐轮生长到 4+ 个技法时，旧上限让蓝队
+    只告警前 3 个，攻击链越深覆盖率反而越低（分母涨、分子卡死）。
     """
     items = payload if isinstance(payload, list) else [payload]
     out: list[str] = []
@@ -523,12 +526,11 @@ class _CyberMockProvider(MockProvider):
         return _json.dumps(data)
 
     def _evolve_exploit(self, base_text: str, round_no: int) -> str:
-        """利用链演化：round>=2 起每轮真实追加一步横向移动，直至命中域控 asset-4。
+        """利用链演化：逐轮响应紫队缺口，新增步骤递减（2→2→1→1）逼近收敛。
 
-        R18d：原实现只在 round 2 追加 step-3 后就不再生涨，R3 起红队无新步骤，
-        趋势折线在 R2 后立刻平坦、且紫队过早判 valid（演示观感差）。现在每轮
-        增加一步（round2=资产间横向 T1021、round3=横向推进、round4=命中 asset-4
-        域控），配合 min_rounds 门槛，mock 演示能展示完整且渐进的收敛趋势。
+        R18e：与 _evolve_critic 的缺口文本精确对应（缺口提 T1021 → 本轮补
+        T1021；缺口提 asset-004 → 本轮补对 asset-004 的利用），使前端缺口
+        闭环图能按技法/资产正确配对；新增步数逐轮递减，趋势图红线呈收敛形。
         """
         import json as _json
 
@@ -538,26 +540,34 @@ class _CyberMockProvider(MockProvider):
         existing = {s["step_id"] for s in data["steps"]}
 
         NEW_PER_ROUND = {
-            2: {"step_id": "step-3", "technique": "T1021",
-                "from_asset": "asset-1", "to_asset": "asset-2", "success": True},
-            3: {"step_id": "step-4", "technique": "T1021",
-                "from_asset": "asset-2", "to_asset": "asset-3", "success": True},
-            4: {"step_id": "step-5", "technique": "T1078",
-                "from_asset": "asset-3", "to_asset": "asset-4", "success": True},
+            2: [
+                {"step_id": "step-3", "technique": "T1021",
+                 "from_asset": "asset-1", "to_asset": "asset-3", "success": True},
+                {"step_id": "step-4", "technique": "T1021",
+                 "from_asset": "asset-2", "to_asset": "asset-3", "success": True},
+            ],
+            3: [
+                {"step_id": "step-5", "technique": "T1078",
+                 "from_asset": "asset-3", "to_asset": "asset-4", "success": True},
+            ],
+            4: [
+                {"step_id": "step-6", "technique": "T1003",
+                 "from_asset": "asset-4", "to_asset": "asset-4", "success": True},
+            ],
         }
         for rn in range(2, round_no + 1):
-            step = NEW_PER_ROUND.get(rn)
-            if step and step["step_id"] not in existing:
-                data["steps"] = data["steps"] + [step]
-                existing.add(step["step_id"])
+            for step in NEW_PER_ROUND.get(rn, []):
+                if step["step_id"] not in existing:
+                    data["steps"] = data["steps"] + [step]
+                    existing.add(step["step_id"])
         return _json.dumps(data)
 
     def _evolve_critic(self, base_text: str, round_no: int) -> str:
-        """紫队批判演化：逐轮指出新缺口，round4 前保持 valid=False，末轮补齐收敛。
+        """紫队批判演化：逐轮挑一个可被下轮红队精确闭合的缺口，round4 收敛。
 
-        R18d：原实现 round>=2 直接 valid=True，导致"第二轮就收敛"、趋势无层次。
-        现逐轮演化缺口（round2 缺横向路径、round3 缺对域控的利用、round4 补齐），
-        配合 min_rounds=4，演示能展示完整对抗收敛曲线；真实 LLM 不受影响。
+        R18e：缺口文本与 _evolve_exploit 的新增步骤严格对应（提 T1021 → 下轮补
+        T1021；提 asset-004 → 下轮补对 asset-004 的利用；提 T1003 → 下轮补凭据
+        窃取），前端闭环图据此配对；round4 起 valid=True 展示完整收敛曲线。
         """
         import json as _json
 
@@ -565,10 +575,13 @@ class _CyberMockProvider(MockProvider):
             return base_text
         data = _json.loads(base_text)
         if round_no <= 3:
+            # R18e：缺口只引用【资产 ID】与【能存活到链里的技法】（T1078/T1003 无
+            # CVE 可绑、不被 _step_evidence 重写）；T1021 会被 CVE→技法反推改写成
+            # 其它编号，故缺口文本不再提它，改提目标资产 asset-003。
             issue_map = {
-                1: "攻击链未覆盖内部高价值资产 asset-4（10.0.0.20:rdp 关键业务入口），需补充利用步骤再评估",
-                2: "攻击链在资产间缺少明确的横向移动路径（T1021），无法证明从外网入口深入内部网络的时序",
-                3: "横向推进至 asset-3 后尚未对目标域控 asset-4 建立利用路径，目标达成步缺失，链路不完整",
+                1: "攻击链止步于 asset-002，尚未横向推进至内网 asset-003，缺少完整的入侵时序",
+                2: "横向推进至 asset-003 后，尚未对内部高价值域控 asset-004（10.0.0.20:rdp）建立利用路径，目标达成步缺失",
+                3: "已抵达 asset-004 但未执行凭据窃取（T1003）等目标达成步，无法证明攻击目标真正达成，链路不完整",
             }
             data.update(
                 {
@@ -576,9 +589,9 @@ class _CyberMockProvider(MockProvider):
                     "issues": [issue_map.get(round_no, issue_map[1])],
                     "severity": "high",
                     "suggestion": (
-                        "补齐横向移动与对目标高价值资产（域控）的利用步骤后重新校验"
-                        if round_no < 3
-                        else "补齐对 asset-4 目标达成步（如 T1078/T1003）后重新校验"
+                        "补充横向移动步骤（T1021）打通外网入口到内部网络的时序后重新校验"
+                        if round_no == 1
+                        else "补齐对 asset-004 的利用路径与目标达成步（如 T1078/T1003）后重新校验"
                     ),
                 }
             )
@@ -611,13 +624,21 @@ class _CyberMockProvider(MockProvider):
             return None
 
     def _evolve_detector(self, base_text: str, prompt: str, prefix: str) -> str:
-        """入侵检测演化：按事件流中的技法输出对应告警（支持多技法多告警）。"""
+        """入侵检测演化：按事件流中的技法输出对应告警（支持多技法多告警）。
+
+        R18e：模拟"检测规则建立滞后"——链尾最新技法（本轮刚被红队补上、
+        蓝队还没来得及建规则）暂不告警，下一轮才补齐。覆盖率因此呈
+        50%→67%→75%→80% 的**上升**收敛曲线（防御能力随对抗增强），
+        替代之前"越打越低"的失真观感；链上仅剩 1 个技法时不滞后。
+        """
         import json as _json
 
         payload = self._payload_from_prompt(prompt, prefix)
         techniques = _extract_techniques(payload)
         if not techniques:
             return base_text
+        if len(techniques) >= 2:
+            techniques = techniques[:-1]
         items = payload if isinstance(payload, list) else [payload]
         alerts = []
         for i, technique in enumerate(techniques):
@@ -672,7 +693,9 @@ class _CyberMockProvider(MockProvider):
         seen: set[tuple] = set()
         for technique in techniques:
             scen = _BLUE_SCENARIOS[technique]
-            for a in scen["actions"]:
+            # R18e：每技法取前 2 个动作（处置+监控为主），避免蓝队动作数
+            # 相对红队步数失衡（旧 3/技法导致 5 技法=15 动作的观感）
+            for a in scen["actions"][:2]:
                 dedup_key = (a["kind"], a["target"])
                 if dedup_key in seen:
                     continue

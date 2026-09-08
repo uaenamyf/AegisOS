@@ -15,12 +15,28 @@ import type {
 
 type DrillPhase = "idle" | "running" | "done" | "aborted" | "error";
 
+// R18e：资产 ID 归一化。缺口文本里的 asset-4 与战报里的 asset-004 必须归一，
+// 否则缺口↔补攻永远匹配不上（截图里"未闭合"的根因之一）。
+function normAsset(id: string): string {
+  const m = /^asset-0*(\d+)$/i.exec(String(id ?? "").trim());
+  return m ? `asset-${m[1].padStart(3, "0")}` : String(id ?? "").trim();
+}
+
+// R18e：技法编号提取（兼容 "T1190 (CVE-...) — 证据" 混合格式）。
+function techIdOf(t: any): string {
+  const m = /^(T\d+(?:\.\d+)?)/.exec(String(t ?? ""));
+  return m ? m[1] : String(t ?? "");
+}
+
 // T3 收敛趋势图：每轮指标计算
-// 防御覆盖率复用 T6 算法：该轮红队新增步骤技法 ∩ 蓝队告警技法 / 红队技法
+// R18e：覆盖率分母改为「本轮全链技法」（累计攻击面），而非"本轮新增技法"。
+// 旧算法分母只算新增，导致新增归零时覆盖率失真；累计口径才表达
+// "蓝队对当前全部攻击面的检测覆盖程度"，配合 mock 检测规则逐轮建立，
+// 曲线呈上升趋势（防御能力随对抗增强），而非之前越打越低。
 function roundCoverage(round: DrillRound): number | null {
   const attackTechs = [
     ...new Set(
-      (round.red.new_steps ?? [])
+      (round.red.steps ?? [])
         .map((s: any) => s.technique)
         .filter(Boolean),
     ),
@@ -33,14 +49,8 @@ function roundCoverage(round: DrillRound): number | null {
     ),
   ];
   if (attackTechs.length === 0) return null;
-  // T18：提取纯 T 编号对齐后再比（兼容 "T1190 (CVE-...) — 证据" 混合格式），
-  // 避免红队带证据文本 / 蓝队纯编号的精确匹配误判覆盖率。
-  const techId = (t: any) => {
-    const m = /^(T\d+(?:\.\d+)?)/.exec(String(t));
-    return m ? m[1] : t;
-  };
-  const atk = [...new Set(attackTechs.map(techId))];
-  const det = [...new Set(detectTechs.map(techId))];
+  const atk = [...new Set(attackTechs.map(techIdOf))];
+  const det = [...new Set(detectTechs.map(techIdOf))];
   const covered = atk.filter((t) => det.includes(t)).length;
   return Math.round((covered / atk.length) * 100);
 }
@@ -228,19 +238,25 @@ function TrendChart({ rounds }: { rounds: DrillRound[] }) {
 }
 
 // T5 紫队缺口闭环：把「紫队挑缺口 → 红队补攻击 → 紫队判定通过」串成闭环链。
-// 纯前端从演练每轮战报配对（缺口文本里的资产编号 ↔ 后续轮次新增攻击的目标资产）。
+// 纯前端从演练每轮战报配对（缺口文本里的资产编号/技法编号 ↔ 后续轮次新增攻击）。
 function GapClosureChart({ rounds }: { rounds: DrillRound[] }) {
   if (rounds.length < 2) return null;
 
-  // 提取缺口资产：缺口文本中的 asset-N 编号
+  // 提取缺口资产：缺口文本中的 asset-N 编号（归一化为 asset-00N，与战报一致）
   const extractAssets = (text: string): string[] =>
-    [...new Set(text.match(/asset-\d+/g) ?? [])];
+    [...new Set((text.match(/asset-\d+/g) ?? []).map(normAsset))];
+  // R18e：提取缺口技法编号（如「缺少横向移动路径（T1021）」→ T1021）。
+  // 旧版只按资产配对，无资产编号的技法类缺口会被贪婪匹配到任意步骤，
+  // 导致闭环链张冠李戴（截图里 R2 的 T1021 缺口被配到 R4 的 T1078 步）。
+  const extractTechs = (text: string): string[] =>
+    [...new Set(text.match(/T\d{4}(?:\.\d+)?/g) ?? [])];
 
   // 1) 收集所有缺口（紫队提出问题且数量 > 0 的轮次）
   interface GapItem {
     issueRound: number;
     issue: string;
     assets: string[];
+    techs: string[];
     resolvedRound: number | null;
     resolvedStep: any | null;
     verdictRound: number | null;
@@ -257,6 +273,7 @@ function GapClosureChart({ rounds }: { rounds: DrillRound[] }) {
           issueRound: rd.round,
           issue,
           assets: extractAssets(issue),
+          techs: extractTechs(issue),
           resolvedRound: null,
           resolvedStep: null,
           verdictRound: null,
@@ -265,23 +282,32 @@ function GapClosureChart({ rounds }: { rounds: DrillRound[] }) {
       });
       return;
     }
-    // 2) 本轮无新缺口：若上一轮缺口未配对，尝试用本轮新增攻击配对
-    const pending = gaps.filter((g) => g.resolvedRound == null);
-    const newSteps: any[] = rd.red?.new_steps ?? [];
-    pending.forEach((g) => {
-      if (g.resolvedRound != null) return;
-      const hit = newSteps.find((s) =>
-        g.assets.length > 0
-          ? g.assets.includes(s.to_asset)
-          : s.to_asset !== "external",
-      );
+  });
+
+  // 2) R18e 逐缺口扫描后续轮次的新增步骤：只有目标资产命中缺口资产、
+  //    或步骤技法命中缺口技法才算闭合；两者都不沾边的绝不贪婪配对。
+  gaps.forEach((g) => {
+    for (const rd of rounds) {
+      if (rd.round <= g.issueRound) continue;
+      const hit = (rd.red?.new_steps ?? []).find((s: any) => {
+        const to = normAsset(String(s.to_asset ?? ""));
+        const techId = /^(T\d+(?:\.\d+)?)/.exec(String(s.technique ?? ""))?.[1] ?? "";
+        return g.assets.includes(to) || (!!techId && g.techs.includes(techId));
+      });
       if (hit) {
         g.resolvedRound = rd.round;
         g.resolvedStep = hit;
-        g.verdictRound = rd.round;
-        g.verdictValid = rd.purple?.valid ?? null;
+        break;
       }
-    });
+    }
+    // 复核轮 = 补攻之后紫队首次判定通过的轮次；若始终未通过则取补攻轮
+    if (g.resolvedRound != null) {
+      const verdict = rounds.find(
+        (rd) => rd.round >= g.resolvedRound! && rd.purple?.valid === true,
+      );
+      g.verdictRound = verdict?.round ?? g.resolvedRound;
+      g.verdictValid = verdict ? true : (rounds.find((rd) => rd.round === g.resolvedRound)?.purple?.valid ?? null);
+    }
   });
 
   // 3) 无任何缺口则整块不渲染（只有对抗无反馈时）
