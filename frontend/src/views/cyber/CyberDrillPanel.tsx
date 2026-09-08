@@ -17,6 +17,20 @@ type DrillPhase = "idle" | "running" | "done" | "aborted" | "error";
  *  只有开启新一轮时才被清除/覆盖。 */
 const DRILL_SNAPSHOT_KEY = "aegis.cyber-drill.snapshot";
 
+// R10 端-边-云执行位置展示（T4）
+// 层级语义与后端调度器一致：端侧超低延迟/本地隐私 / 边侧低延迟/区域隔离 / 云侧强算力/可脱敏
+const TIER_META: Record<string, { label: string; cls: string; icon: string }> = {
+  device: { label: "端侧", cls: "device", icon: "▣" },
+  edge: { label: "边侧", cls: "edge", icon: "◈" },
+  cloud: { label: "云侧", cls: "cloud", icon: "☁" },
+};
+
+const PHASE_META: Record<string, { label: string; desc: string }> = {
+  red: { label: "红队攻击", desc: "侦察 → 漏洞 → 攻击链" },
+  blue: { label: "蓝队防御", desc: "检测 → 分诊 → 狩猎 → 响应" },
+  purple: { label: "紫队评审", desc: "批判 + 一致性审查" },
+};
+
 interface DrillSnapshot {
   drillId: string | null;
   phase: DrillPhase;
@@ -436,6 +450,42 @@ export function CyberDrillPanel() {
                 </button>
                 {isExpanded ? (
                   <div className="cyber-round__detail">
+                    {/* T4 R10：端-边-云执行位置（自适应调度可视化） */}
+                    {round.phase ? (
+                      <div className="cyber-placement">
+                        <h5 className="cyber-panel__subtitle">
+                          ⚡ 执行位置 · 端-边-云自适应调度
+                        </h5>
+                        <div className="cyber-placement__rows">
+                          {(["red", "blue", "purple"] as const).map((p) => {
+                            const ph = round.phase?.[p];
+                            if (!ph) return null;
+                            const tier =
+                              TIER_META[ph.tier] ??
+                              ({ label: ph.tier, cls: "cloud", icon: "?" } as const);
+                            return (
+                              <div key={p} className="cyber-placement__row">
+                                <span className="cyber-placement__phase">
+                                  {PHASE_META[p].label}
+                                  <em>{PHASE_META[p].desc}</em>
+                                </span>
+                                <span
+                                  className={`cyber-placement__badge cyber-placement__badge--${tier.cls}`}
+                                >
+                                  {tier.icon} {tier.label}
+                                </span>
+                                <span className="cyber-placement__model">
+                                  {ph.model_id}
+                                </span>
+                                <span className="cyber-placement__reason">
+                                  {ph.reason}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="cyber-panel__grid">
                       <div className="cyber-panel__section">
                         <h5 className="cyber-panel__subtitle">Red</h5>

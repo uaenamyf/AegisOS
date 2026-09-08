@@ -2669,3 +2669,61 @@ body {
 }
 .cyber-meta__chip--accent { color: var(--accent, #4f8cff); }
 .cyber-meta__chip--warn { color: var(--warning, #f5a524); }
+
+/* ============ T4 R10: 端-边-云执行位置(轮次详情) ============ */
+.cyber-placement {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border, #3a4a5f);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-placement .cyber-panel__subtitle {
+  margin: 0 0 6px;
+}
+.cyber-placement__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cyber-placement__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.cyber-placement__phase {
+  width: 74px;
+  color: var(--text-dim, #9db2c6);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.cyber-placement__phase em {
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.cyber-placement__badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+.cyber-placement__badge--device { background: #2e9e5b; }
+.cyber-placement__badge--edge   { background: #2f7de1; }
+.cyber-placement__badge--cloud  { background: #8a5cf6; }
+.cyber-placement__model {
+  color: #e8eef7;
+  flex-shrink: 0;
+  font-family: var(--font-mono, monospace);
+}
+.cyber-placement__reason {
+  color: var(--text-dim, #9db2c6);
+  flex: 1;
+  min-width: 140px;
+}
