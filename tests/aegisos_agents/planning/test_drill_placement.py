@@ -1,19 +1,22 @@
 # date: 2026-09-05
 # dev: AegisOS
-# changelog: R10 新增——演练阶段 placement 联动（端-边-云自适应调度标注）单测
+# changelog: R10 更新——placement 自适应调度单测（轮次负载缩放 + 可执行层约束）
 
-"""R10：演练阶段 placement 联动单测。
+"""R10：演练阶段 placement 联动单测（自适应调度）。
 
 覆盖：
     - `_phase_placements`：红/蓝/紫三阶段产出合法 tier（device/edge/cloud）
       + 非空卸载理由；
+    - 轮次自适应：随收敛负载下降，部分阶段自动卸载到更近的层
+      （紫队评审云→边、蓝队防御边→端），不再是固定映射；
+    - 可执行层约束：真实 LLM 模式仅云 API 可执行时，端/边偏好降级云侧执行；
     - `run_drill` 端到端：每轮 round_data 携带 `phase.{red,blue,purple}`，
-      tier 合法、reason 非空，且三阶段 tier 符合阶段语义预期
-      （red 偏好 device/edge、purple 偏好 cloud）；
-    - 既有行为零破坏：不启用 placement 相关参数时结构不变（phase 为新增字段）。
+      tier 合法、reason 非空。
 """
 
 from __future__ import annotations
+
+import pytest
 
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
 from backend.mocks.cyber_provider import _CyberMockProvider
@@ -37,15 +40,46 @@ def test_phase_placements_legal_tiers_and_reason():
 
 
 def test_phase_placements_semantic_expectation():
-    """阶段语义：red 超低延迟应命中 device/edge，purple 高算力应命中 cloud。"""
+    """阶段语义（第 1 轮满负载）：red 超低延迟→device，purple 高算力→cloud。"""
     orch = _make_orchestrator()
-    placements = orch._phase_placements()
+    placements = orch._phase_placements(round_no=1)
     # red: latency_budget=0.8 < 1.0 → 端侧优先（device/edge 候选池存在）
     assert placements["red"]["tier"] in {"device", "edge"}
     # purple: latency_budget=10.0 + unrestricted → 算力优先 → cloud
     assert placements["purple"]["tier"] == "cloud"
     # blue: latency_budget=3.0 < 5.0 → 边侧优先
     assert placements["blue"]["tier"] in {"edge", "device"}
+
+
+def test_phase_placements_adaptive_across_rounds():
+    """自适应：收敛负载下降后，紫队评审从云卸载到边侧（不再是固定映射）。"""
+    orch = _make_orchestrator()
+    r1 = orch._phase_placements(round_no=1)
+    r4 = orch._phase_placements(round_no=4)
+    # 第 1 轮：满负载 → 紫队评审上云
+    assert r1["purple"]["tier"] == "cloud"
+    # 第 4 轮：负载约 46% → 紫队评审降级到边侧执行（算力需求下降）
+    assert r4["purple"]["tier"] == "edge"
+    # 红队始终超低延迟 → 端侧不变
+    assert r1["red"]["tier"] == r4["red"]["tier"] == "device"
+    # 理由中标注轮次负载信息
+    assert "第 4 轮" in r4["purple"]["reason"]
+
+
+def test_phase_placements_real_mode_degrades_to_cloud(monkeypatch):
+    """真实 LLM 模式仅云 API 可执行：端/边偏好降级云侧并在理由中说明。"""
+    monkeypatch.setenv("AEGIS_USE_MOCK", "false")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-1234567890")
+    orch = _make_orchestrator()
+    placements = orch._phase_placements(round_no=1)
+    # 全部阶段最终都落云侧执行（当前端/边未接独立 API）
+    for phase in ("red", "blue", "purple"):
+        assert placements[phase]["tier"] == "cloud", f"{phase} 应降级云侧: {placements[phase]}"
+    # 红/蓝偏好端/边 → 理由中显式说明降级云侧执行
+    assert "降级云侧执行" in placements["red"]["reason"]
+    assert "降级云侧执行" in placements["blue"]["reason"]
+    # 紫队本身偏好云（高算力）→ 无需降级说明
+    assert "降级云侧执行" not in placements["purple"]["reason"]
 
 
 def test_run_drill_rounds_carry_phase_placements():
@@ -61,13 +95,17 @@ def test_run_drill_rounds_carry_phase_placements():
             assert p["reason"]
 
 
-def test_run_drill_phase_placements_consistent_across_rounds():
-    """各轮同一阶段的 tier 保持稳定（调度规则确定性）。"""
+def test_run_drill_adaptive_tiers_change_with_rounds():
+    """端到端：跨轮 placement 自适应变化（紫队云→边、蓝队边→端）。"""
     orch = _make_orchestrator()
     result = orch.run_drill("10.0.0.0/24", max_rounds=5)
     tiers = {
         phase: {r["phase"][phase]["tier"] for r in result["rounds"]}
         for phase in ("red", "blue", "purple")
     }
-    for phase, tset in tiers.items():
-        assert len(tset) == 1, f"{phase} 跨轮 tier 不稳定: {tset}"
+    # 红队始终端侧（超低延迟语义不变）
+    assert tiers["red"] == {"device"}
+    # 紫队评审随负载收敛从云卸载到边
+    assert tiers["purple"] == {"cloud", "edge"}
+    # 蓝队防御低延迟，收敛后期卸载到端
+    assert tiers["blue"] == {"edge", "device"}

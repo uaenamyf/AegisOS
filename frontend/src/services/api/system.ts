@@ -12,4 +12,11 @@ export const systemApi = {
   /** 切换运行时模式（mock=预置响应 / real=真实 LLM）。 */
   setMode: (mode: RuntimeMode): Promise<SystemModeInfo> =>
     apiClient.post<SystemModeInfo>("/system/mode", { mode }),
+
+  /**
+   * 配置云侧 LLM API Key 并同步到后端（写入环境变量文件 + 即时生效）。
+   * 端/边暂不单独配置，统一走云 API。
+   */
+  setApiKey: (apiKey: string): Promise<SystemModeInfo> =>
+    apiClient.post<SystemModeInfo>("/system/api-key", { api_key: apiKey }),
 };

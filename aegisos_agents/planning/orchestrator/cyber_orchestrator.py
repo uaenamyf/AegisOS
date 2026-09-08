@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -137,9 +138,10 @@ def _asdict(obj):
 # ==================================================================
 
 # 三层候选模型池（演示版：每层一个候选，不接真实异构节点）
+# R10.2：edge 增加 review 能力——收敛后增量评审负载下降，可卸载到边侧中型模型
 _DRILL_MODEL_POOL: list[Model] = [
     Model(model_id="device_firewall", tier="device", size="small", capabilities=["recon", "detect"]),
-    Model(model_id="edge_gateway", tier="edge", size="medium", capabilities=["recon", "detect", "plan"]),
+    Model(model_id="edge_gateway", tier="edge", size="medium", capabilities=["recon", "detect", "plan", "review"]),
     Model(model_id="cloud_gpu", tier="cloud", size="large", capabilities=["plan", "review", "critique"]),
 ]
 
@@ -2169,8 +2171,22 @@ class CyberOrchestrator(GoalMode[dict]):
                 chain, prev_event_stream, r
             )
 
-            # 蓝队防御
-            blue = self.run_blue_chain(event_stream)
+            # 蓝队防御（失败兜底：单阶段弱化不中断整场演练，战报标记 ok=false）
+            try:
+                blue = self.run_blue_chain(event_stream)
+                blue_ok: bool = True
+                blue_error: str | None = None
+            except Exception as exc:  # noqa: BLE001
+                blue = {
+                    "alerts": [],
+                    "triaged": [],
+                    "hypotheses": [],
+                    "plan": ResponsePlan(
+                        plan_id="degraded", actions=[], confidence=0.0, rollback=[]
+                    ),
+                }
+                blue_ok = False
+                blue_error = str(exc)
 
             # 紫队评审（显式传入轮次以触发按轮演化；R8 附加跨轮记忆摘要）
             purple = self.run_purple_review(
@@ -2203,7 +2219,8 @@ class CyberOrchestrator(GoalMode[dict]):
                     "new_steps": [s.to_dict() for s in new_steps],
                 },
                 "blue": {
-                    "ok": True,
+                    "ok": blue_ok,
+                    "error": blue_error,
                     "alerts": [_asdict(a) for a in blue["alerts"]],
                     "triaged_count": len(blue["triaged"]),
                     "plan": _asdict(blue["plan"]),
@@ -2218,8 +2235,8 @@ class CyberOrchestrator(GoalMode[dict]):
                 },
                 "event_stream": event_stream,
                 "convergence_code": code,
-                # R10: 端-边-云阶段 placement 标注（红/蓝/紫执行位置）
-                "phase": self._phase_placements(),
+                # R10: 端-边-云阶段 placement 标注（红/蓝/紫执行位置，随轮次自适应）
+                "phase": self._phase_placements(r),
             }
             if memory is not None:
                 round_data["prior_rounds_summary"] = prior_rounds_summary
@@ -2266,38 +2283,65 @@ class CyberOrchestrator(GoalMode[dict]):
 
     # ---- R10: 演练阶段 placement（端-边-云自适应调度标注）辅助 ----
 
-    def _phase_placements(self) -> dict[str, dict[str, Any]]:
-        """为演练红/蓝/紫三阶段标注执行位置（R10）。
+    def _phase_placements(self, round_no: int | None = None) -> dict[str, dict[str, Any]]:
+        """为演练红/蓝/紫三阶段标注执行位置（R10 自适应调度）。
 
-        按各阶段任务特征（延迟预算 + 隐私级别）调用既有
-        :func:`scheduler.schedule` 选定端/边/云层级，产出
-        ``{tier, model_id, reason}`` 三元组；调度异常时回退云侧兜底。
+        两重自适应：
+            1. 轮次负载缩放——随对抗收敛、增量负载下降，延迟预算收紧，
+               部分阶段自动卸载到更近的层（如紫队评审云→边、蓝队防御边→端）；
+            2. 可执行层约束——mock 模式三层候选池齐全按调度规则选层；真实模式
+               当前仅云 API 可执行（端/边暂未接独立 API），偏好层不可执行时
+               降级云侧执行并在理由中说明。
+
+        Args:
+            round_no: 当前轮次（>=1）；None 视为第 1 轮（保持旧行为）。
 
         Returns:
             形如 ``{"red": {...}, "blue": {...}, "purple": {...}}``
             的 placement 映射，每项含 ``tier`` / ``model_id`` / ``reason``。
         """
         placements: dict[str, dict[str, Any]] = {}
+        round_no = round_no or 1
+        # 收敛加速：对抗收敛后增量负载快速下降（第 2 轮约 45%、第 3 轮起 30%），
+        # 延迟预算随之收紧 → 部分阶段自动卸载到更近的层（紫队云→边、蓝队边→端）
+        scale = max(0.3, 1.0 - 0.55 * (round_no - 1))
+        executable = self._executable_tiers()
         for phase, feat in _DRILL_PHASE_FEATURES.items():
             task = Task(
                 goal=feat["goal"],
-                latency_budget=feat["latency_budget"],
+                latency_budget=feat["latency_budget"] * scale,
                 privacy=feat["privacy"],
             )
             try:
-                model = schedule(task, _DRILL_MODEL_POOL, required_capability=feat["capability"])
-                tier = model.tier
-                model_id = model.model_id
+                preferred = schedule(
+                    task, _DRILL_MODEL_POOL, required_capability=feat["capability"]
+                )
             except ValueError:
-                # 防御性兜底：候选池缺层时落云
-                tier = "cloud"
-                model_id = "cloud_gpu"
-            placements[phase] = {
-                "tier": tier,
-                "model_id": model_id,
-                "reason": f"{feat['reason']} → {_DRILL_TIER_SEMANTICS.get(tier, tier)}",
-            }
+                preferred = None
+            if preferred is None:
+                tier, model_id = "cloud", "cloud_gpu"
+                reason = f"{feat['reason']} → {_DRILL_TIER_SEMANTICS['cloud']}（候选池缺失，云侧兑底）"
+            elif preferred.tier in executable:
+                tier, model_id = preferred.tier, preferred.model_id
+                reason = f"{feat['reason']} → {_DRILL_TIER_SEMANTICS[tier]}"
+            else:
+                tier, model_id = "cloud", "cloud_gpu"
+                reason = (
+                    f"{feat['reason']} → {_DRILL_TIER_SEMANTICS[preferred.tier]}；"
+                    "当前仅云 API 可执行，端/边按需降级云侧执行"
+                )
+            if scale < 1.0:
+                reason += f"（第 {round_no} 轮负载 {int(round(scale * 100))}%，收敛加速卸载）"
+            placements[phase] = {"tier": tier, "model_id": model_id, "reason": reason}
         return placements
+
+    @staticmethod
+    def _executable_tiers() -> list[str]:
+        """当前可执行层级：mock 全层可用；真实模式仅云 API（端/边暂未接独立 API）。"""
+        use_mock = os.getenv("AEGIS_USE_MOCK", "").lower()
+        if use_mock in ("1", "true", "yes") or not os.getenv("OPENAI_API_KEY"):
+            return ["device", "edge", "cloud"]
+        return ["cloud"]
 
     # ---- R8: 跨轮记忆与上下文压缩辅助 ----
 

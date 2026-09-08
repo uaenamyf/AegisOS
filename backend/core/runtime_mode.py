@@ -99,6 +99,20 @@ def get_orchestrator() -> Any:
         return orch
 
 
+def invalidate(mode: str | None = None) -> None:
+    """丢弃缓存的编排器（换 API Key / 换模型后强制重建）。
+
+    Args:
+        mode: 指定丢弃某模式的编排器；None 时全部丢弃。
+    """
+    global _orchestrators
+    with _lock:
+        if mode is None:
+            _orchestrators.clear()
+        else:
+            _orchestrators.pop(mode, None)
+
+
 def describe() -> dict[str, Any]:
     """返回模式描述，供前端徽标渲染。
 

@@ -150,6 +150,21 @@ export const cyberApi = {
       `/drill/${encodeURIComponent(drillId)}/summary`,
     ),
 
+  /**
+   * 获取 Auto Drill 运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）。
+   * 返回 Markdown 文本（report_md），前端可折叠展示 / 复制存档。
+   */
+  getDrillReport: (
+    drillId: string,
+  ): Promise<{
+    drill_id: string;
+    report_md: string;
+    rounds_executed: number;
+    convergence_code: string;
+    raw_json_path: string;
+  }> =>
+    apiClient.get(`/drill/${encodeURIComponent(drillId)}/report`),
+
   abortDrill: (drillId: string): Promise<{ drill_id: string; status: string }> =>
     apiClient.post<{ drill_id: string; status: string }>(
       `/drill/${encodeURIComponent(drillId)}/abort`,

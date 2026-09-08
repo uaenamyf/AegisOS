@@ -34,6 +34,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.core.composition import CyberDefenseServiceDep, get_composition
+from backend.services.drill_report import write_drill_report
 from protocol import Event
 from protocol.event import EventType
 
@@ -125,6 +126,11 @@ class DrillRuntime:
             self.emit("drill_summary", self.summary)
             self.emit("drill_done", {"drill_id": self.drill_id})
             self.state = "done"
+            # 自动落盘运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）
+            try:
+                write_drill_report(result)
+            except Exception:  # noqa: BLE001 —— 报告生成失败不影响演练结果
+                pass
         except Exception as exc:  # noqa: BLE001
             self.error = str(exc)
             self.emit("drill_error", {"error": str(exc)})
@@ -231,6 +237,29 @@ async def get_drill(drill_id: str, service: CyberDefenseServiceDep) -> dict[str,
         "summary": runtime.summary,
         "error": runtime.error,
     }
+
+
+@router.get("/{drill_id}/report")
+async def drill_report(drill_id: str, service: CyberDefenseServiceDep) -> dict[str, Any]:
+    """获取演练的运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）。
+
+    Args:
+        drill_id: 演练 ID。
+        service: 攻防服务依赖。
+
+    Raises:
+        HTTPException: 演练记录不存在返回 404。
+
+    Returns:
+        ``{drill_id, report_md, rounds_executed, convergence_code, raw_json_path}``。
+    """
+    runtime = _get_runtime(drill_id)
+    record = service.get_drill(runtime.drill_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Drill record not found")
+    from backend.services.drill_report import build_drill_report_json
+
+    return build_drill_report_json(record)
 
 
 @router.get("/{drill_id}/summary")

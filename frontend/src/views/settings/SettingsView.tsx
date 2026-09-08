@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { systemApi } from "@/services/api/system";
 
 type TierKey = "device" | "edge" | "cloud";
 
@@ -59,10 +60,39 @@ function loadConfig(): Record<TierKey, NodeConfig> {
 export function SettingsView() {
   const [config, setConfig] = useState<Record<TierKey, NodeConfig>>(DEFAULT_CONFIG);
   const [saved, setSaved] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [keySaving, setKeySaving] = useState(false);
+  const [keyMsg, setKeyMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setConfig(loadConfig());
+    systemApi
+      .getMode()
+      .then((m) => setHasKey(m.has_key))
+      .catch(() => setHasKey(null));
   }, []);
+
+  const saveApiKey = async () => {
+    const key = apiKey.trim();
+    if (!key || keySaving) return;
+    setKeySaving(true);
+    setKeyMsg(null);
+    try {
+      const m = await systemApi.setApiKey(key);
+      setHasKey(m.has_key);
+      setApiKey("");
+      setKeyMsg(
+        m.has_key
+          ? "已保存并同步到后端（tooling/configs/.env），现在可切换到真实 LLM。"
+          : "保存完成，但后端未识别到 Key，请检查。",
+      );
+    } catch (err) {
+      setKeyMsg(err instanceof Error ? `保存失败：${err.message}` : "保存失败");
+    } finally {
+      setKeySaving(false);
+    }
+  };
 
   const updateNode = (tier: TierKey, patch: Partial<NodeConfig>) => {
     setConfig((current) => ({
@@ -98,6 +128,40 @@ export function SettingsView() {
           <span>{Object.values(config).filter((node) => node.enabled).length} 个节点启用</span>
         </div>
       </header>
+
+      {/* 云侧 LLM API Key：前端配置 → 同步后端（写入 .env + 即时生效） */}
+      <div className="settings-keycard">
+        <div className="settings-keycard__head">
+          <div>
+            <h3>云侧 LLM API Key</h3>
+            <p>
+              输入 DeepSeek 等云 API Key，保存后自动同步到后端并即时生效。
+              端侧/边侧暂不单独配置，统一走云 API。
+            </p>
+          </div>
+          <span className={`badge badge--${hasKey ? "succeeded" : "cancelled"}`}>
+            {hasKey === null ? "查询中…" : hasKey ? "已配置" : "未配置"}
+          </span>
+        </div>
+        <div className="settings-keycard__row">
+          <input
+            type="password"
+            placeholder={hasKey ? "已配置 Key，输入新 Key 可覆盖" : "sk-…"}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            aria-label="API Key"
+          />
+          <button
+            type="button"
+            className="settings-button settings-button--primary"
+            onClick={() => void saveApiKey()}
+            disabled={keySaving || !apiKey.trim()}
+          >
+            {keySaving ? "保存中…" : "保存并同步到后端"}
+          </button>
+        </div>
+        {keyMsg ? <p className="settings-keycard__msg">{keyMsg}</p> : null}
+      </div>
 
       <div className="settings-actions">
         <span className="settings-actions__hint">端 → 边 → 云，按任务隐私与复杂度选择</span>
@@ -174,7 +238,11 @@ export function SettingsView() {
 
       <div className="settings-note">
         <span className="settings-note__mark">i</span>
-        <p>演示模式不会把 API Key 写入此页面。云侧认证仍由后端环境变量 <code>OPENAI_API_KEY</code> 管理。</p>
+        <p>
+          API Key 在上方卡片输入并同步到后端（<code>tooling/configs/.env</code>，
+          15 秒内热生效）；端侧/边侧暂不单独配置，统一走云 API。
+          节点配置仅保存在当前浏览器，用于本地演示。
+        </p>
       </div>
     </section>
   );

@@ -1733,6 +1733,31 @@ body {
   word-break: break-word;
 }
 
+/* Auto Drill 运行记录报告（Markdown 折叠展示） */
+.cyber-drill__report-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(77, 182, 255, 0.35);
+}
+.cyber-drill__report {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(10, 12, 18, 0.6);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 480px;
+  overflow: auto;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .cyber-panel__grid {
@@ -2424,6 +2449,50 @@ body {
         }
         .settings-note__mark { color: var(--warning); font-family: var(--font-mono); font-weight: 700; }
         .settings-note code { color: var(--text-primary); font-family: var(--font-mono); }
+
+        .settings-keycard {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 16px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          background: rgba(56, 189, 248, 0.05);
+          margin-bottom: 18px;
+        }
+        .settings-keycard__head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .settings-keycard__head h3 { font-size: 15px; margin: 0 0 4px; }
+        .settings-keycard__head p {
+          font-size: 12px;
+          color: var(--text-secondary);
+          margin: 0;
+          line-height: 1.5;
+        }
+        .settings-keycard__row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+        .settings-keycard__row input {
+          flex: 1;
+          padding: 9px 12px;
+          background: var(--bg-elevated, #10131a);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          color: var(--text-primary);
+          font-family: var(--font-mono);
+          font-size: 13px;
+        }
+        .settings-keycard__msg {
+          font-size: 12px;
+          color: var(--success, #28a745);
+          margin: 0;
+        }
 
         @media (max-width: 980px) {
           .settings-grid { grid-template-columns: 1fr; }

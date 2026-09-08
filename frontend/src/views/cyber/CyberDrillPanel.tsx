@@ -33,6 +33,9 @@ export function CyberDrillPanel() {
   const [summary, setSummary] = useState<DrillSummaryResponse | null>(null);
   const [expandedRound, setExpandedRound] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reportMd, setReportMd] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   const streamCloseRef = useRef<(() => void) | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -139,6 +142,26 @@ export function CyberDrillPanel() {
       );
     }
   }, [setCyberError]);
+
+  /** 拉取并切换展示运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）。 */
+  const handleViewReport = useCallback(async () => {
+    const id = drillIdRef.current;
+    if (!id) return;
+    if (reportMd) {
+      setReportOpen((o) => !o);
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const res = await cyberApi.getDrillReport(id);
+      setReportMd(res.report_md);
+      setReportOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load report");
+    } finally {
+      setReportLoading(false);
+    }
+  }, [reportMd]);
 
   // 自动滚动到最新轮次
   useEffect(() => {
@@ -411,7 +434,33 @@ export function CyberDrillPanel() {
               ))}
             </div>
           ) : null}
+          {phase === "done" && drillId ? (
+            <div className="cyber-drill__report-bar">
+              <button
+                type="button"
+                className="cyber-view__btn"
+                onClick={() => void handleViewReport()}
+                disabled={reportLoading}
+              >
+                {reportLoading
+                  ? "加载中…"
+                  : reportOpen
+                    ? "收起运行记录"
+                    : "📄 运行记录报告"}
+              </button>
+              {reportMd ? (
+                <span className="cyber-attack__cache-note">
+                  每轮红/蓝/紫产物 + 端边云卸载轨迹，Markdown 可复制存档
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
+      ) : null}
+
+      {/* 运行记录报告（折叠展示） */}
+      {reportOpen && reportMd ? (
+        <pre className="cyber-drill__report">{reportMd}</pre>
       ) : null}
     </div>
   );
