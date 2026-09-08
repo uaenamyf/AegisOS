@@ -81,3 +81,26 @@ def test_drill_on_round_callback_called_per_round(tmp_path):
     seen: list[int] = []
     rec = svc.drill("10.0.0.0/24", on_round=lambda data, r: seen.append(r))
     assert seen == list(range(1, rec["rounds_executed"] + 1))
+
+
+def test_drill_default_enables_cross_round_memory(tmp_path):
+    """R8：svc.drill 默认启用跨轮记忆——summary 含 memory_trace，后续轮次带摘要。"""
+    svc = _make_service(tmp_path)
+    rec = svc.drill("10.0.0.0/24")
+    assert "memory_trace" in rec["summary"]
+    assert len(rec["summary"]["memory_trace"]) == rec["rounds_executed"]
+    # 第 2 轮起的战报携带跨轮摘要，第 1 轮无前序摘要
+    assert rec["rounds"][0]["prior_rounds_summary"] is None
+    for r in rec["rounds"][1:]:
+        assert r["prior_rounds_summary"]
+
+
+def test_drill_custom_memory_injected(tmp_path):
+    """R8：显式传入自定义 MemoryStore 覆盖默认实例，且记忆写入可观测。"""
+    from aegisos_agents.memory.memory_store import MemoryStore
+
+    svc = _make_service(tmp_path)
+    custom = MemoryStore()
+    rec = svc.drill("10.0.0.0/24", memory=custom)
+    stack = custom.working.get(rec["drill_id"])
+    assert any(p.kind == "decision" for p in stack)

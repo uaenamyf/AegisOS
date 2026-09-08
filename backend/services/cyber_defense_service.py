@@ -281,12 +281,19 @@ class CyberDefenseService:
         summary_factory=None,
         abort=None,
         drill_id: str | None = None,
+        memory: MemoryStore | None = None,
+        memory_budget: int = 512,
     ) -> dict[str, Any]:
         """执行一键多轮攻防演练并持久化演练记录。
 
         委托 :meth:`CyberOrchestrator.run_drill` 跑完「红→蓝→紫」≤max_rounds
         轮并证据驱动收敛；演练结束后将完整记录（每轮战报 + 收敛码 + 总结）
         写入 ``data/drills/<drill_id>.json``，便于回放与审计。
+
+        R8（跨轮记忆与上下文压缩）：默认将服务持有的 ``_memory`` 传入编排器，
+        每轮紫队评审后写记忆并按预算压缩，下一轮紫队携带
+        ``prior_rounds_summary`` 摘要（见编排器 ``run_drill``）；也可显式传入
+        自定义 ``memory`` 覆盖。
 
         Args:
             target_range: 目标网络范围（如 ``10.0.0.0/24``）。
@@ -297,17 +304,22 @@ class CyberDefenseService:
                 边界终止（配合收敛规则 4），返回已收敛部分记录。
             drill_id: 可选演练 ID；None 时由编排器按目标范围自动生成。
                 路由层传入可保证 registry / 落盘文件 / SSE 事件三者 ID 一致。
+            memory: 可选记忆存储覆盖；None 时使用服务默认 ``_memory``。
+            memory_budget: 工作记忆压缩 token 预算，默认 512。
 
         Returns:
             含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
             ``rounds`` / ``summary`` 的演练结果字典，并已落盘。
         """
+        mem = memory if memory is not None else self._memory
         result = self._orchestrator.run_drill(
             target_range,
             max_rounds=max_rounds,
             on_round=on_round,
             abort=abort,
             drill_id=drill_id,
+            memory=mem,
+            memory_budget=memory_budget,
         )
         drill_id = result["drill_id"]
         record = {

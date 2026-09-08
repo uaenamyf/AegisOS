@@ -266,6 +266,14 @@ export function CyberDrillPanel() {
                       Purple: {round.purple.new_issue_count} issues
                     </span>
                   </span>
+                  {round.prior_rounds_summary ? (
+                    <span
+                      className="badge badge--info"
+                      title={`Prior rounds summary: ${round.prior_rounds_summary}`}
+                    >
+                      🧠 mem
+                    </span>
+                  ) : null}
                   <span
                     className={`badge badge--${round.purple.converged ? "succeeded" : "running"}`}
                   >
@@ -369,6 +377,23 @@ export function CyberDrillPanel() {
             </span>
           </div>
           <p className="cyber-panel__text">{summary.conclusion}</p>
+          {summary.memory_trace && summary.memory_trace.length > 0 ? (
+            <div className="cyber-drill__memory">
+              <h5 className="cyber-drill__memory-title">
+                🧠 Cross-Round Memory (跨轮记忆摘要)
+              </h5>
+              {summary.memory_trace.map((entry) => (
+                <div key={entry.stored_task_id} className="cyber-drill__memory-entry">
+                  <span className="cyber-drill__memory-round">
+                    R{entry.round}
+                  </span>
+                  <span className="cyber-drill__memory-summary">
+                    {entry.next_round_summary ?? entry.packet_summary}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

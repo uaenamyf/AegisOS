@@ -336,14 +336,26 @@ export interface DrillRound {
   red: DrillRoundRed;
   blue: DrillRoundBlue;
   purple: DrillRoundPurple;
+  /** R8: 跨轮记忆——本轮紫队携带的前序轮次决策摘要（首轮为 null）。 */
+  prior_rounds_summary?: string | null;
   event_stream: Record<string, any>[];
   convergence_code: string;
+}
+
+export interface DrillMemoryTraceEntry {
+  round: number;
+  stored_task_id: string;
+  packet_summary: string;
+  compressed_count: number;
+  next_round_summary: string | null;
 }
 
 export interface DrillSummaryResponse {
   conclusion: string;
   convergence_code: string;
   rounds_executed: number;
+  /** R8: 跨轮记忆轨迹——每轮写入的记忆包 + 为下一轮生成的摘要。 */
+  memory_trace?: DrillMemoryTraceEntry[];
 }
 
 export interface DrillRecord {

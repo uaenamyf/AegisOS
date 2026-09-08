@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -71,7 +71,11 @@ from protocol.cyber import (
     VulnFinding,
 )
 from protocol.graph import Graph, GraphNode, NodeKind
+from protocol.memory import MemoryPacket
 from protocol.message import Message, NodeRef
+
+if TYPE_CHECKING:
+    from aegisos_agents.memory.memory_store import MemoryStore
 
 # R4.2: SDK handoffs 依赖
 try:
@@ -519,7 +523,12 @@ class CyberOrchestrator(GoalMode[dict]):
         return {"alerts": alerts, "triaged": triaged, "hypotheses": hypotheses, "plan": plan}
 
     def run_purple_review(
-        self, chain: AttackChain, plan: ResponsePlan, alerts: list[Alert], round: int | None = None
+        self,
+        chain: AttackChain,
+        plan: ResponsePlan,
+        alerts: list[Alert],
+        round: int | None = None,
+        prior_rounds_summary: str | None = None,
     ) -> dict[str, Any]:
         """执行紫队校验：critic 校验攻击链 + reviewer 跨产出一致性审查。
 
@@ -527,18 +536,31 @@ class CyberOrchestrator(GoalMode[dict]):
         ``[round=N]`` 触发 mock 按轮演化（round=1 判缺口 valid=False，>=2 补齐
         valid=True）。默认 round=None 保持旧行为，既有调用/测试零破坏。
 
+        R8：新增可选 ``prior_rounds_summary`` 参数——显式传入时在 critic 与
+        reviewer 的 prompt 注入 ``[prior_rounds_summary]`` 片段，使紫队评审携带
+        前序轮次决策摘要（跨轮记忆），对抗长链推理的注意力稀释与记忆坍缩。
+        默认 None 完全保持旧行为。
+
         Args:
             chain: 红队攻击链产出。
             plan: 蓝队响应计划产出。
             alerts: 蓝队告警列表。
             round: 显式演练轮次；None 表示不演化（默认）。
+            prior_rounds_summary: 前序轮次压缩摘要文本；None 表示不注入（默认）。
 
         Returns:
             含 ``critique`` / ``review`` 的字典（均为 dict）。
         """
         # 紫队批判红队攻击链
         round_tag = f" [round={round}]" if round is not None else ""
-        critique_result = self.critic._run(f"Critique: {json.dumps(chain.to_dict())}{round_tag}")
+        prior_tag = (
+            f"\n[prior_rounds_summary] {prior_rounds_summary}"
+            if prior_rounds_summary
+            else ""
+        )
+        critique_result = self.critic._run(
+            f"Critique: {json.dumps(chain.to_dict())}{round_tag}{prior_tag}"
+        )
         critique = critique_result.model_dump()
 
         # 紫队跨产出一致性审查
@@ -546,6 +568,7 @@ class CyberOrchestrator(GoalMode[dict]):
             "attack_chain": chain.to_dict(),
             "response_plan": _asdict(plan),
             "alerts": [_asdict(a) for a in alerts],
+            "prior_rounds_summary": prior_rounds_summary,
         }
         review_result = self.reviewer._run(
             f"Review consistency: {json.dumps(artifacts, default=str)}"
@@ -1957,13 +1980,22 @@ class CyberOrchestrator(GoalMode[dict]):
         on_round=None,
         abort=None,
         drill_id: str | None = None,
+        memory: "MemoryStore | None" = None,
+        memory_budget: int = 512,
     ) -> dict[str, Any]:
-        """多轮收敛演练主循环（CyberDrill R1）。
+        """多轮收敛演练主循环（CyberDrill R1 / R8）。
 
         在每轮内依次执行红(``run_red_chain``) → 蓝(``run_blue_chain``) →
         紫(``run_purple_review``)，以证据驱动判定是否提前收敛，最多 M 轮。
         每轮结果经 ``on_round`` 回调回传（供 R3 路由喂 SSE），显式中止经
         ``abort()`` 可调用对象查询。
+
+        R8（跨轮记忆与上下文压缩）：传入 ``memory`` 时，每轮紫队评审结束后
+        将该轮 critique/review 要点写入记忆（``MemoryPacket(kind="decision")``
+        路由到工作记忆 + 情景记忆），并用 ``MemoryStore.compress`` 在工作记忆
+        栈上按 token 预算压缩，生成下一轮紫队的 ``prior_rounds_summary`` 摘要
+        （决策保留 + 最近保留 + 其余 digest），实现跨轮上下文连续性。摘要
+        轨迹写入总结报告的 ``memory_trace``。默认 memory=None 保持旧行为。
 
         Args:
             target_range: 目标网络范围。
@@ -1974,17 +2006,23 @@ class CyberOrchestrator(GoalMode[dict]):
             drill_id: 可选演练 ID；None 时按目标范围自动生成
                 （``drill_<target_range 去斜杠>``）。由路由层传入可保证
                 registry / 落盘文件 / SSE 事件三者 ID 一致。
+            memory: 可选记忆存储；传入时启用跨轮记忆与上下文压缩（R8）。
+            memory_budget: 工作记忆压缩的 token 预算，默认 512。
 
         Returns:
             含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
-            ``rounds``(逐轮记录) / ``summary`` 的字典。
+            ``rounds``(逐轮记录) / ``summary`` 的字典；启用记忆时每轮记录含
+            ``prior_rounds_summary`` 字段，summary 含 ``memory_trace``。
         """
         if max_rounds < 1:
             max_rounds = 1
+        drill_id = drill_id or f"drill_{target_range.replace('/', '_')}"
         prev_chain: AttackChain | None = None
         prev_event_stream: list[dict[str, Any]] = []
         consecutive_no_new = 0
         rounds: list[dict[str, Any]] = []
+        memory_trace: list[dict[str, Any]] = []
+        prior_rounds_summary: str | None = None
 
         for r in range(1, max_rounds + 1):
             # 红队攻击（r>=2 触发 mock 按轮演化）
@@ -2001,9 +2039,13 @@ class CyberOrchestrator(GoalMode[dict]):
             # 蓝队防御
             blue = self.run_blue_chain(event_stream)
 
-            # 紫队评审（显式传入轮次以触发按轮演化）
+            # 紫队评审（显式传入轮次以触发按轮演化；R8 附加跨轮记忆摘要）
             purple = self.run_purple_review(
-                chain=chain, plan=blue["plan"], alerts=blue["alerts"], round=r
+                chain=chain,
+                plan=blue["plan"],
+                alerts=blue["alerts"],
+                round=r,
+                prior_rounds_summary=prior_rounds_summary,
             )
             critique = purple["critique"]
             valid = bool(critique.get("valid"))
@@ -2044,9 +2086,22 @@ class CyberOrchestrator(GoalMode[dict]):
                 "event_stream": event_stream,
                 "convergence_code": code,
             }
+            if memory is not None:
+                round_data["prior_rounds_summary"] = prior_rounds_summary
             rounds.append(round_data)
             if callable(on_round):
                 on_round(round_data, r)
+
+            # R8: 跨轮记忆——写本轮决策 → 压缩工作记忆 → 生成下一轮摘要
+            if memory is not None:
+                prior_rounds_summary = self._store_round_memory(
+                    memory=memory,
+                    drill_id=drill_id,
+                    round_no=r,
+                    round_data=round_data,
+                    budget=memory_budget,
+                    trace=memory_trace,
+                )
 
             prev_chain = chain
             prev_event_stream = event_stream
@@ -2063,11 +2118,113 @@ class CyberOrchestrator(GoalMode[dict]):
             "convergence_code": code,
             "rounds_executed": len(rounds),
         }
+        if memory is not None:
+            summary["memory_trace"] = memory_trace
 
         return {
-            "drill_id": drill_id or f"drill_{target_range.replace('/', '_')}",
+            "drill_id": drill_id,
             "rounds_executed": len(rounds),
             "convergence_code": code,
             "rounds": rounds,
             "summary": summary,
         }
+
+    # ---- R8: 跨轮记忆与上下文压缩辅助 ----
+
+    def _store_round_memory(
+        self,
+        memory: "MemoryStore",
+        drill_id: str,
+        round_no: int,
+        round_data: dict[str, Any],
+        budget: int,
+        trace: list[dict[str, Any]],
+    ) -> str | None:
+        """写本轮决策记忆并按预算压缩，返回供下一轮使用的摘要文本（R8）。
+
+        1. 构造 ``MemoryPacket(kind="decision")``（携带本轮 critique 要点），
+           ``MemoryStore.write`` 自动路由到工作记忆 + 情景记忆，并触发反思预评估；
+           同时写入一条 ``kind="normal"`` 的细节包（全量 review 文本），供
+           compactor 在超预算时合并为 digest——决策保留 + 细节压缩，控制 token。
+        2. ``MemoryStore.compress(session_id, budget)`` 在工作记忆栈上按
+           token 预算压缩：决策/最近记忆保留，其余（细节包）合并为 digest
+           （溯源 task_id 列表）。
+        3. 将压缩结果拼装为摘要文本（digest 标注被压缩条数），追加到 trace
+           （每轮一条：stored_task_id + next_round_summary），供总结报告展示。
+
+        Args:
+            memory: 记忆存储实例。
+            drill_id: 演练 ID（兼作记忆 session_id）。
+            round_no: 当前轮次。
+            round_data: 本轮战报（red/blue/purple 三色）。
+            budget: 压缩 token 预算。
+            trace: 记忆轨迹列表（原地追加）。
+
+        Returns:
+            下一轮紫队的 ``prior_rounds_summary`` 文本；无可用摘要时返回 None。
+        """
+        purple = round_data["purple"]
+        critique = purple["critique"]
+        summary_text = (
+            f"round {round_no}: valid={purple['valid']} "
+            f"new_issues={purple['new_issue_count']} code={round_data['convergence_code']} "
+            f"findings={len(round_data['red']['steps'])} alerts={len(round_data['blue']['alerts'])}"
+        )
+        # 1) 核心决策包：压缩时保留，自动路由到情景记忆（历史经验）
+        decision_packet = MemoryPacket(
+            session_id=drill_id,
+            task_id=f"{drill_id}:r{round_no}",
+            kind="decision",
+            summary=summary_text,
+            working={
+                "round": round_no,
+                "critique_valid": purple["valid"],
+                "new_issue_count": purple["new_issue_count"],
+                "convergence_code": round_data["convergence_code"],
+                "critique": critique,
+            },
+            episodic={
+                "round": round_no,
+                "attack_steps": len(round_data["red"]["steps"]),
+                "new_steps": len(round_data["red"]["new_steps"]),
+                "alerts": len(round_data["blue"]["alerts"]),
+                "triaged": round_data["blue"]["triaged_count"],
+            },
+        )
+        memory.write(decision_packet)
+        # 2) 细节包：normal 类，超预算时被 compactor 合并为 digest
+        _issues = critique.get("issues", []) or []
+        issue_ids = [i.get("id", "?") if isinstance(i, dict) else str(i) for i in _issues]
+        detail_packet = MemoryPacket(
+            session_id=drill_id,
+            task_id=f"{drill_id}:r{round_no}:detail",
+            kind="normal",
+            summary=(
+                f"round {round_no} detail: "
+                f"consistent={purple['review'].get('consistent')} "
+                f"issues={issue_ids}"
+            ),
+            working={"review": purple["review"]},
+        )
+        memory.write(detail_packet)
+
+        compressed = memory.compress(drill_id, budget)
+        parts: list[str] = []
+        for m in compressed:
+            if m.kind == "digest":
+                count = m.compression.get("count", 0)
+                parts.append(f"[digest x{count}] {m.summary}")
+            elif m.summary:
+                parts.append(m.summary)
+        next_summary = " || ".join(parts) if parts else None
+
+        trace.append(
+            {
+                "round": round_no,
+                "stored_task_id": decision_packet.task_id,
+                "packet_summary": summary_text,
+                "compressed_count": len(compressed),
+                "next_round_summary": next_summary,
+            }
+        )
+        return next_summary
