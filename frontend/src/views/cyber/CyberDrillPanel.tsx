@@ -7,6 +7,8 @@ import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
 import type {
   DrillEvent,
+  DrillMeta,
+  DrillRecord,
   DrillRound,
   DrillSummaryResponse,
 } from "@/protocol/types";
@@ -345,6 +347,276 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// T7 历史演练对比：迷你趋势图（metric: red=新增攻击步骤 / cov=防御覆盖率）
+function CompareSpark({
+  roundsA,
+  roundsB,
+  colorA,
+  colorB,
+  metric,
+}: {
+  roundsA: DrillRound[];
+  roundsB: DrillRound[];
+  colorA: string;
+  colorB: string;
+  metric: "red" | "cov";
+}) {
+  const W = 300;
+  const H = 110;
+  const PAD_L = 30;
+  const PAD_R = 10;
+  const PAD_T = 14;
+  const PAD_B = 20;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+
+  const toPoints = (rounds: DrillRound[]) =>
+    rounds.map((r) => ({
+      round: r.round,
+      val: metric === "red" ? (r.red.new_steps ?? []).length : (roundCoverage(r) ?? 0),
+    }));
+
+  const pa = toPoints(roundsA);
+  const pb = toPoints(roundsB);
+  const maxRounds = Math.max(pa.length, pb.length, 1);
+  const maxVal =
+    metric === "cov"
+      ? 100
+      : Math.max(1, ...pa.map((p) => p.val), ...pb.map((p) => p.val));
+  const x = (i: number) =>
+    PAD_L + (maxRounds === 1 ? plotW / 2 : (i / (maxRounds - 1)) * plotW);
+  const y = (v: number, max: number) =>
+    PAD_T + plotH - (v / max) * plotH;
+
+  const line = (pts: { round: number; val: number }[], max: number) =>
+    pts.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.val, max)}`).join(" ");
+
+  return (
+    <svg className="cyber-compare__svg" viewBox={`0 0 ${W} ${H}`}>
+      {[0, 0.5, 1].map((t) => (
+        <line
+          key={t}
+          x1={PAD_L}
+          x2={W - PAD_R}
+          y1={PAD_T + plotH * t}
+          y2={PAD_T + plotH * t}
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="1"
+        />
+      ))}
+      {pa.length > 1 ? (
+        <path d={line(pa, maxVal)} fill="none" stroke={colorA} strokeWidth="2" />
+      ) : null}
+      {pb.length > 1 ? (
+        <path d={line(pb, maxVal)} fill="none" stroke={colorB} strokeWidth="2" />
+      ) : null}
+      {pa.map((p, i) => (
+        <circle key={`a${i}`} cx={x(i)} cy={y(p.val, maxVal)} r="2.5" fill={colorA} />
+      ))}
+      {pb.map((p, i) => (
+        <circle key={`b${i}`} cx={x(i)} cy={y(p.val, maxVal)} r="2.5" fill={colorB} />
+      ))}
+      <text x={PAD_L} y={PAD_T - 4} fill="var(--text-dim)" fontSize="9">
+        {metric === "red" ? "新增攻击步骤" : "防御覆盖率 %"}
+      </text>
+      <text x={W - PAD_R} y={H - 6} fill="var(--text-dim)" fontSize="9" textAnchor="end">
+        round
+      </text>
+    </svg>
+  );
+}
+
+// T7 历史演练对比区：列出本地持久化的演练，勾选两个并排对比。
+function HistoryDrills({
+  current,
+  onLoad,
+}: {
+  current: DrillRecord | null;
+  onLoad: (id: string) => void;
+}) {
+  const [drills, setDrills] = useState<DrillMeta[] | null>(null);
+  const [sel, setSel] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    cyberApi
+      .listDrills()
+      .then((res) => setDrills(res.drills ?? []))
+      .catch(() => setDrills([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const toggle = (id: string) => {
+    setSel((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 2) return prev;
+      return [...prev, id];
+    });
+  };
+
+  const pair = drills?.filter((d) => sel.includes(d.drill_id)) ?? [];
+
+  return (
+    <div className="cyber-history">
+      <div className="cyber-history__head">
+        <h4 className="cyber-panel__subtitle">🕘 历史演练</h4>
+        <button
+          type="button"
+          className="cyber-view__btn cyber-view__btn--ghost"
+          onClick={refresh}
+          disabled={loading}
+        >
+          {loading ? "刷新中…" : "↻ 刷新"}
+        </button>
+      </div>
+      {drills && drills.length > 0 ? (
+        <>
+          <p className="cyber-history__hint">
+            勾选两个演练对比收敛过程（当前会话中的演练会自动列入）
+          </p>
+          <div className="cyber-history__list">
+            {drills.map((d) => {
+              const isCurrent = current?.drill_id === d.drill_id;
+              const checked = sel.includes(d.drill_id);
+              return (
+                <label
+                  key={d.drill_id}
+                  className={`cyber-history__item${checked ? " is-checked" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(d.drill_id)}
+                  />
+                  <span className="cyber-history__item-id">
+                    {d.drill_id}
+                    {isCurrent ? (
+                      <span className="cyber-history__current">当前</span>
+                    ) : null}
+                  </span>
+                  <span className="cyber-history__item-meta">
+                    {d.target_range} · {d.rounds_executed} 轮 ·{" "}
+                    <code>{d.convergence_code}</code>
+                  </span>
+                  <span className="cyber-history__item-time">
+                    {d.created_at ? d.created_at.slice(0, 16).replace("T", " ") : ""}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {pair.length === 2 ? (
+            <CompareView a={pair[0]} b={pair[1]} />
+          ) : null}
+          <div className="cyber-history__load">
+            {pair.length === 1 ? (
+              <button
+                type="button"
+                className="cyber-view__btn"
+                onClick={() => onLoad(pair[0].drill_id)}
+              >
+                加载到当前面板
+              </button>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <p className="cyber-panel__empty">
+          {loading ? "加载中…" : "暂无历史演练记录 —— 先跑一次演练（mock 秒回）"}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// T7 对比视图：拉取两个完整记录 → 指标对比表 + 新增步骤/覆盖率双迷你趋势图
+function CompareView({ a, b }: { a: DrillMeta; b: DrillMeta }) {
+  const [recs, setRecs] = useState<Record<string, DrillRecord>>({});
+  const key = `${a.drill_id}|${b.drill_id}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    setRecs({});
+    Promise.all([cyberApi.getDrill(a.drill_id), cyberApi.getDrill(b.drill_id)])
+      .then(([ra, rb]) => {
+        if (cancelled) return;
+        setRecs({ [ra.drill_id]: ra, [rb.drill_id]: rb });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [key, a.drill_id, b.drill_id]);
+
+  const ra = recs[a.drill_id];
+  const rb = recs[b.drill_id];
+
+  return (
+    <div className="cyber-compare">
+      <div className="cyber-compare__table">
+        <table>
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th style={{ color: "#e05252" }}>演练 A · {a.drill_id}</th>
+              <th style={{ color: "#2f7de1" }}>演练 B · {b.drill_id}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>目标网络</td>
+              <td>{a.target_range}</td>
+              <td>{b.target_range}</td>
+            </tr>
+            <tr>
+              <td>实际轮次</td>
+              <td>{a.rounds_executed}</td>
+              <td>{b.rounds_executed}</td>
+            </tr>
+            <tr>
+              <td>收敛码</td>
+              <td><code>{a.convergence_code}</code></td>
+              <td><code>{b.convergence_code}</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="cyber-compare__row">
+        <div className="cyber-compare__chart">
+          <div className="cyber-compare__legend">
+            <i style={{ background: "#e05252" }} /> A · {a.drill_id}
+            <i style={{ background: "#2f7de1", marginLeft: 8 }} /> B · {b.drill_id}
+          </div>
+          <CompareSpark
+            roundsA={ra?.rounds ?? []}
+            roundsB={rb?.rounds ?? []}
+            colorA="#e05252"
+            colorB="#2f7de1"
+            metric="red"
+          />
+        </div>
+        <div className="cyber-compare__chart">
+          <div className="cyber-compare__legend">
+            <i style={{ background: "#2e9e5b" }} /> 覆盖率 %（A 红 / B 蓝）
+          </div>
+          <CompareSpark
+            roundsA={ra?.rounds ?? []}
+            roundsB={rb?.rounds ?? []}
+            colorA="#e05252"
+            colorB="#2f7de1"
+            metric="cov"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function exportReportPdf(reportMd: string, drillId: string | null): void {
@@ -1107,6 +1379,24 @@ export function CyberDrillPanel() {
       {reportOpen && reportMd ? (
         <pre className="cyber-drill__report">{reportMd}</pre>
       ) : null}
+
+      {/* T7 历史演练对比：本地持久化记录列表 + 双演练对比 */}
+      <HistoryDrills
+        current={
+          drillId && rounds.length > 0
+            ? {
+                drill_id: drillId,
+                target_range: targetRange,
+                max_rounds: maxRounds,
+                rounds_executed: rounds.length,
+                convergence_code: summary?.convergence_code ?? "running",
+                rounds,
+                summary: summary ?? { conclusion: "", convergence_code: "running", rounds_executed: rounds.length },
+              }
+            : null
+        }
+        onLoad={(id) => setDrillId(id)}
+      />
     </div>
   );
 }

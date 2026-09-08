@@ -451,7 +451,8 @@ class CyberDefenseService:
         if not self._drill_dir.exists():
             return []
         meta: list[dict[str, Any]] = []
-        for path in sorted(self._drill_dir.glob("drill_*.json"), reverse=True):
+        # 落盘文件名形如 drill-<hex>.json（连字符），glob 需匹配 drill*.json
+        for path in sorted(self._drill_dir.glob("drill*.json"), reverse=True):
             rec = self.get_drill(path.stem)
             if rec is None:
                 continue

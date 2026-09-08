@@ -424,6 +424,15 @@ export interface DrillRecord {
   created_at?: string;
 }
 
+// T7: 历史演练元信息（GET /drill/list）
+export interface DrillMeta {
+  drill_id: string;
+  target_range: string;
+  rounds_executed: number;
+  convergence_code: string;
+  created_at?: string;
+}
+
 /** SSE 事件名（锚点：backend/routers/drill.py 的 emit 调用）。 */
 export type DrillEventName =
   | "drill_start"

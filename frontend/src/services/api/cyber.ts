@@ -11,6 +11,7 @@ import type {
   BlueDefenseStreamEventName,
   DrillEvent,
   DrillEventName,
+  DrillMeta,
   DrillRecord,
   DrillSummaryResponse,
   PurpleReviewResponse,
@@ -205,6 +206,10 @@ export const cyberApi = {
 
   startDrill: (body: StartDrillRequest): Promise<StartDrillResponse> =>
     apiClient.post<StartDrillResponse>("/drill/start", body),
+
+  // T7: 列出本地持久化的历史演练（元信息，按时间倒序）
+  listDrills: (): Promise<{ drills: DrillMeta[] }> =>
+    apiClient.get<{ drills: DrillMeta[] }>("/drill/list"),
 
   getDrill: (drillId: string): Promise<DrillRecord> =>
     apiClient.get<DrillRecord>(`/drill/${encodeURIComponent(drillId)}`),

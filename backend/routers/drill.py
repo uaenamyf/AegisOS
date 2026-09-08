@@ -209,9 +209,23 @@ async def stream_drill(drill_id: str) -> StreamingResponse:
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
+@router.get("/list")
+async def list_drills(service: CyberDefenseServiceDep) -> dict[str, Any]:
+    """列出本地持久化的全部演练记录（元信息，不含完整战报）。
+
+    Returns:
+        ``{"drills": [...]}``，按生成时间倒序；每个元素含
+        ``drill_id`` / ``target_range`` / ``rounds_executed`` /
+        ``convergence_code`` / ``created_at``。
+    """
+    return {"drills": service.list_drills()}
+
+
 @router.get("/{drill_id}")
 async def get_drill(drill_id: str, service: CyberDefenseServiceDep) -> dict[str, Any]:
     """查询演练状态与已发生轮次（SSE 断开时的轮询兜底）。
+
+    历史演练（进程内无 runtime）回退读取落盘记录，供历史列表/对比使用。
 
     Args:
         drill_id: 演练 ID。
@@ -220,8 +234,24 @@ async def get_drill(drill_id: str, service: CyberDefenseServiceDep) -> dict[str,
     Returns:
         已落盘的演练记录；未完成则返回当前运行态摘要。
     """
-    runtime = _get_runtime(drill_id)
-    record = service.get_drill(runtime.drill_id)
+    runtime = _RUNTIMES.get(drill_id)
+    record = service.get_drill(drill_id)
+    if runtime is None:
+        # 历史演练：直接返回落盘记录（T7 对比视图的数据源）
+        if record:
+            return {
+                "drill_id": drill_id,
+                "status": "done",
+                "max_rounds": record.get("max_rounds", record.get("rounds_executed", 0)),
+                "target_range": record.get("target_range", ""),
+                "rounds": record["rounds"],
+                "rounds_executed": len(record["rounds"]),
+                "convergence_code": record.get("convergence_code"),
+                "summary": record.get("summary"),
+                "created_at": record.get("created_at"),
+                "error": None,
+            }
+        raise HTTPException(status_code=404, detail=f"Drill not found: {drill_id}")
     return {
         "drill_id": drill_id,
         "status": runtime.state,
@@ -253,8 +283,8 @@ async def drill_report(drill_id: str, service: CyberDefenseServiceDep) -> dict[s
     Returns:
         ``{drill_id, report_md, rounds_executed, convergence_code, raw_json_path}``。
     """
-    runtime = _get_runtime(drill_id)
-    record = service.get_drill(runtime.drill_id)
+    runtime = _RUNTIMES.get(drill_id)
+    record = service.get_drill(drill_id)
     if not record:
         raise HTTPException(status_code=404, detail="Drill record not found")
     from backend.services.drill_report import build_drill_report_json
@@ -276,11 +306,11 @@ async def drill_summary(drill_id: str, service: CyberDefenseServiceDep) -> dict[
     Returns:
         演练总结报告。
     """
-    runtime = _get_runtime(drill_id)
-    record = service.get_drill(runtime.drill_id)
+    runtime = _RUNTIMES.get(drill_id)
+    record = service.get_drill(drill_id)
     if record and record.get("summary"):
         return record["summary"]
-    if runtime.summary:
+    if runtime is not None and runtime.summary:
         return runtime.summary
     raise HTTPException(status_code=409, detail="Drill not converged yet")
 
