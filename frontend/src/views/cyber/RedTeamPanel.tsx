@@ -17,6 +17,90 @@ const STAGE_LABELS: Record<string, string> = {
   exploit: "规划攻击链",
 };
 
+// T9: 攻击技法语义表（推理轨迹展示）——编号 → 中文名 / 战术阶段 / 推理依据
+// 与 ATT&CK 战术语义一致（威胁情报本地库同源），前端内置、离线可用
+interface TechniqueMeta {
+  name: string;
+  tactic: string;
+  why: string;
+}
+const TECHNIQUE_META: Record<string, TechniqueMeta> = {
+  T1110: {
+    name: "暴力破解",
+    tactic: "凭据访问",
+    why: "目标服务暴露登录接口且未观察到账户锁定策略，直接尝试凭据爆破是获取合法访问的最快路径——以最小成本换取有效账户。",
+  },
+  T1059: {
+    name: "命令与脚本解释器",
+    tactic: "执行",
+    why: "在已获得的会话内调用系统自带解释器执行脚本，复用合法程序规避检测，同时取得目标主机的命令执行能力。",
+  },
+  T1021: {
+    name: "远程服务",
+    tactic: "横向移动",
+    why: "通过已控主机的远程管理服务建立到内网主机的通道，借用合法管理协议掩盖横向移动行为。",
+  },
+  T1210: {
+    name: "利用远程服务漏洞",
+    tactic: "横向移动",
+    why: "目标主机暴露存在已知漏洞的远程服务，直接利用漏洞获取执行权限，无需额外凭据即可推进链路。",
+  },
+  T1190: {
+    name: "利用公网应用漏洞",
+    tactic: "初始访问",
+    why: "边界应用暴露于公网且版本存在已知漏洞，作为初始突破点进入内网。",
+  },
+  T1485: {
+    name: "数据销毁",
+    tactic: "影响",
+    why: "达成目标后销毁关键数据，制造最大影响并延缓取证。",
+  },
+  T1078: {
+    name: "有效账户",
+    tactic: "防御规避",
+    why: "复用合法账户凭据，以正常身份活动规避检测。",
+  },
+  T1562: {
+    name: "防御规避",
+    tactic: "防御规避",
+    why: "禁用或干扰目标主机的安全防护，为后续攻击动作铺路。",
+  },
+  T1046: {
+    name: "网络服务扫描",
+    tactic: "侦察",
+    why: "探测目标网段开放的服务与端口，定位下一步可利用的攻击面。",
+  },
+  T1083: {
+    name: "文件与目录发现",
+    tactic: "侦察",
+    why: "枚举目标主机文件系统，定位高价值数据与配置信息。",
+  },
+};
+
+/** 技法编号 → 语义；未收录时用通用兜底模板 */
+function techMeta(technique: string): TechniqueMeta {
+  return (
+    TECHNIQUE_META[technique] ?? {
+      name: technique,
+      tactic: "未收录",
+      why: `针对目标资产暴露面选取的下一步攻击技法（${technique}），用于推进攻击链路向最终目标靠近。`,
+    }
+  );
+}
+
+/** 攻击链整体推理摘要：由步骤序列自动拼接 */
+function buildChainSummary(steps: any[]): string {
+  if (steps.length === 0) return "";
+  const first = steps[0];
+  const last = steps[steps.length - 1];
+  const moves = steps.length - 1;
+  return `攻击链从「${first.from_asset}」突破，依次执行 ${steps.length} 个攻击步骤${
+    moves > 0 ? `、经 ${moves} 次横向移动` : ""
+  }，最终抵达目标「${last.to_asset}」；以 ${
+    techMeta(last.technique).name
+  }（${last.technique}）技法收尾，形成完整的 初始访问 → 横向移动 → 目标控制 链路。`;
+}
+
 /**
  * 红队攻击链面板。
  *
@@ -322,6 +406,35 @@ export function RedTeamPanel() {
           </defs>
         </svg>
       </div>
+
+      {/* T9：推理轨迹 · 攻击链路依据（比赛能力维度 e：展示中间决策过程与推理轨迹） */}
+      {steps.length > 0 ? (
+        <div className="cyber-reason">
+          <h4 className="cyber-panel__subtitle">🧠 推理轨迹 · 攻击链路依据</h4>
+          <p className="cyber-reason__summary">{buildChainSummary(steps)}</p>
+          <div className="cyber-reason__list">
+            {steps.map((step: any, i: number) => {
+              const meta = techMeta(step.technique);
+              return (
+                <div key={step.step_id ?? i} className="cyber-reason__item">
+                  <span className="cyber-reason__idx">{i + 1}</span>
+                  <div className="cyber-reason__body">
+                    <div className="cyber-reason__head">
+                      <span className="cyber-reason__name">{meta.name}</span>
+                      <span className="cyber-reason__tech">{step.technique}</span>
+                      <span className="cyber-reason__tactic">{meta.tactic}</span>
+                      <span className="cyber-reason__path">
+                        {step.from_asset} → {step.to_asset}
+                      </span>
+                    </div>
+                    <p className="cyber-reason__why">{meta.why}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {/* Vulnerability findings table */}
       {findings.length > 0 ? (

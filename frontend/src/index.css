@@ -2727,3 +2727,86 @@ body {
   flex: 1;
   min-width: 140px;
 }
+
+/* ============ T9: 推理轨迹 · 攻击链路依据(红队面板) ============ */
+.cyber-reason {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #3a4a5f);
+  border-left: 3px solid var(--danger, #e5534b);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-reason__summary {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary, #b6c4d6);
+  border-left: 2px solid var(--danger, #e5534b);
+  padding-left: 10px;
+}
+.cyber-reason__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cyber-reason__item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.cyber-reason__idx {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--danger, #e5534b);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.cyber-reason__body {
+  flex: 1;
+  min-width: 0;
+}
+.cyber-reason__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cyber-reason__name {
+  color: var(--text-primary, #e8eef7);
+  font-weight: 600;
+  font-size: 12px;
+}
+.cyber-reason__tech {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(229, 83, 75, 0.15);
+  color: var(--danger, #e5534b);
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+}
+.cyber-reason__tactic {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(138, 92, 246, 0.18);
+  color: #b39df7;
+  font-size: 10px;
+}
+.cyber-reason__path {
+  color: var(--text-muted, #7a8aa0);
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+}
+.cyber-reason__why {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-dim, #9db2c6);
+}
