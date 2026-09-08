@@ -48,7 +48,9 @@ export function BlueTeamPanel() {
       <div className="cyber-panel cyber-panel--empty">
         <p className="cyber-panel__hint">
           No defense response yet. Enter an event stream (JSON or plain text)
-          and click <strong>Execute Blue Defense</strong>.
+          and click <strong>Execute Blue Defense</strong>. For full
+          red→blue→purple auto cycling (one button, multi-round), switch to
+          the <strong>Auto Drill</strong> tab.
         </p>
         <textarea
           className="cyber-view__textarea"

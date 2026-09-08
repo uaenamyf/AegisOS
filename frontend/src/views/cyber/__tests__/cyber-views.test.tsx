@@ -86,7 +86,7 @@ describe("CyberView", () => {
     expect(screen.getByText("Blue Team")).toBeDefined();
     expect(screen.getByText("Purple Review")).toBeDefined();
     expect(screen.getByText("Threat Intel")).toBeDefined();
-    expect(screen.getByText("Drill")).toBeDefined();
+    expect(screen.getByText("Auto Drill")).toBeDefined();
   });
 
   it("shows Start Range button", async () => {
@@ -103,10 +103,11 @@ describe("CyberView", () => {
     // The hint text is "No defense result yet. Execute blue defense to see alerts and response plans."
   });
 
-  it("switches to Drill tab and shows start button", async () => {
+  it("shows Drill start button by default (auto-cycling is the main entry)", async () => {
     const { CyberView } = await import("../CyberView");
     renderUI(<CyberView />);
-    fireEvent.click(screen.getByText("Drill"));
+    // 默认 tab 即循环对抗，无需点击即可见 Start Drill
+    fireEvent.click(screen.getByText("Auto Drill"));
     expect(screen.getByText("▶ Start Drill")).toBeDefined();
   });
 });

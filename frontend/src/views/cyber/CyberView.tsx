@@ -21,11 +21,12 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "blue", label: "Blue Team" },
   { id: "purple", label: "Purple Review" },
   { id: "threat", label: "Threat Intel" },
-  { id: "drill", label: "Drill" },
+  { id: "drill", label: "Auto Drill" },
 ];
 
 export function CyberView() {
-  const [activeTab, setActiveTab] = useState<TabId>("red");
+  // 默认落在循环对抗 tab：产品定位是「一键多轮自动对抗」，红/蓝/紫为单链演示
+  const [activeTab, setActiveTab] = useState<TabId>("drill");
   const [targetRange, setTargetRange] = useState("10.0.0.0/24");
 
   const currentRange = useAppStore((s) => s.currentRange);
