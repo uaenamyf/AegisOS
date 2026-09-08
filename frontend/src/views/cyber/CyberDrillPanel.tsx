@@ -221,6 +221,83 @@ function TrendChart({ rounds }: { rounds: DrillRound[] }) {
  *  只有开启新一轮时才被清除/覆盖。 */
 const DRILL_SNAPSHOT_KEY = "aegis.cyber-drill.snapshot";
 
+// T8 战报导出：把运行记录 Markdown 排版成打印友好的 HTML，
+// 新窗口打开并触发浏览器打印（可另存为 PDF / 直接打印）。
+// 纯前端实现，零依赖；不引入后端生成 PDF 的成本。
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function exportReportPdf(reportMd: string, drillId: string | null): void {
+  // Markdown 的轻度渲染：标题 / 表格分隔线 / 行内代码 / 粗体 / 列表，
+  // 其余按等宽纯文本展示（保证任何报告内容都不丢）。
+  const lines = reportMd.split("\n");
+  const html = lines
+    .map((raw) => {
+      const line = raw.replace(/\r$/, "");
+      const esc = (t: string) =>
+        escapeHtml(t)
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      const h = line.match(/^(#{1,4})\s+(.*)$/);
+      if (h) {
+        const lv = h[1].length;
+        return `<h${lv}>${esc(h[2])}</h${lv}>`;
+      }
+      if (/^\s*[-*]\s+/.test(line)) {
+        return `<li>${esc(line.replace(/^\s*[-*]\s+/, ""))}</li>`;
+      }
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        // 表格行：跳过分隔行（|---|），其余渲染为表格行
+        if (/^\s*\|[\s:|-]+\|\s*$/.test(line)) return "";
+        const cells = line
+          .split("|")
+          .slice(1, -1)
+          .map((c) => `<td>${esc(c.trim())}</td>`)
+          .join("");
+        return `<tr>${cells}</tr>`;
+      }
+      if (/^\s*```/.test(line)) return "";
+      return `<p>${esc(line) || "&nbsp;"}</p>`;
+    })
+    .join("\n");
+
+  const win = window.open("", "_blank", "width=900,height=700");
+  if (!win) return;
+  win.document.write(`<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>AegisOS 演练战报 ${drillId ?? ""}</title>
+<style>
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; margin: 32px; color: #1a2233; line-height: 1.6; }
+  h1 { font-size: 22px; border-bottom: 2px solid #2f7de1; padding-bottom: 8px; }
+  h2 { font-size: 17px; margin-top: 22px; border-left: 4px solid #2f7de1; padding-left: 8px; }
+  h3 { font-size: 14px; margin-top: 16px; color: #34405a; }
+  code { background: #f0f3f8; padding: 1px 5px; border-radius: 3px; font-family: Consolas, monospace; font-size: 12px; }
+  p { margin: 6px 0; white-space: pre-wrap; word-break: break-all; }
+  table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 12px; }
+  td, th { border: 1px solid #c6d0dd; padding: 4px 8px; text-align: left; }
+  li { margin: 2px 0; }
+  ul { padding-left: 20px; }
+  @media print { body { margin: 12mm; } }
+</style>
+</head>
+<body>
+<h1>AegisOS 攻防演练运行记录${drillId ? ` · ${escapeHtml(drillId)}` : ""}</h1>
+${html}
+</body>
+</html>`);
+  win.document.close();
+  // 等待渲染完成后触发打印对话框（用户可选"另存为 PDF"）
+  win.focus();
+  win.print();
+}
+
 // R10 端-边-云执行位置展示（T4）
 // 层级语义与后端调度器一致：端侧超低延迟/本地隐私 / 边侧低延迟/区域隔离 / 云侧强算力/可脱敏
 const TIER_META: Record<string, { label: string; cls: string; icon: string }> = {
@@ -889,6 +966,15 @@ export function CyberDrillPanel() {
                     ? "收起运行记录"
                     : "📄 运行记录报告"}
               </button>
+              {reportMd ? (
+                <button
+                  type="button"
+                  className="cyber-view__btn cyber-view__btn--primary"
+                  onClick={() => exportReportPdf(reportMd, drillId)}
+                >
+                  🖨 导出 PDF
+                </button>
+              ) : null}
               {reportMd ? (
                 <span className="cyber-attack__cache-note">
                   每轮红/蓝/紫产物 + 端边云卸载轨迹，Markdown 可复制存档
