@@ -267,6 +267,21 @@ export interface RedAttackResponse {
   chain: Record<string, any>;
 }
 
+// ---- 红队攻击流式（SSE 渐进展示）----
+// date: 2026-09-05
+// changelog: 新增——与 backend/routers/attack.py 的 /attack/stream 契约对齐
+// （事件名锚点：stage_start / stage_done / done / attack_error）
+export type RedAttackStreamEventName =
+  | "stage_start"
+  | "stage_done"
+  | "done"
+  | "attack_error";
+
+export interface RedAttackStreamEvent {
+  name: RedAttackStreamEventName;
+  data: Record<string, any>;
+}
+
 export interface BlueDefenseResponse {
   alerts: Alert[];
   triaged: Alert[];

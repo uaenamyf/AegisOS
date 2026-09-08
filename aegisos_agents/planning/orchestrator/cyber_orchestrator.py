@@ -37,6 +37,7 @@ R4.2 SDK handoffs 架构（声明式链 vs 手动串联）：
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -468,13 +469,13 @@ class CyberOrchestrator(GoalMode[dict]):
             含 ``assets`` / ``findings`` / ``chain`` 的字典（值为 protocol dataclass）。
         """
         round_tag = f" [round={round}]" if round is not None and round >= 2 else ""
-        # 1) 侦察
+        # 1) 侦察（数量上限截断：提速——限制 DeepSeek 输出规模，下同）
         recon_result = self.recon._run(f"Scan target range: {target_range}{round_tag}")
         assets = [
             Asset(
                 asset_id=a.asset_id, host=a.host, services=a.services, os=a.os, exposure=a.exposure
             )
-            for a in recon_result.assets
+            for a in recon_result.assets[:8]
         ]
 
         # 2) 漏洞关联
@@ -495,7 +496,7 @@ class CyberOrchestrator(GoalMode[dict]):
                 cvss=f.cvss,
                 attack_surface=f.attack_surface,
             )
-            for f in vuln_result.findings
+            for f in vuln_result.findings[:8]
         ]
 
         # 3) 利用链规划
@@ -514,11 +515,94 @@ class CyberOrchestrator(GoalMode[dict]):
         chain = AttackChain(
             chain_id=exploit_result.chain_id,
             target=exploit_result.target,
-            steps=[AttackStep(**s.model_dump()) for s in exploit_result.steps],
+            steps=[AttackStep(**s.model_dump()) for s in exploit_result.steps[:6]],
             status=exploit_result.status,
         )
 
         return {"assets": assets, "findings": findings, "chain": chain}
+
+    async def stream_red_chain(self, target_range: str, round: int | None = None):
+        """红队链流式执行（供 SSE 渐进展示）。
+
+        与 :meth:`run_red_chain` 相同的三步链，但逐步 ``yield`` 阶段事件：
+            - ``{"event": "stage_start", "data": {"stage": ...}}``
+            - ``{"event": "stage_done", "data": {...}}``（各步产出）
+            - ``{"event": "done", "data": {"assets", "findings", "chain"}}``
+        每步同步 LLM 调用投递到线程池（``asyncio.to_thread``）避免阻塞
+        事件循环；与真实模式 StructuredAgent 的线程池路径天然兼容。
+        同样执行 8 资产 / 8 漏洞 / 6 步的数量上限截断（提速器）。
+
+        Args:
+            target_range: 目标网络范围，如 ``"10.0.0.0/24"``。
+            round: 显式演练轮次（>=2 触发演化）；None 表示不演化。
+
+        Yields:
+            dict: 阶段事件（stage_start / stage_done / done）。
+        """
+        round_tag = f" [round={round}]" if round is not None and round >= 2 else ""
+
+        # 1) 侦察
+        yield {"event": "stage_start", "data": {"stage": "recon"}}
+        recon_result = await asyncio.to_thread(
+            self.recon._run, f"Scan target range: {target_range}{round_tag}"
+        )
+        assets = [
+            Asset(
+                asset_id=a.asset_id, host=a.host, services=a.services, os=a.os, exposure=a.exposure
+            )
+            for a in recon_result.assets[:8]
+        ]
+        yield {"event": "stage_done", "data": {"stage": "recon", "assets": assets}}
+
+        # 2) 漏洞关联
+        yield {"event": "stage_start", "data": {"stage": "vuln"}}
+        assets_desc = json.dumps(
+            [
+                {"asset_id": a.asset_id, "host": a.host, "services": a.services, "os": a.os}
+                for a in assets
+            ]
+        )
+        vuln_result = await asyncio.to_thread(
+            self.vuln_correlator._run,
+            f"Correlate vulnerabilities for these assets: {assets_desc}",
+        )
+        findings = [
+            VulnFinding(
+                finding_id=f.finding_id,
+                cve_id=f.cve_id,
+                asset_id=f.asset_id,
+                cvss=f.cvss,
+                attack_surface=f.attack_surface,
+            )
+            for f in vuln_result.findings[:8]
+        ]
+        yield {"event": "stage_done", "data": {"stage": "vuln", "findings": findings}}
+
+        # 3) 利用链规划
+        yield {"event": "stage_start", "data": {"stage": "exploit"}}
+        findings_desc = json.dumps(
+            [
+                {
+                    "finding_id": f.finding_id,
+                    "cve_id": f.cve_id,
+                    "asset_id": f.asset_id,
+                    "cvss": f.cvss,
+                }
+                for f in findings
+            ]
+        )
+        exploit_result = await asyncio.to_thread(
+            self.exploit_planner._run,
+            f"Plan exploit chain for: {findings_desc}{round_tag}",
+        )
+        chain = AttackChain(
+            chain_id=exploit_result.chain_id,
+            target=exploit_result.target,
+            steps=[AttackStep(**s.model_dump()) for s in exploit_result.steps[:6]],
+            status=exploit_result.status,
+        )
+        yield {"event": "stage_done", "data": {"stage": "exploit", "chain": chain}}
+        yield {"event": "done", "data": {"assets": assets, "findings": findings, "chain": chain}}
 
     def run_blue_chain(self, event_stream: list[dict[str, Any]]) -> dict[str, Any]:
         """执行蓝队防御链：detector → triage → threat_hunt → ir_planner。

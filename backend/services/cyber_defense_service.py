@@ -164,6 +164,54 @@ class CyberDefenseService:
 
         return self._serialize_red(result)
 
+    async def stream_red_attack(self, target_range: str):
+        """红队攻击链流式执行（SSE 渐进展示）。
+
+        委托 :meth:`CyberOrchestrator.stream_red_chain`，将各步产出序列化
+        为 dict 逐步 ``yield``；``done`` 事件时写入情景记忆形成认知闭环。
+
+        Args:
+            target_range: 目标网络范围。
+
+        Yields:
+            dict: ``{"event": ..., "data": ...}`` 阶段事件（stage_start /
+            stage_done / done）。
+        """
+        async for event in self._orchestrator.stream_red_chain(target_range):
+            kind: str = event["event"]
+            data: dict[str, Any] = event["data"]
+            if kind == "stage_done" and data.get("stage") == "recon":
+                data = {
+                    "stage": "recon",
+                    "assets": [a.model_dump() for a in data["assets"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "vuln":
+                data = {
+                    "stage": "vuln",
+                    "findings": [f.model_dump() for f in data["findings"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "exploit":
+                chain = data["chain"]
+                data = {
+                    "stage": "exploit",
+                    "chain": chain.to_dict() if isinstance(chain, AttackChain) else chain,
+                }
+            elif kind == "done":
+                chain = data.get("chain")
+                chain_id = chain.chain_id if isinstance(chain, AttackChain) else "unknown"
+                from protocol.memory import MemoryPacket
+
+                self._memory.write(
+                    MemoryPacket(
+                        session_id="cyber-defense",
+                        task_id="red_attack",
+                        kind="decision",
+                        summary=f"red chain {chain_id} planned for {target_range}",
+                    )
+                )
+                data = self._serialize_red(data)
+            yield {"event": kind, "data": data}
+
     def get_attack_chain(self, range_id: str) -> dict[str, Any] | None:
         """获取指定靶场的攻击链 DAG。
 

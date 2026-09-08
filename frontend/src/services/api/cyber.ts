@@ -14,6 +14,8 @@ import type {
   PurpleReviewResponse,
   RangeResponse,
   RedAttackResponse,
+  RedAttackStreamEvent,
+  RedAttackStreamEventName,
   StartDrillRequest,
   StartDrillResponse,
   ThreatIntel,
@@ -53,6 +55,68 @@ export const cyberApi = {
 
   redAttack: (body: RedAttackRequest): Promise<RedAttackResponse> =>
     apiClient.post<RedAttackResponse>("/attack", body),
+
+  /**
+   * 红队攻击链 SSE 流式执行（渐进展示）。
+   *
+   * 事件名：``stage_start``（recon/vuln/exploit）→ ``stage_done``（各步产出）
+   * → ``done``（完整结果）；失败时 ``attack_error``。POST body 走
+   * fetch + ReadableStream 解析 SSE（EventSource 无法携带 Header/body）。
+   * 返回关闭函数（AbortController）供组件卸载时调用。
+   */
+  redAttackStream: (
+    body: RedAttackRequest,
+    onEvent: (event: RedAttackStreamEvent) => void,
+    onError?: (err: Error) => void,
+  ): (() => void) => {
+    const controller = new AbortController();
+    void fetch(`${config.apiBaseUrl}/attack/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+        [config.apiKeyHeader]: config.apiKey,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok || !res.body) {
+          throw new Error(`attack stream failed: HTTP ${res.status}`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        const pump = (): void => {
+          void reader
+            .read()
+            .then(({ done, value }) => {
+              if (done) return;
+              buffer += decoder.decode(value, { stream: true });
+              const frames = buffer.split("\n\n");
+              buffer = frames.pop() ?? "";
+              for (const frame of frames) {
+                const evLine = frame.split("\n").find((l) => l.startsWith("event:"));
+                const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
+                if (!evLine || !dataLine) continue;
+                try {
+                  onEvent({
+                    name: evLine.slice(6).trim() as RedAttackStreamEventName,
+                    data: JSON.parse(dataLine.slice(5).trim()),
+                  });
+                } catch {
+                  /* ignore malformed frames */
+                }
+              }
+              pump();
+            })
+            .catch((err) => onError?.(err as Error));
+        };
+        pump();
+      })
+      .catch((err) => onError?.(err as Error));
+    return () => controller.abort();
+  },
 
   getAttackChain: (rangeId: string): Promise<RedAttackResponse> =>
     apiClient.get<RedAttackResponse>(

@@ -1,16 +1,31 @@
 // date: 2026-07-06
 // dev: Claude Code (glm-5.2)
 // changelog: 新建 RedTeamPanel——红队攻击链可视化（资产→漏洞→攻击链 DAG）
+// changelog: 2026-09-05 —— SSE 流式渐进展示（阶段指示器 + 部分结果逐步渲染）
+//   + localStorage 持久缓存（同 mode + 同目标直接秒回）
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
+import { systemApi } from "@/services/api/system";
+import type { RedAttackResponse } from "@/protocol/types";
+
+const STAGE_LABELS: Record<string, string> = {
+  recon: "侦察资产",
+  vuln: "关联漏洞",
+  exploit: "规划攻击链",
+};
 
 /**
  * 红队攻击链面板。
  *
  * 展示攻击链 DAG：资产节点 → 漏洞发现 → 攻击步骤（带 from→to 连线）。
  * 使用自定义 SVG 渲染节点和连线，无需额外依赖。
+ *
+ * 真实 LLM 模式一次完整演练需 30-60s（3 次串行模型调用），点击后通过
+ * SSE 流式渐进展示：阶段指示器实时反映「侦察中 → 关联中 → 规划中」，
+ * 各步产出（资产 / 漏洞 / 攻击链）逐步渲染，避免长时间白屏等待。
+ * 同一模式 + 同一目标的演练结果持久化到 localStorage，再次点击秒回。
  */
 export function RedTeamPanel() {
   const currentRange = useAppStore((s) => s.currentRange);
@@ -20,21 +35,90 @@ export function RedTeamPanel() {
   const setCyberLoading = useAppStore((s) => s.setCyberLoading);
   const setCyberError = useAppStore((s) => s.setCyberError);
 
+  // 流式阶段状态：streamStage=当前阶段 / partial=各阶段部分产出 / cacheMode=缓存来源
+  const [streamStage, setStreamStage] = useState<string | null>(null);
+  const [partial, setPartial] = useState<Record<string, any>>({});
+  const [cacheMode, setCacheMode] = useState<string | null>(null);
+  const closeStreamRef = useRef<(() => void) | null>(null);
+
+  // 组件卸载时中止进行中的流
+  useEffect(() => {
+    return () => closeStreamRef.current?.();
+  }, []);
+
   const handleAttack = useCallback(async () => {
     const target = currentRange?.target_range ?? "10.0.0.0/24";
+    closeStreamRef.current?.();
     setCyberLoading(true);
     setCyberError(null);
+    setStreamStage(null);
+    setPartial({});
+    setCacheMode(null);
+
+    // 1) 浏览器持久缓存：同 mode + 同目标命中直接秒回（真实模式演示友好）
+    let mode = "mock";
     try {
-      const result = await cyberApi.redAttack({ target_range: target });
-      setRedAttackResult(result);
-    } catch (err) {
-      setCyberError(err instanceof Error ? err.message : "Red attack failed");
-    } finally {
-      setCyberLoading(false);
+      const m = await systemApi.getMode();
+      mode = m.mode;
+    } catch {
+      /* 后端离线时按 mock 处理 */
     }
+    const cacheKey = `aegis.redAttack.v1.${mode}.${target}`;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        setRedAttackResult(JSON.parse(raw) as RedAttackResponse);
+        setCacheMode(mode);
+        setCyberLoading(false);
+        return;
+      }
+    } catch {
+      /* 缓存损坏时忽略，重新执行 */
+    }
+
+    // 2) SSE 流式渐进执行
+    const close = cyberApi.redAttackStream(
+      { target_range: target },
+      (ev) => {
+        if (ev.name === "stage_start") {
+          setStreamStage(String(ev.data?.stage ?? ""));
+        } else if (ev.name === "stage_done") {
+          const stage = String(ev.data?.stage ?? "");
+          setPartial((prev) => ({ ...prev, [stage]: ev.data }));
+          if (stage === "exploit") setStreamStage(null);
+        } else if (ev.name === "done") {
+          const result = ev.data as unknown as RedAttackResponse;
+          setRedAttackResult(result);
+          setStreamStage(null);
+          setCyberLoading(false);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(result));
+          } catch {
+            /* 存储配额等异常时忽略 */
+          }
+        } else if (ev.name === "attack_error") {
+          setCyberError(String((ev.data as any)?.message ?? "attack stream failed"));
+          setStreamStage(null);
+          setCyberLoading(false);
+        }
+      },
+      (err) => {
+        setCyberError(err?.message ?? "attack stream failed");
+        setStreamStage(null);
+        setCyberLoading(false);
+      },
+    );
+    closeStreamRef.current = close;
   }, [currentRange, setRedAttackResult, setCyberLoading, setCyberError]);
 
-  if (!redAttackResult) {
+  // 合并数据：有完整结果用完整结果；流式中用已到达的部分结果
+  const assets = redAttackResult?.assets ?? (partial.recon?.assets as any[]) ?? [];
+  const findings = redAttackResult?.findings ?? (partial.vuln?.findings as any[]) ?? [];
+  const chain = redAttackResult?.chain ?? (partial.exploit?.chain as any) ?? { steps: [] };
+  const steps: any[] = chain.steps ?? [];
+  const hasAnyData = assets.length > 0 || findings.length > 0 || steps.length > 0;
+
+  if (!hasAnyData && !cyberLoading && streamStage == null) {
     return (
       <div className="cyber-panel cyber-panel--empty">
         <p className="cyber-panel__hint">
@@ -51,9 +135,6 @@ export function RedTeamPanel() {
       </div>
     );
   }
-
-  const { assets, findings, chain } = redAttackResult;
-  const steps: any[] = chain.steps ?? [];
 
   // Build DAG layout positions
   const assetPositions: Record<string, { x: number; y: number }> = {};
@@ -89,7 +170,7 @@ export function RedTeamPanel() {
           onClick={() => void handleAttack()}
           disabled={cyberLoading}
         >
-          {cyberLoading ? "Executing…" : "Re-execute Red Attack"}
+          {cyberLoading ? "Executing…" : redAttackResult ? "Re-execute Red Attack" : "Execute Red Attack"}
         </button>
         <div className="cyber-panel__stats">
           <span className="cyber-stat">
@@ -110,6 +191,32 @@ export function RedTeamPanel() {
           </span>
         </div>
       </div>
+
+      {/* 流式阶段指示器（渐进展示） */}
+      {cyberLoading || Object.keys(partial).length > 0 ? (
+        <div className="cyber-attack__stages">
+          {Object.entries(STAGE_LABELS).map(([stage, label]) => {
+            const done = Boolean(partial[stage]);
+            const active = streamStage === stage;
+            return (
+              <span
+                key={stage}
+                className={`cyber-attack__stage${active ? " is-active" : ""}${done ? " is-done" : ""}`}
+              >
+                {done ? "✓ " : active ? "● " : "○ "}
+                {label}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {/* 缓存来源提示 */}
+      {cacheMode ? (
+        <div className="cyber-attack__cache-note">
+          已从浏览器缓存加载（mode: {cacheMode}）—— 重新执行可调用真实模型
+        </div>
+      ) : null}
 
       {/* DAG Visualization */}
       <div className="cyber-dag">

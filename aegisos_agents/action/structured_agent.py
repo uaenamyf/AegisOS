@@ -36,6 +36,7 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Generic, TypeVar
 
 from agents import Agent, Model, ModelProvider, Runner
+from pydantic import BaseModel
 
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from aegisos_agents.tools.llms.mock_sdk_model import MockSDKModel
@@ -197,8 +198,13 @@ class StructuredAgent(Generic[T]):
                 ) from err
 
     def _run_sync(self, prompt: str) -> T:
-        """同步执行结构化调用；DeepSeek 纯文本路径解析失败时带纠错提示重试一次。"""
-        max_attempts = 2 if self._plain_json else 1
+        """同步执行结构化调用；DeepSeek 纯文本路径解析失败或空结果时带纠错提示重试。
+
+        实测 DeepSeek 偶发返回空数组（如 ``{"assets": []}``），且输出随机性大
+        （同一 prompt 时而完整时而空）。空输出 1s 即返回，重试成本极低，故最多
+        尝试 3 次；每次重试都附引导提示（输出至少 1 个条目）。
+        """
+        max_attempts = 3 if self._plain_json else 1
         last_error: ValueError | None = None
         # 真实模式每次调用用独立 client，避免共享 AsyncOpenAI 跨线程/
         # 跨事件循环复用连接池时挂起（实测 API 层第三次调用永不发起）。
@@ -206,7 +212,11 @@ class StructuredAgent(Generic[T]):
         for attempt in range(max_attempts):
             result = Runner.run_sync(agent, prompt)
             try:
-                return self._finalize(result)  # type: ignore[no-any-return]
+                output = self._finalize(result)  # type: ignore[no-any-return]
+                # 空结果检测：DeepSeek 偶发返回全空数组，视为无效输出触发重试
+                if self._plain_json and self._is_empty_result(output):
+                    raise ValueError("model returned empty result (all list fields empty)")
+                return output
             except ValueError as exc:
                 last_error = exc
                 if attempt == max_attempts - 1:
@@ -214,8 +224,42 @@ class StructuredAgent(Generic[T]):
                 prompt = (
                     f"{prompt}\n\n上次输出无效：{exc}\n"
                     "请重新输出，必须是严格合法的单个 JSON 对象，不要附加任何解释文字或代码块标记。"
+                    "请基于给定信息完整作答，输出至少 1 个条目，不要返回空数组。"
                 )
         raise last_error or ValueError("structured output failed")  # type: ignore[misc]
+
+    def _is_empty_result(self, output) -> bool:
+        """判断结构化输出是否为空结果（DeepSeek 偶发偷懒返回空数组）。
+
+        规则：OUTPUT_TYPE 的所有 array 字段都为空 → 视为空结果。特例：含
+        ``status`` 字段且非空（如 ExploitPlannerResult 的 ``no_vulnerabilities``）
+        时视为明确的降级响应，不算空。
+
+        Args:
+            output: ``_finalize`` 的产物（OUTPUT_TYPE 实例或 dict）。
+
+        Returns:
+            True 表示空结果（应重试）。
+        """
+        if self.OUTPUT_TYPE is None:
+            return False
+        if isinstance(output, BaseModel):
+            data = output.model_dump()
+        elif isinstance(output, dict):
+            data = output
+        else:
+            return False
+        schema = self.OUTPUT_TYPE.model_json_schema()
+        props = schema.get("properties", {})
+        list_fields = [k for k, v in props.items() if v.get("type") == "array"]
+        if not list_fields:
+            return False
+        if all(not data.get(k) for k in list_fields):
+            # 明确降级响应（如 status="no_vulnerabilities"）不算空
+            if "status" in props and data.get("status"):
+                return False
+            return True
+        return False
 
     def _finalize(self, result) -> T:
         """把 SDK 运行结果转换为 ``OUTPUT_TYPE`` 实例。

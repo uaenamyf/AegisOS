@@ -28,8 +28,8 @@ from protocol.tool import ToolCall, ToolResult
 
 SYSTEM_PROMPT = (
     "You are a vulnerability correlation agent. Given a list of assets, "
-    "return JSON with a 'findings' array. Each finding has: finding_id, "
-    "cve_id, asset_id, cvss (float), attack_surface."
+    "return JSON with a 'findings' array (at most 8 findings). Each finding "
+    "has: finding_id, cve_id, asset_id, cvss (float), attack_surface."
 )
 
 

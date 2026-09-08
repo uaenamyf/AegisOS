@@ -1070,6 +1070,40 @@ body {
   font-size: 13px;
 }
 
+/* 红队攻击流式阶段指示器（SSE 渐进展示） */
+.cyber-attack__stages {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 4px;
+}
+
+.cyber-attack__stage {
+  font-size: 12px;
+  color: var(--text-muted, #8a8f98);
+  padding: 4px 12px;
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.cyber-attack__stage.is-active {
+  color: var(--accent, #38bdf8);
+  border-color: var(--accent, #38bdf8);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+.cyber-attack__stage.is-done {
+  color: #4ade80;
+  border-color: #4ade80;
+}
+
+.cyber-attack__cache-note {
+  font-size: 11px;
+  color: var(--text-muted, #8a8f98);
+  margin: 8px 0 0;
+}
+
 .cyber-panel__actions {
   display: flex;
   gap: 12px;
