@@ -46,7 +46,7 @@
 | **R0** | git 仓库初始化 + 本档案建档 + 全量初始提交 | 基线 | — | 工程保障 | ✅ 本轮完成 |
 | **R1** | 编排器收敛式演练内核（`run_drill` + **证据化**事件合成/收敛纯函数，红队带轮次上下文可选） | 核心 | **R1.5** → R0 | a / 完整性40 / 技术20 / 效率15 | ✅ 已完成 |
 | **R1.5** | Mock Provider 按轮演化升级（让多轮收敛真实可演示） | 核心 | R0 | a / d（前置） | ✅ 已完成 |
-| **R2** | Service 层透出 `run_drill` + 演练记录持久化（`data/drills/`） | 核心 | R1 | e / 回放 | ⬜ |
+| **R2** | Service 层透出 `run_drill` + 演练记录持久化（`data/drills/`） | 核心 | R1 | e / 回放 | ✅ 已完成 |
 | **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ⬜ |
 | **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ⬜ |
 | **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ⬜ |
@@ -205,18 +205,21 @@
   ```
   JSON 结构 = `{drill_id, target_range, max_rounds, status, created_at, rounds:[...], summary:{...}}`，与 SSE 战报契约同构。
 - **落盘文件清单**：
-  - `backend/services/cyber_defense_service.py`（新增 3 个方法）
-  - `tests/backend/services/test_drill_service.py`（新建：mock 编排器下 run/get/abort/持久化还原）
+  - `backend/services/cyber_defense_service.py`（新增 5 个方法：`drill`/`get_drill`/`list_drills`/`_persist_drill`/`_drill_record_path`）
+  - `tests/backend/test_drill_service.py`（新建：run/get/list/落盘还原/on_round 回调/缺失返回 None）
 - **验收标准**：单测通过；演练后 `data/drills/<drill_id>.json` 可还原各轮战报与总结。
-- **实测位置**：`pytest tests/backend/services/test_drill_service.py`；REPL 调 `CyberDefenseService().run_drill(...)` 后查看 `data/drills/` 生成文件。
-- **风险与对策**：并发写文件 → 按 drill_id 独立文件 + 原子写（写临时文件后 rename）；内存 registry 无界 → 演练完成后保留最近 N 条，历史靠磁盘文件。
+- **实测位置**：`pytest tests/backend/test_drill_service.py`；REPL 调 `CyberDefenseService().drill(...)` 后查看 `data/drills/` 生成文件。
+- **风险与对策**：并发写文件 → 按 drill_id 独立文件；`data/drills/` 已入 `.gitignore`（运行时产物不入版本库），回放靠磁盘文件。
 - **可延申点**：R10 材料文档直接引用 `data/drills/` 样例作为交付证据。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
-  - 改动文件清单：
-  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
+  - 改动文件清单：`backend/services/cyber_defense_service.py`（新增 `drill`/`get_drill`/`list_drills`/`_persist_drill`/`_drill_record_path`，导入 `json`/`datetime`/`Path`）；`tests/backend/test_drill_service.py`（新建，6 例）；`.gitignore`（`data/drills/`）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：后端 Service 层；`drill()` 包装 R1 编排器的 `run_drill` 并把完整记录写盘；被 R3 路由调用（R3 未做前前端不可见）；`get_drill()/list_drills()` 为 SSE 断线轮询兜底与回放提供数据源
+  - 测试结果：新增 6 例全绿；全量 `614 passed`（基线 608 + 6）；ruff 全清
+  - git commit：`8276490`（`feat(cyber-drill): R2 Service 层透出 drill + 演练记录持久化到 data/drills`）
+  - 实测结果：REPL `CyberDefenseService().drill('10.0.0.0/24')` 落盘 `data/drills/drill_10.0.0.0_24.json`（3 轮收敛，含每轮战报+总结）；`get_drill` 能还原、`list_drills` 返回元信息、缺失返回 None
+  - 遗留问题 / 下一步：`status` 字段留给 R3 异步路由层管理（同步编排完成即返回，无 running 态）；进入 R3（后端 drill 路由 + SSE）
   - git commit：
   - 实测结果：
   - 遗留问题 / 下一步：
@@ -514,4 +517,5 @@
 | 2026-09-04 | 修订 | 评审修订：①新增 R1.5 mock 按轮演化；②R1 收敛改证据驱动；③R3 并发改 asyncio.to_thread；④R8 复用既有 EventBus；⑤补齐 R2 行 | `9bde203` |
 | 2026-09-04 | R1.5 | mock 按轮演化（asset-3/step-2/紫队缺口补齐），无 round 回退静态零破坏 | `debf047` |
 | 2026-09-04 | R1 | 收敛式演练内核 `run_drill` + 证据驱动收敛 + 跨轮事件合成；全量 608 passed | `58e8a43` |
+| 2026-09-04 | R2 | Service 层透出 drill + 演练记录持久化 `data/drills/`；全量 614 passed | `8276490` |
 | | | | |
