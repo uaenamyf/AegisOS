@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { config } from "@/config";
+import { systemApi } from "@/services/api/system";
 
 type TierKey = "device" | "edge" | "cloud";
 type NodeConfig = { enabled: boolean; label: string; api: string; url: string; modelName: string; capabilities: string };
@@ -20,7 +21,14 @@ const STORAGE_KEY = "aegisos-node-config";
 function readStored(): Record<TierKey, NodeConfig> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    if (raw) {
+      const stored = JSON.parse(raw) as Partial<Record<TierKey, Partial<NodeConfig>>>;
+      // 逐 tier 深合并，防止旧本地配置吞掉默认字段（如 provider 被覆盖导致 UI 缺失）
+      return (Object.keys(DEFAULTS) as TierKey[]).reduce<Record<TierKey, NodeConfig>>(
+        (acc, tier) => ({ ...acc, [tier]: { ...DEFAULTS[tier], ...stored[tier] } }),
+        DEFAULTS,
+      );
+    }
   } catch {
     // Fall back to the known demo configuration.
   }
@@ -30,8 +38,35 @@ function readStored(): Record<TierKey, NodeConfig> {
 export function DemoSettingsView() {
   const [nodes, setNodes] = useState(DEFAULTS);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [cloudApiKey, setCloudApiKey] = useState("");
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [keySaving, setKeySaving] = useState(false);
+  const [keyMsg, setKeyMsg] = useState<string | null>(null);
 
-  useEffect(() => setNodes(readStored()), []);
+  useEffect(() => {
+    setNodes(readStored());
+    systemApi
+      .getMode()
+      .then((m) => setHasKey(m.has_key))
+      .catch(() => setHasKey(null));
+  }, []);
+
+  const saveCloudApiKey = async () => {
+    const key = cloudApiKey.trim();
+    if (!key || keySaving) return;
+    setKeySaving(true);
+    setKeyMsg(null);
+    try {
+      const m = await systemApi.setApiKey(key);
+      setHasKey(m.has_key);
+      setCloudApiKey("");
+      setKeyMsg(m.has_key ? "已同步到后端并即时生效，可切换 Real 模式。" : "保存完成，但后端未识别到 Key。");
+    } catch (err) {
+      setKeyMsg(err instanceof Error ? `保存失败：${err.message}` : "保存失败");
+    } finally {
+      setKeySaving(false);
+    }
+  };
 
   const update = (tier: TierKey, patch: Partial<NodeConfig>) => {
     setNodes((current) => ({ ...current, [tier]: { ...current[tier], ...patch } }));
@@ -101,11 +136,39 @@ export function DemoSettingsView() {
               <label><span>Model name</span><input value={node.modelName} onChange={(event) => update(tier, { modelName: event.target.value })} /></label>
               <label className="node-config__field--wide"><span>能力标签</span><input value={node.capabilities} onChange={(event) => update(tier, { capabilities: event.target.value })} /></label>
             </div>
+            {tier === "cloud" && (
+              <div className="node-config__apikey">
+                <div className="node-config__apikey-head">
+                  <span>OpenAI 兼容 API Key（DeepSeek / OpenAI）</span>
+                  <span className={`badge badge--${hasKey === null ? "pending" : hasKey ? "succeeded" : "cancelled"}`}>
+                    {hasKey === null ? "查询中…" : hasKey ? "已配置" : "未配置"}
+                  </span>
+                </div>
+                <div className="node-config__apikey-row">
+                  <input
+                    type="password"
+                    placeholder={hasKey ? "已配置 Key，输入新 Key 覆盖" : "sk-…"}
+                    value={cloudApiKey}
+                    onChange={(e) => setCloudApiKey(e.target.value)}
+                    aria-label="API Key"
+                  />
+                  <button
+                    type="button"
+                    className="settings-button settings-button--primary"
+                    onClick={() => void saveCloudApiKey()}
+                    disabled={keySaving || !cloudApiKey.trim()}
+                  >
+                    {keySaving ? "同步中…" : "同步到后端"}
+                  </button>
+                </div>
+                {keyMsg ? <p className="node-config__apikey-msg">{keyMsg}</p> : null}
+              </div>
+            )}
             <footer className="node-config__footer"><span className={`node-config__dot${node.enabled ? " node-config__dot--on" : ""}`} /><span>{node.enabled ? "参与任务调度" : "已停用"}</span><code>{tier}</code></footer>
           </article>;
         })}
       </div>
-      <div className="settings-note"><span className="settings-note__mark">i</span><p>演示页面不保存 API Key。云侧认证仍由后端环境变量 <code>OPENAI_API_KEY</code> 管理。</p></div>
+      <div className="settings-note"><span className="settings-note__mark">i</span><p>在「03 云侧」卡片输入 API Key 并「同步到后端」，即写入 <code>tooling/configs/.env</code> 并即时生效；端/边暂不单独配置，统一走云 API。</p></div>
     </section>
   );
 }
