@@ -41,6 +41,7 @@ const BLUE_STAGE_ORDER = ["detect", "triage", "hunt", "ir"];
  */
 export function BlueTeamPanel() {
   const blueDefenseResult = useAppStore((s) => s.blueDefenseResult);
+  const redAttackResult = useAppStore((s) => s.redAttackResult);
   const cyberLoading = useAppStore((s) => s.cyberLoading);
   const setBlueDefenseResult = useAppStore((s) => s.setBlueDefenseResult);
   const setCyberLoading = useAppStore((s) => s.setCyberLoading);
@@ -213,6 +214,33 @@ export function BlueTeamPanel() {
   const planActions: any[] = plan?.actions ?? [];
   const confidence: number = plan?.confidence ?? 0;
 
+  // T6 量化指标：防御覆盖率 + 安全评分
+  // 覆盖率 = 红队攻击技法 ∩ 蓝队告警技法 / 红队攻击技法（按技法编号对齐）
+  const redSteps: any[] = redAttackResult?.chain?.steps ?? [];
+  const attackTechs = [...new Set(redSteps.map((s) => s.technique).filter(Boolean))];
+  const detectTechs = [...new Set(alerts.map((a) => a.technique).filter(Boolean))];
+  const coveredTechs = attackTechs.filter((t) => detectTechs.includes(t));
+  const coveragePct =
+    attackTechs.length > 0
+      ? Math.round((coveredTechs.length / attackTechs.length) * 100)
+      : null; // 未跑红队时无攻击基线
+  // 处置强度 = min(1, 动作数 / 告警数)；安全评分 = 覆盖率×60 + 处置强度×40
+  const responseStrength =
+    alerts.length > 0 ? Math.min(1, planActions.length / alerts.length) : 0;
+  const score =
+    coveragePct != null
+      ? Math.round(coveragePct * 0.6 + responseStrength * 40)
+      : Math.round(responseStrength * 40);
+  const scoreCls = score >= 80 ? "success" : score >= 60 ? "warning" : "danger";
+  const coverageCls =
+    coveragePct == null
+      ? "warning"
+      : coveragePct >= 80
+        ? "success"
+        : coveragePct >= 60
+          ? "warning"
+          : "danger";
+
   const severityColor = (sev: string): string => {
     switch (sev) {
       case "critical": return "danger";
@@ -319,6 +347,21 @@ export function BlueTeamPanel() {
         <span className="cyber-stat">
           <span className="cyber-stat__value">{planActions.length}</span>
           <span className="cyber-stat__label">actions</span>
+        </span>
+        {/* T6 量化指标：防御覆盖率 + 安全评分 */}
+        <span className="cyber-stat">
+          <span className={`cyber-stat__value cyber-stat__value--${coverageCls}`}>
+            {coveragePct != null ? `${coveragePct}%` : "—"}
+          </span>
+          <span className="cyber-stat__label">
+            {coveragePct != null ? "coverage" : "coverage (run red first)"}
+          </span>
+        </span>
+        <span className="cyber-stat">
+          <span className={`cyber-stat__value cyber-stat__value--${scoreCls}`}>
+            {score}
+          </span>
+          <span className="cyber-stat__label">security score</span>
         </span>
       </div>
 

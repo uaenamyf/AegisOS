@@ -517,6 +517,60 @@ export function CyberDrillPanel() {
                             ? `Alerts: ${round.blue.alerts.length}`
                             : "Blue chain failed."}
                         </p>
+                        {/* T6 量化指标：该轮防御覆盖率 + 安全评分 */}
+                        {round.blue.ok ? (
+                          (() => {
+                            const atk = [
+                              ...new Set(
+                                (round.red.steps as any[])
+                                  .map((s) => s.technique)
+                                  .filter(Boolean),
+                              ),
+                            ];
+                            const det = [
+                              ...new Set(
+                                (round.blue.alerts as any[])
+                                  .map((a) => a.technique)
+                                  .filter(Boolean),
+                              ),
+                            ];
+                            const cov = atk.length
+                              ? Math.round(
+                                  (atk.filter((t) => det.includes(t)).length /
+                                    atk.length) *
+                                    100,
+                                )
+                              : null;
+                            const strength = round.blue.alerts.length
+                              ? Math.min(
+                                  1,
+                                  ((round.blue.plan?.actions as any[])?.length ??
+                                    0) / round.blue.alerts.length,
+                                )
+                              : 0;
+                            const sc =
+                              cov != null
+                                ? Math.round(cov * 0.6 + strength * 40)
+                                : Math.round(strength * 40);
+                            const cls =
+                              sc >= 80 ? "success" : sc >= 60 ? "warning" : "danger";
+                            return (
+                              <p className="cyber-panel__text cyber-metrics">
+                                防御覆盖率{" "}
+                                <strong className={`cyber-score cyber-score--${cls}`}>
+                                  {cov != null ? `${cov}%` : "—"}
+                                </strong>{" "}
+                                · 安全评分{" "}
+                                <strong className={`cyber-score cyber-score--${cls}`}>
+                                  {sc}
+                                </strong>
+                                <span className="cyber-metrics__hint">
+                                  （{atk.length} 技法 vs {det.length} 检测技法）
+                                </span>
+                              </p>
+                            );
+                          })()
+                        ) : null}
                         {round.blue.plan?.actions ? (
                           <ul className="cyber-issue-list cyber-issue-list--review">
                             {(round.blue.plan.actions as any[]).map(
