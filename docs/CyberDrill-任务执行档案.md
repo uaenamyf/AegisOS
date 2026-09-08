@@ -53,7 +53,7 @@
 | **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ✅ 已完成 |
 | **R7** | **真实 LLM 接入 drill** + 运行时模式切换（mock/real）+ 前端徽标 | 核心升级 | R6 | d / 演示核心 | ✅ 已完成 |
 | **R8** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R7 | a（重点加分） | ✅ 已完成 |
-| **R9** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R7 | b（技术分10） | 🔶 已修订 |
+| **R9** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R7 | b（技术分10） | ✅ 已完成 |
 | **R10** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R9 | c | ⬜ |
 | **R11** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R7-R10 | d / e | ⬜ |
 > **（2026-09-04 评审修订）** 原开工审查报告方案经代码核查发现 3 处硬伤，已修订见各轮「评审记录」：
@@ -478,14 +478,19 @@
 - **风险与对策**：EventBus 为轮询式 0.5s 拉取 → drill 事件量小，无性能问题；topic 命名与现有约定对齐。
 - **可延申点**：R9 的 placement 信息并入 drill.round 增量事件。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-05）
 - **开工后记录**：
   - 改动文件清单：
+    - `protocol/event.py`（改）——`EventType` 新增 `DrillRound = "drill.round"`（枚举值即总线 topic）
+    - `backend/routers/drill.py`（改）——`DrillRuntime.__init__` 新增 `event_bus` 可选参数（None 时取全局 composition 单例）；`on_round` 回调发布低熵增量事件（round / drill_id / new_steps / new_issues / valid / converged / carry_forward_count / prior_summary，不含全量链/计划）
+    - `tests/backend/test_drill_events.py`（新）——R9 单测 4 个（发布 / 低熵 payload / carry 增量 / API 级可达）
   - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+    - `GET /api/v1/events?stream=drill.round` 可订阅演练轮次事件（0.5s 轮询、按 topic 过滤）；Monitor/任意视图可接入
+    - 内部：`DrillRuntime._run` 的 on_round 回调里 `event_bus.publish(Event(event_type=EventType.DrillRound, ...))`；事件总线复用既有 composition 全局单例，未新造总线
+  - 测试结果：后端全量 `pytest` 638 passed（新增 4 个）；前端未改动无需回归
+  - git commit：`72d3d13` feat(cyber-drill): R9 演练事件总线化——drill.round 低熵增量事件可订阅
+  - 实测结果：API 级实测 3 轮事件全部发布（round 1/2/3）；carry_forward_count 0→1→2（首轮全量、后续只推增量）；第 2 轮起 prior_summary 携带 R8 跨轮摘要（"攻击链未覆盖内部资产 asset-3（10.0.0.15:redis 高危入口）"）——事件总线与跨轮记忆联动
+  - 遗留问题 / 下一步：R9 可延申点——placement 信息并入 drill.round（与 R10 联动）；下一步 R10「演练阶段 placement 联动」（能力维度 c）
 
 ---
 
@@ -577,6 +582,7 @@
 | 2026-09-04 | R6 | 端到端联调 + 六条验收全勾 + 联调小修（GET /drill/{id} 补字段）；后端 624/front 39/tsc 全绿 | `9888236` |
 | 2026-09-04 | R7 | 真实 LLM 接入 drill + 运行时模式切换（mock/real）+ 前端徽标；后端 627/front 43 全绿；DeepSeek 连通性冒烟通过 | `54f45de` |
 | 2026-09-05 | R8 | 跨轮记忆与上下文压缩（紫队带历史决策摘要）；后端 634/front 43 全绿；mock 实测 3 轮收敛携带前轮摘要 | `0959d05` |
+| 2026-09-05 | R9 | 演练事件总线化（drill.round 低熵增量事件可订阅）；后端 638 全绿；API 实测 3 轮事件 + carry 增量 + 跨轮摘要联动 | `72d3d13` |
 | | | | |
 | | | | |
 | | | | |

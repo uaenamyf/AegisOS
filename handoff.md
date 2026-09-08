@@ -16,7 +16,7 @@
 ## 2. 当前 Git 状态
 
 - **分支**:master
-- **HEAD**:`0959d05` — feat(cyber-drill): R8 跨轮记忆与上下文压缩——紫队带历史决策摘要
+- **HEAD**:`72d3d13` — feat(cyber-drill): R9 演练事件总线化——drill.round 低熵增量事件可订阅
 - **工作树**:档案文档待提交(见下);代码已提交,无未提交代码改动
 
 ## 3. 最近交付:cyber-drill(收敛式演练)全链路 R1→R8 ✅
@@ -32,6 +32,7 @@
 | R6 | 端到端联调 + 六条验收交付 | `6d5c5e2` (+`9888236` 小修) |
 | R7 | **真实 LLM 接入** —— 运行时模式切换(mock/real)+ 前端徽标 | `54f45de` |
 | R8 | **跨轮记忆与上下文压缩** —— 紫队带历史决策摘要(decision+digest 压缩 + memory_trace) | `0959d05` |
+| R9 | **演练事件总线化** —— drill.round 低熵增量事件可订阅(carry 增量 + 跨轮摘要联动) | `72d3d13` |
 
 **当前状态:cyber-drill 功能线已完整交付(含跨轮记忆),可运行演示。**
 
@@ -47,17 +48,16 @@
 
 > 当前无 P0 阻塞项。cyber-drill 功能线(含 R8 跨轮记忆)已完成,建议按此顺序继续:
 
-1. **R9 演练事件总线化 + 低熵增量推送**(CyberDrill 档案 Phase 3,能力维度 b)——复用既有 EventBus,`drill.round` 增量事件可订阅;状态 🔶 已修订待开工
-2. **R10 端-边-云 placement 联动**(档案 Phase 4,能力维度 c)
-3. **R11 无人干预演示脚本 + 赛事材料文档补全**(档案 Phase 5,能力维度 d/e)——截止 2026-09-15,优先级最高
-4. **Protocol→Pydantic 迁移** / **CVE 数据集补全** / **工程支撑**(plan.md §1 长期项)
+1. **R10 演练阶段 placement 联动**(档案 Phase 4,能力维度 c)——复用 scheduler 卸载规则,轮次战报标注 device/edge/cloud
+2. **R11 无人干预演示脚本 + 赛事材料文档补全**(档案 Phase 5,能力维度 d/e)——截止 2026-09-15,优先级最高
+3. **Protocol→Pydantic 迁移** / **CVE 数据集补全** / **工程支撑**(plan.md §1 长期项)
 
 容器化部署(H1 沙箱 + H7 交付)已明确后移,暂不安排。
 
 ## 6. 恢复工作指引
 
 1. 读取本文件 + `developer/plan.md`(尤其 §1 下一步优先级)
-2. `git status` / `git log --oneline -15` 确认状态(应停在 `0959d05`)
+2. `git status` / `git log --oneline -15` 确认状态(应停在 `72d3d13`)
 3. 启动方式见 `README.md` 与根目录 `start.ps1` / `start.sh`
 4. 如有未决问题,先在 `developer/CHANGELOG.md` 中查历史记录
 
