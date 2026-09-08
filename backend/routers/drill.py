@@ -188,6 +188,12 @@ async def get_drill(drill_id: str, service: CyberDefenseServiceDep) -> dict[str,
         "max_rounds": runtime.max_rounds,
         "target_range": runtime.target_range,
         "rounds": record["rounds"] if record else [],
+        "rounds_executed": len(record["rounds"]) if record else 0,
+        "convergence_code": (
+            record["convergence_code"]
+            if record
+            else (runtime.summary or {}).get("convergence_code")
+        ),
         "summary": runtime.summary,
         "error": runtime.error,
     }

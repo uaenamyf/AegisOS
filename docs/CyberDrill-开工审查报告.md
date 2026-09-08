@@ -190,12 +190,14 @@
 
 ## 5. 验收标准
 
-- [ ] `POST /drill/start` 返回 drill_id，SSE 流从 `drill_start` 到 `drill_done` 完整推送。
-- [ ] 默认 5 轮，未达成收敛时恰在 5 轮结束；达成收敛时提前结束（≤5）。
-- [ ] 事件合成为增量追加，不破坏既有 `run_blue_chain` 契约。
-- [ ] 每次演练持久化可回放，`GET /drill/{id}` 可还原各轮战报。
-- [ ] 前端点击"开始演练"实时渲染轮次时间线，收敛后展示总结报告；"停止"可中止。
-- [ ] 既有红/蓝/紫 REST 端点（`/attack`、`/defense`、`/defense/purple-review` 等）行为不变，回归通过。
+- [x] `POST /drill/start` 返回 drill_id，SSE 流从 `drill_start` 到 `drill_done` 完整推送。
+- [x] 默认 5 轮，未达成收敛时恰在 5 轮结束；达成收敛时提前结束（≤5）。
+- [x] 事件合成为增量追加，不破坏既有 `run_blue_chain` 契约。
+- [x] 每次演练持久化可回放，`GET /drill/{id}` 可还原各轮战报。
+- [x] 前端点击"开始演练"实时渲染轮次时间线，收敛后展示总结报告；"停止"可中止。
+- [x] 既有红/蓝/紫 REST 端点（`/attack`、`/defense`、`/defense/purple-review` 等）行为不变，回归通过。
+
+> R6 联调验收：六条全部勾选（2026-09-04）。HTTP 实测 `POST /drill/start` → SSE `drill_start→drill_round×3→drill_summary→drill_done`；`GET /drill/{id}` 返回 rounds_executed=3/convergence_code=converged；`GET /drill/{id}/summary` 200；`POST /drill/{id}/abort` 200；既有 attack/defense/purple 端点 200。
 
 ---
 
