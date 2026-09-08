@@ -740,6 +740,98 @@ class CyberOrchestrator(GoalMode[dict]):
             "agent_trace": trace,
         }
 
+    async def stream_blue_chain(self, event_stream: list[dict[str, Any]]):
+        """蓝队链流式执行（供 SSE 渐进展示）。
+
+        与 :meth:`run_blue_chain` 相同的四步链，但逐步 ``yield`` 阶段事件：
+            - ``{"event": "stage_start", "data": {"stage": ...}}``
+            - ``{"event": "stage_done", "data": {...}}``（各步产出）
+            - ``{"event": "done", "data": {"alerts", "triaged", "hypotheses", "plan", "agent_trace"}}``
+        每步同步 LLM 调用投递到线程池（``asyncio.to_thread``）避免阻塞
+        事件循环；与真实模式 StructuredAgent 的线程池路径天然兼容。
+
+        Args:
+            event_stream: 原始事件流列表。
+
+        Yields:
+            dict: 阶段事件（stage_start / stage_done / done）。
+        """
+        trace: list[dict[str, Any]] = []
+
+        # 1) 入侵检测
+        yield {"event": "stage_start", "data": {"stage": "detect"}}
+        detector_prompt = f"Detect anomalies in: {json.dumps(event_stream)}"
+        detector_result = await asyncio.to_thread(
+            self.detector._run, detector_prompt
+        )
+        trace.append(self._trace_entry("detector", detector_prompt, detector_result))
+        alerts = [
+            Alert(
+                alert_id=a.alert_id,
+                severity=a.severity,
+                src=a.src,
+                dst=a.dst,
+                technique=a.technique,
+                raw=a.raw,
+            )
+            for a in detector_result.alerts
+        ]
+        yield {"event": "stage_done", "data": {"stage": "detect", "alerts": alerts}}
+
+        # 2) 告警分诊
+        yield {"event": "stage_start", "data": {"stage": "triage"}}
+        alerts_desc = json.dumps(
+            [
+                {
+                    "alert_id": a.alert_id,
+                    "severity": a.severity,
+                    "src": a.src,
+                    "dst": a.dst,
+                    "technique": a.technique,
+                }
+                for a in alerts
+            ]
+        )
+        triage_prompt = f"Triage these alerts: {alerts_desc}"
+        triage_result = await asyncio.to_thread(self.triage._run, triage_prompt)
+        trace.append(self._trace_entry("triage", triage_prompt, triage_result))
+        triaged = [Alert(**t.model_dump()) for t in triage_result.alerts] or alerts
+        yield {"event": "stage_done", "data": {"stage": "triage", "triaged": triaged}}
+
+        # 3) 威胁狩猎
+        yield {"event": "stage_start", "data": {"stage": "hunt"}}
+        hunt_prompt = f"Generate hunting hypotheses for: {alerts_desc}"
+        hunt_result = await asyncio.to_thread(self.threat_hunt._run, hunt_prompt)
+        trace.append(self._trace_entry("threat_hunt", hunt_prompt, hunt_result))
+        hypotheses = [h.model_dump() for h in hunt_result.hypotheses]
+        yield {"event": "stage_done", "data": {"stage": "hunt", "hypotheses": hypotheses}}
+
+        # 4) 响应规划
+        yield {"event": "stage_start", "data": {"stage": "ir"}}
+        ir_prompt = f"Plan response for: {json.dumps(hypotheses)}"
+        ir_result = await asyncio.to_thread(self.ir_planner._run, ir_prompt)
+        trace.append(self._trace_entry("ir_planner", ir_prompt, ir_result))
+        plan = ResponsePlan(
+            plan_id=ir_result.plan_id,
+            actions=[
+                DefenseAction.model_validate(a.model_dump())
+                for a in ir_result.actions
+            ],
+            confidence=ir_result.confidence,
+            rollback=ir_result.rollback,
+        )
+        yield {"event": "stage_done", "data": {"stage": "ir", "plan": plan}}
+        yield {
+            "event": "done",
+            "data": {
+                "alerts": alerts,
+                "triaged": triaged,
+                "hypotheses": hypotheses,
+                "plan": plan,
+                "agent_trace": trace,
+            },
+        }
+
     def run_purple_review(
         self,
         chain: AttackChain,

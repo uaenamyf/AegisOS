@@ -3,15 +3,25 @@
 // changelog: 新建 BlueTeamPanel——蓝队防御仪表盘（告警列表 + 响应计划 + 执行状态）
 // changelog: 2026-09-06 R15 —— 中断恢复(localStorage 缓存) + 可观测(耗时/agent trace)
 //   + 可视化(告警严重度分布条 / 响应动作类型分布条)
+// changelog: 2026-09-06 T1 —— SSE 流式渐进展示：四阶段(检测/分诊/狩猎/规划)逐步出结果
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
 import { systemApi } from "@/services/api/system";
-import type { BlueDefenseResponse } from "@/protocol/types";
+import type { BlueDefenseResponse, BlueDefenseStreamEvent } from "@/protocol/types";
 import { AgentTraceSection } from "./AgentTraceSection";
 
 const LAST_CACHE_KEY = "aegis.blueDefense.v2.last";
+
+// T1：蓝队四阶段语义（与后端流式阶段名对齐：detect/triage/hunt/ir）
+const BLUE_STAGE_LABELS: Record<string, string> = {
+  detect: "入侵检测",
+  triage: "告警分诊",
+  hunt: "威胁狩猎",
+  ir: "响应规划",
+};
+const BLUE_STAGE_ORDER = ["detect", "triage", "hunt", "ir"];
 
 /**
  * 蓝队防御面板。
@@ -24,6 +34,10 @@ const LAST_CACHE_KEY = "aegis.blueDefense.v2.last";
  *   同模式 + 同输入再次执行直接秒回（真实模式演示友好）。
  * - 可观测：执行耗时 + 逐 agent 输入输出追踪（detector→triage→threat_hunt→ir_planner）。
  * - 可视化：告警严重度分布条 + 响应动作类型分布条。
+ *
+ * T1 增强：
+ * - SSE 流式渐进展示：四阶段（入侵检测→告警分诊→威胁狩猎→响应规划）
+ *   逐步出结果，不再干等一次性返回；与红队面板流式体验对齐。
  */
 export function BlueTeamPanel() {
   const blueDefenseResult = useAppStore((s) => s.blueDefenseResult);
@@ -35,7 +49,17 @@ export function BlueTeamPanel() {
   const [eventInput, setEventInput] = useState("");
   const [cacheMode, setCacheMode] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
+  // T1 流式状态：streamStage=当前阶段 / stageDone=已完成阶段 / partial=部分产出
+  const [streamStage, setStreamStage] = useState<string | null>(null);
+  const [stageDone, setStageDone] = useState<string[]>([]);
+  const [partial, setPartial] = useState<BlueDefenseResponse | null>(null);
+  const closeStreamRef = useRef<(() => void) | null>(null);
   const startRef = useRef<number>(0);
+
+  // 组件卸载时中止进行中的流
+  useEffect(() => {
+    return () => closeStreamRef.current?.();
+  }, []);
 
   // 中断恢复：挂载时若 store 无结果，从 localStorage 恢复最近一次蓝队结果
   useEffect(() => {
@@ -68,9 +92,14 @@ export function BlueTeamPanel() {
       }
     }
 
+    closeStreamRef.current?.();
     setCyberLoading(true);
     setCyberError(null);
     setElapsed(null);
+    setStreamStage(null);
+    setStageDone([]);
+    setPartial(null);
+    setCacheMode(null);
     startRef.current = Date.now();
 
     // 精确缓存：同 mode + 同输入命中直接秒回
@@ -96,29 +125,64 @@ export function BlueTeamPanel() {
       /* 缓存损坏时忽略，重新执行 */
     }
 
-    try {
-      const result = await cyberApi.blueDefense({ event_stream: eventStream });
-      setBlueDefenseResult(result);
-      setCacheMode(null);
-      setElapsed((Date.now() - startRef.current) / 1000);
-      try {
-        localStorage.setItem(exactKey, JSON.stringify(result));
-        localStorage.setItem(
-          LAST_CACHE_KEY,
-          JSON.stringify({ mode, input: eventInput.trim(), result }),
-        );
-      } catch {
-        /* 存储配额等异常时忽略 */
-      }
-    } catch (err) {
-      setCyberError(err instanceof Error ? err.message : "Blue defense failed");
-      setElapsed((Date.now() - startRef.current) / 1000);
-    } finally {
-      setCyberLoading(false);
-    }
+    // SSE 流式执行：四阶段逐步出结果
+    closeStreamRef.current = cyberApi.blueDefenseStream(
+      { event_stream: eventStream },
+      (ev: BlueDefenseStreamEvent) => {
+        if (ev.name === "stage_start") {
+          setStreamStage(String(ev.data.stage));
+        } else if (ev.name === "stage_done") {
+          const stage = String(ev.data.stage);
+          setStageDone((prev) => (prev.includes(stage) ? prev : [...prev, stage]));
+          setPartial((prev) => {
+            const next = { ...(prev ?? {}) } as BlueDefenseResponse;
+            if (stage === "detect") next.alerts = ev.data.alerts ?? [];
+            else if (stage === "triage") next.triaged = ev.data.triaged ?? [];
+            else if (stage === "hunt") next.hypotheses = ev.data.hypotheses ?? [];
+            else if (stage === "ir") next.plan = ev.data.plan ?? {};
+            return next;
+          });
+        } else if (ev.name === "done") {
+          const result = ev.data as unknown as BlueDefenseResponse;
+          setBlueDefenseResult(result);
+          setPartial(null);
+          setStreamStage(null);
+          setStageDone([...BLUE_STAGE_ORDER]);
+          setCyberLoading(false);
+          setElapsed((Date.now() - startRef.current) / 1000);
+          try {
+            localStorage.setItem(exactKey, JSON.stringify(result));
+            localStorage.setItem(
+              LAST_CACHE_KEY,
+              JSON.stringify({ mode, input: eventInput.trim(), result }),
+            );
+          } catch {
+            /* 存储配额等异常时忽略 */
+          }
+        } else if (ev.name === "defense_error") {
+          setCyberError(String((ev.data as any)?.message ?? "defense stream failed"));
+          setStreamStage(null);
+          setCyberLoading(false);
+          setElapsed((Date.now() - startRef.current) / 1000);
+        }
+      },
+      (err) => {
+        setCyberError(err?.message ?? "defense stream failed");
+        setStreamStage(null);
+        setCyberLoading(false);
+        setElapsed((Date.now() - startRef.current) / 1000);
+      },
+    );
   }, [eventInput, setBlueDefenseResult, setCyberLoading, setCyberError]);
 
-  if (!blueDefenseResult) {
+  // 数据源：完整结果优先，流式中用部分产出渐进渲染
+  const display: BlueDefenseResponse | null = blueDefenseResult ?? partial;
+  const alerts = display?.alerts ?? [];
+  const triaged = display?.triaged ?? [];
+  const hypotheses = display?.hypotheses ?? [];
+  const plan = display?.plan ?? {};
+
+  if (!display && !cyberLoading && streamStage == null) {
     return (
       <div className="cyber-panel cyber-panel--empty">
         <p className="cyber-panel__hint">
@@ -146,7 +210,6 @@ export function BlueTeamPanel() {
     );
   }
 
-  const { alerts, triaged, hypotheses, plan } = blueDefenseResult;
   const planActions: any[] = plan?.actions ?? [];
   const confidence: number = plan?.confidence ?? 0;
 
@@ -195,7 +258,11 @@ export function BlueTeamPanel() {
           onClick={() => void handleDefend()}
           disabled={cyberLoading}
         >
-          {cyberLoading ? "Executing…" : "Re-execute Blue Defense"}
+          {streamStage
+            ? `执行中:${BLUE_STAGE_LABELS[streamStage] ?? streamStage}…`
+            : cyberLoading
+              ? "Executing…"
+              : "Re-execute Blue Defense"}
         </button>
       </div>
 
@@ -210,6 +277,30 @@ export function BlueTeamPanel() {
           </span>
         ) : null}
       </div>
+
+      {/* T1：四阶段渐进指示器（流式中实时反映，完成后保留全部 ✓） */}
+      {streamStage != null || stageDone.length > 0 ? (
+        <div className="cyber-attack__stages">
+          {BLUE_STAGE_ORDER.map((s) => {
+            const isDone = stageDone.includes(s);
+            const isActive = streamStage === s;
+            return (
+              <span
+                key={s}
+                className={`cyber-attack__stage ${
+                  isDone
+                    ? "cyber-attack__stage--done"
+                    : isActive
+                      ? "cyber-attack__stage--active"
+                      : ""
+                }`}
+              >
+                {isDone ? "✓" : isActive ? "●" : "○"} {BLUE_STAGE_LABELS[s]}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* Stats */}
       <div className="cyber-panel__stats">
@@ -349,7 +440,7 @@ export function BlueTeamPanel() {
       ) : null}
 
       {/* R15 可观测性：逐 agent 输入输出追踪 */}
-      <AgentTraceSection trace={blueDefenseResult.agent_trace} />
+      <AgentTraceSection trace={display?.agent_trace} />
     </div>
   );
 }

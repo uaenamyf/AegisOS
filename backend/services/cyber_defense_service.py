@@ -212,6 +212,47 @@ class CyberDefenseService:
                 data = self._serialize_red(data)
             yield {"event": kind, "data": data}
 
+    async def stream_blue_defense(self, event_stream: list[dict[str, Any]] | None):
+        """蓝队链 SSE 流式执行（渐进展示）。
+
+        与 :meth:`stream_red_attack` 同构：逐步 yield ``stage_start`` /
+        ``stage_done`` / ``done`` 事件，各步 dataclass 序列化为 dict。
+
+        Args:
+            event_stream: 原始事件流列表。
+
+        Yields:
+            dict: ``{"event": ..., "data": ...}`` 阶段事件。
+        """
+        stream = event_stream or []
+        async for event in self._orchestrator.stream_blue_chain(stream):
+            kind: str = event["event"]
+            data: dict[str, Any] = event["data"]
+            if kind == "stage_done" and data.get("stage") == "detect":
+                data = {
+                    "stage": "detect",
+                    "alerts": [a.model_dump() for a in data["alerts"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "triage":
+                data = {
+                    "stage": "triage",
+                    "triaged": [a.model_dump() for a in data["triaged"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "hunt":
+                data = {
+                    "stage": "hunt",
+                    "hypotheses": data["hypotheses"],
+                }
+            elif kind == "stage_done" and data.get("stage") == "ir":
+                plan = data["plan"]
+                data = {
+                    "stage": "ir",
+                    "plan": _asdict(plan) if isinstance(plan, ResponsePlan) else plan,
+                }
+            elif kind == "done":
+                data = self._serialize_blue(data)
+            yield {"event": kind, "data": data}
+
     def get_attack_chain(self, range_id: str) -> dict[str, Any] | None:
         """获取指定靶场的攻击链 DAG。
 

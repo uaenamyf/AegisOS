@@ -7,6 +7,8 @@ import { apiClient } from "@/lib/api-client";
 import { config } from "@/config";
 import type {
   BlueDefenseResponse,
+  BlueDefenseStreamEvent,
+  BlueDefenseStreamEventName,
   DrillEvent,
   DrillEventName,
   DrillRecord,
@@ -125,6 +127,68 @@ export const cyberApi = {
 
   blueDefense: (body: BlueDefenseRequest): Promise<BlueDefenseResponse> =>
     apiClient.post<BlueDefenseResponse>("/defense", body),
+
+  /**
+   * 蓝队防御链 SSE 流式执行（渐进展示）。
+   *
+   * 事件名：``stage_start``（detect/triage/hunt/ir）→ ``stage_done``
+   * （各步产出）→ ``done``（完整结果）；失败时 ``defense_error``。
+   * 与红队流式同构（fetch + ReadableStream 解析 SSE）。
+   * 返回关闭函数（AbortController）供组件卸载时调用。
+   */
+  blueDefenseStream: (
+    body: BlueDefenseRequest,
+    onEvent: (event: BlueDefenseStreamEvent) => void,
+    onError?: (err: Error) => void,
+  ): (() => void) => {
+    const controller = new AbortController();
+    void fetch(`${config.apiBaseUrl}/defense/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+        [config.apiKeyHeader]: config.apiKey,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok || !res.body) {
+          throw new Error(`defense stream failed: HTTP ${res.status}`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        const pump = (): void => {
+          void reader
+            .read()
+            .then(({ done, value }) => {
+              if (done) return;
+              buffer += decoder.decode(value, { stream: true });
+              const frames = buffer.split("\n\n");
+              buffer = frames.pop() ?? "";
+              for (const frame of frames) {
+                const evLine = frame.split("\n").find((l) => l.startsWith("event:"));
+                const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
+                if (!evLine || !dataLine) continue;
+                try {
+                  onEvent({
+                    name: evLine.slice(6).trim() as BlueDefenseStreamEventName,
+                    data: JSON.parse(dataLine.slice(5).trim()),
+                  });
+                } catch {
+                  /* ignore malformed frames */
+                }
+              }
+              pump();
+            })
+            .catch((err) => onError?.(err as Error));
+        };
+        pump();
+      })
+      .catch((err) => onError?.(err as Error));
+    return () => controller.abort();
+  },
 
   getDefense: (rangeId: string): Promise<BlueDefenseResponse> =>
     apiClient.get<BlueDefenseResponse>(`/defense/${encodeURIComponent(rangeId)}`),

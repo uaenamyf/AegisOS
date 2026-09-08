@@ -298,6 +298,21 @@ export interface BlueDefenseResponse {
   agent_trace?: AgentTraceEntry[];
 }
 
+// ---- T1 蓝队流式（SSE 渐进展示）----
+// date: 2026-09-06
+// changelog: 新增——与 backend/routers/defense.py 的 /defense/stream 契约对齐
+// （事件名锚点：stage_start / stage_done / done / defense_error）
+export type BlueDefenseStreamEventName =
+  | "stage_start"
+  | "stage_done"
+  | "done"
+  | "defense_error";
+
+export interface BlueDefenseStreamEvent {
+  name: BlueDefenseStreamEventName;
+  data: Record<string, any>;
+}
+
 export interface PurpleReviewResponse {
   critique: Record<string, any>;
   review: Record<string, any>;
