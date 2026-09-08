@@ -399,19 +399,24 @@ class CyberOrchestrator(GoalMode[dict]):
             )
     # ---------------------------------------------------------------------
 
-    def run_red_chain(self, target_range: str) -> dict[str, Any]:
+    def run_red_chain(self, target_range: str, round: int | None = None) -> dict[str, Any]:
         """执行红队攻击链：recon → vuln_correlator → exploit_planner。
 
-        各步产出依次传递，返回包含 assets/findings/chain 的结果字典。
+        R1/R1.5：新增可选 ``round`` 参数用于多轮收敛演练——显式传入且 >=2 时
+        在 recon/exploit 的 prompt 注入 ``[round=N]`` 标记，触发 mock 按轮演化
+        （第 N 轮才暴露新资产/新利用步骤），驱动多轮对抗收敛真实可演示。
+        默认 round=None 完全保持旧行为，既有调用/测试零破坏。
 
         Args:
             target_range: 目标网络范围，如 ``"10.0.0.0/24"``。
+            round: 显式演练轮次（>=2 触发演化）；None 表示不演化。
 
         Returns:
             含 ``assets`` / ``findings`` / ``chain`` 的字典（值为 protocol dataclass）。
         """
+        round_tag = f" [round={round}]" if round is not None and round >= 2 else ""
         # 1) 侦察
-        recon_result = self.recon._run(f"Scan target range: {target_range}")
+        recon_result = self.recon._run(f"Scan target range: {target_range}{round_tag}")
         assets = [
             Asset(
                 asset_id=a.asset_id, host=a.host, services=a.services, os=a.os, exposure=a.exposure
@@ -452,7 +457,7 @@ class CyberOrchestrator(GoalMode[dict]):
                 for f in findings
             ]
         )
-        exploit_result = self.exploit_planner._run(f"Plan exploit chain for: {findings_desc}")
+        exploit_result = self.exploit_planner._run(f"Plan exploit chain for: {findings_desc}{round_tag}")
         chain = AttackChain(
             chain_id=exploit_result.chain_id,
             target=exploit_result.target,
@@ -514,20 +519,26 @@ class CyberOrchestrator(GoalMode[dict]):
         return {"alerts": alerts, "triaged": triaged, "hypotheses": hypotheses, "plan": plan}
 
     def run_purple_review(
-        self, chain: AttackChain, plan: ResponsePlan, alerts: list[Alert]
+        self, chain: AttackChain, plan: ResponsePlan, alerts: list[Alert], round: int | None = None
     ) -> dict[str, Any]:
         """执行紫队校验：critic 校验攻击链 + reviewer 跨产出一致性审查。
+
+        R1/R1.5：新增可选 ``round`` 参数——显式传入时 critic 的 prompt 注入
+        ``[round=N]`` 触发 mock 按轮演化（round=1 判缺口 valid=False，>=2 补齐
+        valid=True）。默认 round=None 保持旧行为，既有调用/测试零破坏。
 
         Args:
             chain: 红队攻击链产出。
             plan: 蓝队响应计划产出。
             alerts: 蓝队告警列表。
+            round: 显式演练轮次；None 表示不演化（默认）。
 
         Returns:
             含 ``critique`` / ``review`` 的字典（均为 dict）。
         """
         # 紫队批判红队攻击链
-        critique_result = self.critic._run(f"Critique: {json.dumps(chain.to_dict())}")
+        round_tag = f" [round={round}]" if round is not None else ""
+        critique_result = self.critic._run(f"Critique: {json.dumps(chain.to_dict())}{round_tag}")
         critique = critique_result.model_dump()
 
         # 紫队跨产出一致性审查
@@ -1838,3 +1849,221 @@ class CyberOrchestrator(GoalMode[dict]):
                 raise ValueError(f"Unknown blue team agent: {agent_name}")
 
         return executor
+
+    # ==================================================================
+    # CyberDrill(R1)：多轮收敛演练主循环
+    # ==================================================================
+
+    @staticmethod
+    def _synthesize_event_stream(
+        chain: AttackChain,
+        prev_event_stream: list[dict[str, Any]],
+        round: int,
+    ) -> list[dict[str, Any]]:
+        """跨轮事件合成：把红队攻击链步骤翻译为蓝队可消费的"事件流"。
+
+        R1：首轮（round==1 或 prev 为空）将本轮全部步骤映射为事件；
+        后续轮则 carry 上一轮全部事件（carry_forward=True 打标，保证蓝队有
+        完整上下文记忆），再追加本轮新出现的步骤（按 step_id 去重）。
+        始终返回 ``list[dict]``，与既有 :meth:`run_blue_chain` 契约兼容。
+
+        Args:
+            chain: 本轮红队攻击链。
+            prev_event_stream: 上一轮合成的事件流；空表示首轮。
+            round: 当前演练轮次。
+
+        Returns:
+            事件流列表。
+        """
+        known_step_ids = {
+            ev.get("step_id") for ev in prev_event_stream if ev.get("step_id")
+        }
+        events: list[dict[str, Any]] = []
+        # 首个非空轮次：全量映射；否则 carry 上一轮（打标保留上下文）
+        if prev_event_stream:
+            events = [
+                {**ev, "carry_forward": True} for ev in prev_event_stream
+            ]
+        for i, step in enumerate(chain.steps):
+            if step.step_id in known_step_ids:
+                continue
+            events.append(
+                {
+                    "round": round,
+                    "seq": i,
+                    "type": "attack_step",
+                    "source": step.from_asset,
+                    "target": step.to_asset,
+                    "technique": step.technique,
+                    "success": step.success,
+                    "step_id": step.step_id,
+                    "carry_forward": False,
+                }
+            )
+        return events
+
+    @staticmethod
+    def _diff_chain_steps(
+        prev_chain: AttackChain | None, new_chain: AttackChain
+    ) -> list[AttackStep]:
+        """对比上一轮与本轮，返回本轮新增的步骤（按 step_id 去重）。"""
+        prev_ids = {s.step_id for s in prev_chain.steps} if prev_chain else set()
+        return [s for s in new_chain.steps if s.step_id not in prev_ids]
+
+    @classmethod
+    def _evaluate_stop(
+        cls,
+        round: int,
+        max_rounds: int,
+        new_steps: list[AttackStep],
+        purple_critique_valid: bool,
+        consecutive_no_new: int,
+        aborted: bool = False,
+    ) -> tuple[bool, str]:
+        """证据驱动收敛判定（R1 评审修订：不依赖恒真的 valid/consistent）。
+
+        任一条件满足即停止，按优先级：
+        1. 显式中止         → ``aborted``
+        2. 达到轮次上限 M    → ``max_rounds``
+        3. 本轮无新步骤且紫队 valid → ``converged``（多轮对抗后攻击链自洽）
+        4. 连续 ≥2 轮无新步骤 → ``no_progress``（红队挖不出新证据，避免空转）
+        其余继续。
+
+        Args:
+            round: 当前轮次。
+            max_rounds: 轮次上限 M。
+            new_steps: 本轮红队新增步骤列表。
+            purple_critique_valid: 本轮紫队批判是否有缺口（valid）。
+            consecutive_no_new: 已连续几轮无新步骤（含本轮）。
+            aborted: 是否被显式中止。
+
+        Returns:
+            ``(should_stop, convergence_code)``。
+        """
+        if aborted:
+            return True, "aborted"
+        if round >= max_rounds:
+            return True, "max_rounds"
+        if not new_steps and purple_critique_valid:
+            return True, "converged"
+        if not new_steps and consecutive_no_new >= 2:
+            return True, "no_progress"
+        return False, "running"
+
+    def run_drill(
+        self,
+        target_range: str,
+        max_rounds: int = 5,
+        on_round=None,
+        abort=None,
+    ) -> dict[str, Any]:
+        """多轮收敛演练主循环（CyberDrill R1）。
+
+        在每轮内依次执行红(``run_red_chain``) → 蓝(``run_blue_chain``) →
+        紫(``run_purple_review``)，以证据驱动判定是否提前收敛，最多 M 轮。
+        每轮结果经 ``on_round`` 回调回传（供 R3 路由喂 SSE），显式中止经
+        ``abort()`` 可调用对象查询。
+
+        Args:
+            target_range: 目标网络范围。
+            max_rounds: 轮次上限，默认 5。
+            on_round: 可选回调 ``on_round(round_data: dict, round_idx: int)``，
+                      每轮完成后调用（同步）。
+            abort: 可选可调用对象 ``abort() -> bool``；返回 True 表示应中止。
+
+        Returns:
+            含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
+            ``rounds``(逐轮记录) / ``summary`` 的字典。
+        """
+        if max_rounds < 1:
+            max_rounds = 1
+        prev_chain: AttackChain | None = None
+        prev_event_stream: list[dict[str, Any]] = []
+        consecutive_no_new = 0
+        rounds: list[dict[str, Any]] = []
+
+        for r in range(1, max_rounds + 1):
+            # 红队攻击（r>=2 触发 mock 按轮演化）
+            red = self.run_red_chain(target_range, round=r if r >= 2 else None)
+            chain: AttackChain = red["chain"]
+            new_steps = self._diff_chain_steps(prev_chain, chain)
+            consecutive_no_new = 0 if new_steps else consecutive_no_new + 1
+
+            # 事件合成：首轮全量，后续 carry 增量
+            event_stream = self._synthesize_event_stream(
+                chain, prev_event_stream, r
+            )
+
+            # 蓝队防御
+            blue = self.run_blue_chain(event_stream)
+
+            # 紫队评审（显式传入轮次以触发按轮演化）
+            purple = self.run_purple_review(
+                chain=chain, plan=blue["plan"], alerts=blue["alerts"], round=r
+            )
+            critique = purple["critique"]
+            valid = bool(critique.get("valid"))
+
+            should_abort = bool(abort() if callable(abort) else False)
+            stop, code = self._evaluate_stop(
+                round=r,
+                max_rounds=max_rounds,
+                new_steps=new_steps,
+                purple_critique_valid=valid,
+                consecutive_no_new=consecutive_no_new,
+                aborted=should_abort,
+            )
+
+            round_data = {
+                "round": r,
+                "red": {
+                    "ok": True,
+                    "assets": [a.asset_id for a in red["assets"]],
+                    "finding_count": len(red["findings"]),
+                    "steps": [s.to_dict() for s in chain.steps],
+                    "new_steps": [s.to_dict() for s in new_steps],
+                },
+                "blue": {
+                    "ok": True,
+                    "alerts": [_asdict(a) for a in blue["alerts"]],
+                    "triaged_count": len(blue["triaged"]),
+                    "plan": _asdict(blue["plan"]),
+                },
+                "purple": {
+                    "ok": True,
+                    "critique": critique,
+                    "review": purple["review"],
+                    "converged": stop,
+                    "valid": valid,
+                    "new_issue_count": len(critique.get("issues", []) or []),
+                },
+                "event_stream": event_stream,
+                "convergence_code": code,
+            }
+            rounds.append(round_data)
+            if callable(on_round):
+                on_round(round_data, r)
+
+            prev_chain = chain
+            prev_event_stream = event_stream
+
+            if stop:
+                break
+
+        summary = {
+            "conclusion": (
+                "多轮红蓝紫对抗后达成收敛：攻击链覆盖全部暴露面并通过紫队一致性校验。"
+                if rounds and rounds[-1]["purple"]["valid"] and code == "converged"
+                else "演练在到达停止条件时结束（见 convergence_code）。"
+            ),
+            "convergence_code": code,
+            "rounds_executed": len(rounds),
+        }
+
+        return {
+            "drill_id": f"drill_{target_range.replace('/', '_')}",
+            "rounds_executed": len(rounds),
+            "convergence_code": code,
+            "rounds": rounds,
+            "summary": summary,
+        }
