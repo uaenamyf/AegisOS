@@ -51,13 +51,11 @@
 | **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ✅ 已完成 |
 | **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ✅ 已完成 |
 | **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ✅ 已完成 |
-| **R7** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R6 | a（重点加分） | ⬜ |
-| **R8** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R6 | b（技术分10） | 🔶 已修订 |
-| **R9** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R8 | c | ⬜ |
-| **R10** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R6-R9 | d / e | ⬜ |
-
-> 优先级策略：**R1 + R1.5-R6 为必做**（9-15 截止前保证一键闭环可演示）；**R7-R8 为强加分**（直接命中维度 a/b，优先于 R9）；**R9-R10 视剩余时间与稳定性决定**。
-
+| **R7** | **真实 LLM 接入 drill** + 运行时模式切换（mock/real）+ 前端徽标 | 核心升级 | R6 | d / 演示核心 | ✅ 已完成 |
+| **R8** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R7 | a（重点加分） | ⬜ |
+| **R9** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R7 | b（技术分10） | 🔶 已修订 |
+| **R10** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R9 | c | ⬜ |
+| **R11** | 无人干预演示脚本 + 赛事材料文档补全收尾 | 延申 P2 | R7-R10 | d / e | ⬜ |
 > **（2026-09-04 评审修订）** 原开工审查报告方案经代码核查发现 3 处硬伤，已修订见各轮「评审记录」：
 > ① **R1 收敛判定**：mock 下 `valid/consistent` 恒真会首轮"完全收敛"，多轮收敛跑不出来 → 改为**证据驱动**（锚定新资产/新步骤）+ 新增 **R1.5 mock 按轮演化**；
 > ② **R3 并发**：编排器是同步的，直接 `asyncio.create_task` 会阻塞事件循环 → 改 `asyncio.to_thread`；
@@ -280,7 +278,7 @@
 - **验收标准**：前端单测/tsc 通过；`cyberApi` 方法可被 R5 调用。
 - **实测位置**：`npm run build`（或 `npx tsc --noEmit`）类型通过；单测跑前端测试命令。
 - **风险与对策**：SSE 事件名拼写不一致 → 以 R3 后端契约为唯一事实源，前端类型注解加注释锚点。
-- **可延申点**：R8 后可在 Monitor 视图复用同一订阅封装。
+- **可延申点**：R9 后可在 Monitor 视图复用同一订阅封装。
 
 - **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
@@ -327,7 +325,7 @@
 - **验收标准**：点击开始 → 时间线逐轮实时出现 → 收敛后总结报告展示；「停止」可中止并输出已收敛部分；断线后可轮询补拉。
 - **实测位置**：`npm run dev` 起前端 + `uvicorn backend.main:app` 起后端 → 浏览器侧边栏 Cyber → Drill tab → 输入目标范围 → 开始演练。
 - **风险与对策**：SSE 断线/重连 → 轮询兜底；多轮数据量大 → 时间线默认折叠详情、只展示摘要行。
-- **可延申点**：R7 总结报告加「跨轮记忆摘要」区；R9 轮次卡加执行位置徽标。
+- **可延申点**：R8 总结报告加「跨轮记忆摘要」区；R10 轮次卡加执行位置徽标。
 
 - **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
@@ -359,13 +357,62 @@
   - 测试结果：后端全量 `624 passed`（上轮 624，无回归）；前端全量 5 文件 `39 passed`；`tsc -b` exit 0；ruff 全清
   - git commit：`9888236`（`fix(cyber-drill): R6 联调小修——GET /drill/{id} 补 rounds_executed/convergence_code + 验收报告打勾`）
   - 实测结果：真实 HTTP 端到端（uvicorn 起服）——验收 1 `start` 201 + SSE `drill_start→drill_round×3→drill_summary→drill_done` 完整；验收 2 `rounds_executed=3`/`convergence_code=converged`（≤5 提前收敛）；验收 4 `summary` 200 + `data/drills/` 落盘可回放；验收 5 `abort` 200；验收 6 既有 attack/defense/purple 端点 200 全过
-  - 遗留问题 / 下一步：核心路线 R1-R6 全部完成；进入延申 R7（跨轮记忆与上下文压缩，能力维度 a 重点加分）或按需交付
+  - 遗留问题 / 下一步：核心路线 R1-R6 全部完成；经复盘将真实 LLM 接入提升为 R7（用户拍板：默认真实调用 + 前端模式切换），跨轮记忆顺延为 R8
+
+---
+
+### R7 · 真实 LLM 接入 drill + 运行时模式切换（mock/real）+ 前端徽标
+
+> **（2026-09-04 复盘修订）** 原 R7 为「跨轮记忆」，经复盘发现 R1-R6 全部跑在 mock 预置响应上、真实推理从未验证——这恰是比赛原文「无人干预自主全链路推理」的灵魂。用户拍板：**真实 LLM 接入提升为 R7（默认真实调用）**，跨轮记忆顺延为 R8。
+
+- **一句话目标**：drill 链路接真实 LLM（DeepSeek），运行时可在 mock / real 间切换，前端头部徽标可视化当前模式并支持点击切换；默认真实调用。
+- **比赛要求映射**：能力维度 d —— 可运行系统的真实自主推理闭环；「默认 mock 白做了」→ 双模式可切换，mock 作保底演示。
+- **与其他模块的联系**：
+  - `backend/core/runtime_mode.py`（新建）——运行时模式单例，懒缓存双编排器，切换即时生效；
+  - `backend/routers/system.py`（新建）——`GET/POST /api/v1/system/mode`；
+  - `backend/services/cyber_defense_service.py` —— 显式注入优先、否则动态跟随运行时模式；
+  - `backend/core/composition.py` —— 共享编排器改走 `runtime_mode.get_orchestrator()`；
+  - `aegisos_agents/tools/llms/sdk_provider.py` —— 既有双模式 Provider（DeepSeek 走 OpenAI 兼容端点）；
+  - 前端 `systemApi` + `LlmModeBadge`（CyberView 头部）。
+- **模块内部逻辑**：
+  ```
+  .env（gitignore 保护）：OPENAI_BASE_URL=https://api.deepseek.com/v1
+    OPENAI_API_KEY=sk-…  OPENAI_DEFAULT_MODEL=deepseek-chat  AEGIS_USE_MOCK=false
+  runtime_mode.init()  → 有 Key 且未强制 mock → real；否则 mock（无 Key 自动降级）
+  GET /system/mode     → {mode, model, provider, has_key, available}
+  POST /system/mode    → {mock|real} 切换（无 Key 时 real 返回 400 INVALID_MODE）
+  service 每次调用经 get_orchestrator() 取当前模式编排器（mock=预置响应表 / real=SDK Model）
+  前端 LlmModeBadge：绿点+“真实 LLM deepseek-chat” / 黄点+“Mock 模式”，点击切换
+  ```
+- **落盘文件清单**：
+  - `backend/core/runtime_mode.py`（新建）
+  - `backend/routers/system.py`（新建）
+  - `backend/services/cyber_defense_service.py`（改：动态编排器）
+  - `backend/core/composition.py`（改：共享编排器走 runtime_mode）
+  - `backend/main.py`（改：挂载 system 路由 + lifespan 初始化）
+  - `conftest.py`（改：测试强制 mock + 中和 .env 的 tracing 开关）
+  - `tests/backend/test_system_mode.py`（新建）
+  - `frontend/src/protocol/types.ts`、`services/api/system.ts`（新建）、`views/cyber/LlmModeBadge.tsx`（新建）、`CyberView.tsx`、`index.css`、`__tests__/LlmModeBadge.test.tsx`（新建）、`cyber-views.test.tsx`
+  - `tooling/configs/.env`（新建，gitignore 保护，不进版本库）
+- **验收标准**：`GET /system/mode` 返回 real（有 Key）；POST 可切换且切换后 drill 行为改变；前端徽标显示并切换；测试环境强制 mock 无回归。
+- **实测位置**：`GET /api/v1/system/mode` 返回 `{mode: real, model: deepseek-chat}`；真实 LLM 连通性冒烟（DeepSeek 返回 LLM_OK）；前端 Cyber 页头部徽标。
+- **风险与对策**：真实模型不收敛/超时 → mock 一键切回；`.env` 的 `OPENAI_AGENTS_DISABLE_TRACING=true` 会全局禁用 SDK tracing 导致组合测试失败 → conftest 先设 false 中和（_load_dotenv 不覆盖已有变量）；Key 泄漏 → .env 已 gitignore。
+- **可延申点**：R8 跨轮记忆在真实链路上验证；演示材料以真实演练截图作证据。
+
+- **开工确认**：[x] 用户已确认（日期：2026-09-04，含 DeepSeek Key 与「默认真实」指令）
+- **开工后记录**：
+  - 改动文件清单：`runtime_mode.py` / `system.py` / `cyber_defense_service.py` / `composition.py` / `main.py` / `conftest.py` / `test_system_mode.py` / `types.ts` / `system.ts` / `LlmModeBadge.tsx` / `CyberView.tsx` / `index.css` / `LlmModeBadge.test.tsx` / `cyber-views.test.tsx` / `tooling/configs/.env`（gitignored）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：Cyber 页头部徽标（绿点真实 LLM / 黄点 Mock，可点击切换）；后端 `/api/v1/system/mode` GET/POST；service 每次调用动态取编排器（切换即时生效）
+  - 测试结果：后端全量 `627 passed`（624 + system mode 3）；前端全量 6 文件 `43 passed`；`tsc -b` exit 0；eslint 0 error；ruff 全清
+  - git commit：`54f45de`（`feat(cyber-drill): R7 真实 LLM 接入——运行时模式切换（mock/real）+ 前端徽标`）
+  - 实测结果：uvicorn 起服后 `GET /system/mode` → `{mode: real, model: deepseek-chat, provider: deepseek}`；POST mock/real 往返切换 200；真实 LLM 连通性冒烟（DeepSeek `LLM_OK`）；前端 build 通过
+  - 遗留问题 / 下一步：真实多轮演练完整跑一遍（成本/时间可控时）；进入 R8 跨轮记忆（原 R7 顺延）
 
 ---
 
 ## 3. Phase 2 · 超长程上下文连续性与记忆保持（能力维度 a）
 
-### R7 · 跨轮记忆与上下文压缩（紫队带历史决策摘要）
+### R8 · 跨轮记忆与上下文压缩（紫队带历史决策摘要）
 
 - **一句话目标**：让演练循环接入既有记忆子系统——每轮紫队评审携带前几轮的**压缩摘要**（而非全量重放），直接命中「跨越多轮决策流、克服注意力稀释与记忆坍缩」。
 - **比赛要求映射**：能力维度 a（重点加分项）；技术创新 20 的「核心算法与底层突破」展示。
@@ -401,7 +448,7 @@
 
 ## 4. Phase 3 · 动态异构拓扑与低熵通信（能力维度 b）
 
-### R8 · 演练事件总线化 + 低熵增量推送（EventBus 联动）
+### R9 · 演练事件总线化 + 低熵增量推送（EventBus 联动）
 
 - **一句话目标**：把 `drill_round` 战报发布到系统 EventBus，使 Monitor 等既有视图可订阅；并强化"每轮只推增量"的低熵设计。
 - **比赛要求映射**：能力维度 b（架构与交互降噪创新，技术分 10）——抑制通信冗余、信息熵显著降低。
@@ -435,7 +482,7 @@
 
 ## 5. Phase 4 · 端-边-云异构资源自适应调度（能力维度 c）
 
-### R9 · 演练阶段 placement 联动（调度位置标注）
+### R10 · 演练阶段 placement 联动（调度位置标注）
 
 - **一句话目标**：演练每个阶段（红/蓝/紫）标注执行位置（device/edge/cloud），复用既有 scheduler 卸载规则，把「端-边-云自适应调度」落到攻防场景演示上。
 - **比赛要求映射**：能力维度 c —— 依据子任务实时性与敏感度自动选择推理位置。
@@ -451,7 +498,6 @@
   前端徽标展示 device/edge/cloud + 卸载理由（latency/privacy）。
   ```
 - **落盘文件清单**：`cyber_orchestrator.py`（placement 标注，改）；R3 战报契约对应字段；`CyberDrillPanel.tsx`（徽标，改）；测试。
-- **验收标准**：战报含 placement 且符合调度规则；前端可见徽标。
 - **实测位置**：Drill tab 轮次卡片上的 placement 徽标；展开详情看卸载理由。
 - **风险与对策**：调度器为 mock 语义 → 标注真实调度结果即可，不强求真实异构节点（与项目"演示版跳过真实端边云"一致）。
 - **可延申点**：与 `infrastructure/nodes/` 真实节点注册联动（演示版不做）。
@@ -469,11 +515,11 @@
 
 ## 6. Phase 5 · 评测场景与交付物收尾（能力维度 d/e）
 
-### R10 · 无人干预演示脚本 + 赛事材料文档补全
+### R11 · 无人干预演示脚本 + 赛事材料文档补全
 
 - **一句话目标**：输出一份"一键演示脚本"（无人干预跑完整 drill），并把攻防模块的设计/验收结论补进赛事材料文档，形成交付闭环。
 - **比赛要求映射**：能力维度 d/e —— 可运行系统验证 + 材料文档交付。
-- **与其他模块的联系**：汇总 R1-R9 成果；更新 `docs/`（含本档案）、`README.md`、必要时 `developer/CHANGELOG.md` 与赛事方案对应章节引用。
+- **与其他模块的联系**：汇总 R1-R10 成果；更新 `docs/`（含本档案）、`README.md`、必要时 `developer/CHANGELOG.md` 与赛事方案对应章节引用。
 - **模块内部逻辑**：演示脚本 = 启动后端/前端 → 自动 POST /drill/start → 轮询至 done → 输出 summary JSON + 截图指引；材料文档 = 架构设计（本档案 R1/R3/R5 核心设计）+ 验收记录（R6 验收表）+ 实测证据（data/drills/ 样例）。
 - **落盘文件清单**：`tooling/scripts/drill_demo.ps1`（新建，仿 sandbox.ps1 风格）；`README.md`/`developer/CHANGELOG.md`（改）；本档案「实测指南」区补最终版。
 - **验收标准**：按脚本走完无人工干预；材料文档各章节与本档案一致。
@@ -500,7 +546,7 @@
 |---|---|---|---|
 | 后端 | `uvicorn backend.main:app`（或 start.ps1） | `http://localhost:8000/api/v1/...`（需 `X-API-Key`，见 `.env.example`） | R3 五个 drill 端点；`/docs` 页面直接调试 |
 | 前端 | `npm run dev` | `http://localhost:5173` → 侧边栏 Cyber → **Drill tab** | 开始/停止按钮、轮次时间线、总结报告（R5） |
-| 事件流 | 后端运行中 | `GET /api/v1/events?stream=drill.round` | drill 增量战报（R8 后） |
+| 事件流 | 后端运行中 | `GET /api/v1/events?stream=drill.round` | drill 增量战报（R9 后） |
 | 数据落盘 | 演练结束后 | `data/drills/<drill_id>.json` | 各轮战报 + 总结（R2） |
 | 测试 | 命令行 | `pytest`（Python 全量）、前端测试命令、`npm run build` | 回归结果（R6） |
 | git | 命令行 | `git log --oneline` | 每轮一个 commit，可回退（R0 规则） |
@@ -520,6 +566,7 @@
 | 2026-09-04 | R4 | 前端 drill 类型 + cyberApi 客户端（SSE 订阅封装）；前端 vitest 32 passed、tsc -b 通过 | `9b4f2f0` |
 | 2026-09-04 | R5 | 前端 Drill 演练视图（开始/停止 + SSE 轮次时间线 + 总结报告）；前端 vitest 39 passed、tsc -b/eslint 通过 | `fdce5a7` |
 | 2026-09-04 | R6 | 端到端联调 + 六条验收全勾 + 联调小修（GET /drill/{id} 补字段）；后端 624/front 39/tsc 全绿 | `9888236` |
+| 2026-09-04 | R7 | 真实 LLM 接入 drill + 运行时模式切换（mock/real）+ 前端徽标；后端 627/front 43 全绿；DeepSeek 连通性冒烟通过 | `54f45de` |
 | | | | |
 | | | | |
 | | | | |
