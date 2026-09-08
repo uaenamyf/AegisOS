@@ -1,22 +1,25 @@
 // date: 2026-07-06
 // dev: Claude Code (glm-5.2)
 // changelog: 新建 views/cyber/CyberView.tsx，攻防演练主视图（红/蓝/紫面板 + 威胁情报）
+// changelog: 2026-09-04 R5 追加 Drill tab（多轮攻防演练面板）
 
 import { useState, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
+import { CyberDrillPanel } from "./CyberDrillPanel";
 import { RedTeamPanel } from "./RedTeamPanel";
 import { BlueTeamPanel } from "./BlueTeamPanel";
 import { PurpleTeamPanel } from "./PurpleTeamPanel";
 import { ThreatIntelPanel } from "./ThreatIntelPanel";
 
-type TabId = "red" | "blue" | "purple" | "threat";
+type TabId = "red" | "blue" | "purple" | "threat" | "drill";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "red", label: "Red Team" },
   { id: "blue", label: "Blue Team" },
   { id: "purple", label: "Purple Review" },
   { id: "threat", label: "Threat Intel" },
+  { id: "drill", label: "Drill" },
 ];
 
 export function CyberView() {
@@ -104,6 +107,7 @@ export function CyberView() {
         {activeTab === "blue" && <BlueTeamPanel />}
         {activeTab === "purple" && <PurpleTeamPanel />}
         {activeTab === "threat" && <ThreatIntelPanel />}
+        {activeTab === "drill" && <CyberDrillPanel />}
       </div>
     </section>
   );

@@ -98,10 +98,14 @@ export const cyberApi = {
    * drill_done / drill_error`` 到 ``onEvent`` 回调；返回关闭函数供组件
    * 卸载时调用。EventSource 无法携带自定义 Header，故 API Key 走
    * query 参数（与 backend.core.auth.verify_api_key 的 Query 兜底一致）。
+   *
+   * ``onError`` 可选；触发时流已断开（EventSource 已 close），调用方可
+   * 用 ``getDrill`` 轮询补拉已发生轮次。
    */
   openDrillStream: (
     drillId: string,
     onEvent: (event: DrillEvent) => void,
+    onError?: () => void,
   ): (() => void) => {
     const url =
       `${config.apiBaseUrl}/drill/${encodeURIComponent(drillId)}/stream` +
@@ -127,6 +131,12 @@ export const cyberApi = {
         }
       });
     });
+    if (onError) {
+      source.onerror = () => {
+        source.close();
+        onError();
+      };
+    }
     return () => source.close();
   },
 };
