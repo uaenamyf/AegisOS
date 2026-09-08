@@ -2,9 +2,13 @@
 // dev: Claude Code (glm-5.2)
 // changelog: 新建 PurpleTeamPanel——紫队对抗校验面板（critique + review + 时间线回放）
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
+import type { PurpleReviewResponse } from "@/protocol/types";
+import { AgentTraceSection } from "./AgentTraceSection";
+
+const LAST_CACHE_KEY = "aegis.purpleReview.v2.last";
 
 /**
  * 紫队校验面板。
@@ -12,6 +16,9 @@ import { cyberApi } from "@/services/api/cyber";
  * 调用 purple-review 端点，展示 critic 对红队攻击链的对抗性校验
  * 和 reviewer 对跨产出一致性的审查结果。支持步进式时间线回放
  * （逐步显示攻击链步骤）。
+ *
+ * R15 增强：结果持久化到 localStorage（刷新/切 tab 恢复）+ 执行耗时
+ * + 逐 agent 输入输出追踪（critic/reviewer）。
  */
 export function PurpleTeamPanel() {
   const redAttackResult = useAppStore((s) => s.redAttackResult);
@@ -24,6 +31,27 @@ export function PurpleTeamPanel() {
 
   const [timelineStep, setTimelineStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [cacheMode, setCacheMode] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState<number | null>(null);
+  const startRef = useRef<number>(0);
+
+  // 中断恢复：挂载时若 store 无评审结果，从 localStorage 恢复最近一次
+  useEffect(() => {
+    if (purpleReviewResult) return;
+    try {
+      const raw = localStorage.getItem(LAST_CACHE_KEY);
+      if (raw) {
+        const snap = JSON.parse(raw) as { mode: string; result: PurpleReviewResponse };
+        setPurpleReviewResult(snap.result);
+        setCacheMode(snap.mode);
+        setTimelineStep(0);
+        setIsPlaying(false);
+      }
+    } catch {
+      /* 缓存损坏时忽略 */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleReview = useCallback(async () => {
     const chain = redAttackResult?.chain;
@@ -37,6 +65,8 @@ export function PurpleTeamPanel() {
 
     setCyberLoading(true);
     setCyberError(null);
+    setElapsed(null);
+    startRef.current = Date.now();
     try {
       const result = await cyberApi.purpleReview({
         attack_chain: chain,
@@ -44,10 +74,21 @@ export function PurpleTeamPanel() {
         alerts: alerts as Record<string, any>[],
       });
       setPurpleReviewResult(result);
+      setCacheMode(null);
       setTimelineStep(0);
       setIsPlaying(false);
+      setElapsed((Date.now() - startRef.current) / 1000);
+      try {
+        localStorage.setItem(
+          LAST_CACHE_KEY,
+          JSON.stringify({ mode: "live", result }),
+        );
+      } catch {
+        /* 存储配额等异常时忽略 */
+      }
     } catch (err) {
       setCyberError(err instanceof Error ? err.message : "Purple review failed");
+      setElapsed((Date.now() - startRef.current) / 1000);
     } finally {
       setCyberLoading(false);
     }
@@ -114,6 +155,18 @@ export function PurpleTeamPanel() {
         >
           {cyberLoading ? "Executing…" : "Re-run Purple Review"}
         </button>
+      </div>
+
+      {/* R15 执行元信息：耗时 / 缓存来源 */}
+      <div className="cyber-meta">
+        {elapsed != null ? (
+          <span className="cyber-meta__chip">⏱ 执行耗时 {elapsed.toFixed(1)}s</span>
+        ) : null}
+        {cacheMode ? (
+          <span className="cyber-meta__chip cyber-meta__chip--warn">
+            ↻ 已从浏览器缓存恢复
+          </span>
+        ) : null}
       </div>
 
       {/* Critique + Review summary */}
@@ -224,6 +277,9 @@ export function PurpleTeamPanel() {
           </ul>
         </div>
       ) : null}
+
+      {/* R15 可观测性：逐 agent 输入输出追踪 */}
+      <AgentTraceSection trace={purpleReviewResult.agent_trace} />
     </div>
   );
 }

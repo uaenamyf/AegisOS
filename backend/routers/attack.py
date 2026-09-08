@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from backend.core.composition import CyberDefenseServiceDep
 from backend.schemas import RedAttackRequest, RedAttackResponse
@@ -33,6 +36,40 @@ async def red_attack(
     """
     result = service.red_attack(body.target_range)
     return RedAttackResponse(**result)
+
+
+@router.post("/stream")
+async def red_attack_stream(
+    body: RedAttackRequest,
+    service: CyberDefenseServiceDep,
+) -> StreamingResponse:
+    """红队攻击链 SSE 流式执行（渐进展示）。
+
+    事件序列：``stage_start``（recon/vuln/exploit 各一次）→ ``stage_done``
+    （各步产出）→ ``done``（完整结果）；失败时 ``attack_error``。
+
+    Args:
+        body: 请求体，含目标网络范围。
+        service: 攻防服务依赖。
+
+    Returns:
+        ``text/event-stream`` 响应。
+    """
+
+    async def event_generator():
+        try:
+            async for event in service.stream_red_attack(body.target_range):
+                yield (
+                    f"event: {event['event']}\n"
+                    f"data: {json.dumps(event['data'], ensure_ascii=False)}\n\n"
+                )
+        except Exception as exc:  # noqa: BLE001 —— 兜底转 SSE 错误事件，避免连接悬挂
+            yield (
+                "event: attack_error\n"
+                f"data: {json.dumps({'message': str(exc)}, ensure_ascii=False)}\n\n"
+            )
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/chain/{range_id}", response_model=RedAttackResponse)

@@ -1,6 +1,9 @@
 // date: 2026-07-06
 // dev: Claude Code (glm-5.2)
 // changelog: 新建 G6 cyber 视图组件渲染测试（mock store + render 断言）
+// changelog: 2026-09-04 R5 追加 Drill tab 断言 + cyberApi drill mock
+// changelog: 2026-09-04 R7 补 systemApi mock（LlmModeBadge 挂载即请求 /system/mode）
+// changelog: 2026-09-04 R7 补 systemApi mock（LlmModeBadge 挂载即请求 /system/mode）
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -18,6 +21,30 @@ vi.mock("@/services/api/cyber", () => ({
     getDefense: vi.fn(),
     purpleReview: vi.fn(),
     getAttackTechniques: vi.fn(),
+    startDrill: vi.fn(),
+    getDrill: vi.fn(),
+    getDrillSummary: vi.fn(),
+    abortDrill: vi.fn(),
+    openDrillStream: vi.fn(),
+    listDrills: vi.fn().mockResolvedValue({ drills: [] }),
+    getDrillReport: vi.fn().mockResolvedValue({ report: "" }),
+    getDrillReportPdf: vi.fn().mockResolvedValue(new Blob()),
+  },
+}));
+
+// Mock systemApi so LlmModeBadge doesn't hit the network on mount
+vi.mock("@/services/api/system", () => ({
+  systemApi: {
+    getMode: vi.fn(),
+    setMode: vi.fn(),
+  },
+}));
+
+// Mock systemApi so LlmModeBadge doesn't hit the network on mount
+vi.mock("@/services/api/system", () => ({
+  systemApi: {
+    getMode: vi.fn(),
+    setMode: vi.fn(),
   },
 }));
 
@@ -55,13 +82,14 @@ function renderUI(ui: ReactNode) {
 }
 
 describe("CyberView", () => {
-  it("renders 4 tabs", async () => {
+  it("renders 5 tabs", async () => {
     const { CyberView } = await import("../CyberView");
     renderUI(<CyberView />);
     expect(screen.getByText("Red Team")).toBeDefined();
     expect(screen.getByText("Blue Team")).toBeDefined();
     expect(screen.getByText("Purple Review")).toBeDefined();
     expect(screen.getByText("Threat Intel")).toBeDefined();
+    expect(screen.getByText("Auto Drill")).toBeDefined();
   });
 
   it("shows Start Range button", async () => {
@@ -76,6 +104,14 @@ describe("CyberView", () => {
     fireEvent.click(screen.getByText("Blue Team"));
     // Blue team panel should now be rendered — it shows empty hint when no blue result
     // The hint text is "No defense result yet. Execute blue defense to see alerts and response plans."
+  });
+
+  it("shows Drill start button by default (auto-cycling is the main entry)", async () => {
+    const { CyberView } = await import("../CyberView");
+    renderUI(<CyberView />);
+    // 默认 tab 即循环对抗，无需点击即可见 Start Drill
+    fireEvent.click(screen.getByText("Auto Drill"));
+    expect(screen.getByText("▶ Start Drill")).toBeDefined();
   });
 });
 

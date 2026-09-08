@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from backend.core.composition import CyberDefenseServiceDep
 from backend.schemas import (
@@ -38,6 +41,41 @@ async def blue_defense(
     """
     result = service.blue_defense(body.event_stream)
     return BlueDefenseResponse(**result)
+
+
+@router.post("/stream")
+async def blue_defense_stream(
+    body: BlueDefenseRequest,
+    service: CyberDefenseServiceDep,
+) -> StreamingResponse:
+    """蓝队防御链 SSE 流式执行（渐进展示）。
+
+    事件序列：``stage_start``（detect/triage/hunt/ir 各一次）→
+    ``stage_done``（各步产出）→ ``done``（完整结果）；失败时
+    ``defense_error``。
+
+    Args:
+        body: 请求体，含事件流。
+        service: 攻防服务依赖。
+
+    Returns:
+        ``text/event-stream`` 响应。
+    """
+
+    async def event_generator():
+        try:
+            async for event in service.stream_blue_defense(body.event_stream):
+                yield (
+                    f"event: {event['event']}\n"
+                    f"data: {json.dumps(event['data'], ensure_ascii=False)}\n\n"
+                )
+        except Exception as exc:  # noqa: BLE001 —— 兜底转 SSE 错误事件，避免连接悬挂
+            yield (
+                "event: defense_error\n"
+                f"data: {json.dumps({'message': str(exc)}, ensure_ascii=False)}\n\n"
+            )
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/{range_id}", response_model=BlueDefenseResponse)

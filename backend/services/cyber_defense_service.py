@@ -15,13 +15,16 @@
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
 
 from aegisos_agents.memory.memory_store import MemoryStore
 from aegisos_agents.planning.orchestrator import CyberOrchestrator
-from backend.mocks.cyber_provider import _CyberMockProvider
+from backend.core import runtime_mode
 from data.api import GraphStoreAPI, create_graph_store
 from protocol.cyber import Asset, AttackChain, ResponsePlan, ThreatIntel
 
@@ -53,15 +56,24 @@ class CyberDefenseService:
         """初始化攻防服务。
 
         Args:
-            orchestrator: 编排器实例；None 时创建默认 Mock 模式实例。
+            orchestrator: 显式编排器实例；None 时每次调用动态跟随
+                :func:`runtime_mode.get_orchestrator`（mock/real 可随时切换）。
             memory: 记忆存储；None 时创建临时 MemoryStore。
             graph_store: 可选网络拓扑图存储后端。
         """
-        self._orchestrator = orchestrator or CyberOrchestrator(mock=_CyberMockProvider())
+        # R7: 显式注入优先（测试传 mock 编排器）；否则存 None，
+        # 由 _orchestrator 属性按当前运行时模式动态获取。
+        self._explicit_orchestrator = orchestrator
         self._memory = memory or MemoryStore()
         self._graph_store = graph_store or create_graph_store("in_memory")
         self._ranges: dict[str, dict[str, Any]] = {}
         self._intel_db = self._seed_intel_db()
+        self._drill_dir = Path(__file__).resolve().parent.parent.parent / "data" / "drills"
+
+    @property
+    def _orchestrator(self):
+        """当前编排器：显式注入优先，否则按运行时模式动态获取。"""
+        return self._explicit_orchestrator or runtime_mode.get_orchestrator()
 
     # ---- 靶场管理 ----
 
@@ -151,6 +163,95 @@ class CyberDefenseService:
         )
 
         return self._serialize_red(result)
+
+    async def stream_red_attack(self, target_range: str):
+        """红队攻击链流式执行（SSE 渐进展示）。
+
+        委托 :meth:`CyberOrchestrator.stream_red_chain`，将各步产出序列化
+        为 dict 逐步 ``yield``；``done`` 事件时写入情景记忆形成认知闭环。
+
+        Args:
+            target_range: 目标网络范围。
+
+        Yields:
+            dict: ``{"event": ..., "data": ...}`` 阶段事件（stage_start /
+            stage_done / done）。
+        """
+        async for event in self._orchestrator.stream_red_chain(target_range):
+            kind: str = event["event"]
+            data: dict[str, Any] = event["data"]
+            if kind == "stage_done" and data.get("stage") == "recon":
+                data = {
+                    "stage": "recon",
+                    "assets": [a.model_dump() for a in data["assets"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "vuln":
+                data = {
+                    "stage": "vuln",
+                    "findings": [f.model_dump() for f in data["findings"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "exploit":
+                chain = data["chain"]
+                data = {
+                    "stage": "exploit",
+                    "chain": chain.to_dict() if isinstance(chain, AttackChain) else chain,
+                }
+            elif kind == "done":
+                chain = data.get("chain")
+                chain_id = chain.chain_id if isinstance(chain, AttackChain) else "unknown"
+                from protocol.memory import MemoryPacket
+
+                self._memory.write(
+                    MemoryPacket(
+                        session_id="cyber-defense",
+                        task_id="red_attack",
+                        kind="decision",
+                        summary=f"red chain {chain_id} planned for {target_range}",
+                    )
+                )
+                data = self._serialize_red(data)
+            yield {"event": kind, "data": data}
+
+    async def stream_blue_defense(self, event_stream: list[dict[str, Any]] | None):
+        """蓝队链 SSE 流式执行（渐进展示）。
+
+        与 :meth:`stream_red_attack` 同构：逐步 yield ``stage_start`` /
+        ``stage_done`` / ``done`` 事件，各步 dataclass 序列化为 dict。
+
+        Args:
+            event_stream: 原始事件流列表。
+
+        Yields:
+            dict: ``{"event": ..., "data": ...}`` 阶段事件。
+        """
+        stream = event_stream or []
+        async for event in self._orchestrator.stream_blue_chain(stream):
+            kind: str = event["event"]
+            data: dict[str, Any] = event["data"]
+            if kind == "stage_done" and data.get("stage") == "detect":
+                data = {
+                    "stage": "detect",
+                    "alerts": [a.model_dump() for a in data["alerts"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "triage":
+                data = {
+                    "stage": "triage",
+                    "triaged": [a.model_dump() for a in data["triaged"]],
+                }
+            elif kind == "stage_done" and data.get("stage") == "hunt":
+                data = {
+                    "stage": "hunt",
+                    "hypotheses": data["hypotheses"],
+                }
+            elif kind == "stage_done" and data.get("stage") == "ir":
+                plan = data["plan"]
+                data = {
+                    "stage": "ir",
+                    "plan": _asdict(plan) if isinstance(plan, ResponsePlan) else plan,
+                }
+            elif kind == "done":
+                data = self._serialize_blue(data)
+            yield {"event": kind, "data": data}
 
     def get_attack_chain(self, range_id: str) -> dict[str, Any] | None:
         """获取指定靶场的攻击链 DAG。
@@ -259,6 +360,142 @@ class CyberDefenseService:
         result = self._orchestrator.run_purple_review(chain, plan, alert_objs)
         return result
 
+    # ---- 多轮演练（R1/R2） ----
+
+    def drill(
+        self,
+        target_range: str,
+        max_rounds: int = 5,
+        on_round=None,
+        summary_factory=None,
+        abort=None,
+        drill_id: str | None = None,
+        memory: MemoryStore | None = None,
+        memory_budget: int = 512,
+        min_rounds: int = 0,
+    ) -> dict[str, Any]:
+        """执行一键多轮攻防演练并持久化演练记录。
+
+        委托 :meth:`CyberOrchestrator.run_drill` 跑完「红→蓝→紫」≤max_rounds
+        轮并证据驱动收敛；演练结束后将完整记录（每轮战报 + 收敛码 + 总结）
+        写入 ``data/drills/<drill_id>.json``，便于回放与审计。
+
+        R8（跨轮记忆与上下文压缩）：默认将服务持有的 ``_memory`` 传入编排器，
+        每轮紫队评审后写记忆并按预算压缩，下一轮紫队携带
+        ``prior_rounds_summary`` 摘要（见编排器 ``run_drill``）；也可显式传入
+        自定义 ``memory`` 覆盖。
+
+        Args:
+            target_range: 目标网络范围（如 ``10.0.0.0/24``）。
+            max_rounds: 最大轮数，默认 5。
+            on_round: 可选回调 ``on_round(round_data, round_no)``，供 SSE 实时推送。
+            summary_factory: 可选总结定制回调；None 时用编排器默认总结。
+            abort: 可选 ``abort() -> bool`` 轮询中止回调；置真时演练在下一轮
+                边界终止（配合收敛规则 4），返回已收敛部分记录。
+            drill_id: 可选演练 ID；None 时由编排器按目标范围自动生成。
+                路由层传入可保证 registry / 落盘文件 / SSE 事件三者 ID 一致。
+            memory: 可选记忆存储覆盖；None 时使用服务默认 ``_memory``。
+            memory_budget: 工作记忆压缩 token 预算，默认 512。
+
+        Returns:
+            含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
+            ``rounds`` / ``summary`` 的演练结果字典，并已落盘。
+        """
+        mem = memory if memory is not None else self._memory
+        result = self._orchestrator.run_drill(
+            target_range,
+            max_rounds=max_rounds,
+            on_round=on_round,
+            abort=abort,
+            drill_id=drill_id,
+            memory=mem,
+            memory_budget=memory_budget,
+            min_rounds=min_rounds,
+        )
+        drill_id = result["drill_id"]
+        record = {
+            "drill_id": drill_id,
+            "target_range": target_range,
+            "max_rounds": max_rounds,
+            "rounds_executed": result["rounds_executed"],
+            "convergence_code": result["convergence_code"],
+            "rounds": result["rounds"],
+            "summary": result["summary"],
+        }
+        self._persist_drill(record)
+        return record
+
+    def get_drill(self, drill_id: str) -> dict[str, Any] | None:
+        """读取已持久化的演练记录。
+
+        Args:
+            drill_id: 演练 ID。
+
+        Returns:
+            演练记录字典；不存在返回 None。
+        """
+        path = self._drill_record_path(drill_id)
+        if not path.exists():
+            return None
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    def list_drills(self) -> list[dict[str, Any]]:
+        """列出所有持久化演练记录的元信息（不含完整战报）。
+
+        Returns:
+            每个元素含 ``drill_id`` / ``target_range`` / ``rounds_executed`` /
+            ``convergence_code`` 的列表，按生成时间倒序。
+        """
+        if not self._drill_dir.exists():
+            return []
+        meta: list[dict[str, Any]] = []
+        # 落盘文件名形如 drill-<hex>.json（连字符），glob 需匹配 drill*.json
+        for path in sorted(self._drill_dir.glob("drill*.json"), reverse=True):
+            rec = self.get_drill(path.stem)
+            if rec is None:
+                continue
+            meta.append(
+                {
+                    "drill_id": rec.get("drill_id"),
+                    "target_range": rec.get("target_range"),
+                    "rounds_executed": rec.get("rounds_executed"),
+                    "convergence_code": rec.get("convergence_code"),
+                    "created_at": rec.get("created_at"),
+                }
+            )
+        return meta
+
+    def _persist_drill(self, record: dict[str, Any]) -> str:
+        """将演练记录以 JSON 落盘到 ``data/drills/``。
+
+        Args:
+            record: 演练记录字典（须为 JSON 兼容结构）。
+
+        Returns:
+            落盘文件路径字符串。
+        """
+        self._drill_dir.mkdir(parents=True, exist_ok=True)
+        path = self._drill_record_path(record["drill_id"])
+        record.setdefault("created_at", datetime.now(UTC).isoformat())
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False, indent=2)
+        return str(path)
+
+    def _drill_record_path(self, drill_id: str) -> Path:
+        """计算演练记录的落盘路径。
+
+        Args:
+            drill_id: 演练 ID。
+
+        Returns:
+            ``data/drills/<drill_id>.json`` 的 Path。
+        """
+        return self._drill_dir / f"{drill_id}.json"
+
     # ---- 威胁情报 ----
 
     def get_attack_techniques(
@@ -330,6 +567,7 @@ class CyberDefenseService:
             "assets": [_asdict(a) if not isinstance(a, dict) else a for a in assets],
             "findings": [_asdict(f) if not isinstance(f, dict) else f for f in findings],
             "chain": chain.to_dict() if isinstance(chain, AttackChain) else chain,
+            "agent_trace": result.get("agent_trace", []),
         }
 
     @staticmethod
@@ -345,6 +583,7 @@ class CyberDefenseService:
             "triaged": [_asdict(a) if not isinstance(a, dict) else a for a in triaged],
             "hypotheses": hypotheses,
             "plan": _asdict(plan) if isinstance(plan, ResponsePlan) else plan,
+            "agent_trace": result.get("agent_trace", []),
         }
 
     @staticmethod

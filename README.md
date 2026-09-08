@@ -118,6 +118,53 @@ make build        # 构建产物/镜像
 make deploy ENV=dev
 ```
 
+## CyberDrill 攻防演练演示（无人干预一键跑通）
+
+> 场景 1「网络防御（红→蓝→紫完整链路）」一键闭环，赛事演示主场景。
+> 演示脚本**无人干预**全自动完成：启动后端 → 发起演练 → 多轮收敛 → 输出总结与落盘记录。
+
+### 一键演示（推荐）
+```powershell
+# Windows PowerShell（要求能 import fastapi 的 Python 在 PATH，或设置 $env:AEGIS_PYTHON）
+.\tooling\scripts\drill_demo.ps1
+
+# 自定义参数
+.\tooling\scripts\drill_demo.ps1 -TargetRange 192.168.1.0/24 -MaxRounds 3
+.\tooling\scripts\drill_demo.ps1 -UseRealModel   # 切换真实 LLM（需 OPENAI_API_KEY）
+.\tooling\scripts\drill_demo.ps1 -SkipBackendStart # 后端已在运行时跳过自动启动
+.\tooling\scripts\drill_demo.ps1 -KeepRunning      # 演示结束不停止自动启动的后端
+```
+
+脚本自动完成：探测 Python → 启动 uvicorn（默认 mock 模式）→ `POST /drill/start` →
+轮询至收敛 → 打印收敛码/轮数/总结/跨轮记忆轨迹/落盘路径。如终端中文乱码，先执行 `chcp 65001` 或使用 Windows Terminal。
+
+### 手动演示
+```powershell
+.\start.ps1 backend     # 启动后端（默认 mock；设 AEGIS_USE_MOCK=false + OPENAI_API_KEY 切真实）
+# 另开终端:
+.\start.ps1 frontend    # 启动前端 → http://localhost:5173 → 侧边栏 Cyber → Drill tab
+```
+
+### 能力落点（R1-R11）
+| 轮次 | 能力 | 演示可见证据 |
+|---|---|---|
+| R1-R1.5 | 收敛内核 + mock 按轮演化 | 多轮演练自动收敛（3-5 轮内收敛码 converged） |
+| R2 | 演练持久化 | `data/drills/<drill_id>.json` 落盘可回放 |
+| R3 | drill 路由 REST+SSE | `/api/v1/drill/*` 5 端点；`/docs` 可调试 |
+| R5 | 前端演练视图 | Drill tab 开始/停止 + 轮次时间线 + 总结报告 |
+| R7 | 真实 LLM 接入 | 运行时 mock/real 模式切换 + 前端徽标 |
+| R8 | 跨轮记忆与上下文压缩 | 轮次卡 🧠 mem 徽标 + 总结「Cross-Round Memory」区 |
+| R9 | 事件总线化 | `GET /api/v1/events?stream=drill.round` 订阅增量战报 |
+| R10 | 端-边-云自适应调度 | 轮次卡 red/blue/purple 三阶段 tier 徽标 + 卸载理由 |
+
+### 实测指引
+| 层 | 怎么测 | 看什么 |
+|---|---|---|
+| 后端 | 脚本或 `start.ps1 backend` | `/api/v1/health`；`/docs` 调 drill 端点（X-API-Key: aegis-dev-key） |
+| 前端 | `start.ps1 frontend` → Cyber | Drill tab 时间线 + 总结 + mem/placement 徽标 |
+| 事件流 | 演练进行中 | `GET /api/v1/events?stream=drill.round` |
+| 数据落盘 | 演练结束 | `data/drills/<drill_id>.json`（各轮战报 + 总结） |
+
 ## 实际目录结构（自动生成）
 ```
 aegisos.egg-info/

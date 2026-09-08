@@ -261,10 +261,33 @@ export interface TopologyResponse {
   edges: Record<string, any>[];
 }
 
+// ---- R15 可观测性：逐 agent 输入输出追踪 ----
+export interface AgentTraceEntry {
+  agent: string;
+  input: string;
+  output: Record<string, any>;
+}
+
 export interface RedAttackResponse {
   assets: Asset[];
   findings: VulnFinding[];
   chain: Record<string, any>;
+  agent_trace?: AgentTraceEntry[];
+}
+
+// ---- 红队攻击流式（SSE 渐进展示）----
+// date: 2026-09-05
+// changelog: 新增——与 backend/routers/attack.py 的 /attack/stream 契约对齐
+// （事件名锚点：stage_start / stage_done / done / attack_error）
+export type RedAttackStreamEventName =
+  | "stage_start"
+  | "stage_done"
+  | "done"
+  | "attack_error";
+
+export interface RedAttackStreamEvent {
+  name: RedAttackStreamEventName;
+  data: Record<string, any>;
 }
 
 export interface BlueDefenseResponse {
@@ -272,11 +295,157 @@ export interface BlueDefenseResponse {
   triaged: Alert[];
   hypotheses: Record<string, any>[];
   plan: Record<string, any>;
+  agent_trace?: AgentTraceEntry[];
+}
+
+// ---- T1 蓝队流式（SSE 渐进展示）----
+// date: 2026-09-06
+// changelog: 新增——与 backend/routers/defense.py 的 /defense/stream 契约对齐
+// （事件名锚点：stage_start / stage_done / done / defense_error）
+export type BlueDefenseStreamEventName =
+  | "stage_start"
+  | "stage_done"
+  | "done"
+  | "defense_error";
+
+export interface BlueDefenseStreamEvent {
+  name: BlueDefenseStreamEventName;
+  data: Record<string, any>;
 }
 
 export interface PurpleReviewResponse {
   critique: Record<string, any>;
   review: Record<string, any>;
+  agent_trace?: AgentTraceEntry[];
+}
+
+// ---- CyberDrill（多轮攻防演练）----
+// date: 2026-09-04 dev: AegisOS Dev
+// changelog: R4 新增 drill 类型——与 backend/routers/drill.py 契约严格对齐（事件名锚点）
+
+// ---- 运行时模式（R7：mock / 真实 LLM 切换）----
+// date: 2026-09-04 dev: AegisOS Dev
+// changelog: R7 新增——与 backend/routers/system.py 契约对齐
+
+export type RuntimeMode = "mock" | "real";
+
+export interface SystemModeInfo {
+  mode: RuntimeMode;
+  model: string;
+  provider: string;
+  has_key: boolean;
+  available: RuntimeMode[];
+  /** Key 是否已落盘 .env（false = 仅后端进程内存，重启失效）。 */
+  persisted?: boolean;
+}
+export interface StartDrillRequest {
+  target_range?: string;
+  max_rounds?: number;
+}
+
+export interface StartDrillResponse {
+  drill_id: string;
+  status: DrillStatus;
+  max_rounds: number;
+}
+
+export interface DrillRoundRed {
+  ok: boolean;
+  assets: string[];
+  finding_count: number;
+  steps: Record<string, any>[];
+  new_steps: Record<string, any>[];
+}
+
+export interface DrillRoundBlue {
+  ok: boolean;
+  alerts: Record<string, any>[];
+  triaged_count: number;
+  plan: Record<string, any>;
+}
+
+export interface DrillRoundPurple {
+  ok: boolean;
+  critique: Record<string, any>;
+  review: Record<string, any>;
+  converged: boolean;
+  valid: boolean;
+  new_issue_count: number;
+}
+
+/** R10: 演练阶段执行位置标注（端-边-云自适应调度）。 */
+export interface DrillPhasePlacement {
+  tier: "device" | "edge" | "cloud";
+  model_id: string;
+  reason: string;
+}
+
+export interface DrillRoundPhases {
+  red: DrillPhasePlacement;
+  blue: DrillPhasePlacement;
+  purple: DrillPhasePlacement;
+}
+
+export interface DrillRound {
+  round: number;
+  red: DrillRoundRed;
+  blue: DrillRoundBlue;
+  purple: DrillRoundPurple;
+  /** R10: 三阶段执行位置标注。 */
+  phase?: DrillRoundPhases;
+  /** R8: 跨轮记忆——本轮紫队携带的前序轮次决策摘要（首轮为 null）。 */
+  prior_rounds_summary?: string | null;
+  event_stream: Record<string, any>[];
+  convergence_code: string;
+}
+
+export interface DrillMemoryTraceEntry {
+  round: number;
+  stored_task_id: string;
+  packet_summary: string;
+  compressed_count: number;
+  next_round_summary: string | null;
+}
+
+export interface DrillSummaryResponse {
+  conclusion: string;
+  convergence_code: string;
+  rounds_executed: number;
+  /** R8: 跨轮记忆轨迹——每轮写入的记忆包 + 为下一轮生成的摘要。 */
+  memory_trace?: DrillMemoryTraceEntry[];
+}
+
+export interface DrillRecord {
+  drill_id: string;
+  target_range: string;
+  max_rounds: number;
+  rounds_executed: number;
+  convergence_code: string;
+  rounds: DrillRound[];
+  summary: DrillSummaryResponse;
+  created_at?: string;
+}
+
+// T7: 历史演练元信息（GET /drill/list）
+export interface DrillMeta {
+  drill_id: string;
+  target_range: string;
+  rounds_executed: number;
+  convergence_code: string;
+  created_at?: string;
+}
+
+/** SSE 事件名（锚点：backend/routers/drill.py 的 emit 调用）。 */
+export type DrillEventName =
+  | "drill_start"
+  | "drill_round"
+  | "drill_summary"
+  | "drill_done"
+  | "drill_error";
+
+export interface DrillEvent {
+  name: DrillEventName;
+  data: Record<string, any>;
 }
 
 export interface ToolCall {

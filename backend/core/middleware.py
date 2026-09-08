@@ -16,7 +16,7 @@ import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 from tooling.configs.settings import settings
 
@@ -64,10 +64,20 @@ class TraceMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception:
-            # 下游抛异常时记录错误日志并重新抛出，保证不吞没异常。
+            # 下游抛异常时记录错误日志，并兜底返回统一 500（不 re-raise）：
+            # re-raise 会让 ServerErrorMiddleware 生成 500，该响应不经过 CORS
+            # 中间件，浏览器会误报“无 Access-Control-Allow-Origin”；此处返回后
+            # 响应仍会经过 CORSMiddleware 补上跨域头。
             elapsed = (time.perf_counter() - start) * 1000
             logger.exception("trace=%s %s %s ERROR in %.2fms", trace_id, method, path, elapsed)
-            raise
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "code": "INTERNAL",
+                    "message": "internal server error",
+                    "trace_id": trace_id,
+                },
+            )
 
         elapsed = (time.perf_counter() - start) * 1000
         # 将 trace id 回写到响应头，便于客户端关联日志。

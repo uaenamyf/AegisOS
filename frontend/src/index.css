@@ -326,6 +326,64 @@ body {
   border-color: var(--text-muted);
 }
 
+/* R7: 运行时模式徽标（mock / 真实 LLM） */
+.llm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: default;
+  transition: all 0.15s;
+}
+.llm-badge--switchable {
+  cursor: pointer;
+}
+.llm-badge--switchable:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.llm-badge:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.llm-badge__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.llm-badge__dot--real {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+.llm-badge__dot--mock {
+  background: var(--warning);
+}
+.llm-badge__dot--unknown {
+  background: var(--text-muted);
+}
+.llm-badge--real {
+  color: var(--success);
+  border-color: var(--success);
+}
+.llm-badge--mock {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.llm-badge--unknown {
+  color: var(--text-muted);
+}
+.llm-badge__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* Chat */
 .chat {
   display: flex;
@@ -801,6 +859,32 @@ body {
   color: var(--text-muted);
   border-color: var(--text-muted);
 }
+.badge--info {
+  color: var(--info, #4db6ff);
+  border-color: var(--info, #4db6ff);
+}
+/* R10: 端边云 tier 徽标 */
+.badge--tier {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+.badge--tier-device {
+  color: var(--success);
+  border-color: var(--success);
+}
+.badge--tier-edge {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.badge--tier-cloud {
+  color: var(--info, #4db6ff);
+  border-color: var(--info, #4db6ff);
+}
+.cyber-drill__placement {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 
 /* ============ Cyber Defense View ============ */
 /* date: 2026-06-28
@@ -984,6 +1068,40 @@ body {
   border-radius: var(--radius);
   color: var(--warning);
   font-size: 13px;
+}
+
+/* 红队攻击流式阶段指示器（SSE 渐进展示） */
+.cyber-attack__stages {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 4px;
+}
+
+.cyber-attack__stage {
+  font-size: 12px;
+  color: var(--text-muted, #8a8f98);
+  padding: 4px 12px;
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.cyber-attack__stage.is-active {
+  color: var(--accent, #38bdf8);
+  border-color: var(--accent, #38bdf8);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+.cyber-attack__stage.is-done {
+  color: #4ade80;
+  border-color: #4ade80;
+}
+
+.cyber-attack__cache-note {
+  font-size: 11px;
+  color: var(--text-muted, #8a8f98);
+  margin: 8px 0 0;
 }
 
 .cyber-panel__actions {
@@ -1415,6 +1533,232 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* CyberDrill (R5) */
+.cyber-drill__controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.cyber-drill__rounds-input {
+  width: 72px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.cyber-drill__rounds-input:disabled,
+.cyber-drill__controls .cyber-view__range-input:disabled {
+  opacity: 0.6;
+}
+
+.cyber-drill__id {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.cyber-drill__id code {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.cyber-drill__error {
+  padding: 10px 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--danger);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.cyber-drill__empty {
+  padding: 24px 0;
+}
+
+.cyber-drill__timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* R18d：去掉固定 max-height/内部滚动，改为页面整体滚动——
+     原 420px + overflow-y:auto 会在展开卡片后吞掉滚轮焦点，内容
+     超出时"往下滑不动"。现在卡片展开多少就撑高多少，整页滚动。 */
+  max-height: none;
+  overflow: visible;
+  padding-right: 4px;
+  margin-bottom: 14px;
+}
+
+.cyber-round {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.cyber-round--expanded {
+  border-color: var(--accent);
+}
+
+.cyber-round__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.cyber-round__header:hover {
+  background: rgba(47, 129, 247, 0.06);
+}
+
+.cyber-round__num {
+  font-weight: 700;
+  flex-shrink: 0;
+  min-width: 62px;
+}
+
+.cyber-round__summary {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cyber-round__stat {
+  white-space: nowrap;
+}
+
+.cyber-round__chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cyber-round__detail {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.cyber-drill__waiting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cyber-drill__spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: cyber-drill-spin 0.8s linear infinite;
+}
+
+@keyframes cyber-drill-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cyber-drill__summary {
+  padding: 14px 16px;
+  border: 1px solid var(--success);
+  border-radius: var(--radius);
+  background: rgba(40, 167, 69, 0.06);
+}
+
+.cyber-drill__summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cyber-drill__summary-stat {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* R8: 跨轮记忆摘要区 */
+.cyber-drill__memory {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(77, 182, 255, 0.35);
+}
+.cyber-drill__memory-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--info, #4db6ff);
+  margin-bottom: 8px;
+}
+.cyber-drill__memory-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+}
+.cyber-drill__memory-round {
+  flex: 0 0 auto;
+  min-width: 26px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--info, #4db6ff);
+  background: rgba(77, 182, 255, 0.1);
+  border-radius: 4px;
+  text-align: center;
+  padding: 1px 4px;
+}
+.cyber-drill__memory-summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+/* Auto Drill 运行记录报告（Markdown 折叠展示） */
+.cyber-drill__report-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(77, 182, 255, 0.35);
+}
+.cyber-drill__report {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(10, 12, 18, 0.6);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 480px;
+  overflow: auto;
 }
 
 /* Responsive */
@@ -2109,6 +2453,90 @@ body {
         .settings-note__mark { color: var(--warning); font-family: var(--font-mono); font-weight: 700; }
         .settings-note code { color: var(--text-primary); font-family: var(--font-mono); }
 
+        /* 云侧节点卡片内的 OpenAI API Key 配置（Provider 选 OpenAI API 时显示） */
+        .node-config__apikey {
+          margin-top: 12px;
+          padding: 12px;
+          border: 1px dashed rgba(210, 153, 34, 0.5);
+          border-radius: 6px;
+          background: rgba(210, 153, 34, 0.06);
+        }
+        .node-config__apikey-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+        .node-config__apikey-row {
+          display: flex;
+          gap: 8px;
+        }
+        .node-config__apikey-row input {
+          flex: 1;
+          min-width: 0;
+          padding: 8px 10px;
+          background: var(--bg-elevated, #10131a);
+          border: 1px solid var(--border);
+          border-radius: 4px;
+          color: var(--text-primary);
+          font-family: var(--font-mono);
+          font-size: 12px;
+        }
+        .node-config__apikey-row .settings-button {
+          min-height: 32px;
+          white-space: nowrap;
+        }
+        .node-config__apikey-msg {
+          margin: 8px 0 0;
+          font-size: 11px;
+          line-height: 1.5;
+          color: var(--success, #28a745);
+          word-break: break-word;
+        }
+        /* 不落盘（仅后端进程内存）勾选框 */
+        .node-config__apikey-persist {
+          display: flex;
+          align-items: flex-start;
+          gap: 7px;
+          margin-top: 9px;
+          font-size: 12px;
+          line-height: 1.45;
+          color: var(--text-secondary);
+          cursor: pointer;
+        }
+        .node-config__apikey-persist input[type="checkbox"] {
+          flex-shrink: 0;
+          width: 14px;
+          height: 14px;
+          margin: 1px 0 0;
+          accent-color: var(--accent, #d29922);
+          cursor: pointer;
+        }
+        .node-config__apikey-persist em {
+          display: block;
+          margin-top: 2px;
+          font-style: normal;
+          font-size: 11px;
+          color: var(--text-muted, #6e7681);
+        }
+        .node-config__apikey-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+          margin-top: 9px;
+        }
+        .node-config__apikey-actions .settings-button {
+          font-size: 11px;
+          padding: 4px 10px;
+        }
+        .node-config__apikey-msg--error {
+          color: var(--danger, #e05252);
+        }
+
         @media (max-width: 980px) {
           .settings-grid { grid-template-columns: 1fr; }
           .node-config { min-height: 0; }
@@ -2119,3 +2547,612 @@ body {
           .settings-actions__buttons { width: 100%; }
           .settings-button { flex: 1; }
         }
+
+/* ============ R15 可观测性 & 可视化增强 ============ */
+/* Agent 运行记录（逐 agent 输入输出追踪） */
+.cyber-trace {
+  margin-top: 16px;
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-secondary, #171a21);
+}
+.cyber-trace__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary, #e6e9ef);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.cyber-trace__header:hover { background: var(--bg-tertiary, #1e232c); }
+.cyber-trace__toggle { color: var(--accent, #4f8cff); font-size: 10px; }
+.cyber-trace__count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted, #8a93a3);
+  background: var(--bg-tertiary, #1e232c);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.cyber-trace__body { border-top: 1px solid var(--border, #2a2f3a); }
+.cyber-trace__entry { border-bottom: 1px solid var(--border, #2a2f3a); }
+.cyber-trace__entry:last-child { border-bottom: none; }
+.cyber-trace__entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary, #e6e9ef);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.cyber-trace__entry-header:hover { background: var(--bg-tertiary, #1e232c); }
+.cyber-trace__step {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent, #4f8cff);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cyber-trace__agent {
+  flex: none;
+  font-weight: 600;
+  color: var(--accent, #4f8cff);
+  min-width: 150px;
+}
+.cyber-trace__summary {
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted, #8a93a3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cyber-trace__detail { padding: 10px 12px; background: var(--bg-tertiary, #1e232c); }
+.cyber-trace__block { margin-bottom: 8px; }
+.cyber-trace__block:last-child { margin-bottom: 0; }
+.cyber-trace__block-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted, #8a93a3);
+  margin-bottom: 4px;
+}
+.cyber-trace__pre {
+  margin: 0;
+  padding: 8px 10px;
+  background: #10131a;
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary, #b8c0cc);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}
+
+/* 分布条（严重度 / 动作类型） */
+.cyber-dist { margin-top: 12px; }
+.cyber-dist__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.cyber-dist__label {
+  flex: none;
+  width: 64px;
+  color: var(--text-muted, #8a93a3);
+  text-transform: capitalize;
+}
+.cyber-dist__track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg-tertiary, #1e232c);
+  overflow: hidden;
+}
+.cyber-dist__fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+.cyber-dist__fill--danger { background: var(--danger, #e5484d); }
+.cyber-dist__fill--warning { background: var(--warning, #f5a524); }
+.cyber-dist__fill--success { background: var(--success, #28a745); }
+.cyber-dist__fill--accent { background: var(--accent, #4f8cff); }
+.cyber-dist__count {
+  flex: none;
+  min-width: 28px;
+  text-align: right;
+  color: var(--text-primary, #e6e9ef);
+  font-weight: 600;
+}
+
+/* 执行耗时徽章 / 缓存来源徽章 */
+.cyber-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.cyber-meta__chip {
+  font-size: 11px;
+  color: var(--text-muted, #8a93a3);
+  background: var(--bg-tertiary, #1e232c);
+  padding: 3px 10px;
+  border-radius: 10px;
+}
+.cyber-meta__chip--accent { color: var(--accent, #4f8cff); }
+.cyber-meta__chip--warn { color: var(--warning, #f5a524); }
+
+/* ============ T4 R10: 端-边-云执行位置(轮次详情) ============ */
+.cyber-placement {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border, #3a4a5f);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-placement .cyber-panel__subtitle {
+  margin: 0 0 6px;
+}
+.cyber-placement__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cyber-placement__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.cyber-placement__phase {
+  width: 74px;
+  color: var(--text-dim, #9db2c6);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.cyber-placement__phase em {
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.cyber-placement__badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+.cyber-placement__badge--device { background: #2e9e5b; }
+.cyber-placement__badge--edge   { background: #2f7de1; }
+.cyber-placement__badge--cloud  { background: #8a5cf6; }
+.cyber-placement__model {
+  color: #e8eef7;
+  flex-shrink: 0;
+  font-family: var(--font-mono, monospace);
+}
+.cyber-placement__reason {
+  color: var(--text-dim, #9db2c6);
+  flex: 1;
+  min-width: 140px;
+}
+
+/* ============ T9: 推理轨迹 · 攻击链路依据(红队面板) ============ */
+.cyber-reason {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #3a4a5f);
+  border-left: 3px solid var(--danger, #e5534b);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-reason__summary {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary, #b6c4d6);
+  border-left: 2px solid var(--danger, #e5534b);
+  padding-left: 10px;
+}
+.cyber-reason__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cyber-reason__item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.cyber-reason__idx {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--danger, #e5534b);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.cyber-reason__body {
+  flex: 1;
+  min-width: 0;
+}
+.cyber-reason__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cyber-reason__name {
+  color: var(--text-primary, #e8eef7);
+  font-weight: 600;
+  font-size: 12px;
+}
+.cyber-reason__tech {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(229, 83, 75, 0.15);
+  color: var(--danger, #e5534b);
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+}
+.cyber-reason__tactic {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(138, 92, 246, 0.18);
+  color: #b39df7;
+  font-size: 10px;
+}
+.cyber-reason__path {
+  color: var(--text-muted, #7a8aa0);
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+}
+.cyber-reason__why {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-dim, #9db2c6);
+}
+
+/* ============ T6: 防御覆盖率与安全评分 ============ */
+.cyber-stat__value--success { color: #2e9e5b; }
+.cyber-stat__value--warning { color: #d9a13b; }
+.cyber-stat__value--danger  { color: #e05252; }
+.cyber-metrics {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.cyber-metrics .cyber-score {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #fff;
+}
+.cyber-metrics__hint {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-left: 4px;
+}
+
+/* ============ T3: 收敛趋势图 ============ */
+.cyber-trend {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #3a4a5f);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-trend__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.cyber-trend__head .cyber-panel__subtitle { margin: 0; }
+.cyber-trend__legend {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+  flex-wrap: wrap;
+}
+.cyber-trend__legend i {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.cyber-trend__ln--red { background: #e05252; }
+.cyber-trend__ln--blue { background: #2f7de1; }
+.cyber-trend__ln--green { background: #2e9e5b; }
+.cyber-trend__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.cyber-trend__note {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+}
+
+/* ============ T5: 缺口闭环图 ============ */
+.cyber-closure {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #3a4a5f);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+
+/* ============ T7: 历史演练对比 ============ */
+.cyber-history {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #3a4a5f);
+  border-radius: 8px;
+  background: rgba(15, 22, 32, 0.35);
+}
+.cyber-history__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.cyber-history__head .cyber-panel__subtitle { margin: 0; }
+.cyber-history__hint {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+}
+.cyber-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.cyber-history__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+}
+.cyber-history__item:hover { background: rgba(255, 255, 255, 0.06); }
+.cyber-history__item.is-checked { border-color: var(--accent, #4f8ef7); }
+.cyber-history__item-id {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary, #e8eef7);
+  flex-shrink: 0;
+}
+.cyber-history__current {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  background: #2e9e5b;
+  color: #fff;
+}
+.cyber-history__item-meta { color: var(--text-dim, #9db2c6); flex: 1; }
+.cyber-history__item-time { color: var(--text-dim, #9db2c6); font-size: 11px; }
+.cyber-history__load { margin-top: 8px; }
+.cyber-compare { margin-top: 10px; }
+.cyber-compare__table { overflow-x: auto; }
+.cyber-compare__table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.cyber-compare__table th,
+.cyber-compare__table td {
+  text-align: left;
+  padding: 5px 8px;
+  border: 1px solid var(--border, #3a4a5f);
+}
+.cyber-compare__table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary, #e8eef7);
+}
+.cyber-compare__table td:first-child { color: var(--text-dim, #9db2c6); white-space: nowrap; }
+.cyber-compare__row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.cyber-compare__chart { flex: 1; min-width: 260px; }
+.cyber-compare__legend {
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+  margin-bottom: 2px;
+}
+.cyber-compare__legend i {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.cyber-compare__svg { width: 100%; height: auto; display: block; }
+.cyber-view__btn--ghost {
+  background: transparent;
+  border: 1px solid var(--border, #3a4a5f);
+  color: var(--text-dim, #9db2c6);
+  font-size: 11px;
+  padding: 3px 10px;
+}
+
+/* ============ T5 R18g: 缺口闭环循环视图 ============ */
+.cyber-loop__cycle {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 10px;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.cyber-loop__node {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 150px;
+  min-width: 140px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  border-top: 2px solid var(--border, #3a4a5f);
+  background: rgba(15, 22, 32, 0.5);
+}
+.cyber-loop__node b { font-size: 12px; color: var(--text-primary, #e8eef7); }
+.cyber-loop__node span { font-size: 11px; line-height: 1.45; color: var(--text-dim, #9db2c6); }
+.cyber-loop__node--red { border-top-color: #e05252; }
+.cyber-loop__node--blue { border-top-color: #2f7de1; }
+.cyber-loop__node--purple { border-top-color: #8b5cf6; }
+.cyber-loop__node--feedback { border-top-color: #2e9e5b; }
+.cyber-loop__sep {
+  align-self: center;
+  font-size: 13px;
+  color: var(--text-dim, #9db2c6);
+  padding: 0 2px;
+}
+.cyber-loop__rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cyber-loop__round {
+  border: 1px solid var(--border, #3a4a5f);
+  border-radius: 6px;
+  background: rgba(15, 22, 32, 0.35);
+  overflow: hidden;
+}
+.cyber-loop__roundhead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.cyber-loop__roundhead:hover { background: rgba(255, 255, 255, 0.04); }
+.cyber-loop__roundno {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--text-primary, #e8eef7);
+}
+.cyber-loop__who {
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.cyber-loop__who--red { color: #f2a0a0; border-color: rgba(224, 82, 82, 0.5); }
+.cyber-loop__who--blue { color: #a4c8f2; border-color: rgba(47, 125, 225, 0.5); }
+.cyber-loop__who--purple { color: #e0b45e; border-color: rgba(217, 161, 59, 0.5); }
+.cyber-loop__who--purple.is-ok { color: #7fd6a0; border-color: rgba(46, 158, 91, 0.6); }
+.cyber-loop__link {
+  flex: 1 1 220px;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+}
+.cyber-loop__caret {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+}
+.cyber-loop__detail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 9px 7px 9px;
+  font-size: 11px;
+  color: var(--text-dim, #9db2c6);
+}
+.cyber-loop__tag {
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #fff;
+}
+.cyber-loop__tag--red { background: rgba(224, 82, 82, 0.75); }
+.cyber-loop__tag--blue { background: rgba(47, 125, 225, 0.75); }
+.cyber-loop__issues {
+  margin: 0;
+  padding: 7px 9px 8px 26px;
+  border-top: 1px dashed var(--border, #3a4a5f);
+  list-style: disc;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim, #9db2c6);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.cyber-loop__summary {
+  margin: 9px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #3a4a5f);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim, #9db2c6);
+}

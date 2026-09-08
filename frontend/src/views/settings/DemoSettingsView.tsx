@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { config } from "@/config";
+import { systemApi } from "@/services/api/system";
 
 type TierKey = "device" | "edge" | "cloud";
 type NodeConfig = { enabled: boolean; label: string; api: string; url: string; modelName: string; capabilities: string };
@@ -20,7 +21,14 @@ const STORAGE_KEY = "aegisos-node-config";
 function readStored(): Record<TierKey, NodeConfig> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    if (raw) {
+      const stored = JSON.parse(raw) as Partial<Record<TierKey, Partial<NodeConfig>>>;
+      // 逐 tier 深合并，防止旧本地配置吞掉默认字段（如 provider 被覆盖导致 UI 缺失）
+      return (Object.keys(DEFAULTS) as TierKey[]).reduce<Record<TierKey, NodeConfig>>(
+        (acc, tier) => ({ ...acc, [tier]: { ...DEFAULTS[tier], ...stored[tier] } }),
+        DEFAULTS,
+      );
+    }
   } catch {
     // Fall back to the known demo configuration.
   }
@@ -30,8 +38,69 @@ function readStored(): Record<TierKey, NodeConfig> {
 export function DemoSettingsView() {
   const [nodes, setNodes] = useState(DEFAULTS);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [cloudApiKey, setCloudApiKey] = useState("");
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [keySaving, setKeySaving] = useState(false);
+  const [keyMsg, setKeyMsg] = useState<string | null>(null);
+  /** true=落盘 .env（重启后端仍有效）；false=仅后端进程内存。 */
+  const [persistKey, setPersistKey] = useState(true);
+  const [keyPersisted, setKeyPersisted] = useState<boolean | null>(null);
+  const [keyClearing, setKeyClearing] = useState(false);
 
-  useEffect(() => setNodes(readStored()), []);
+  useEffect(() => {
+    setNodes(readStored());
+    systemApi
+      .getMode()
+      .then((m) => setHasKey(m.has_key))
+      .catch(() => setHasKey(null));
+    systemApi
+      .getApiKeyStatus()
+      .then((s) => {
+        setHasKey(s.has_key);
+        setKeyPersisted(s.persisted);
+      })
+      .catch(() => setKeyPersisted(null));
+  }, []);
+
+  const saveCloudApiKey = async () => {
+    const key = cloudApiKey.trim();
+    if (!key || keySaving) return;
+    setKeySaving(true);
+    setKeyMsg(null);
+    try {
+      const m = await systemApi.setApiKey(key, persistKey);
+      setHasKey(m.has_key);
+      setKeyPersisted(persistKey);
+      setCloudApiKey("");
+      setKeyMsg(
+        m.has_key
+          ? persistKey
+            ? "✓ 已落盘 tooling/configs/.env，后端重启后仍有效。"
+            : "✓ 仅写入当前后端进程内存，硬盘无副本，后端重启即失效。"
+          : "保存完成，但后端未识别到 Key。",
+      );
+    } catch (err) {
+      setKeyMsg(err instanceof Error ? `保存失败：${err.message}` : "保存失败");
+    } finally {
+      setKeySaving(false);
+    }
+  };
+
+  const clearCloudApiKey = async () => {
+    if (keyClearing) return;
+    setKeyClearing(true);
+    setKeyMsg(null);
+    try {
+      const m = await systemApi.deleteApiKey();
+      setHasKey(m.has_key);
+      setKeyPersisted(false);
+      setKeyMsg("✓ 已清除本机 Key（含 .env 落盘副本），需重新输入才能走真实 LLM。");
+    } catch (err) {
+      setKeyMsg(err instanceof Error ? `清除失败：${err.message}` : "清除失败");
+    } finally {
+      setKeyClearing(false);
+    }
+  };
 
   const update = (tier: TierKey, patch: Partial<NodeConfig>) => {
     setNodes((current) => ({ ...current, [tier]: { ...current[tier], ...patch } }));
@@ -101,11 +170,75 @@ export function DemoSettingsView() {
               <label><span>Model name</span><input value={node.modelName} onChange={(event) => update(tier, { modelName: event.target.value })} /></label>
               <label className="node-config__field--wide"><span>能力标签</span><input value={node.capabilities} onChange={(event) => update(tier, { capabilities: event.target.value })} /></label>
             </div>
+            {node.api === "openai_api" && (
+              <div className="node-config__apikey">
+                <div className="node-config__apikey-head">
+                  <span>OpenAI 兼容 API Key（DeepSeek / OpenAI）</span>
+                  <span className={`badge badge--${hasKey === null ? "pending" : hasKey ? "succeeded" : "cancelled"}`}>
+                    {hasKey === null
+                      ? "查询中…"
+                      : hasKey
+                        ? keyPersisted === false
+                          ? "已配置·仅内存"
+                          : keyPersisted === true
+                            ? "已配置·已落盘"
+                            : "已配置"
+                        : "未配置"}
+                  </span>
+                </div>
+                <div className="node-config__apikey-row">
+                  <input
+                    type="password"
+                    placeholder={hasKey ? "已配置 Key，输入新 Key 覆盖" : "sk-…"}
+                    value={cloudApiKey}
+                    onChange={(e) => setCloudApiKey(e.target.value)}
+                    aria-label="API Key"
+                  />
+                  <button
+                    type="button"
+                    className="settings-button settings-button--primary"
+                    onClick={() => void saveCloudApiKey()}
+                    disabled={keySaving || !cloudApiKey.trim()}
+                  >
+                    {keySaving ? "同步中…" : "同步到后端"}
+                  </button>
+                </div>
+                <label className="node-config__apikey-persist">
+                  <input
+                    type="checkbox"
+                    checked={!persistKey}
+                    onChange={(e) => setPersistKey(!e.target.checked)}
+                  />
+                  <span>
+                    不落盘，仅当前后端运行期间有效
+                    <em>勾选后 Key 只写进后端进程内存，硬盘零副本，后端重启即失效；不勾选则存 .env，重启仍有效。</em>
+                  </span>
+                </label>
+                <div className="node-config__apikey-actions">
+                  <button
+                    type="button"
+                    className="settings-button settings-button--quiet"
+                    onClick={() => void clearCloudApiKey()}
+                    disabled={keyClearing || !hasKey}
+                    title="删除 .env 落盘副本并清空后端进程环境变量"
+                  >
+                    {keyClearing ? "清除中…" : "清除本机 Key"}
+                  </button>
+                </div>
+                {keyMsg ? (
+                  <p
+                    className={`node-config__apikey-msg${keyMsg.startsWith("✓") ? "" : " node-config__apikey-msg--error"}`}
+                  >
+                    {keyMsg}
+                  </p>
+                ) : null}
+              </div>
+            )}
             <footer className="node-config__footer"><span className={`node-config__dot${node.enabled ? " node-config__dot--on" : ""}`} /><span>{node.enabled ? "参与任务调度" : "已停用"}</span><code>{tier}</code></footer>
           </article>;
         })}
       </div>
-      <div className="settings-note"><span className="settings-note__mark">i</span><p>演示页面不保存 API Key。云侧认证仍由后端环境变量 <code>OPENAI_API_KEY</code> 管理。</p></div>
+      <div className="settings-note"><span className="settings-note__mark">i</span><p>任一层卡片选择 <code>OpenAI API</code> 时会出现 API Key 输入框；Key 全局共享，同步后即时生效。默认落盘到 <code>tooling/configs/.env</code>（已被 .gitignore 忽略，不会随 git 提交）；勾选「不落盘」后只存后端进程内存，重启即失效。页尾「清除本机 Key」一键抹掉内存与磁盘两份副本。自部署 Ollama 走 URL 直连（<code>http://&lt;IP&gt;:11434/v1</code>），默认无需 Key。</p></div>
     </section>
   );
 }

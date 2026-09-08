@@ -21,12 +21,14 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from backend.core import runtime_mode
 from backend.core.composition import get_composition
 from backend.core.middleware import TraceMiddleware, get_trace_id
 from backend.core.routes import router as gateway_router
 from backend.routers.health import router as health_router
 from backend.routers.infra import router as infra_router
 from backend.routers.stream import router as stream_router
+from backend.routers.system import router as system_router
 from backend.routers.ws import router as ws_router
 from infrastructure.nodes.descriptor import NodeProfile, ProviderKind, Tier
 from tooling.configs.settings import settings
@@ -54,6 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     Yields:
         无返回值；yield 之前的逻辑在启动时执行，之后的逻辑在关闭时执行。
     """
+    runtime_mode.init()  # R7: 先解析运行时模式（mock/real），再装配 composition
     comp = get_composition()
     await comp.startup()
     _init_infra_service()
@@ -77,6 +80,10 @@ def create_app() -> FastAPI:
     app = FastAPI(title="AegisOS Backend", version=settings.backend.version, lifespan=lifespan)
 
     # --- 中间件 ---
+    # 注意顺序：Starlette 中间件按 LIFO 执行（最后添加的最先执行）。
+    # CORSMiddleware 必须最外层（最后 add），否则 ServerErrorMiddleware 生成的
+    # 500 响应不经过 CORS，浏览器会误报“无 Access-Control-Allow-Origin”。
+    app.add_middleware(TraceMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_CORS_ORIGINS,
@@ -84,13 +91,14 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.add_middleware(TraceMiddleware)
 
     # --- 路由 ---
     # 健康检查为公开接口（无需鉴权），直接挂载到 app 上。
     app.include_router(health_router, prefix="/api/v1")
     # 基础设施端点（端边云节点/派发/历史）
     app.include_router(infra_router, prefix="/api/v1")
+    # R7: 运行时模式（mock/真实 LLM 切换）
+    app.include_router(system_router, prefix="/api/v1")
     # 网关（/api/v1/*，带鉴权）提供 /sessions、/tasks、/agents 等接口。
     app.include_router(gateway_router)
     # WebSocket 不在 /api/v1 下（规范：ws://host/ws/v1/stream）。

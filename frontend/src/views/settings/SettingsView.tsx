@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { systemApi } from "@/services/api/system";
 
 type TierKey = "device" | "edge" | "cloud";
 
@@ -49,7 +50,16 @@ const STORAGE_KEY = "aegisos-node-config";
 function loadConfig(): Record<TierKey, NodeConfig> {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+    if (saved) {
+      // 深合并：旧 localStorage 里可能缺新字段或 provider 被改过，
+      // 保证云侧卡片默认仍是 openai_api，API Key 输入框必定出现。
+      const raw = JSON.parse(saved);
+      const merged = { ...DEFAULT_CONFIG };
+      for (const tier of Object.keys(DEFAULT_CONFIG) as TierKey[]) {
+        merged[tier] = { ...DEFAULT_CONFIG[tier], ...(raw[tier] || {}) };
+      }
+      return merged;
+    }
   } catch {
     // Invalid local state falls back to the demo defaults.
   }
@@ -59,10 +69,39 @@ function loadConfig(): Record<TierKey, NodeConfig> {
 export function SettingsView() {
   const [config, setConfig] = useState<Record<TierKey, NodeConfig>>(DEFAULT_CONFIG);
   const [saved, setSaved] = useState(false);
+  const [cloudApiKey, setCloudApiKey] = useState("");
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [cloudKeySaving, setCloudKeySaving] = useState(false);
+  const [cloudKeyMsg, setCloudKeyMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setConfig(loadConfig());
+    systemApi
+      .getMode()
+      .then((m) => setHasKey(m.has_key))
+      .catch(() => setHasKey(null));
   }, []);
+
+  const saveCloudApiKey = async () => {
+    const key = cloudApiKey.trim();
+    if (!key || cloudKeySaving) return;
+    setCloudKeySaving(true);
+    setCloudKeyMsg(null);
+    try {
+      const m = await systemApi.setApiKey(key);
+      setHasKey(m.has_key);
+      setCloudApiKey("");
+      setCloudKeyMsg(
+        m.has_key
+          ? "✓ 已同步到后端（tooling/configs/.env），真实 LLM 模式可直接使用"
+          : "保存完成，但后端未识别到 Key，请检查。",
+      );
+    } catch (err) {
+      setCloudKeyMsg(err instanceof Error ? `保存失败：${err.message}` : "保存失败");
+    } finally {
+      setCloudKeySaving(false);
+    }
+  };
 
   const updateNode = (tier: TierKey, patch: Partial<NodeConfig>) => {
     setConfig((current) => ({
@@ -99,6 +138,7 @@ export function SettingsView() {
         </div>
       </header>
 
+      {/* 云侧 LLM API Key：前端配置 → 同步后端（写入 .env + 即时生效） */}
       <div className="settings-actions">
         <span className="settings-actions__hint">端 → 边 → 云，按任务隐私与复杂度选择</span>
         <div className="settings-actions__buttons">
@@ -162,6 +202,36 @@ export function SettingsView() {
                 </label>
               </div>
 
+              {/* 云侧节点：API Key 输入框（端/边暂不单独配置，统一走云 API） */}
+              {node.provider === "openai_api" ? (
+                <div className="node-config__apikey">
+                  <div className="node-config__apikey-head">
+                    <span>OpenAI 兼容 API Key</span>
+                    <span className={`badge badge--${hasKey ? "succeeded" : "cancelled"}`}>
+                      {hasKey === null ? "查询中…" : hasKey ? "已配置" : "未配置"}
+                    </span>
+                  </div>
+                  <div className="node-config__apikey-row">
+                    <input
+                      type="password"
+                      placeholder={hasKey ? "已配置 Key，输入新 Key 可覆盖" : "sk-…（输入后同步到后端）"}
+                      value={cloudApiKey}
+                      onChange={(e) => setCloudApiKey(e.target.value)}
+                      aria-label="OpenAI API Key"
+                    />
+                    <button
+                      type="button"
+                      className="settings-button settings-button--primary"
+                      onClick={() => void saveCloudApiKey()}
+                      disabled={cloudKeySaving || !cloudApiKey.trim()}
+                    >
+                      {cloudKeySaving ? "同步中…" : "同步到后端"}
+                    </button>
+                  </div>
+                  {cloudKeyMsg ? <p className="node-config__apikey-msg">{cloudKeyMsg}</p> : null}
+                </div>
+              ) : null}
+
               <footer className="node-config__footer">
                 <span className={`node-config__dot${node.enabled ? " node-config__dot--on" : ""}`} />
                 <span>{node.enabled ? "参与任务调度" : "已停用"}</span>
@@ -174,7 +244,11 @@ export function SettingsView() {
 
       <div className="settings-note">
         <span className="settings-note__mark">i</span>
-        <p>演示模式不会把 API Key 写入此页面。云侧认证仍由后端环境变量 <code>OPENAI_API_KEY</code> 管理。</p>
+        <p>
+          任一层卡片选择 <code>OpenAI API</code> 时会出现 <code>API Key</code> 输入框；Key 全局共享，
+          输入后点「同步到后端」即写入 <code>tooling/configs/.env</code> 并即时生效。自部署 Ollama
+          走 URL 直连（<code>http://&lt;IP&gt;:11434/v1</code>），默认无需 Key。节点其余配置仅保存在当前浏览器，用于本地演示。
+        </p>
       </div>
     </section>
   );

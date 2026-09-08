@@ -24,8 +24,8 @@ from protocol.tool import ToolCall, ToolResult
 
 SYSTEM_PROMPT = (
     "You are a network reconnaissance agent. Given a target range, "
-    "return a JSON object with an 'assets' array. Each asset has "
-    "asset_id, host, services (list), os, exposure."
+    "return a JSON object with an 'assets' array (at most 8 assets). "
+    "Each asset has asset_id, host, services (list), os, exposure."
 )
 
 
