@@ -2,7 +2,7 @@
 // dev: AegisOS Dev
 // changelog: R5 新建 CyberDrillPanel——一键开始/停止 + SSE 轮次时间线 + 收敛总结报告
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
 import type {
@@ -237,136 +237,230 @@ function TrendChart({ rounds }: { rounds: DrillRound[] }) {
   );
 }
 
-// T5 紫队缺口闭环：把「紫队挑缺口 → 红队补攻击 → 紫队判定通过」串成闭环链。
-// 纯前端从演练每轮战报配对（缺口文本里的资产编号/技法编号 ↔ 后续轮次新增攻击）。
+// T5 缺口闭环（R18g 重构）：只讲清「循环流程 + 三队职责 + 逐轮关键指标」。
+// 旧版按「每条缺口」各自展开一条「挑缺口→补攻→判定」三段链；真实大模型每轮
+// 7~9 条长缺口 ×N 轮 = 几十条链，再叠上跨轮贪婪配对，轮次来回穿插、蓝队缺席。
+// 新版三条约束：
+//   1) 顶部固定循环骶架，说明红→蓝→紫→反馈的职责与关联行为；
+//   2) 逐轮严格按轮次升序，每轮只给关键指标，全文细节折叠按需展开；
+//   3) 闭环配对只在「本轮红队补攻 ↔ 上轮紫队缺口」之间做，不跨多轮拉链。
+
+interface RoundLoop {
+  round: number;
+  redNew: number;
+  redTechs: string[];
+  blueAlerts: number;
+  blueTriaged: number;
+  blueActions: string[];
+  purpleValid: boolean;
+  purpleIssues: number;
+  purpleSeverity: string;
+  issueTexts: string[];
+  gapStep: number;
+  gapChain: number;
+  closed: number | null;
+  prevIssues: number | null;
+  prevRound: number | null;
+  code: string;
+}
+
+// 缺口文本特征：资产号 / ATT&CK 技法号 / CVE（供与本轮红队新增步配对）。
+function issueSig(text: string): { assets: string[]; techs: string[]; cves: string[] } {
+  return {
+    assets: [...new Set((text.match(/asset-\d+/gi) ?? []).map((s) => normAsset(s.toLowerCase())))]
+      .filter(Boolean),
+    techs: [...new Set(text.match(/T\d{4}(?:\.\d+)?/g) ?? [])],
+    cves: [...new Set((text.match(/CVE-\d{4}-\d{4,7}/gi) ?? []).map((s) => s.toUpperCase()))],
+  };
+}
+
+// 一个红队新增步是否“冲着这条缺口去的”：CVE / 技法 / 目标资产三者任命中其一。
+function stepMatchesSig(
+  step: any,
+  sig: { assets: string[]; techs: string[]; cves: string[] },
+): boolean {
+  const raw = String(step?.technique ?? "");
+  const tech = techIdOf(raw);
+  const cves = (raw.match(/CVE-\d{4}-\d{4,7}/gi) ?? []).map((s) => s.toUpperCase());
+  const to = normAsset(String(step?.to_asset ?? "").toLowerCase());
+  if (sig.cves.some((c) => cves.includes(c))) return true;
+  if (tech && sig.techs.includes(tech)) return true;
+  if (to && sig.assets.includes(to)) return true;
+  return false;
+}
+
+function buildRoundLoops(rounds: DrillRound[]): RoundLoop[] {
+  const sorted = [...rounds].sort((a, b) => (a.round ?? 0) - (b.round ?? 0));
+  return sorted.map((rd, idx) => {
+    const red: any = rd.red ?? {};
+    const blue: any = rd.blue ?? {};
+    const purple: any = rd.purple ?? {};
+    const critique: any = purple.critique ?? {};
+    const issueTexts: string[] = (critique.issues ?? []).map((x: any) => String(x));
+    const newSteps: any[] = red.new_steps ?? [];
+    const redTechs = [
+      ...new Set(newSteps.map((s: any) => techIdOf(s.technique)).filter(Boolean)),
+    ];
+    const kinds = ((blue.plan?.actions ?? []) as any[]).map(
+      (a) => String(a.kind ?? a.action ?? "action"),
+    );
+    const blueActions = [
+      ...new Set(kinds),
+    ].map((k) => `${k}×${kinds.filter((x) => x === k).length}`);
+
+    const prev: any = idx > 0 ? sorted[idx - 1] : null;
+    let closed: number | null = null;
+    let prevIssues: number | null = null;
+    let prevRound: number | null = null;
+    if (prev) {
+      prevRound = prev.round ?? null;
+      const prevTexts: string[] = ((prev.purple?.critique?.issues ?? []) as any[]).map(String);
+      prevIssues = prevTexts.length;
+      const sigs = prevTexts.map(issueSig);
+      closed = sigs.filter((sg) => newSteps.some((s: any) => stepMatchesSig(s, sg))).length;
+    }
+
+    return {
+      round: rd.round,
+      redNew: newSteps.length,
+      redTechs,
+      blueAlerts: (blue.alerts ?? []).length,
+      blueTriaged: blue.triaged_count ?? 0,
+      blueActions,
+      purpleValid: purple.valid === true,
+      purpleIssues: issueTexts.length || (purple.new_issue_count ?? 0),
+      purpleSeverity: String(critique.severity ?? ""),
+      issueTexts,
+      gapStep: issueTexts.filter((t) => /^\s*STEP-/i.test(t)).length,
+      gapChain: issueTexts.filter((t) => !/^\s*STEP-/i.test(t)).length,
+      closed,
+      prevIssues,
+      prevRound,
+      code: rd.convergence_code ?? "",
+    };
+  });
+}
+
+/** 循环骶架：固定不变，说明三队在闭环里各自的任务与关联行为。 */
+const LOOP_STAGES = [
+  { key: "red", name: "红队·攻击", duty: "按上轮紫队缺口补攻，新增合法攻击步" },
+  { key: "blue", name: "蓝队·防御", duty: "检测告警 → 分诊 → 下出处置动作" },
+  { key: "purple", name: "紫队·判定", duty: "校验红蓝证据链一致性，输出缺口清单" },
+  { key: "feedback", name: "缺口反馈", duty: "缺口回灌红队驱动下一轮；无缺口即收敛" },
+] as const;
+
 function GapClosureChart({ rounds }: { rounds: DrillRound[] }) {
+  const [openRound, setOpenRound] = useState<number | null>(null);
   if (rounds.length < 2) return null;
 
-  // 提取缺口资产：缺口文本中的 asset-N 编号（归一化为 asset-00N，与战报一致）
-  const extractAssets = (text: string): string[] =>
-    [...new Set((text.match(/asset-\d+/g) ?? []).map(normAsset))];
-  // R18e：提取缺口技法编号（如「缺少横向移动路径（T1021）」→ T1021）。
-  // 旧版只按资产配对，无资产编号的技法类缺口会被贪婪匹配到任意步骤，
-  // 导致闭环链张冠李戴（截图里 R2 的 T1021 缺口被配到 R4 的 T1078 步）。
-  const extractTechs = (text: string): string[] =>
-    [...new Set(text.match(/T\d{4}(?:\.\d+)?/g) ?? [])];
-
-  // 1) 收集所有缺口（紫队提出问题且数量 > 0 的轮次）
-  interface GapItem {
-    issueRound: number;
-    issue: string;
-    assets: string[];
-    techs: string[];
-    resolvedRound: number | null;
-    resolvedStep: any | null;
-    verdictRound: number | null;
-    verdictValid: boolean | null;
-  }
-  const gaps: GapItem[] = [];
-
-  rounds.forEach((rd) => {
-    const issues: string[] = rd.purple?.critique?.issues ?? [];
-    if (rd.purple?.new_issue_count > 0 || issues.length > 0) {
-      const list = issues.length > 0 ? issues : [`存在 ${rd.purple.new_issue_count} 个未覆盖缺口`];
-      list.forEach((issue) => {
-        gaps.push({
-          issueRound: rd.round,
-          issue,
-          assets: extractAssets(issue),
-          techs: extractTechs(issue),
-          resolvedRound: null,
-          resolvedStep: null,
-          verdictRound: null,
-          verdictValid: null,
-        });
-      });
-      return;
-    }
-  });
-
-  // 2) R18e 逐缺口扫描后续轮次的新增步骤：只有目标资产命中缺口资产、
-  //    或步骤技法命中缺口技法才算闭合；两者都不沾边的绝不贪婪配对。
-  gaps.forEach((g) => {
-    for (const rd of rounds) {
-      if (rd.round <= g.issueRound) continue;
-      const hit = (rd.red?.new_steps ?? []).find((s: any) => {
-        const to = normAsset(String(s.to_asset ?? ""));
-        const techId = /^(T\d+(?:\.\d+)?)/.exec(String(s.technique ?? ""))?.[1] ?? "";
-        return g.assets.includes(to) || (!!techId && g.techs.includes(techId));
-      });
-      if (hit) {
-        g.resolvedRound = rd.round;
-        g.resolvedStep = hit;
-        break;
-      }
-    }
-    // 复核轮 = 补攻之后紫队首次判定通过的轮次；若始终未通过则取补攻轮
-    if (g.resolvedRound != null) {
-      const verdict = rounds.find(
-        (rd) => rd.round >= g.resolvedRound! && rd.purple?.valid === true,
-      );
-      g.verdictRound = verdict?.round ?? g.resolvedRound;
-      g.verdictValid = verdict ? true : (rounds.find((rd) => rd.round === g.resolvedRound)?.purple?.valid ?? null);
-    }
-  });
-
-  // 3) 无任何缺口则整块不渲染（只有对抗无反馈时）
-  if (gaps.length === 0) return null;
+  const loops = buildRoundLoops(rounds);
+  const totalGaps = loops.reduce((n, l) => n + l.purpleIssues, 0);
+  const closedTotal = loops.reduce((n, l) => n + (l.closed ?? 0), 0);
+  const last = loops[loops.length - 1];
+  if (!last) return null;
 
   return (
     <div className="cyber-closure">
       <h4 className="cyber-panel__subtitle">
-        🔗 缺口闭环 · 紫队反馈驱动红队演化
+        🔗 缺口闭环 · 一轮一次的对抗演化循环
       </h4>
-      <div className="cyber-closure__list">
-        {gaps.map((g, i) => (
-          <div key={i} className="cyber-closure__item">
-            <div className="cyber-closure__step cyber-closure__step--issue">
-              <span className="cyber-closure__badge cyber-closure__badge--red">
-                第 {g.issueRound} 轮 · 紫队挑缺口
-              </span>
-              <span className="cyber-closure__text">{g.issue}</span>
+
+      {/* ① 循环骶架：三队职责与关联行为 */}
+      <div className="cyber-loop__cycle">
+        {LOOP_STAGES.map((s, i) => (
+          <Fragment key={s.key}>
+            <div className={`cyber-loop__node cyber-loop__node--${s.key}`}>
+              <b>{s.name}</b>
+              <span>{s.duty}</span>
             </div>
-            {g.resolvedRound != null && g.resolvedStep ? (
-              <>
-                <div className="cyber-closure__arrow">↓ 红队响应</div>
-                <div className="cyber-closure__step cyber-closure__step--fix">
-                  <span className="cyber-closure__badge cyber-closure__badge--blue">
-                    第 {g.resolvedRound} 轮 · 红队补充
-                  </span>
-                  <span className="cyber-closure__text">
-                    {g.resolvedStep.technique}: {g.resolvedStep.from_asset} →{" "}
-                    {g.resolvedStep.to_asset}
-                  </span>
-                </div>
-                <div className="cyber-closure__arrow">↓ 复核</div>
-                <div className="cyber-closure__step cyber-closure__step--verdict">
-                  <span
-                    className={`cyber-closure__badge cyber-closure__badge--${g.verdictValid ? "green" : "yellow"}`}
-                  >
-                    第 {g.verdictRound} 轮 · 紫队判定
-                  </span>
-                  <span className="cyber-closure__text">
-                    {g.verdictValid ? "✓ 通过，缺口闭合" : "✗ 仍有问题，继续演化"}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="cyber-closure__step cyber-closure__step--open">
-                <span className="cyber-closure__badge cyber-closure__badge--yellow">
-                  ⚠ 未闭合
-                </span>
-                <span className="cyber-closure__text">
-                  后续轮次未见针对该缺口的补充攻击
-                </span>
+            {i < LOOP_STAGES.length - 1 ? (
+              <span className="cyber-loop__sep">→</span>
+            ) : null}
+          </Fragment>
+        ))}
+        <span className="cyber-loop__sep">⟲</span>
+      </div>
+
+      {/* ② 逐轮流水：严格轮次升序，每轮一行关键指标 */}
+      <div className="cyber-loop__rounds">
+        {loops.map((l) => (
+          <div key={l.round} className="cyber-loop__round">
+            <button
+              type="button"
+              className="cyber-loop__roundhead"
+              onClick={() => setOpenRound(openRound === l.round ? null : l.round)}
+            >
+              <span className="cyber-loop__roundno">第 {l.round} 轮</span>
+              <span className="cyber-loop__who cyber-loop__who--red">
+                红队 新增 {l.redNew} 步
+              </span>
+              <span className="cyber-loop__who cyber-loop__who--blue">
+                蓝队 告警 {l.blueAlerts} · 处置 {l.blueTriaged}
+              </span>
+              <span
+                className={`cyber-loop__who cyber-loop__who--purple${
+                  l.purpleValid ? " is-ok" : ""
+                }`}
+              >
+                {l.purpleValid
+                  ? "紫队 判定 ✓ 链路成立"
+                  : `紫队 缺口 ${l.purpleIssues}（步骤 ${l.gapStep} / 链路 ${l.gapChain}）· ${
+                      l.purpleSeverity || "待修"
+                    }`}
+              </span>
+              <span className="cyber-loop__link">
+                {l.prevRound == null
+                  ? "链路首轮：红队自主建链，蓝紫队建立基线"
+                  : `承接第 ${l.prevRound} 轮缺口 · 已闭合 ${l.closed}/${l.prevIssues}`}
+              </span>
+              <span className="cyber-loop__caret">
+                {openRound === l.round ? "收起 ▲" : "明细 ▼"}
+              </span>
+            </button>
+            {l.redTechs.length || l.blueActions.length ? (
+              <div className="cyber-loop__detail">
+                {l.redTechs.length ? (
+                  <>
+                    <span className="cyber-loop__tag cyber-loop__tag--red">
+                      红队技法
+                    </span>
+                    {l.redTechs.join(" / ")}
+                  </>
+                ) : null}
+                {l.blueActions.length ? (
+                  <>
+                    <span className="cyber-loop__tag cyber-loop__tag--blue">
+                      蓝队动作
+                    </span>
+                    {l.blueActions.join(" / ")}
+                  </>
+                ) : null}
               </div>
-            )}
+            ) : null}
+            {openRound === l.round && l.issueTexts.length ? (
+              <ul className="cyber-loop__issues">
+                {l.issueTexts.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ))}
       </div>
+
+      {/* ③ 收敛结论：缺口数变化 + 判定变化 + 闭环率 */}
+      <p className="cyber-loop__summary">
+        缺口数 {loops.map((l) => l.purpleIssues).join(" → ")} · 判定{" "}
+        {loops.map((l) => (l.purpleValid ? "✓" : "✗")).join(" → ")} · 累计闭合{" "}
+        {closedTotal}/{totalGaps} 条缺口；
+        {last.purpleValid
+          ? "末轮紫队判定通过，循环收敛终止"
+          : `末轮仍未通过（${last.code || "未收敛"}），最后一批缺口转人工复核`}
+      </p>
     </div>
   );
 }
+
 
 /** 最近一轮演练的浏览器快照（sessionStorage）：切 tab/刷新后仍可恢复展示，
  *  只有开启新一轮时才被清除/覆盖。 */

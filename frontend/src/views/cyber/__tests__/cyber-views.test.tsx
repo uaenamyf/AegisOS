@@ -26,6 +26,9 @@ vi.mock("@/services/api/cyber", () => ({
     getDrillSummary: vi.fn(),
     abortDrill: vi.fn(),
     openDrillStream: vi.fn(),
+    listDrills: vi.fn().mockResolvedValue({ drills: [] }),
+    getDrillReport: vi.fn().mockResolvedValue({ report: "" }),
+    getDrillReportPdf: vi.fn().mockResolvedValue(new Blob()),
   },
 }));
 

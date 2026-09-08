@@ -13,6 +13,9 @@ vi.mock("@/services/api/cyber", () => ({
     getDrill: vi.fn(),
     getDrillSummary: vi.fn(),
     openDrillStream: vi.fn(),
+    listDrills: vi.fn().mockResolvedValue({ drills: [] }),
+    getDrillReport: vi.fn().mockResolvedValue({ report: "" }),
+    getDrillReportPdf: vi.fn().mockResolvedValue(new Blob()),
   },
 }));
 
@@ -63,6 +66,46 @@ const roundData = (round: number, converged = false) => ({
   convergence_code: converged ? "converged" : "exploring",
 });
 
+// R18g：缺口闭环循环视图专用轮次数据（含红队新增步 / 蓝队告警与处置 / 紫队缺口）。
+const closureRound = (
+  round: number,
+  opts: {
+    issue: string;
+    newSteps: { technique: string; from_asset: string; to_asset: string }[];
+    valid: boolean;
+  },
+) => ({
+  round,
+  red: {
+    ok: true,
+    assets: ["asset-001", "asset-004"],
+    finding_count: opts.newSteps.length,
+    steps: [],
+    new_steps: opts.newSteps.map((s, i) => ({ ...s, step_id: `r${round}-${i}`, success: true })),
+  },
+  blue: {
+    ok: true,
+    alerts: opts.newSteps.map((s, i) => ({ alert_id: `a-${round}-${i}`, technique: s.technique })),
+    triaged_count: opts.newSteps.length,
+    plan: { actions: [{ action_id: `ACT-00${round}`, kind: "isolate", target: "asset-001" }] },
+  },
+  purple: {
+    ok: true,
+    critique: {
+      valid: opts.valid,
+      issues: opts.valid ? [] : [opts.issue],
+      severity: opts.valid ? "low" : "high",
+      suggestion: "keep probing",
+    },
+    review: {},
+    converged: opts.valid,
+    valid: opts.valid,
+    new_issue_count: opts.valid ? 0 : 1,
+  },
+  event_stream: [],
+  convergence_code: opts.valid ? "converged" : "exploring",
+});
+
 const summaryData = {
   conclusion: "多轮红蓝紫对抗后达成收敛：攻击链覆盖全部暴露面并通过紫队一致性校验。",
   convergence_code: "converged",
@@ -77,6 +120,17 @@ beforeEach(() => {
     setCyberError: vi.fn(),
   };
   vi.clearAllMocks();
+  // 组件挂载时会用 sessionStorage 里的历史 drillId 补拉 getDrill；
+  // clearAllMocks 后必须给默认解析值，否则 .then 报 undefined。
+  mockGetDrill.mockResolvedValue({
+    drill_id: "drill-abc",
+    target_range: "10.0.0.0/24",
+    max_rounds: 5,
+    rounds_executed: 0,
+    convergence_code: "converged",
+    rounds: [],
+    summary: null,
+  });
   capturedOnEvent = null;
   capturedOnError = null;
   mockOpenStream.mockImplementation((_id: string, onEvent: any, onError?: any) => {
@@ -161,6 +215,72 @@ describe("CyberDrillPanel", () => {
 
     fireEvent.click(screen.getByText("⏹ Stop"));
     await waitFor(() => expect(mockAbortDrill).toHaveBeenCalledWith("drill-abc"));
+  });
+
+  it("gap closure loop shows all three teams in ascending round order", async () => {
+    // R18g 重构：闭环模块改为「循环骶架 + 逐轮升序流水」。
+    // 断言：① 三队职责齐备；② 每轮恰好出现一次、严格升序；
+    // ③ 旧版「按缺口展开 N 条链」的穿插文案彻底消失。
+    mockStartDrill.mockResolvedValue({ drill_id: "drill-abc", status: "running", max_rounds: 4 });
+    render(<CyberDrillPanel />);
+    fireEvent.click(screen.getByText("▶ Start Drill"));
+    await waitFor(() => expect(capturedOnEvent).toBeTruthy());
+
+    act(() => {
+      capturedOnEvent!({
+        name: "drill_round",
+        data: closureRound(1, {
+          issue: "STEP-001: 未覆盖横向移动路径（T1021），链止步于 asset-002",
+          newSteps: [{ technique: "T1190", from_asset: "asset-001", to_asset: "asset-002" }],
+          valid: false,
+        }),
+      });
+      capturedOnEvent!({
+        name: "drill_round",
+        data: closureRound(2, {
+          issue: "已抵达 asset-003，但尚未对域控 asset-004 建立利用路径",
+          newSteps: [{ technique: "T1021", from_asset: "asset-002", to_asset: "asset-003" }],
+          valid: false,
+        }),
+      });
+      capturedOnEvent!({
+        name: "drill_round",
+        data: closureRound(3, {
+          issue: "未执行凭据窃取（T1003），目标达成步缺失",
+          newSteps: [{ technique: "T1078", from_asset: "asset-003", to_asset: "asset-004" }],
+          valid: false,
+        }),
+      });
+      capturedOnEvent!({
+        name: "drill_round",
+        data: closureRound(4, {
+          issue: "",
+          newSteps: [{ technique: "T1003", from_asset: "asset-004", to_asset: "asset-004" }],
+          valid: true,
+        }),
+      });
+    });
+
+    // ① 循环骶架：红/蓝/紫三队职责都在（旧版蓝队缺席）
+    expect(screen.getByText("红队·攻击")).toBeDefined();
+    expect(screen.getByText("蓝队·防御")).toBeDefined();
+    expect(screen.getByText("紫队·判定")).toBeDefined();
+    expect(screen.getByText("缺口反馈")).toBeDefined();
+
+    // ② 每轮恰好一行、严格升序（按 DOM 文本顺序取出轮次号验证）
+    const roundLabels = screen.getAllByText(/^第 \d 轮$/).map((el) => el.textContent);
+    expect(roundLabels).toEqual(["第 1 轮", "第 2 轮", "第 3 轮", "第 4 轮"]);
+
+    // ③ 蓝队逐轮告警/处置、紫队逐轮缺口都渲染在轮行里
+    expect(screen.getAllByText(/蓝队 告警 \d+ · 处置 \d+/).length).toBe(4);
+    expect(screen.getAllByText(/紫队 判定 ✓ 链路成立/).length).toBe(1);
+
+    // ④ 旧版穿插式单链文案已移除
+    expect(screen.queryByText(/第 \d+ 轮 · 紫队判定/)).toBeNull();
+    expect(screen.queryByText(/本缺口已闭合，但紫队提出新缺口/)).toBeNull();
+
+    // ⑤ 收敛结论行：缺口数趋势 + 末轮收敛判定
+    expect(screen.getByText(/末轮紫队判定通过，循环收敛终止/)).toBeDefined();
   });
 
   it("polls getDrill to backfill after SSE disconnect", async () => {
