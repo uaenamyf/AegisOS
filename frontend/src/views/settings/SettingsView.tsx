@@ -50,7 +50,16 @@ const STORAGE_KEY = "aegisos-node-config";
 function loadConfig(): Record<TierKey, NodeConfig> {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+    if (saved) {
+      // 深合并：旧 localStorage 里可能缺新字段或 provider 被改过，
+      // 保证云侧卡片默认仍是 openai_api，API Key 输入框必定出现。
+      const raw = JSON.parse(saved);
+      const merged = { ...DEFAULT_CONFIG };
+      for (const tier of Object.keys(DEFAULT_CONFIG) as TierKey[]) {
+        merged[tier] = { ...DEFAULT_CONFIG[tier], ...(raw[tier] || {}) };
+      }
+      return merged;
+    }
   } catch {
     // Invalid local state falls back to the demo defaults.
   }
@@ -193,11 +202,11 @@ export function SettingsView() {
                 </label>
               </div>
 
-              {/* 云侧节点：Provider 选 OpenAI API 时出现 API Key 输入框，同步到后端 */}
-              {tier === "cloud" && node.provider === "openai_api" ? (
+              {/* 云侧节点：API Key 输入框（端/边暂不单独配置，统一走云 API） */}
+              {tier === "cloud" ? (
                 <div className="node-config__apikey">
                   <div className="node-config__apikey-head">
-                    <span>OpenAI API Key</span>
+                    <span>OpenAI 兼容 API Key</span>
                     <span className={`badge badge--${hasKey ? "succeeded" : "cancelled"}`}>
                       {hasKey === null ? "查询中…" : hasKey ? "已配置" : "未配置"}
                     </span>
@@ -205,7 +214,7 @@ export function SettingsView() {
                   <div className="node-config__apikey-row">
                     <input
                       type="password"
-                      placeholder={hasKey ? "已配置 Key，输入新 Key 可覆盖" : "sk-…"}
+                      placeholder={hasKey ? "已配置 Key，输入新 Key 可覆盖" : "sk-…（输入后同步到后端）"}
                       value={cloudApiKey}
                       onChange={(e) => setCloudApiKey(e.target.value)}
                       aria-label="OpenAI API Key"
@@ -236,10 +245,9 @@ export function SettingsView() {
       <div className="settings-note">
         <span className="settings-note__mark">i</span>
         <p>
-          云侧节点 Provider 选 <code>OpenAI API</code> 时，会就地出现
-          <code> API Key</code> 输入框，保存后同步到后端（
-          <code>tooling/configs/.env</code>，15 秒内热生效），真实 LLM 模式直接可用。
-          端侧/边侧暂不单独配置，统一走云 API；节点其余配置仅保存在当前浏览器，用于本地演示。
+          云侧节点卡片内固定提供 <code>API Key</code> 输入框（端/边暂不单独配置，
+          统一走云 API），输入后点「同步到后端」即写入 <code>tooling/configs/.env</code>
+          并即时生效，真实 LLM 模式直接可用。节点其余配置仅保存在当前浏览器，用于本地演示。
         </p>
       </div>
     </section>
