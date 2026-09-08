@@ -17,6 +17,50 @@ const STAGE_LABELS: Record<string, string> = {
   exploit: "规划攻击链",
 };
 
+// T2: 资产类型推断（按服务/暴露面）——节点配色与图标
+interface AssetTypeMeta {
+  label: string;
+  icon: string;
+  color: string; // SVG stroke 色
+  bg: string;    // SVG fill 色
+}
+const ASSET_TYPE_META: Record<string, AssetTypeMeta> = {
+  web: { label: "Web", icon: "🖥", color: "#2e9e5b", bg: "#12241b" },
+  db: { label: "DB", icon: "🗄", color: "#2f7de1", bg: "#122038" },
+  cache: { label: "Cache", icon: "⚡", color: "#d9a13b", bg: "#2a2012" },
+  server: { label: "Server", icon: "🖧", color: "#8a5cf6", bg: "#221a38" },
+  other: { label: "Host", icon: "●", color: "#5a6b7d", bg: "#1a2230" },
+};
+function assetType(asset: any): AssetTypeMeta {
+  const svc = (asset.services ?? []).join(" ").toLowerCase();
+  const key = /mysql|postgres|mariadb|oracle/.test(svc)
+    ? "db"
+    : /redis|memcached|kafka/.test(svc)
+      ? "cache"
+      : /http|https|nginx|apache|tomcat/.test(svc)
+        ? "web"
+        : /ssh|smb|rdp|ftp/.test(svc)
+          ? "server"
+          : "other";
+  return ASSET_TYPE_META[key];
+}
+
+// T2: 漏洞 cvss 评分 → 严重度配色
+function cvssColor(cvss: number | undefined): string {
+  if (cvss == null) return "#5a6b7d";
+  if (cvss >= 9) return "#e05252"; // critical
+  if (cvss >= 7) return "#e07b3a"; // high
+  if (cvss >= 4) return "#d9a13b"; // medium
+  return "#2e9e5b"; // low
+}
+
+// T2: 步骤编号徽章（①②③…，最多 20 步，超出用数字）
+const STEP_NUMS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩",
+  "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳"];
+function stepNum(i: number): string {
+  return STEP_NUMS[i] ?? String(i + 1);
+}
+
 // T9: 攻击技法语义表（推理轨迹展示）——编号 → 中文名 / 战术阶段 / 推理依据
 // 与 ATT&CK 战术语义一致（威胁情报本地库同源），前端内置、离线可用
 interface TechniqueMeta {
@@ -253,7 +297,8 @@ export function RedTeamPanel() {
   });
 
   const svgWidth = Math.max(600, padding + colWidth * (steps.length + 1) + padding);
-  const svgHeight = Math.max(200, padding + assets.length * rowHeight + padding);
+  // T2: 底部预留 48px 给漏洞严重度徽章，避免节点下方的徽章被裁切
+  const svgHeight = Math.max(200, padding + assets.length * rowHeight + padding + 48);
 
   return (
     <div className="cyber-panel">
@@ -330,11 +375,12 @@ export function RedTeamPanel() {
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         >
           {/* Edges (attack steps) */}
-          {steps.map((step: any) => {
+          {steps.map((step: any, si: number) => {
             const fromPos = assetPositions[step.from_asset];
             const toPos = assetPositions[step.to_asset];
             if (!fromPos || !toPos) return null;
             const midX = (fromPos.x + toPos.x) / 2;
+            const midY = (fromPos.y + toPos.y) / 2;
             return (
               <g key={step.step_id}>
                 <path
@@ -345,9 +391,26 @@ export function RedTeamPanel() {
                   markerEnd="url(#arrow-red)"
                   opacity={step.success ? 1 : 0.4}
                 />
+                {/* T2: 步骤编号徽章 */}
+                <circle
+                  cx={midX - 34}
+                  cy={midY - 8}
+                  r="8"
+                  fill="var(--danger)"
+                />
+                <text
+                  x={midX - 34}
+                  y={midY - 5}
+                  fill="#fff"
+                  fontSize="9"
+                  fontWeight="700"
+                  textAnchor="middle"
+                >
+                  {stepNum(si)}
+                </text>
                 <text
                   x={midX}
-                  y={(fromPos.y + toPos.y) / 2 - 8}
+                  y={midY + 8}
                   fill="var(--text-secondary)"
                   fontSize="10"
                   textAnchor="middle"
@@ -362,15 +425,38 @@ export function RedTeamPanel() {
           {assets.map((asset) => {
             const pos = assetPositions[asset.asset_id];
             if (!pos) return null;
+            const t = assetType(asset);
+            const vulns = findings.filter((f: any) => f.asset_id === asset.asset_id);
             return (
               <g key={asset.asset_id} transform={`translate(${pos.x}, ${pos.y})`}>
-                <rect width="80" height="32" rx="6" fill="var(--bg-tertiary)" stroke="var(--accent)" strokeWidth="1.5" />
+                <rect width="80" height="32" rx="6" fill={t.bg} stroke={t.color} strokeWidth="1.5" />
+                <text x="6" y="14" fontSize="10">
+                  {t.icon}
+                </text>
                 <text x="40" y="14" fill="var(--text-primary)" fontSize="10" textAnchor="middle" fontWeight="600">
                   {asset.asset_id}
                 </text>
                 <text x="40" y="26" fill="var(--text-muted)" fontSize="9" textAnchor="middle">
-                  {asset.os || asset.host}
+                  {t.label} · {asset.os || asset.host}
                 </text>
+                {/* T2: 漏洞严重度徽章（cvss 配色） */}
+                {vulns.length > 0 ? (
+                  <g transform="translate(0, 34)">
+                    {vulns.slice(0, 3).map((v: any, vi: number) => (
+                      <g key={v.finding_id ?? vi} transform={`translate(${vi * 27}, 0)`}>
+                        <rect width="25" height="12" rx="6" fill={cvssColor(v.cvss)} opacity="0.9" />
+                        <text x="12.5" y="9" fill="#fff" fontSize="7" textAnchor="middle" fontWeight="700">
+                          {v.cvss != null ? v.cvss.toFixed(1) : v.attack_surface?.slice(0, 5) ?? "?"}
+                        </text>
+                      </g>
+                    ))}
+                    {vulns.length > 3 ? (
+                      <text x={vulns.slice(0, 3).length * 27 + 4} y="9" fill="var(--text-dim)" fontSize="7">
+                        +{vulns.length - 3}
+                      </text>
+                    ) : null}
+                  </g>
+                ) : null}
               </g>
             );
           })}
