@@ -50,7 +50,7 @@
 | **R3** | 后端 drill 路由（REST + SSE 5 端点）+ 路由挂载 | 核心 | R2 | b / d | ✅ 已完成 |
 | **R4** | 前端类型 + `cyberApi` drill 客户端（含 SSE 订阅） | 核心 | R3 | d | ✅ 已完成 |
 | **R5** | 前端演练视图（开始/停止 + 轮次时间线 + 总结报告） | 核心 | R4 | d / e / 体验5 | ✅ 已完成 |
-| **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ⬜ |
+| **R6** | 端到端联调 + 全量回归 + 实测指南定稿 | 核心 | **R1-R5（含 R1.5）** | d | ✅ 已完成 |
 | **R7** | 跨轮记忆与上下文压缩（紫队带历史决策摘要） | 延申 P1 | R6 | a（重点加分） | ⬜ |
 | **R8** | 演练事件总线化 + 低熵增量推送（**复用既有 EventBus**，不新造） | 延申 P1 | R6 | b（技术分10） | 🔶 已修订 |
 | **R9** | 端-边-云 placement 联动（演练阶段调度位置标注） | 延申 P2 | R8 | c | ⬜ |
@@ -352,14 +352,14 @@
 - **风险与对策**：联调暴露跨层字段不一致 → 以 `protocol/cyber.py` 与 R3 契约为基准对齐，优先改前端/路由层，不动协议层。
 - **可延申点**：为 R7-R10 提供稳定基线。
 
-- **开工确认**：[ ] 用户已确认（日期：____）
+- **开工确认**：[x] 用户已确认（日期：2026-09-04）
 - **开工后记录**：
-  - 改动文件清单：
-  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：
-  - 测试结果：
-  - git commit：
-  - 实测结果：
-  - 遗留问题 / 下一步：
+  - 改动文件清单：`backend/routers/drill.py`（小修：`GET /drill/{id}` 补 `rounds_executed`/`convergence_code` 字段——联调暴露的跨层不一致）；`docs/CyberDrill-开工审查报告.md`（§5 六条验收打勾 + R6 联调验收附注）；本档案（R6 记录 + 实测指南区定稿 + changelog）
+  - 改动体现在项目哪里 / 前端哪里可见 / 内部调用位置：`GET /api/v1/drill/{id}` 响应补齐前端 `DrillRecord` 契约所需字段（R5 面板断线轮询兜底读取 `rec.rounds`/`rec.summary`/`rec.convergence_code`）；实测指南 §7 定稿完整演示链路
+  - 测试结果：后端全量 `624 passed`（上轮 624，无回归）；前端全量 5 文件 `39 passed`；`tsc -b` exit 0；ruff 全清
+  - git commit：`9888236`（`fix(cyber-drill): R6 联调小修——GET /drill/{id} 补 rounds_executed/convergence_code + 验收报告打勾`）
+  - 实测结果：真实 HTTP 端到端（uvicorn 起服）——验收 1 `start` 201 + SSE `drill_start→drill_round×3→drill_summary→drill_done` 完整；验收 2 `rounds_executed=3`/`convergence_code=converged`（≤5 提前收敛）；验收 4 `summary` 200 + `data/drills/` 落盘可回放；验收 5 `abort` 200；验收 6 既有 attack/defense/purple 端点 200 全过
+  - 遗留问题 / 下一步：核心路线 R1-R6 全部完成；进入延申 R7（跨轮记忆与上下文压缩，能力维度 a 重点加分）或按需交付
 
 ---
 
@@ -519,6 +519,8 @@
 | 2026-09-04 | R3 | drill 路由 REST+SSE 5 端点（to_thread 并发 + 事件队列）；全量 624 passed | `b09bb2e` |
 | 2026-09-04 | R4 | 前端 drill 类型 + cyberApi 客户端（SSE 订阅封装）；前端 vitest 32 passed、tsc -b 通过 | `9b4f2f0` |
 | 2026-09-04 | R5 | 前端 Drill 演练视图（开始/停止 + SSE 轮次时间线 + 总结报告）；前端 vitest 39 passed、tsc -b/eslint 通过 | `fdce5a7` |
+| 2026-09-04 | R6 | 端到端联调 + 六条验收全勾 + 联调小修（GET /drill/{id} 补字段）；后端 624/front 39/tsc 全绿 | `9888236` |
+| | | | |
 | | | | |
 | | | | |
 | | | | |
