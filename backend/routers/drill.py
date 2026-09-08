@@ -33,7 +33,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from backend.core.composition import CyberDefenseServiceDep
+from backend.core.composition import CyberDefenseServiceDep, get_composition
+from protocol import Event
+from protocol.event import EventType
 
 router = APIRouter(prefix="/drill", tags=["cyber-defense"])
 
@@ -53,11 +55,15 @@ class DrillRuntime:
     on_round 回调经 ``q.put`` 投递事件，SSE 生成器经 ``to_thread(q.get)`` 消费。
     """
 
-    def __init__(self, service, target_range: str, max_rounds: int) -> None:
+    def __init__(
+        self, service, target_range: str, max_rounds: int, event_bus=None
+    ) -> None:
         self.drill_id = f"drill-{uuid.uuid4().hex[:8]}"
         self.target_range = target_range
         self.max_rounds = max_rounds
         self.service = service
+        # R9: 事件总线注入；None 时取全局 composition 单例（/events SSE 可订阅）
+        self.event_bus = event_bus if event_bus is not None else get_composition().event_bus
         self.events: queue.Queue[dict[str, Any]] = queue.Queue()
         self.abort_evt = threading.Event()
         self.state = "running"  # running | done | aborted
@@ -78,6 +84,34 @@ class DrillRuntime:
 
             def on_round(round_data: dict[str, Any], round_no: int) -> None:
                 self.emit("drill_round", {"round": round_no, **round_data})
+                # R9: 低熵增量事件发布到 EventBus——payload 只含增量与摘要，
+                # 不含全量 AttackChain/ResponsePlan，抑制通信冗余。
+                self.event_bus.publish(
+                    Event(
+                        event_type=EventType.DrillRound,
+                        task_id=self.drill_id,
+                        payload={
+                            "round": round_no,
+                            "drill_id": self.drill_id,
+                            "new_steps": len(
+                                round_data.get("red", {}).get("new_steps", [])
+                            ),
+                            "new_issues": round_data.get("purple", {}).get(
+                                "new_issue_count", 0
+                            ),
+                            "valid": round_data.get("purple", {}).get("valid", False),
+                            "converged": round_data.get("purple", {}).get(
+                                "converged", False
+                            ),
+                            "carry_forward_count": sum(
+                                1
+                                for e in round_data.get("event_stream", [])
+                                if isinstance(e, dict) and e.get("carry_forward")
+                            ),
+                            "prior_summary": round_data.get("prior_rounds_summary"),
+                        },
+                    )
+                )
 
             self.emit("drill_start", {"drill_id": self.drill_id, "max_rounds": self.max_rounds})
             result = self.service.drill(

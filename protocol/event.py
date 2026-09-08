@@ -37,6 +37,8 @@ class EventType(StrEnum):
     HumanResponse = "human.response"            # 人类对上述请求的回答（含超时降级标记）
     # P7: 端边云——节点状态变更
     NodeStatusChange = "node.status_change"  # 基础设施节点上线/离线/恢复
+    # R9: CyberDrill 演练轮次事件（低熵增量战报，topic 可被 /events SSE 订阅）
+    DrillRound = "drill.round"  # 演练每轮完成：payload 仅含增量与摘要
 
 
 class Event(BaseModel):
