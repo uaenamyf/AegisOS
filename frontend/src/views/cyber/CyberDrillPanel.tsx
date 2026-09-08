@@ -33,8 +33,16 @@ function roundCoverage(round: DrillRound): number | null {
     ),
   ];
   if (attackTechs.length === 0) return null;
-  const covered = attackTechs.filter((t) => detectTechs.includes(t)).length;
-  return Math.round((covered / attackTechs.length) * 100);
+  // T18：提取纯 T 编号对齐后再比（兼容 "T1190 (CVE-...) — 证据" 混合格式），
+  // 避免红队带证据文本 / 蓝队纯编号的精确匹配误判覆盖率。
+  const techId = (t: any) => {
+    const m = /^(T\d+(?:\.\d+)?)/.exec(String(t));
+    return m ? m[1] : t;
+  };
+  const atk = [...new Set(attackTechs.map(techId))];
+  const det = [...new Set(detectTechs.map(techId))];
+  const covered = atk.filter((t) => det.includes(t)).length;
+  return Math.round((covered / atk.length) * 100);
 }
 
 /** T3 收敛趋势图：SVG 多折线（红队新增步骤/蓝队动作/覆盖率 + 紫队判定 + 收敛标注）。 */

@@ -725,7 +725,12 @@ class CyberOrchestrator(GoalMode[dict]):
         - 其余 → 按关键漏洞/攻击面关键词启发式映射（ATT&CK Enterprise 语义）。
         """
         t = technique.strip()
+        # 已是纯 T 编号 → 原样返回
         if re.match(r"^T\d+(?:\.\d+)?$", t):
+            return t
+        # 以 T 编号开头但带证据后缀（如 "T1190 (CVE-2021-26855) — Exchange SSRF"）：
+        # 保留开头编号+证据整体，紫队既能取编号也能看到 CVE 论证（R18）
+        if re.match(r"^(T\d+(?:\.\d+)?)\b", t):
             return t
         cve = _CVE_TECH_ID_RE.search(t)
         if cve:

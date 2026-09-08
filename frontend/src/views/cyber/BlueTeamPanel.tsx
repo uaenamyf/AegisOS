@@ -219,10 +219,18 @@ export function BlueTeamPanel() {
   const redSteps: any[] = redAttackResult?.chain?.steps ?? [];
   const attackTechs = [...new Set(redSteps.map((s) => s.technique).filter(Boolean))];
   const detectTechs = [...new Set(alerts.map((a) => a.technique).filter(Boolean))];
-  const coveredTechs = attackTechs.filter((t) => detectTechs.includes(t));
+  // T18：技法可能是 "T1190 (CVE-2021-26855) — 证据" 混合格式，提取纯 T 编号对齐后再比，
+  // 否则红队带证据文本 / 蓝队纯编号的精确匹配会误判覆盖率偏低。
+  const techId = (t: string) => {
+    const m = /^(T\d+(?:\.\d+)?)/.exec(t);
+    return m ? m[1] : t;
+  };
+  const attackTechIds = [...new Set(attackTechs.map(techId))];
+  const detectTechIds = [...new Set(detectTechs.map(techId))];
+  const coveredTechs = attackTechIds.filter((t) => detectTechIds.includes(t));
   const coveragePct =
-    attackTechs.length > 0
-      ? Math.round((coveredTechs.length / attackTechs.length) * 100)
+    attackTechIds.length > 0
+      ? Math.round((coveredTechs.length / attackTechIds.length) * 100)
       : null; // 未跑红队时无攻击基线
   // 处置强度 = min(1, 动作数 / 告警数)；安全评分 = 覆盖率×60 + 处置强度×40
   const responseStrength =
