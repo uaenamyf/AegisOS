@@ -279,6 +279,86 @@ export interface PurpleReviewResponse {
   review: Record<string, any>;
 }
 
+// ---- CyberDrill（多轮攻防演练）----
+// date: 2026-09-04 dev: AegisOS Dev
+// changelog: R4 新增 drill 类型——与 backend/routers/drill.py 契约严格对齐（事件名锚点）
+
+export type DrillStatus = "running" | "done" | "aborted";
+
+export interface StartDrillRequest {
+  target_range?: string;
+  max_rounds?: number;
+}
+
+export interface StartDrillResponse {
+  drill_id: string;
+  status: DrillStatus;
+  max_rounds: number;
+}
+
+export interface DrillRoundRed {
+  ok: boolean;
+  assets: string[];
+  finding_count: number;
+  steps: Record<string, any>[];
+  new_steps: Record<string, any>[];
+}
+
+export interface DrillRoundBlue {
+  ok: boolean;
+  alerts: Record<string, any>[];
+  triaged_count: number;
+  plan: Record<string, any>;
+}
+
+export interface DrillRoundPurple {
+  ok: boolean;
+  critique: Record<string, any>;
+  review: Record<string, any>;
+  converged: boolean;
+  valid: boolean;
+  new_issue_count: number;
+}
+
+export interface DrillRound {
+  round: number;
+  red: DrillRoundRed;
+  blue: DrillRoundBlue;
+  purple: DrillRoundPurple;
+  event_stream: Record<string, any>[];
+  convergence_code: string;
+}
+
+export interface DrillSummaryResponse {
+  conclusion: string;
+  convergence_code: string;
+  rounds_executed: number;
+}
+
+export interface DrillRecord {
+  drill_id: string;
+  target_range: string;
+  max_rounds: number;
+  rounds_executed: number;
+  convergence_code: string;
+  rounds: DrillRound[];
+  summary: DrillSummaryResponse;
+  created_at?: string;
+}
+
+/** SSE 事件名（锚点：backend/routers/drill.py 的 emit 调用）。 */
+export type DrillEventName =
+  | "drill_start"
+  | "drill_round"
+  | "drill_summary"
+  | "drill_done"
+  | "drill_error";
+
+export interface DrillEvent {
+  name: DrillEventName;
+  data: Record<string, any>;
+}
+
 export interface ToolCall {
   call_id?: string;
   name?: string;
