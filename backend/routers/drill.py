@@ -115,12 +115,21 @@ class DrillRuntime:
                 )
 
             self.emit("drill_start", {"drill_id": self.drill_id, "max_rounds": self.max_rounds})
+            # R18d：mock 演示多轮趋势——强制至少展示 min_rounds 轮再判收敛；
+            # 真实 LLM 保持 0（越快收敛越好），两种模式互不影响。
+            try:
+                from backend.core import runtime_mode as _rm
+                _mode = _rm.get_mode()
+            except Exception:  # noqa: BLE001
+                _mode = "mock"
+            _min_rounds = min(self.max_rounds, 4) if _mode == "mock" else 0
             result = self.service.drill(
                 self.target_range,
                 max_rounds=self.max_rounds,
                 on_round=on_round,
                 abort=abort,
                 drill_id=self.drill_id,
+                min_rounds=_min_rounds,
             )
             self.summary = result.get("summary") or {}
             self.emit("drill_summary", self.summary)
@@ -290,6 +299,122 @@ async def drill_report(drill_id: str, service: CyberDefenseServiceDep) -> dict[s
     from backend.services.drill_report import build_drill_report_json
 
     return build_drill_report_json(record)
+
+
+@router.get("/{drill_id}/report.pdf")
+async def drill_report_pdf(drill_id: str, service: CyberDefenseServiceDep):
+    """以 PDF 文件下载演练运行记录报告（替代浏览器打印预览）。
+
+    使用 reportlab 内置 STSong-Light CID 字体渲染中文，返回
+    ``application/pdf`` 附件供前端 blob 下载为真正的 .pdf 文件。
+    """
+    from fastapi.responses import Response
+
+    from backend.services.drill_report import build_drill_report_json
+
+    record = service.get_drill(drill_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Drill record not found")
+    report_md = build_drill_report_json(record)["report_md"]
+
+    pdf_bytes = _render_report_pdf(report_md, drill_id)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="aegis-drill-{drill_id}.pdf"'
+        },
+    )
+
+
+def _render_report_pdf(report_md: str, drill_id: str) -> bytes:
+    """把 Markdown 战报渲染为 PDF 字节流（reportlab + STSong-Light CID 中文）。"""
+    from io import BytesIO
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+    from reportlab.platypus import (
+        ListFlowable,
+        ListItem,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+    buff = BytesIO()
+    doc = SimpleDocTemplate(
+        buff,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title=f"AegisOS Drill Report {drill_id}",
+    )
+    body = ParagraphStyle(
+        "body", fontName="STSong-Light", fontSize=9.5, leading=15, spaceAfter=6
+    )
+    h1 = ParagraphStyle("h1", parent=body, fontSize=15, leading=20, spaceAfter=8)
+    h2 = ParagraphStyle("h2", parent=body, fontSize=12.5, leading=17, spaceAfter=6)
+    h3 = ParagraphStyle("h3", parent=body, fontSize=10.5, leading=15, spaceAfter=4)
+
+    story: list = []
+    rows: list[list[str]] = []
+    for raw in report_md.split("\n"):
+        line = raw.rstrip("\r")
+        stripped = line.strip()
+        if not stripped:
+            rows.append([])  # 空行：若正处于表格，则输出表格后继续
+            continue
+        esc = (
+            stripped.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+        if stripped.startswith("#"):
+            lv = min(len(stripped) - len(stripped.lstrip("#")), 3)
+            style = [h1, h2, h3][lv - 1]
+            story.append(Paragraph(esc.lstrip("# "), style))
+        elif stripped.startswith("|"):
+            # 表格行
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if any(set(c) <= set(":- ") for c in cells):
+                continue  # 分隔行
+            rows.append([Paragraph(c, body) for c in cells])
+        elif stripped.startswith(("- ", "* ", "1. ")):
+            story.append(Spacer(1, 2))
+            story.append(
+                ListFlowable(
+                    [ListItem(Paragraph(esc[2:], body), leftIndent=10)],
+                    bulletType="bullet",
+                    start="•",
+                )
+            )
+        elif stripped.startswith("```"):
+            continue
+        else:
+            story.append(Paragraph(esc, body or h3))
+    if rows:
+        t = Table(rows, repeatRows=1)
+        t.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (-1, -1), "STSong-Light"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("GRID", (0, 0), (-1, -1), 0.4, "#999"),
+                    ("BACKGROUND", (0, 0), (-1, 0), "#eef3fb"),
+                ]
+            )
+        )
+        story.append(t)
+    doc.build(story)
+    return buff.getvalue()
 
 
 @router.get("/{drill_id}/summary")

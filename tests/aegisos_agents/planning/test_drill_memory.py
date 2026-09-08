@@ -100,15 +100,16 @@ def test_run_drill_without_memory_unchanged():
 def test_run_purple_review_with_prior_summary_keeps_evolution():
     """run_purple_review 显式传 prior_rounds_summary：mock 按轮演化不受干扰。"""
     orch = _make_orchestrator()
-    red = orch.run_red_chain("10.0.0.0/24", round=2)
-    blue = orch.run_blue_chain(orch._synthesize_event_stream(red["chain"], [], 2))
+    red = orch.run_red_chain("10.0.0.0/24", round=4)
+    blue = orch.run_blue_chain(orch._synthesize_event_stream(red["chain"], [], 4))
 
     with_prior = orch.run_purple_review(
         chain=red["chain"],
         plan=blue["plan"],
         alerts=blue["alerts"],
-        round=2,
-        prior_rounds_summary="round 1: valid=False new_issues=2 code=no_progress",
+        round=4,
+        prior_rounds_summary="round 3: valid=False new_issues=1 code=no_progress",
     )
-    assert with_prior["critique"]["valid"] is True  # round>=2 补齐
+    # R18d：mock 紫队按轮演化，round4 起补齐（valid=True），prior_summary 不干预
+    assert with_prior["critique"]["valid"] is True  # 末轮补齐
     assert "critique" in with_prior and "review" in with_prior

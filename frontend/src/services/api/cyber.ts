@@ -234,6 +234,22 @@ export const cyberApi = {
   }> =>
     apiClient.get(`/drill/${encodeURIComponent(drillId)}/report`),
 
+  /**
+   * R18d：下载演练报告为真正的 PDF 文件（后端 reportlab 渲染，非浏览器打印预览）。
+   * 返回 Blob，前端用 URL.createObjectURL 触发下载。
+   */
+  async getDrillReportPdf(drillId: string): Promise<Blob> {
+    const url = `${apiClient.baseUrl}/drill/${encodeURIComponent(drillId)}/report.pdf`;
+    const headers: Record<string, string> = {
+      [config.apiKeyHeader]: config.apiKey,
+    };
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      throw new Error(`报告导出失败（HTTP ${res.status}）`);
+    }
+    return res.blob();
+  },
+
   abortDrill: (drillId: string): Promise<{ drill_id: string; status: string }> =>
     apiClient.post<{ drill_id: string; status: string }>(
       `/drill/${encodeURIComponent(drillId)}/abort`,

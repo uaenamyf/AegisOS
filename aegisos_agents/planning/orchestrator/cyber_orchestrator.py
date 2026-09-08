@@ -2601,6 +2601,7 @@ class CyberOrchestrator(GoalMode[dict]):
         purple_critique_valid: bool,
         consecutive_no_new: int,
         aborted: bool = False,
+        min_rounds: int = 0,
     ) -> tuple[bool, str]:
         """证据驱动收敛判定（R1 评审修订：不依赖恒真的 valid/consistent）。
 
@@ -2613,6 +2614,10 @@ class CyberOrchestrator(GoalMode[dict]):
         4. 连续 ≥2 轮无新步骤 → ``no_progress``（红队挖不出新证据，避免空转）
         其余继续。
 
+        R18d（演示轮次门槛）：``min_rounds`` 用于 mock 演示场景——若小于该值，
+        即使已满足收敛/无进展条件也**不提前停**，强制跑满以展示多轮趋势；
+        真实 LLM 模式默认传 0，保持"越快收敛越好"的语义，两者互不影响。
+
         Args:
             round: 当前轮次。
             max_rounds: 轮次上限 M。
@@ -2620,17 +2625,19 @@ class CyberOrchestrator(GoalMode[dict]):
             purple_critique_valid: 本轮紫队批判是否有缺口（valid）。
             consecutive_no_new: 已连续几轮无新步骤（含本轮）。
             aborted: 是否被显式中止。
+            min_rounds: mock 演示的最小展示轮数（默认 0，不启用）。
 
         Returns:
             ``(should_stop, convergence_code)``。
         """
         if aborted:
             return True, "aborted"
-        if not new_steps and purple_critique_valid:
+        reached_min = round >= min_rounds if min_rounds > 0 else True
+        if not new_steps and purple_critique_valid and reached_min:
             return True, "converged"
         if round >= max_rounds:
             return True, "max_rounds"
-        if not new_steps and consecutive_no_new >= 2:
+        if not new_steps and consecutive_no_new >= 2 and reached_min:
             return True, "no_progress"
         return False, "running"
 
@@ -2643,6 +2650,7 @@ class CyberOrchestrator(GoalMode[dict]):
         drill_id: str | None = None,
         memory: "MemoryStore | None" = None,
         memory_budget: int = 512,
+        min_rounds: int = 0,
     ) -> dict[str, Any]:
         """多轮收敛演练主循环（CyberDrill R1 / R8）。
 
@@ -2669,6 +2677,9 @@ class CyberOrchestrator(GoalMode[dict]):
                 registry / 落盘文件 / SSE 事件三者 ID 一致。
             memory: 可选记忆存储；传入时启用跨轮记忆与上下文压缩（R8）。
             memory_budget: 工作记忆压缩的 token 预算，默认 512。
+            min_rounds: mock 演示的最小展示轮数（默认 0，不启用）——传入时
+                `_evaluate_stop` 在达到该轮次前不判收敛/无进展，强制跑满若干轮
+                以展示完整趋势；真实 LLM 模式保持 0（越快收敛越好）。
 
         Returns:
             含 ``drill_id`` / ``rounds_executed`` / ``convergence_code`` /
@@ -2734,7 +2745,7 @@ class CyberOrchestrator(GoalMode[dict]):
                     "triaged": [],
                     "hypotheses": [],
                     "plan": ResponsePlan(
-                        plan_id="degraded", actions=[], confidence=0.0, rollback=[]
+                        plan_id="degraded", actions=[], confidence=0.0, rollback={}
                     ),
                 }
                 blue_ok = False
@@ -2778,6 +2789,7 @@ class CyberOrchestrator(GoalMode[dict]):
                 purple_critique_valid=valid,
                 consecutive_no_new=consecutive_no_new,
                 aborted=should_abort,
+                min_rounds=min_rounds,
             )
 
             round_data = {

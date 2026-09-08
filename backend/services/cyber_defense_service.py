@@ -372,6 +372,7 @@ class CyberDefenseService:
         drill_id: str | None = None,
         memory: MemoryStore | None = None,
         memory_budget: int = 512,
+        min_rounds: int = 0,
     ) -> dict[str, Any]:
         """执行一键多轮攻防演练并持久化演练记录。
 
@@ -409,6 +410,7 @@ class CyberDefenseService:
             drill_id=drill_id,
             memory=mem,
             memory_budget=memory_budget,
+            min_rounds=min_rounds,
         )
         drill_id = result["drill_id"]
         record = {

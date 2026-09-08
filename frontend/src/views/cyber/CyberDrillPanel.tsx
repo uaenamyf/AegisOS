@@ -628,26 +628,39 @@ function CompareView({ a, b }: { a: DrillMeta; b: DrillMeta }) {
 }
 
 function exportReportPdf(reportMd: string, drillId: string | null): void {
-  // Markdown 的轻度渲染：标题 / 表格分隔线 / 行内代码 / 粗体 / 列表，
-  // 其余按等宽纯文本展示（保证任何报告内容都不丢）。
+  // R18d：改为下载真正的 PDF 文件（调用后端 /report.pdf，reportlab 渲染中文），
+  // 替代原先的 window.open + win.print()（那会弹出打印对话框而非下载 PDF）。
+  void (async () => {
+    if (!drillId) return;
+    try {
+      const blob = await cyberApi.getDrillReportPdf(drillId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `aegis-drill-${drillId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("导出 PDF 失败，回退到打印预览", err);
+      // 回退：若后端不可用，退回原 print 预览（不静默失败）
+      _printFallback(reportMd, drillId);
+    }
+  })();
+}
+
+/** 后端 PDF 不可用时的打印预览回退（保留原行为，避免导出彻底失效）。 */
+function _printFallback(reportMd: string, drillId: string | null): void {
   const lines = reportMd.split("\n");
   const html = lines
     .map((raw) => {
       const line = raw.replace(/\r$/, "");
-      const esc = (t: string) =>
-        escapeHtml(t)
-          .replace(/`([^`]+)`/g, "<code>$1</code>")
-          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      const esc = (t: string) => escapeHtml(t);
       const h = line.match(/^(#{1,4})\s+(.*)$/);
-      if (h) {
-        const lv = h[1].length;
-        return `<h${lv}>${esc(h[2])}</h${lv}>`;
-      }
-      if (/^\s*[-*]\s+/.test(line)) {
-        return `<li>${esc(line.replace(/^\s*[-*]\s+/, ""))}</li>`;
-      }
+      if (h) return `<h${h[1].length}>${esc(h[2])}</h${h[1].length}>`;
+      if (/^\s*[-*]\s+/.test(line)) return `<li>${esc(line)}</li>`;
       if (/^\s*\|.*\|\s*$/.test(line)) {
-        // 表格行：跳过分隔行（|---|），其余渲染为表格行
         if (/^\s*\|[\s:|-]+\|\s*$/.test(line)) return "";
         const cells = line
           .split("|")
@@ -660,7 +673,6 @@ function exportReportPdf(reportMd: string, drillId: string | null): void {
       return `<p>${esc(line) || "&nbsp;"}</p>`;
     })
     .join("\n");
-
   const win = window.open("", "_blank", "width=900,height=700");
   if (!win) return;
   win.document.write(`<!doctype html>
@@ -669,17 +681,11 @@ function exportReportPdf(reportMd: string, drillId: string | null): void {
 <meta charset="utf-8" />
 <title>AegisOS 演练战报 ${drillId ?? ""}</title>
 <style>
-  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; margin: 32px; color: #1a2233; line-height: 1.6; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; margin: 32px; color: #1a2233; }
   h1 { font-size: 22px; border-bottom: 2px solid #2f7de1; padding-bottom: 8px; }
-  h2 { font-size: 17px; margin-top: 22px; border-left: 4px solid #2f7de1; padding-left: 8px; }
-  h3 { font-size: 14px; margin-top: 16px; color: #34405a; }
-  code { background: #f0f3f8; padding: 1px 5px; border-radius: 3px; font-family: Consolas, monospace; font-size: 12px; }
-  p { margin: 6px 0; white-space: pre-wrap; word-break: break-all; }
-  table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 12px; }
-  td, th { border: 1px solid #c6d0dd; padding: 4px 8px; text-align: left; }
-  li { margin: 2px 0; }
-  ul { padding-left: 20px; }
-  @media print { body { margin: 12mm; } }
+  h2 { font-size: 17px; border-left: 4px solid #2f7de1; padding-left: 8px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  td { border: 1px solid #ccc; padding: 4px 8px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -688,7 +694,6 @@ ${html}
 </body>
 </html>`);
   win.document.close();
-  // 等待渲染完成后触发打印对话框（用户可选"另存为 PDF"）
   win.focus();
   win.print();
 }
@@ -1202,18 +1207,24 @@ export function CyberDrillPanel() {
                         {/* T6 量化指标：该轮防御覆盖率 + 安全评分 */}
                         {round.blue.ok ? (
                           (() => {
+                            const techId = (t: any) => {
+                              const m = /^(T\d+(?:\.\d+)?)/.exec(String(t));
+                              return m ? m[1] : t;
+                            };
                             const atk = [
                               ...new Set(
                                 (round.red.steps as any[])
                                   .map((s) => s.technique)
-                                  .filter(Boolean),
+                                  .filter(Boolean)
+                                  .map(techId),
                               ),
                             ];
                             const det = [
                               ...new Set(
                                 (round.blue.alerts as any[])
                                   .map((a) => a.technique)
-                                  .filter(Boolean),
+                                  .filter(Boolean)
+                                  .map(techId),
                               ),
                             ];
                             const cov = atk.length

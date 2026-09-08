@@ -7,6 +7,8 @@
 """
 from __future__ import annotations
 
+import re
+
 from aegisos_agents.tools.llms.base import LLMRequest, LLMResponse
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 
@@ -24,6 +26,30 @@ _BLUE_SCENARIOS: dict[str, dict] = {
             {"kind": "monitor", "target": "auth-logs", "rationale": "Watch for further login attempts"},
         ],
         "rollback": ["unblock-src-ip", "relax-lockout-policy"],
+    },
+    # （R18c）蓝队场景补全：红队 mock 演化链使用 T1068/T1203，须有对应告警
+    # 场景，否则 detector 提取到编号却无场景可查 → 告警退回静态、覆盖率恒 0。
+    "T1068": {
+        "severity": "high",
+        "alert_event": "privilege-escalation",
+        "hypothesis": "Adversary is exploiting a vulnerability to escalate privileges on a host",
+        "actions": [
+            {"kind": "isolate", "target": "escalated-host", "rationale": "Isolate host where privilege escalation was observed"},
+            {"kind": "patch", "target": "local-vuln", "rationale": "Patch the locally exploitable privilege-escalation vulnerability"},
+            {"kind": "monitor", "target": "host-logs", "rationale": "Audit host logs for post-escalation activity"},
+        ],
+        "rollback": ["release-host-isolation"],
+    },
+    "T1203": {
+        "severity": "high",
+        "alert_event": "client-side-exploitation",
+        "hypothesis": "Adversary is exploiting a client-side or software RCE to execute code",
+        "actions": [
+            {"kind": "block", "target": "malicious-host", "rationale": "Block communication with the malicious delivering host"},
+            {"kind": "patch", "target": "software", "rationale": "Patch the vulnerable software preventing code execution"},
+            {"kind": "monitor", "target": "endpoint-logs", "rationale": "Monitor endpoints for post-exploitation behavior"},
+        ],
+        "rollback": ["release-malicious-block"],
     },
     "T1078": {
         "severity": "high",
@@ -46,6 +72,17 @@ _BLUE_SCENARIOS: dict[str, dict] = {
             {"kind": "monitor", "target": "endpoints", "rationale": "Monitor endpoints for payload execution"},
         ],
         "rollback": ["release-quarantined-mail"],
+    },
+    "T1003": {
+        "severity": "critical",
+        "alert_event": "credential-dumping",
+        "hypothesis": "Adversary is dumping credentials from memory or on host to persist and move laterally",
+        "actions": [
+            {"kind": "isolate", "target": "dc-host", "rationale": "Isolate domain controller where credential dumping occurred"},
+            {"kind": "patch", "target": "compromised-accounts", "rationale": "Rotate all exposed account credentials immediately"},
+            {"kind": "monitor", "target": "lsass-access", "rationale": "Audit LSASS/Memory access for repeat dumping"},
+        ],
+        "rollback": ["reconnect-dc", "verify-account-rotation"],
     },
     "T1036": {
         "severity": "medium",
@@ -174,6 +211,15 @@ def _normalize_technique(value: str) -> str | None:
     if not value:
         return None
     v = str(value).strip()
+    # 0) 混合格式里直接提取 ATT&CK 编号（如 "T1068 (CVE-2021-3156 on asset-001)"）：
+    #     R18b 把红队技法改成带 CVE 证据的『编号 + 括号』格式后，事件流里的
+    #    technique 字段也是混合格式，若只匹配纯编号会提取不到 → 蓝队 detector
+    #    回退到静态响应，告警与红队链零交集，覆盖率恒 0。
+    m = re.match(r"^(T\d+(?:\.\d+)?)\b", v)
+    if m:
+        tid = m.group(1).upper()
+        if tid in _BLUE_SCENARIOS:
+            return tid
     # 1) 精确 ATT&CK 编号
     if v.upper() in _BLUE_SCENARIOS:
         return v.upper()
@@ -477,41 +523,63 @@ class _CyberMockProvider(MockProvider):
         return _json.dumps(data)
 
     def _evolve_exploit(self, base_text: str, round_no: int) -> str:
-        """利用链演化：round>=2 时红队针对新暴露资产 asset-4 追加利用步骤。"""
+        """利用链演化：round>=2 起每轮真实追加一步横向移动，直至命中域控 asset-4。
+
+        R18d：原实现只在 round 2 追加 step-3 后就不再生涨，R3 起红队无新步骤，
+        趋势折线在 R2 后立刻平坦、且紫队过早判 valid（演示观感差）。现在每轮
+        增加一步（round2=资产间横向 T1021、round3=横向推进、round4=命中 asset-4
+        域控），配合 min_rounds 门槛，mock 演示能展示完整且渐进的收敛趋势。
+        """
         import json as _json
 
         if round_no < 2:
             return base_text
         data = _json.loads(base_text)
         existing = {s["step_id"] for s in data["steps"]}
-        if "step-3" not in existing:
-            data["steps"] = data["steps"] + [
-                {
-                    "step_id": "step-3",
-                    "technique": "T1078",
-                    "from_asset": "asset-2",
-                    "to_asset": "asset-4",
-                    "success": True,
-                }
-            ]
+
+        NEW_PER_ROUND = {
+            2: {"step_id": "step-3", "technique": "T1021",
+                "from_asset": "asset-1", "to_asset": "asset-2", "success": True},
+            3: {"step_id": "step-4", "technique": "T1021",
+                "from_asset": "asset-2", "to_asset": "asset-3", "success": True},
+            4: {"step_id": "step-5", "technique": "T1078",
+                "from_asset": "asset-3", "to_asset": "asset-4", "success": True},
+        }
+        for rn in range(2, round_no + 1):
+            step = NEW_PER_ROUND.get(rn)
+            if step and step["step_id"] not in existing:
+                data["steps"] = data["steps"] + [step]
+                existing.add(step["step_id"])
         return _json.dumps(data)
 
     def _evolve_critic(self, base_text: str, round_no: int) -> str:
-        """紫队批判演化：round=1 留缺口(valid=False)，>=2 补齐(valid=True)。"""
+        """紫队批判演化：逐轮指出新缺口，round4 前保持 valid=False，末轮补齐收敛。
+
+        R18d：原实现 round>=2 直接 valid=True，导致"第二轮就收敛"、趋势无层次。
+        现逐轮演化缺口（round2 缺横向路径、round3 缺对域控的利用、round4 补齐），
+        配合 min_rounds=4，演示能展示完整对抗收敛曲线；真实 LLM 不受影响。
+        """
         import json as _json
 
         if round_no <= 0:
             return base_text
         data = _json.loads(base_text)
-        if round_no == 1:
+        if round_no <= 3:
+            issue_map = {
+                1: "攻击链未覆盖内部高价值资产 asset-4（10.0.0.20:rdp 关键业务入口），需补充利用步骤再评估",
+                2: "攻击链在资产间缺少明确的横向移动路径（T1021），无法证明从外网入口深入内部网络的时序",
+                3: "横向推进至 asset-3 后尚未对目标域控 asset-4 建立利用路径，目标达成步缺失，链路不完整",
+            }
             data.update(
                 {
                     "valid": False,
-                    "issues": [
-                        "攻击链未覆盖内部高价值资产 asset-4（10.0.0.20:rdp 关键业务入口），需补充利用步骤再评估"
-                    ],
+                    "issues": [issue_map.get(round_no, issue_map[1])],
                     "severity": "high",
-                    "suggestion": "补充对 asset-4 的利用路径后重新校验",
+                    "suggestion": (
+                        "补齐横向移动与对目标高价值资产（域控）的利用步骤后重新校验"
+                        if round_no < 3
+                        else "补齐对 asset-4 目标达成步（如 T1078/T1003）后重新校验"
+                    ),
                 }
             )
         else:
@@ -520,7 +588,7 @@ class _CyberMockProvider(MockProvider):
                     "valid": True,
                     "issues": [],
                     "severity": "none",
-                    "suggestion": "攻击链已覆盖全部暴露面并通过 ATT&CK 映射校验。",
+                    "suggestion": "攻击链已覆盖全部暴露面、完成横向移动并命中目标域控，通过 ATT&CK 映射校验。",
                 }
             )
         return _json.dumps(data)
