@@ -863,6 +863,28 @@ body {
   color: var(--info, #4db6ff);
   border-color: var(--info, #4db6ff);
 }
+/* R10: 端边云 tier 徽标 */
+.badge--tier {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+.badge--tier-device {
+  color: var(--success);
+  border-color: var(--success);
+}
+.badge--tier-edge {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+.badge--tier-cloud {
+  color: var(--info, #4db6ff);
+  border-color: var(--info, #4db6ff);
+}
+.cyber-drill__placement {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 
 /* ============ Cyber Defense View ============ */
 /* date: 2026-06-28

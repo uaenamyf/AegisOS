@@ -60,6 +60,7 @@ from aegisos_agents.action.threat_hunt.agent import ThreatHuntAgent
 
 # P3.2: 低熵稀疏路由（spec 04 §16 / 11 §7 铁律接入）
 from aegisos_agents.planning.engine.router.router import route as _route
+from aegisos_agents.planning.engine.scheduler.scheduler import Model, schedule
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 from protocol.cyber import (
     Alert,
@@ -73,6 +74,7 @@ from protocol.cyber import (
 from protocol.graph import Graph, GraphNode, NodeKind
 from protocol.memory import MemoryPacket
 from protocol.message import Message, NodeRef
+from protocol.scheduler import Task
 
 if TYPE_CHECKING:
     from aegisos_agents.memory.memory_store import MemoryStore
@@ -127,6 +129,53 @@ from aegisos_agents.perception.reasoning.strategies.goal_mode import (
 
 def _asdict(obj):
     return obj.model_dump() if isinstance(obj, BaseModel) else obj
+
+
+# ==================================================================
+# R10: 演练阶段 placement —— 端边云三层候选池 + 各阶段任务特征
+# ==================================================================
+
+# 三层候选模型池（演示版：每层一个候选，不接真实异构节点）
+_DRILL_MODEL_POOL: list[Model] = [
+    Model(model_id="device_firewall", tier="device", size="small", capabilities=["recon", "detect"]),
+    Model(model_id="edge_gateway", tier="edge", size="medium", capabilities=["recon", "detect", "plan"]),
+    Model(model_id="cloud_gpu", tier="cloud", size="large", capabilities=["plan", "review", "critique"]),
+]
+
+# 各阶段任务特征（按阶段语义设置延迟预算与隐私级别，驱动 schedule() 选层）
+#   red    —— 攻击链实时生成：超低延迟 → device/edge
+#   blue   —— 防御响应：低延迟 → edge/device
+#   purple —— 评审总结：高算力需求 → cloud
+_DRILL_PHASE_FEATURES: dict[str, dict[str, Any]] = {
+    "red": {
+        "goal": "drill red attack chain",
+        "latency_budget": 0.8,  # < DEVICE_THRESHOLD(1.0) → 端侧优先
+        "privacy": "standard",
+        "capability": "recon",
+        "reason": "攻击链实时生成（超低延迟）",
+    },
+    "blue": {
+        "goal": "drill blue defense response",
+        "latency_budget": 3.0,  # < EDGE_THRESHOLD(5.0) → 边侧优先
+        "privacy": "standard",
+        "capability": "detect",
+        "reason": "防御响应低延迟",
+    },
+    "purple": {
+        "goal": "drill purple review summary",
+        "latency_budget": 10.0,  # ≥ EDGE_THRESHOLD → 算力优先 → 云
+        "privacy": "unrestricted",
+        "capability": "review",
+        "reason": "评审总结高算力需求",
+    },
+}
+
+# 层级语义（供卸载理由展示）
+_DRILL_TIER_SEMANTICS: dict[str, str] = {
+    "device": "端侧·超低延迟/本地隐私",
+    "edge": "边侧·低延迟/区域隔离",
+    "cloud": "云侧·强算力/可脱敏",
+}
 
 # ==================================================================
 # R4.2: ChainContext —— handoff 链共享上下文
@@ -2085,6 +2134,8 @@ class CyberOrchestrator(GoalMode[dict]):
                 },
                 "event_stream": event_stream,
                 "convergence_code": code,
+                # R10: 端-边-云阶段 placement 标注（红/蓝/紫执行位置）
+                "phase": self._phase_placements(),
             }
             if memory is not None:
                 round_data["prior_rounds_summary"] = prior_rounds_summary
@@ -2128,6 +2179,41 @@ class CyberOrchestrator(GoalMode[dict]):
             "rounds": rounds,
             "summary": summary,
         }
+
+    # ---- R10: 演练阶段 placement（端-边-云自适应调度标注）辅助 ----
+
+    def _phase_placements(self) -> dict[str, dict[str, Any]]:
+        """为演练红/蓝/紫三阶段标注执行位置（R10）。
+
+        按各阶段任务特征（延迟预算 + 隐私级别）调用既有
+        :func:`scheduler.schedule` 选定端/边/云层级，产出
+        ``{tier, model_id, reason}`` 三元组；调度异常时回退云侧兜底。
+
+        Returns:
+            形如 ``{"red": {...}, "blue": {...}, "purple": {...}}``
+            的 placement 映射，每项含 ``tier`` / ``model_id`` / ``reason``。
+        """
+        placements: dict[str, dict[str, Any]] = {}
+        for phase, feat in _DRILL_PHASE_FEATURES.items():
+            task = Task(
+                goal=feat["goal"],
+                latency_budget=feat["latency_budget"],
+                privacy=feat["privacy"],
+            )
+            try:
+                model = schedule(task, _DRILL_MODEL_POOL, required_capability=feat["capability"])
+                tier = model.tier
+                model_id = model.model_id
+            except ValueError:
+                # 防御性兜底：候选池缺层时落云
+                tier = "cloud"
+                model_id = "cloud_gpu"
+            placements[phase] = {
+                "tier": tier,
+                "model_id": model_id,
+                "reason": f"{feat['reason']} → {_DRILL_TIER_SEMANTICS.get(tier, tier)}",
+            }
+        return placements
 
     # ---- R8: 跨轮记忆与上下文压缩辅助 ----
 

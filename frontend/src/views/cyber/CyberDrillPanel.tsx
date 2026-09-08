@@ -274,6 +274,23 @@ export function CyberDrillPanel() {
                       🧠 mem
                     </span>
                   ) : null}
+                  {round.phase ? (
+                    <span
+                      className="cyber-drill__placement"
+                      title={`${Object.values(round.phase)
+                        .map((p) => `${p.tier} · ${p.reason}`)
+                        .join("\n")}`}
+                    >
+                      {Object.entries(round.phase).map(([phase, p]) => (
+                        <span
+                          key={phase}
+                          className={`badge badge--tier badge--tier-${p.tier}`}
+                        >
+                          {phase}: {p.tier}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
                   <span
                     className={`badge badge--${round.purple.converged ? "succeeded" : "running"}`}
                   >

@@ -331,11 +331,26 @@ export interface DrillRoundPurple {
   new_issue_count: number;
 }
 
+/** R10: 演练阶段执行位置标注（端-边-云自适应调度）。 */
+export interface DrillPhasePlacement {
+  tier: "device" | "edge" | "cloud";
+  model_id: string;
+  reason: string;
+}
+
+export interface DrillRoundPhases {
+  red: DrillPhasePlacement;
+  blue: DrillPhasePlacement;
+  purple: DrillPhasePlacement;
+}
+
 export interface DrillRound {
   round: number;
   red: DrillRoundRed;
   blue: DrillRoundBlue;
   purple: DrillRoundPurple;
+  /** R10: 三阶段执行位置标注。 */
+  phase?: DrillRoundPhases;
   /** R8: 跨轮记忆——本轮紫队携带的前序轮次决策摘要（首轮为 null）。 */
   prior_rounds_summary?: string | null;
   event_stream: Record<string, any>[];
