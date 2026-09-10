@@ -27,6 +27,28 @@ class GraphService:
         # 订阅 graph.update 事件，异常时静默忽略（事件总线可能尚未就绪）
         with contextlib.suppress(Exception):
             self._event_bus.subscribe("graph.update", self._on_graph_update)
+            self._event_bus.subscribe("agent.start", self._on_agent_start)
+            self._event_bus.subscribe("agent.finish", self._on_agent_finish)
+
+    def _on_agent_start(self, event: Event) -> None:
+        """将任务开始事件投影为 Agent→Task 执行关系。"""
+        agent_id = str((event.payload or {}).get("agent_id") or event.source.node_id)
+        task_id = event.task_id
+        if not task_id:
+            return
+        self._graph.add_node(GraphNode(node_id=agent_id, kind="agent", name=agent_id, status="active"))
+        self._graph.add_node(GraphNode(node_id=task_id, kind="task", name=str((event.payload or {}).get("goal", task_id)), status="running"))
+        if not any(edge.src == agent_id and edge.dst == task_id for edge in self._graph.edges):
+            self._graph.add_edge(GraphEdge(src=agent_id, dst=task_id))
+
+    def _on_agent_finish(self, event: Event) -> None:
+        """将任务完成事件投影为已完成或失败的任务节点。"""
+        task_id = event.task_id
+        if not task_id or task_id not in self._graph.nodes:
+            return
+        node = self._graph.nodes[task_id]
+        status = "degraded" if (event.payload or {}).get("status") == "failed" else "idle"
+        self._graph.add_node(node.model_copy(update={"status": status}))
 
     def _on_graph_update(self, event: Event) -> None:
         """graph.update 事件的回调处理器。

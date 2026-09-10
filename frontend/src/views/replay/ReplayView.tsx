@@ -4,12 +4,34 @@
 
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
+import { apiClient } from "@/lib/api-client";
+import type { Event } from "@/protocol/types";
 
 export function ReplayView() {
   const events = useAppStore((s) => s.events);
+  const currentSession = useAppStore((s) => s.currentSession);
+  const tasks = useAppStore((s) => s.tasks);
   const setEvents = useAppStore((s) => s.setEvents);
   const [cursor, setCursor] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const currentEvent = events[cursor];
+
+  useEffect(() => {
+    const sessionId = currentSession?.id;
+    if (!sessionId) return;
+    void apiClient
+      .get<{ timeline: Event[] }>(`/replay/${encodeURIComponent(sessionId)}`)
+      .then((response) => {
+        if (response.timeline?.length) setEvents(response.timeline);
+        else if (tasks.length) {
+          setEvents(tasks.flatMap((task) => task.task_id ? [
+            { event_id: `${task.task_id}-start`, event_type: "agent.start", task_id: task.task_id, payload: { goal: task.goal, session_id: sessionId }, timestamp: Date.now() },
+            ...(task.status === "succeeded" || task.status === "failed" ? [{ event_id: `${task.task_id}-finish`, event_type: "agent.finish", task_id: task.task_id, payload: { output: task.result, session_id: sessionId }, timestamp: Date.now() }] : []),
+          ] : []));
+        }
+      })
+      .catch(() => { /* SSE 前端事件仍可用于即时回放 */ });
+  }, [currentSession?.id, setEvents, tasks]);
 
   const loadDemoEvents = () => {
     const now = Date.now();
@@ -49,6 +71,10 @@ export function ReplayView() {
           </div>
         ) : (
           <>
+          <div className="view__metrics">
+            <div className="metric"><span className="metric__value">{events.length}</span><span className="metric__label">实时事件</span></div>
+            <div className="metric"><span className="metric__value">{new Set(events.map((event) => event.task_id).filter(Boolean)).size}</span><span className="metric__label">关联任务</span></div>
+          </div>
           <div className="replay-controls">
             <button type="button" onClick={() => setPlaying((value) => !value)}>{playing ? "暂停" : "播放"}</button>
             <button type="button" onClick={() => setCursor((value) => Math.max(0, value - 1))}>上一步</button>
@@ -66,6 +92,16 @@ export function ReplayView() {
               </li>
             ))}
           </ul>
+          {currentEvent ? <aside className="replay-detail" aria-label="当前事件详情">
+            <span className="canvas-inspector__eyebrow">CURRENT EVENT</span>
+            <h3>{currentEvent.event_type}</h3>
+            <dl className="canvas-inspector__facts">
+              <div><dt>任务</dt><dd>{currentEvent.task_id ?? "全局事件"}</dd></div>
+              <div><dt>来源</dt><dd>{currentEvent.source?.node_id ?? "system"}</dd></div>
+              <div><dt>时间</dt><dd>{currentEvent.timestamp ? new Date(currentEvent.timestamp).toLocaleTimeString() : "—"}</dd></div>
+            </dl>
+            {currentEvent.payload ? <pre>{JSON.stringify(currentEvent.payload, null, 2)}</pre> : null}
+          </aside> : null}
           </>
         )}
       </div>

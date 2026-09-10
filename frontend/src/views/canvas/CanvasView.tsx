@@ -51,6 +51,11 @@ function taskOutput(task: Task): unknown {
   return task.result?.output ?? task.result;
 }
 
+function outputEntries(value: unknown): Array<[string, string]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [["结果", compact(value)]];
+  return Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, compact(entry, 260)]);
+}
+
 function taskEvents(task: Task, events: Event[]) {
   return events.filter((event) => event.task_id === task.task_id || event.payload?.task_id === task.task_id);
 }
@@ -66,14 +71,33 @@ export function CanvasView() {
 
   useEffect(() => {
     const sessionId = currentSession?.id;
-    if (sessionId) void taskApi.list(sessionId).then(setTasks).catch(() => {});
+    if (sessionId) void taskApi.list(sessionId).then((remoteTasks) => {
+      const localDrillTasks = useAppStore.getState().tasks.filter((task) => task.payload?.source === "chat-drill");
+      for (let index = 0; index < sessionStorage.length; index += 1) {
+        const key = sessionStorage.key(index);
+        if (!key?.startsWith("aegis.canvas.drill.")) continue;
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(key) ?? "[]") as Task[];
+          localDrillTasks.push(...saved);
+        } catch { /* 忽略损坏的旧快照 */ }
+      }
+      setTasks([...remoteTasks, ...localDrillTasks.filter((local) => !remoteTasks.some((remote) => remote.task_id === local.task_id))]);
+    }).catch(() => {});
   }, [currentSession?.id, setTasks]);
 
   const visibleTasks = useMemo(
     () => tasks.filter((task) => filter === "all" || task.status === filter),
     [filter, tasks],
   );
-  const selectedTask = visibleTasks.find((task, index) => taskId(task, index) === selectedId) ?? visibleTasks[0];
+  const runningTasks = tasks.filter((task) => task.status === "running");
+  const completedTasks = tasks.filter((task) => task.status === "succeeded");
+  const failedTasks = tasks.filter((task) => task.status === "failed");
+  const recentTasks = [...tasks]
+    .sort((left, right) => String(right.task_id ?? "").localeCompare(String(left.task_id ?? "")))
+    .slice(0, 5);
+  const selectedTask = selectedId
+    ? visibleTasks.find((task, index) => taskId(task, index) === selectedId)
+    : undefined;
   const selectedEvents = selectedTask ? taskEvents(selectedTask, events) : [];
   const selectedMessages = selectedTask ? chatMessages.filter((message) => message.taskId === selectedTask.task_id) : [];
   const columns = useMemo(() => {
@@ -84,6 +108,15 @@ export function CanvasView() {
     });
     return [...grouped.entries()].sort(([left], [right]) => left - right);
   }, [visibleTasks]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedId(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedId]);
 
   const loadDemoFlow = async () => {
     const sessionId = useAppStore.getState().currentSession?.id;
@@ -116,11 +149,41 @@ export function CanvasView() {
   return (
     <section className="view canvas-view">
       <header className="view__header">
-        <h2 className="view__title">Task Canvas</h2>
+        <div className="canvas-heading-row">
+          <div>
+            <span className="eyebrow">OPERATIONS / LIVE EXECUTION</span>
+            <h2 className="view__title">Task Canvas</h2>
+          </div>
+          <span className={`canvas-live-indicator${runningTasks.length ? " canvas-live-indicator--active" : ""}`}>
+            <i /> {runningTasks.length ? "LIVE" : "STANDBY"}
+          </span>
+        </div>
         <p className="view__desc">
-          用依赖关系观察任务如何从目标走向执行。
+          先看执行中的 Agent，再回看任务如何沿依赖关系推进。
         </p>
       </header>
+
+      <div className="canvas-overview" aria-label="执行概览">
+        <div className="canvas-overview__lead"><span>当前队列</span><strong>{tasks.length}</strong><small>个后端任务</small></div>
+        <div><span>执行中</span><strong>{runningTasks.length}</strong><small>Agent 正在处理</small></div>
+        <div><span>已完成</span><strong>{completedTasks.length}</strong><small>已有产出</small></div>
+        <div><span>需关注</span><strong>{failedTasks.length}</strong><small>失败或需复核</small></div>
+      </div>
+
+      {tasks.length > 0 ? <section className="canvas-activity-strip" aria-label="最近活动">
+        <div className="canvas-activity-strip__heading"><span>RECENT ACTIVITY</span><small>{events.length} 条实时事件</small></div>
+        <div className="canvas-activity-strip__items">
+          {recentTasks.map((task) => {
+            const activity = taskEvents(task, events);
+            const agent = String(task.payload?.agent_id ?? task.payload?.agent ?? activity[0]?.source?.node_id ?? task.result?.agent_id ?? "待分配");
+            return <button type="button" key={task.task_id} className="canvas-activity-item" onClick={() => setSelectedId(task.task_id ?? null)}>
+              <span className={`canvas-activity-item__dot canvas-activity-item__dot--${task.status ?? "pending"}`} />
+              <span><b>{agent}</b><strong>{task.goal || task.task_id}</strong></span>
+              <em>{statusLabel(task.status ?? "pending")} · 查看详情</em>
+            </button>;
+          })}
+        </div>
+      </section> : null}
 
       <div className="canvas-toolbar" role="toolbar" aria-label="任务筛选">
         <span className="canvas-toolbar__label">任务状态</span>
@@ -153,7 +216,10 @@ export function CanvasView() {
             <div className="canvas-board__axis">真实任务依赖流向</div>
             <div className="canvas-swimlanes">
               {(["red", "blue", "purple"] as const).map((tone) => {
-                const phaseColumns = columns.filter(([depth]) => phaseMeta(depth + 1).tone === tone);
+                const phaseColumns = columns.filter(([depth, tasksInColumn]) => tasksInColumn.some((task) => {
+                  const taskPhase = task.payload?.phase;
+                  return taskPhase ? taskPhase === tone : phaseMeta(depth + 1).tone === tone;
+                }));
                 if (!phaseColumns.length) return null;
                 const phaseLabel = tone === "red" ? "红队 · 攻击面建立" : tone === "blue" ? "蓝队 · 检测与响应" : "紫队 · 对抗校验";
                 return (
@@ -171,10 +237,11 @@ export function CanvasView() {
                             const id = taskId(task, index);
                             const status = task.status || "pending";
                             const stage = Number(task.payload?.stage ?? depth + 1);
-                            const phase = phaseMeta(stage);
+                            const phase = task.payload?.phase
+                              ? { label: task.payload.phase === "red" ? "红队" : task.payload.phase === "blue" ? "蓝队" : "紫队", tone: String(task.payload.phase) }
+                              : phaseMeta(stage);
                             const activity = taskEvents(task, events);
                             const agent = String(task.payload?.agent_id ?? task.payload?.agent ?? activity[0]?.source?.node_id ?? task.result?.agent_id ?? "待分配");
-                            const latestOutput = activity.find((event) => event.event_type === "agent.finish")?.payload?.output ?? taskOutput(task);
                             return (
                               <button
                                 type="button"
@@ -186,7 +253,7 @@ export function CanvasView() {
                                 <span className="canvas-node__body">
                                   <strong>{task.goal || id}</strong>
                                   <small>{phase.label} · {statusLabel(status)} · {agent}</small>
-                                  {latestOutput ? <em className="canvas-node__output">↳ {compact(latestOutput, 48)}</em> : null}
+                                  <em className="canvas-node__open">查看协作详情</em>
                                 </span>
                                 <span className="canvas-node__priority">S{String(stage).padStart(2, "0")}</span>
                               </button>
@@ -217,7 +284,9 @@ export function CanvasView() {
           </div>
 
           {selectedTask ? (
-            <aside className="canvas-inspector" aria-label="任务详情">
+            <div className="canvas-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedId(null); }}>
+            <aside className="canvas-inspector" role="dialog" aria-modal="true" aria-label="任务详情">
+              <button type="button" className="canvas-inspector__close" aria-label="关闭任务详情" onClick={() => setSelectedId(null)}>×</button>
               <span className="canvas-inspector__eyebrow">SELECTED TASK</span>
               <h3>{selectedTask.goal || selectedTask.task_id}</h3>
               <span className={`badge badge--${selectedTask.status ?? "pending"}`}>
@@ -231,28 +300,22 @@ export function CanvasView() {
                 <div><dt>依赖</dt><dd>{selectedTask.dependency?.length ? selectedTask.dependency.join(", ") : "无"}</dd></div>
               </dl>
               <section className="canvas-inspector__activity">
-                <h4>协作与产出</h4>
-                <div className="canvas-output-block">
-                  <span>输入目标</span>
-                  <p>{compact(selectedTask.goal)}</p>
+                <div className="canvas-inspector__section-heading"><h4>协作与产出</h4><span>{selectedEvents.length} 个事件</span></div>
+                <div className="canvas-collaboration-grid">
+                  <div className="canvas-collaboration-card canvas-collaboration-card--context"><span className="canvas-card-label">输入目标</span><strong>{selectedTask.goal || "未命名任务"}</strong><small>来自当前任务</small></div>
+                  <div className="canvas-collaboration-card canvas-collaboration-card--agent"><span className="canvas-card-label">执行 Agent</span><strong>{String(selectedTask.payload?.agent_id ?? selectedTask.payload?.agent ?? selectedEvents[0]?.source?.node_id ?? selectedTask.result?.agent_id ?? "待分配")}</strong><small>{statusLabel(selectedTask.status ?? "pending")}</small></div>
                 </div>
-                <div className="canvas-output-block">
-                  <span>执行 Agent</span>
-                  <p>{String(selectedTask.payload?.agent_id ?? selectedTask.payload?.agent ?? selectedEvents[0]?.source?.node_id ?? selectedTask.result?.agent_id ?? "待分配")}</p>
-                </div>
-                <div className="canvas-output-block">
-                  <span>最新产出</span>
-                  <p>{compact(taskOutput(selectedTask) || selectedEvents.find((event) => event.event_type === "agent.finish")?.payload?.output || selectedMessages.at(-1)?.content || selectedTask.plan || "等待 Agent 输出")}</p>
+                <div className="canvas-output-panel">
+                  <div className="canvas-output-panel__heading"><span>结构化产出</span><small>{selectedTask.result ? "已持久化" : "等待结果"}</small></div>
+                  <dl>{outputEntries(taskOutput(selectedTask) || selectedEvents.find((event) => event.event_type === "agent.finish")?.payload?.output || selectedMessages.at(-1)?.content || selectedTask.plan || "等待 Agent 输出").map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>
                 </div>
                 <div className="canvas-activity-list">
-                  {selectedEvents.length ? selectedEvents.slice(-6).map((event) => (
-                    <div key={event.event_id}>
-                      <b>{event.event_type}</b><span>{event.source?.node_id || "system"}</span>
-                    </div>
-                  )) : <p>等待实时事件...</p>}
+                  <div className="canvas-activity-list__heading">执行轨迹</div>
+                  {selectedEvents.length ? selectedEvents.slice(-6).map((event) => <div key={event.event_id}><b>{event.event_type}</b><span>{event.source?.node_id || "system"}</span></div>) : <p>等待实时事件...</p>}
               </div>
               </section>
             </aside>
+            </div>
           ) : null}
         </div>
       )}

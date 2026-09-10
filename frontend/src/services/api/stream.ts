@@ -28,7 +28,7 @@ export async function streamAgent(
   const controller = new AbortController();
   const url = `${config.apiBaseUrl}/stream/agent/${agentId}`;
 
-  void (async () => {
+  await (async () => {
     try {
       const resp = await fetch(url, {
         method: "POST",

@@ -2,12 +2,14 @@
 // dev: ox-alpha
 // R11: Graph 视图增强 —— 节点上叠加执行落点徽标 (D/E/C)
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { TierBadge } from "@/components/TierBadge";
+import { graphService } from "@/services/graph";
 
 export function GraphView() {
   const graph = useAppStore((s) => s.graph);
+  const tasks = useAppStore((s) => s.tasks);
   const setGraph = useAppStore((s) => s.setGraph);
   const nodeCount = Object.keys(graph.nodes ?? {}).length;
   const edgeCount = (graph.edges ?? []).length;
@@ -20,6 +22,25 @@ export function GraphView() {
   );
   const selectedNode = filteredNodes.find(([id]) => id === selectedId) ?? filteredNodes[0];
   const selectedEdges = (graph.edges ?? []).filter((edge) => edge.src === selectedNode?.[0] || edge.dst === selectedNode?.[0]);
+
+  useEffect(() => {
+    void (async () => {
+      await graphService.fetch().catch(() => {});
+      if (!tasks.length) return;
+      const latestGraph = useAppStore.getState().graph;
+      const nodes = { ...(latestGraph.nodes ?? {}) };
+      const edges = [...(latestGraph.edges ?? [])];
+      for (const task of tasks) {
+        const taskId = task.task_id;
+        if (!taskId) continue;
+        const agentId = String(task.payload?.agent_id ?? task.payload?.agent ?? "router");
+        nodes[agentId] = { ...(nodes[agentId] ?? {}), name: agentId, kind: "agent", status: "active" };
+        nodes[taskId] = { ...(nodes[taskId] ?? {}), name: task.goal ?? taskId, kind: "task", status: task.status ?? "pending" };
+        if (!edges.some((edge) => edge.src === agentId && edge.dst === taskId)) edges.push({ src: agentId, dst: taskId, weight: 1, entropy: 0 });
+      }
+      setGraph({ nodes, edges });
+    })();
+  }, [setGraph, tasks]);
 
   const loadDemoGraph = () => {
     setGraph({

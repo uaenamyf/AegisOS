@@ -57,10 +57,10 @@ class TaskService:
         # task 的 status/plan，因此在提交之后再持久化。
         submitted = self._runtime.submit(task)
         await self._repo.create(submitted, session_id)
-        asyncio.create_task(self._execute(submitted))
+        asyncio.create_task(self._execute(submitted, session_id))
         return submitted
 
-    async def _execute(self, task: Task) -> None:
+    async def _execute(self, task: Task, session_id: str = "") -> None:
         """在任务持久化后执行 Agent，并发布可观测生命周期事件。"""
         agent_id = self._select_agent(task)
         self._publish(
@@ -68,7 +68,7 @@ class TaskService:
                 event_type=EventType.AgentStart,
                 task_id=task.task_id,
                 source=NodeRef(agent_id, "agent", agent_id),
-                payload={"agent_id": agent_id, "goal": task.goal},
+                payload={"agent_id": agent_id, "goal": task.goal, "session_id": session_id},
             )
         )
         try:
@@ -81,7 +81,7 @@ class TaskService:
                     event_type=EventType.AgentFinish,
                     task_id=task.task_id,
                     source=NodeRef(agent_id, "agent", agent_id),
-                    payload={"agent_id": agent_id, "output": result},
+                    payload={"agent_id": agent_id, "output": result, "session_id": session_id},
                 )
             )
         except Exception as exc:  # noqa: BLE001
@@ -93,7 +93,7 @@ class TaskService:
                     event_type=EventType.AgentFinish,
                     task_id=task.task_id,
                     source=NodeRef(agent_id, "agent", agent_id),
-                    payload={"agent_id": agent_id, "output": result, "status": "failed"},
+                    payload={"agent_id": agent_id, "output": result, "status": "failed", "session_id": session_id},
                 )
             )
 

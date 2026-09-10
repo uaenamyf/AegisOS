@@ -4,11 +4,55 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore, type ChatMessage, type HitlPayload } from "@/lib/store";
-import { streamAgent } from "@/services/api/stream";
 import { humanApi } from "@/services/api/human";
+import { taskApi } from "@/services/api/tasks";
+import { cyberApi } from "@/services/api/cyber";
 
 function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isCyberDrillRequest(goal: string): boolean {
+  return /模拟.*攻防|红蓝紫|攻防演练|自动演练|完整.*演练|red.?blue.?purple/i.test(goal);
+}
+
+async function waitForDrill(drillId: string, onUpdate?: (record: any) => void): Promise<any> {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
+    const record = await cyberApi.getDrill(drillId);
+    onUpdate?.(record);
+    if (record.summary || record.convergence_code === "aborted") return record;
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+  }
+  throw new Error("演练执行超时，请到 Cyber Defense 查看当前进度");
+}
+
+function syncDrillTasks(drillId: string, targetRange: string, rounds: any[], done: boolean, summary: any): void {
+  const phases = [["red", "红队 · 侦察与攻击链", "recon"], ["blue", "蓝队 · 检测与响应", "detector"], ["purple", "紫队 · 一致性审查", "reviewer-defense"]] as const;
+  const tasks: Array<Record<string, any>> = [{ task_id: drillId, goal: `完整红蓝紫攻防演练 · ${targetRange}`, status: done ? "succeeded" : "running", dependency: [], priority: 10, payload: { source: "chat-drill", drill_id: drillId, stage: 0, agent_id: "orchestrator" }, result: done ? { output: summary, rounds: rounds.length } : {} }];
+  phases.forEach(([phase, label, agent], phaseIndex) => {
+    const round = rounds.length + (done ? 0 : 1);
+    for (let currentRound = 1; currentRound <= Math.max(1, round); currentRound += 1) {
+      const result = rounds[currentRound - 1]?.[phase];
+      const complete = Boolean(result);
+      tasks.push({ task_id: `${drillId}:${phase}:r${currentRound}`, goal: `${label} · 第 ${currentRound} 轮`, status: complete ? "succeeded" : "running", dependency: [drillId], priority: 9 - currentRound, payload: { source: "chat-drill", drill_id: drillId, phase, stage: phaseIndex + 1, agent_id: agent }, result: result ?? {} });
+    }
+  });
+  const store = useAppStore.getState();
+  tasks.forEach((task) => store.upsertTask(task));
+  try {
+    sessionStorage.setItem(`aegis.canvas.drill.${drillId}`, JSON.stringify(tasks));
+  } catch { /* 页面存储不可用时仍保留当前会话内的实时任务 */ }
+}
+
+async function waitForTask(taskId: string): Promise<{ status?: string; result?: Record<string, unknown> }> {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const task = await taskApi.get(taskId);
+    if (["succeeded", "failed", "cancelled", "rolled_back"].includes(String(task.status))) {
+      return task;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+  }
+  throw new Error("任务执行超时，请到 Canvas 查看后台状态");
 }
 
 // date: 2026-08-17
@@ -87,6 +131,7 @@ export function ChatView() {
   const currentSession = useAppStore((s) => s.currentSession);
   const addChatMessage = useAppStore((s) => s.addChatMessage);
   const updateChatMessage = useAppStore((s) => s.updateChatMessage);
+  const upsertTask = useAppStore((s) => s.upsertTask);
   const setSending = useAppStore((s) => s.setSending);
   const setSelectedAgentId = useAppStore((s) => s.setSelectedAgentId);
 
@@ -133,60 +178,63 @@ export function ChatView() {
     addChatMessage(assistantMsg);
 
     try {
+      if (isCyberDrillRequest(goal)) {
+        const targetRange = "10.0.0.0/24";
+        const started = await cyberApi.startDrill({ target_range: targetRange, max_rounds: 5 });
+        syncDrillTasks(started.drill_id, targetRange, [], false, null);
+        const record = await waitForDrill(started.drill_id, (current) => {
+          syncDrillTasks(started.drill_id, targetRange, current.rounds ?? [], Boolean(current.summary), current.summary ?? null);
+        });
+        const rounds = record.rounds ?? [];
+        const summary = record.summary ?? null;
+        syncDrillTasks(started.drill_id, targetRange, rounds, Boolean(summary), summary);
+        try {
+          sessionStorage.setItem("aegis.cyber-drill.snapshot", JSON.stringify({
+            drillId: started.drill_id,
+            phase: summary ? "done" : "aborted",
+            rounds,
+            summary,
+            reportMd: null,
+          }));
+        } catch { /* 页面存储不可用时仍保留 Chat 结果 */ }
+        const resultText = JSON.stringify({
+          drill_id: started.drill_id,
+          target_range: targetRange,
+          rounds: rounds.length,
+          convergence: record.convergence_code ?? (summary ? "converged" : "aborted"),
+          summary,
+        }, null, 2);
+        updateChatMessage(assistantMsgId, { content: resultText, status: "done", taskId: started.drill_id, tier: "cloud" });
+        return;
+      }
       let resultText = "";
       let resultTier = "";
       let resultPrivacyNote = "";
-
-      // 智能分流：按问题复杂度估算延迟预算——复杂问题给大预算走云端，
-      // 简单问题保持端侧快答（P1-3 修复：Chat 不再永远锁死端侧）
-      const estimateBudget = (q: string): number => {
-        const len = q.length;
-        const complexPattern =
-          /分析|评估|对比|总结|解释|原理|架构|设计|方案|为什么|如何|怎样|报告|溯源|研判|write|explain|analyze|compare|summarize|why|how/i;
-        const questionMarks = (q.match(/[?？]/g) || []).length;
-        if (len > 120 || questionMarks >= 2) return 8.0; // 复杂 → 云
-        if (complexPattern.test(q) || len > 40) return 5.0; // 中等 → 云
-        return 0.3; // 简单 → 端侧快答
-      };
-      const latencyBudget = estimateBudget(goal);
-
-      if (selectedAgentId) {
-        // 直调指定 Agent（走真实 Ollama 派发，不再 Mock）
-        const { infraApi } = await import("@/services/api/infra");
-        const res = await infraApi.dispatch({
+      let trackedTaskId = "";
+      try {
+        const task = await taskApi.create({
           goal,
-          privacy: "unrestricted",
-          latency_budget: latencyBudget,
-          system_prompt: `你扮演网络安全专家 ${selectedAgentId}。请基于你的专业角色回答。`,
+          session_id: sessionId,
+          payload: { ...(selectedAgentId ? { agent_id: selectedAgentId } : {}), source: "chat" },
         });
-        resultText = res.text;
-        resultTier = res.tier;
-        resultPrivacyNote = res.privacy_note || "";
-      } else {
-        // 走端边云 infra 派发（真实推理 + 智能分流）
-        const { infraApi } = await import("@/services/api/infra");
-        const { taskApi } = await import("@/services/api/tasks");
+        trackedTaskId = task.task_id ?? "";
+        if (trackedTaskId) {
+          updateChatMessage(assistantMsgId, { taskId: trackedTaskId });
+          upsertTask({ ...task, status: "running" });
+        }
+      } catch { /* task tracking is additive; Chat remains usable if offline */ }
 
-        // 同时创建一个 task，让 Canvas/Graph 有数据
-        let taskInfo = "";
-        try {
-          const task = await taskApi.create({ goal, session_id: sessionId });
-          taskInfo = `\nTask: ${task.task_id} (${task.status})`;
-          updateChatMessage(assistantMsgId, { taskId: task.task_id });
-        } catch { /* task 创建失败不影响推理 */ }
+      if (!trackedTaskId) {
+        throw new Error("任务创建失败，无法启动完整执行链");
+      }
 
-        const res = await infraApi.dispatch({
-          goal,
-          privacy: "unrestricted",
-          latency_budget: latencyBudget,
-          system_prompt: selectedAgentId
-            ? `你扮演网络安全专家 ${selectedAgentId}。请用中文回答。`
-            : "请用中文简洁回答以下问题。",
-        });
-        resultText = res.text;
-        resultTier = res.tier;
-        resultPrivacyNote = res.privacy_note || "";
-        resultText += taskInfo;
+      const completedTask = await waitForTask(trackedTaskId);
+      const output = completedTask.result?.output ?? completedTask.result ?? "";
+      resultText = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+      resultTier = String(completedTask.result?.tier ?? "cloud");
+
+      if (trackedTaskId) {
+        upsertTask({ task_id: trackedTaskId, goal, status: completedTask.status, result: completedTask.result ?? { output: resultText, tier: resultTier } });
       }
 
       // 伪流式：整段结果到达后按字符渐进渲染（打字机效果），
@@ -262,47 +310,8 @@ export function ChatView() {
 
   // R5.3: 流式发送——用 fetch SSE 实时展示 Agent 执行过程
   const handleSendStream = async () => {
-    const goal = input.trim();
-    if (!goal || isSending || !selectedAgentId) return;
-
-    const userMsg: ChatMessage = {
-      id: genId(),
-      role: "user",
-      content: goal,
-      timestamp: Date.now(),
-    };
-    addChatMessage(userMsg);
-    setInput("");
-    setSending(true);
-
-    const assistantMsgId = genId();
-    addChatMessage({
-      id: assistantMsgId,
-      role: "assistant",
-      content: "",
-      status: "sending",
-      agentId: selectedAgentId,
-      timestamp: Date.now(),
-    });
-
-    let accumulated = "";
-    await streamAgent(selectedAgentId, goal, (evt) => {
-      if (evt.event === "error") {
-        updateChatMessage(assistantMsgId, {
-          content: `Stream error: ${JSON.stringify(evt.data)}`,
-          status: "error",
-        });
-      } else {
-        accumulated += `[${evt.event}] ${JSON.stringify(evt.data, null, 2)}\n`;
-        updateChatMessage(assistantMsgId, {
-          content: accumulated,
-          status: "sending",
-        });
-      }
-    });
-
-    updateChatMessage(assistantMsgId, { status: "done" });
-    setSending(false);
+    // Stream 也必须等待同一个后端任务完成，不能另起一条重复执行链。
+    await handleSend();
   };
 
   return (
