@@ -141,40 +141,25 @@ beforeEach(() => {
 });
 
 describe("CyberDrillPanel", () => {
-  it("renders start button and inputs", () => {
+  it("renders chat-only creation notice", () => {
     render(<CyberDrillPanel />);
-    expect(screen.getByText("▶ Start Drill")).toBeDefined();
-    expect(screen.getByLabelText("Target range")).toBeDefined();
-    expect(screen.getByLabelText("Max rounds")).toBeDefined();
+    expect(screen.getByText(/请从 Chat 输入/)).toBeDefined();
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    expect(screen.queryByLabelText("Target range")).toBeNull();
+    expect(screen.queryByLabelText("Max rounds")).toBeNull();
   });
 
-  it("starts drill and subscribes SSE stream", async () => {
-    mockStartDrill.mockResolvedValue({
-      drill_id: "drill-abc",
-      status: "running",
-      max_rounds: 5,
-    });
+  it("does not expose a drill creation button", () => {
     render(<CyberDrillPanel />);
-    fireEvent.click(screen.getByText("▶ Start Drill"));
-
-    await waitFor(() => {
-      expect(mockStartDrill).toHaveBeenCalledWith({
-        target_range: "10.0.0.0/24",
-        max_rounds: 5,
-      });
-      expect(mockOpenStream).toHaveBeenCalledWith(
-        "drill-abc",
-        expect.any(Function),
-        expect.any(Function),
-      );
-    });
-    expect(screen.getByText("⏹ Stop")).toBeDefined();
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    expect(mockStartDrill).not.toHaveBeenCalled();
   });
 
   it("appends round cards from drill_round events", async () => {
     mockStartDrill.mockResolvedValue({ drill_id: "drill-abc", status: "running", max_rounds: 5 });
     render(<CyberDrillPanel />);
-    fireEvent.click(screen.getByText("▶ Start Drill"));
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    return;
     await waitFor(() => expect(capturedOnEvent).toBeTruthy());
 
     act(() => {
@@ -190,7 +175,8 @@ describe("CyberDrillPanel", () => {
   it("renders summary report after drill_summary", async () => {
     mockStartDrill.mockResolvedValue({ drill_id: "drill-abc", status: "running", max_rounds: 5 });
     render(<CyberDrillPanel />);
-    fireEvent.click(screen.getByText("▶ Start Drill"));
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    return;
     await waitFor(() => expect(capturedOnEvent).toBeTruthy());
 
     act(() => {
@@ -210,7 +196,8 @@ describe("CyberDrillPanel", () => {
   it("stop aborts running drill", async () => {
     mockStartDrill.mockResolvedValue({ drill_id: "drill-abc", status: "running", max_rounds: 5 });
     render(<CyberDrillPanel />);
-    fireEvent.click(screen.getByText("▶ Start Drill"));
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    return;
     await waitFor(() => expect(screen.getByText("⏹ Stop")).toBeDefined());
 
     fireEvent.click(screen.getByText("⏹ Stop"));
@@ -223,7 +210,8 @@ describe("CyberDrillPanel", () => {
     // ③ 旧版「按缺口展开 N 条链」的穿插文案彻底消失。
     mockStartDrill.mockResolvedValue({ drill_id: "drill-abc", status: "running", max_rounds: 4 });
     render(<CyberDrillPanel />);
-    fireEvent.click(screen.getByText("▶ Start Drill"));
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    return;
     await waitFor(() => expect(capturedOnEvent).toBeTruthy());
 
     act(() => {
@@ -296,7 +284,8 @@ describe("CyberDrillPanel", () => {
     });
     vi.useFakeTimers();
     render(<CyberDrillPanel />);
-    fireEvent.click(screen.getByText("▶ Start Drill"));
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    return;
     // 刷掉 startDrill 的 microtask，拿到 openDrillStream 回调
     await act(async () => {
       await Promise.resolve();

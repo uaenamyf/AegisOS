@@ -6,7 +6,6 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
 import type {
-  DrillEvent,
   DrillMeta,
   DrillRecord,
   DrillRound,
@@ -874,9 +873,7 @@ function clearSnapshot(): void {
  * 开启新一轮时才清除旧结果。
  */
 export function CyberDrillPanel() {
-  const cyberLoading = useAppStore((s) => s.cyberLoading);
   const cyberError = useAppStore((s) => s.cyberError);
-  const setCyberLoading = useAppStore((s) => s.setCyberLoading);
   const setCyberError = useAppStore((s) => s.setCyberError);
 
   // 首次渲染读一次快照，之后组件生命周期内不再变化（开新轮才覆盖）
@@ -886,8 +883,8 @@ export function CyberDrillPanel() {
   }
   const initialSnapshot = initialSnapshotRef.current;
 
-  const [targetRange, setTargetRange] = useState("10.0.0.0/24");
-  const [maxRounds, setMaxRounds] = useState(5);
+  const targetRange = "10.0.0.0/24";
+  const maxRounds = 5;
   const [phase, setPhase] = useState<DrillPhase>(() => {
     if (!initialSnapshot) return "idle";
     // 旧会话遗留的 running 无意义（SSE 已断）：有 summary 视为已完成，
@@ -915,106 +912,8 @@ export function CyberDrillPanel() {
   const [reportLoading, setReportLoading] = useState(false);
   const [stopping, setStopping] = useState(false);
 
-  const streamCloseRef = useRef<(() => void) | null>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
-  // drillId 的 ref 镜像：SSE onError 回调在 setDrillId 之前的渲染里创建，
-  // 闭包拿不到最新 state，必须走 ref 才能触发断线轮询兜底。
   const drillIdRef = useRef<string | null>(initialSnapshot?.drillId ?? null);
-
-  const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-  }, []);
-
-  const handleEvent = useCallback((ev: DrillEvent) => {
-    switch (ev.name) {
-      case "drill_start":
-        setPhase("running");
-        setRounds([]);
-        setSummary(null);
-        setError(null);
-        break;
-      case "drill_round":
-        setRounds((prev) => [...prev, ev.data as DrillRound]);
-        break;
-      case "drill_summary":
-        setSummary(ev.data as DrillSummaryResponse);
-        break;
-      case "drill_error":
-        setError(String(ev.data?.error ?? "Drill failed"));
-        setPhase("error");
-        break;
-      case "drill_done":
-        setPhase(ev.data?.error ? "error" : "done");
-        setStopping(false);
-        streamCloseRef.current?.();
-        streamCloseRef.current = null;
-        stopPolling();
-        break;
-      default:
-        break;
-    }
-  }, [stopPolling]);
-
-  /** SSE 断线兜底：改用 getDrill 轮询补拉已发生轮次。 */
-  const handleStreamError = useCallback(() => {
-    const id = drillIdRef.current;
-    if (!id) return;
-    setError("实时通道已断开，正在同步演练结果…");
-    stopPolling();
-    pollTimerRef.current = setInterval(async () => {
-      try {
-        const rec = await cyberApi.getDrill(id);
-        if (rec.rounds.length > 0) setRounds(rec.rounds);
-        if (rec.summary) {
-          setSummary(rec.summary);
-          setError(null);
-          setPhase("done");
-        }
-        if (rec.convergence_code === "aborted") setPhase("aborted");
-        if (rec.summary || rec.convergence_code === "aborted") stopPolling();
-      } catch {
-        /* 网络抖动继续轮询 */
-      }
-    }, 2000);
-  }, [stopPolling]);
-
-  const handleStart = useCallback(async () => {
-    setCyberLoading(true);
-    setCyberError(null);
-    setError(null);
-    setStopping(false);
-    // 开启新一轮：清除上一轮快照，避免旧结果串场
-    clearSnapshot();
-    try {
-      const resp = await cyberApi.startDrill({
-        target_range: targetRange,
-        max_rounds: maxRounds,
-      });
-      setDrillId(resp.drill_id);
-      drillIdRef.current = resp.drill_id;
-      setPhase("running");
-      setRounds([]);
-      setSummary(null);
-      setReportMd(null);
-      setReportOpen(false);
-      streamCloseRef.current = cyberApi.openDrillStream(
-        resp.drill_id,
-        handleEvent,
-        handleStreamError,
-      );
-    } catch (err) {
-      setCyberError(
-        err instanceof Error ? err.message : "Failed to start drill",
-      );
-      setPhase("error");
-    } finally {
-      setCyberLoading(false);
-    }
-  }, [targetRange, maxRounds, handleEvent, handleStreamError, setCyberLoading, setCyberError]);
 
   /** 停止演练：防重复点击（stopping 期间按钮禁用），abort 幂等。 */
   const handleStop = useCallback(async () => {
@@ -1059,8 +958,7 @@ export function CyberDrillPanel() {
     }
   }, [rounds.length]);
 
-  // 结果持久化：drillId 存在时持续把最近一轮结果写入 sessionStorage，
-  // 切 tab/刷新后恢复；开启新一轮时 handleStart 已清除旧快照
+  // 结果持久化：drillId 存在时持续把最近一轮结果写入 sessionStorage，切 tab/刷新后恢复。
   useEffect(() => {
     if (!drillId) {
       clearSnapshot();
@@ -1072,11 +970,9 @@ export function CyberDrillPanel() {
   // 卸载清理：关闭 SSE + 停止轮询
   useEffect(() => {
     return () => {
-      streamCloseRef.current?.();
       drillIdRef.current = null;
-      stopPolling();
     };
-  }, [stopPolling]);
+  }, []);
 
   // R15 中断恢复增强：恢复出的快照若缺少 summary（中断/中止场景），
   // 挂载时尝试从服务端补拉完整记录（后台线程可能已落盘）
@@ -1112,28 +1008,6 @@ export function CyberDrillPanel() {
     <div className="cyber-panel cyber-drill">
       {/* 控制条 */}
       <div className="cyber-drill__controls">
-        <input
-          className="cyber-view__range-input"
-          type="text"
-          value={targetRange}
-          onChange={(e) => setTargetRange(e.target.value)}
-          placeholder="e.g. 10.0.0.0/24"
-          disabled={running || cyberLoading}
-          aria-label="Target range"
-        />
-        <input
-          className="cyber-drill__rounds-input"
-          type="number"
-          min={1}
-          max={20}
-          value={maxRounds}
-          onChange={(e) =>
-            setMaxRounds(Math.max(1, Number(e.target.value) || 5))
-          }
-          disabled={running || cyberLoading}
-          aria-label="Max rounds"
-          title="Max rounds"
-        />
         {running ? (
           <button
             className="cyber-view__btn cyber-view__btn--danger"
@@ -1142,15 +1016,8 @@ export function CyberDrillPanel() {
           >
             {stopping ? "⏹ 停止中…" : "⏹ Stop"}
           </button>
-        ) : (
-          <button
-            className="cyber-view__btn cyber-view__btn--primary"
-            onClick={() => void handleStart()}
-            disabled={cyberLoading}
-          >
-            {cyberLoading ? "Starting…" : "▶ Start Drill"}
-          </button>
-        )}
+        ) : null}
+        {!drillId && !running ? <span className="cyber-panel__hint">请从 Chat 输入“模拟一次完整红蓝紫攻防演练”来创建任务。</span> : null}
         {drillId ? (
           <span className="cyber-drill__id">
             Drill: <code>{drillId}</code>

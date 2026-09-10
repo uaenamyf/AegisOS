@@ -182,6 +182,8 @@ export function BlueTeamPanel() {
   const triaged = display?.triaged ?? [];
   const hypotheses = display?.hypotheses ?? [];
   const plan = display?.plan ?? {};
+  const planActions: any[] = plan.actions ?? plan.response_actions ?? [];
+  const confidence = Number(plan.confidence ?? plan.score ?? 0);
 
   if (!display && !cyberLoading && streamStage == null) {
     return (
@@ -203,16 +205,14 @@ export function BlueTeamPanel() {
         <button
           className="cyber-view__btn cyber-view__btn--primary"
           onClick={() => void handleDefend()}
-          disabled={cyberLoading}
+          disabled
+          title="请从 Chat 创建演练"
         >
-          {cyberLoading ? "Executing…" : "Execute Blue Defense"}
+          请从 Chat 创建演练
         </button>
       </div>
     );
   }
-
-  const planActions: any[] = plan?.actions ?? [];
-  const confidence: number = plan?.confidence ?? 0;
 
   // T6 量化指标：防御覆盖率 + 安全评分
   // 覆盖率 = 红队攻击技法 ∩ 蓝队告警技法 / 红队攻击技法（按技法编号对齐）
@@ -292,13 +292,10 @@ export function BlueTeamPanel() {
         <button
           className="cyber-view__btn cyber-view__btn--primary"
           onClick={() => void handleDefend()}
-          disabled={cyberLoading}
+          disabled
+          title="请从 Chat 创建演练"
         >
-          {streamStage
-            ? `执行中:${BLUE_STAGE_LABELS[streamStage] ?? streamStage}…`
-            : cyberLoading
-              ? "Executing…"
-              : "Re-execute Blue Defense"}
+          请从 Chat 创建演练
         </button>
       </div>
 

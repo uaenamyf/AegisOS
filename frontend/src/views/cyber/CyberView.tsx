@@ -4,9 +4,8 @@
 // changelog: 2026-09-04 R5 追加 Drill tab（多轮攻防演练面板）
 // changelog: 2026-09-04 R7 头部加运行时模式徽标（mock/真实 LLM 切换）
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { cyberApi } from "@/services/api/cyber";
 import { LlmModeBadge } from "./LlmModeBadge";
 import { CyberDrillPanel } from "./CyberDrillPanel";
 import { RedTeamPanel } from "./RedTeamPanel";
@@ -27,27 +26,8 @@ const TABS: { id: TabId; label: string }[] = [
 export function CyberView() {
   // 默认落在循环对抗 tab：产品定位是「一键多轮自动对抗」，红/蓝/紫为单链演示
   const [activeTab, setActiveTab] = useState<TabId>("drill");
-  const [targetRange, setTargetRange] = useState("10.0.0.0/24");
-
   const currentRange = useAppStore((s) => s.currentRange);
-  const cyberLoading = useAppStore((s) => s.cyberLoading);
   const cyberError = useAppStore((s) => s.cyberError);
-  const setCurrentRange = useAppStore((s) => s.setCurrentRange);
-  const setCyberLoading = useAppStore((s) => s.setCyberLoading);
-  const setCyberError = useAppStore((s) => s.setCyberError);
-
-  const handleStartRange = useCallback(async () => {
-    setCyberLoading(true);
-    setCyberError(null);
-    try {
-      const range = await cyberApi.startRange({ target_range: targetRange });
-      setCurrentRange(range);
-    } catch (err) {
-      setCyberError(err instanceof Error ? err.message : "Failed to start range");
-    } finally {
-      setCyberLoading(false);
-    }
-  }, [targetRange, setCurrentRange, setCyberLoading, setCyberError]);
 
   return (
     <section className="view cyber-view">
@@ -61,31 +41,10 @@ export function CyberView() {
         </p>
       </header>
 
-      {/* Range controls */}
       <div className="cyber-view__range-bar">
-        <input
-          className="cyber-view__range-input"
-          type="text"
-          value={targetRange}
-          onChange={(e) => setTargetRange(e.target.value)}
-          placeholder="e.g. 10.0.0.0/24"
-          disabled={cyberLoading}
-        />
-        <button
-          className="cyber-view__btn cyber-view__btn--primary"
-          onClick={() => void handleStartRange()}
-          disabled={cyberLoading}
-        >
-          {cyberLoading ? "Starting…" : "Start Range"}
-        </button>
-        {currentRange ? (
-          <span className="cyber-view__range-id">
-            Range: <code>{currentRange.range_id}</code>
-            <span className={`badge badge--${currentRange.status}`}>
-              {currentRange.status}
-            </span>
-          </span>
-        ) : null}
+        <span className="cyber-view__range-id">
+          {currentRange ? <>当前靶场：<code>{currentRange.range_id}</code></> : "演练只能从 Chat 创建"}
+        </span>
       </div>
 
       {cyberError ? (

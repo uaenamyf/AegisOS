@@ -92,10 +92,11 @@ describe("CyberView", () => {
     expect(screen.getByText("Auto Drill")).toBeDefined();
   });
 
-  it("shows Start Range button", async () => {
+  it("does not show a range creation button", async () => {
     const { CyberView } = await import("../CyberView");
     renderUI(<CyberView />);
-    expect(screen.getByText("Start Range")).toBeDefined();
+    expect(screen.queryByText("Start Range")).toBeNull();
+    expect(screen.getByText("演练只能从 Chat 创建")).toBeDefined();
   });
 
   it("switches to Blue Team tab on click", async () => {
@@ -106,12 +107,12 @@ describe("CyberView", () => {
     // The hint text is "No defense result yet. Execute blue defense to see alerts and response plans."
   });
 
-  it("shows Drill start button by default (auto-cycling is the main entry)", async () => {
+  it("does not show a Drill start button", async () => {
     const { CyberView } = await import("../CyberView");
     renderUI(<CyberView />);
-    // 默认 tab 即循环对抗，无需点击即可见 Start Drill
     fireEvent.click(screen.getByText("Auto Drill"));
-    expect(screen.getByText("▶ Start Drill")).toBeDefined();
+    expect(screen.queryByText("▶ Start Drill")).toBeNull();
+    expect(screen.getByText(/请从 Chat 输入/)).toBeDefined();
   });
 });
 
@@ -137,24 +138,18 @@ describe("RedTeamPanel", () => {
     // Should render the empty state
   });
 
-  it("renders Execute Red Attack button", async () => {
+  it("renders a disabled Chat-only notice", async () => {
     const { RedTeamPanel } = await import("../RedTeamPanel");
     renderUI(<RedTeamPanel />);
-    // Text appears both in hint <strong> and button; use getAllByText
-    const matches = screen.getAllByText("Execute Red Attack");
-    expect(matches.length).toBeGreaterThanOrEqual(1);
-    expect(matches.some((el) => el.tagName === "BUTTON")).toBe(true);
+    expect((screen.getByRole("button", { name: "请从 Chat 创建演练" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
 describe("BlueTeamPanel", () => {
-  it("renders Execute Blue Defense button", async () => {
+  it("renders a disabled Chat-only notice", async () => {
     const { BlueTeamPanel } = await import("../BlueTeamPanel");
     renderUI(<BlueTeamPanel />);
-    // Text appears both in hint <strong> and button; use getAllByText
-    const matches = screen.getAllByText("Execute Blue Defense");
-    expect(matches.length).toBeGreaterThanOrEqual(1);
-    expect(matches.some((el) => el.tagName === "BUTTON")).toBe(true);
+    expect((screen.getByRole("button", { name: "请从 Chat 创建演练" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

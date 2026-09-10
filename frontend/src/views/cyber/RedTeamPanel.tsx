@@ -266,9 +266,10 @@ export function RedTeamPanel() {
         <button
           className="cyber-view__btn cyber-view__btn--danger"
           onClick={() => void handleAttack()}
-          disabled={cyberLoading}
+          disabled
+          title="请从 Chat 创建演练"
         >
-          {cyberLoading ? "Executing…" : "Execute Red Attack"}
+          请从 Chat 创建演练
         </button>
       </div>
     );
@@ -307,9 +308,10 @@ export function RedTeamPanel() {
         <button
           className="cyber-view__btn cyber-view__btn--danger"
           onClick={() => void handleAttack()}
-          disabled={cyberLoading}
+          disabled
+          title="请从 Chat 创建演练"
         >
-          {cyberLoading ? "Executing…" : redAttackResult ? "Re-execute Red Attack" : "Execute Red Attack"}
+          请从 Chat 创建演练
         </button>
         <div className="cyber-panel__stats">
           <span className="cyber-stat">

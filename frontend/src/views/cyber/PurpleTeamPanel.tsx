@@ -24,7 +24,6 @@ export function PurpleTeamPanel() {
   const redAttackResult = useAppStore((s) => s.redAttackResult);
   const blueDefenseResult = useAppStore((s) => s.blueDefenseResult);
   const purpleReviewResult = useAppStore((s) => s.purpleReviewResult);
-  const cyberLoading = useAppStore((s) => s.cyberLoading);
   const setPurpleReviewResult = useAppStore((s) => s.setPurpleReviewResult);
   const setCyberLoading = useAppStore((s) => s.setCyberLoading);
   const setCyberError = useAppStore((s) => s.setCyberError);
@@ -127,9 +126,10 @@ export function PurpleTeamPanel() {
         <button
           className="cyber-view__btn cyber-view__btn--primary"
           onClick={() => void handleReview()}
-          disabled={cyberLoading || !redAttackResult || !blueDefenseResult}
+          disabled
+          title="请从 Chat 创建演练"
         >
-          {cyberLoading ? "Executing…" : "Run Purple Review"}
+          请从 Chat 创建演练
         </button>
         {(!redAttackResult || !blueDefenseResult) && (
           <p className="cyber-panel__warn">
@@ -151,9 +151,10 @@ export function PurpleTeamPanel() {
         <button
           className="cyber-view__btn cyber-view__btn--primary"
           onClick={() => void handleReview()}
-          disabled={cyberLoading}
+          disabled
+          title="请从 Chat 创建演练"
         >
-          {cyberLoading ? "Executing…" : "Re-run Purple Review"}
+          请从 Chat 创建演练
         </button>
       </div>
 
