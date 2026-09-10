@@ -28,3 +28,9 @@ def test_load_attck_dataset_returns_memory_packets():
     p = next(x for x in packets if x.task_id == "T1210")
     assert p.semantic["technique_id"] == "T1210"
     assert p.semantic["tactic"] == "lateral-movement"
+
+
+def test_dataset_covers_collection_exfiltration_and_impact_chain():
+    assert {"T1560", "T1041", "T1486"}.issubset(ATTACK_TECHNIQUES)
+    assert ("T1560", "precedes", "T1041") in ATTACK_RELATIONS
+    assert ("T1041", "precedes", "T1486") in ATTACK_RELATIONS

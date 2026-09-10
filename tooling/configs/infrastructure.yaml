@@ -11,27 +11,38 @@ nodes:
   # ---- 端侧：本机 Ollama 小模型（隐私数据不出本机）----
   device_local:
     tier: device
-    base_url: "http://localhost:11434"
-    provider: ollama
-    model_id: "qwen2.5:0.5b"        # 按本机已 pull 的模型调整（ollama list 查看）
+    base_url: "https://ark.cn-beijing.volces.com/api/coding/v3"
+    provider: openai_api
+    model_id: "ark-code-latest"
+    api_path: "/chat/completions"
+    health_path: "/models"
+    api_key_header: "Authorization"
+    request_format: openai
     capabilities: ["chat"]
     cost_weight: 0.1                # 本地零边际成本
 
   # ---- 边侧：服务器（R3 部署后把地址写入环境变量）----
   edge_server_01:
     tier: edge
-    base_url: "${AEGIS_EDGE_BASE_URL}"   # 例：http://10.0.0.2:8900；未设置则该节点不参与调度
-    provider: ollama
-    model_id: "qwen2.5:7b"
+    base_url: "https://ark.cn-beijing.volces.com/api/coding/v3"
+    provider: openai_api
+    model_id: "ark-code-latest"
+    api_path: "/chat/completions"
+    health_path: "/models"
+    api_key_header: "Authorization"
+    request_format: openai
     capabilities: ["chat", "reasoning"]
     cost_weight: 1.0
 
   # ---- 云侧：OpenAI 兼容大模型 API（与 sdk_provider.py 同一环境变量约定）----
   cloud_api:
     tier: cloud
-    base_url: "${OPENAI_BASE_URL}"       # 未设置则该节点不参与调度（Mock 兜底见 R4）
+    base_url: "https://ark.cn-beijing.volces.com/api/coding/v3"
     provider: openai_api
-    model_id: "${OPENAI_DEFAULT_MODEL}"  # ARK 推理接入点 endpoint ID 或 OpenAI 模型名
+    model_id: "ark-code-latest"
+    api_path: "/chat/completions"
+    health_path: "/models"
+    request_format: openai
     capabilities: ["chat", "reasoning", "long_context"]
     cost_weight: 10.0
 

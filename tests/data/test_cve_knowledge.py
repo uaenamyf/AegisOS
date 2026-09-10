@@ -39,3 +39,15 @@ def test_query_cves_matches_java_without_os_restriction() -> None:
 
 def test_query_cves_returns_empty_for_unknown_asset() -> None:
     assert query_cves([Asset(asset_id="safe-01", services=["ssh"], os="Linux")]) == []
+
+
+def test_query_cves_covers_linux_privilege_escalation_and_http2() -> None:
+    findings = query_cves(
+        [
+            Asset(asset_id="linux-01", services=["sudo", "http2"], os="Ubuntu 22.04"),
+        ]
+    )
+    assert {finding.cve_id for finding in findings} >= {
+        "CVE-2021-3156",
+        "CVE-2023-44487",
+    }

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Awaitable, Callable
 
 from protocol import Message
@@ -15,9 +16,20 @@ from ..codecs import JsonCodec
 class TcpTransport:
     """点对点 TCP 传输；默认只绑定调用方指定地址。"""
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 0) -> None:
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 0,
+        *,
+        auth_token: str = "",
+        retry_attempts: int = 2,
+        retry_backoff_s: float = 0.05,
+    ) -> None:
         self.host = host
         self.port = port
+        self.auth_token = auth_token
+        self.retry_attempts = max(0, retry_attempts)
+        self.retry_backoff_s = max(0.0, retry_backoff_s)
         self._server: asyncio.AbstractServer | None = None
         self._received: asyncio.Queue[Message] = asyncio.Queue()
         self._connections: set[asyncio.StreamWriter] = set()
@@ -41,19 +53,25 @@ class TcpTransport:
             await writer.wait_closed()
         self._connections.clear()
 
-    async def send(self, message: Message, host: str, port: int) -> bool:
-        """向指定节点发送一条 Message。"""
+    async def send(self, message: Message, host: str, port: int, *, retries: int | None = None) -> bool:
+        """向指定节点发送一条 Message，失败时按指数退避重试。"""
         if message.ttl <= 0:
             return False
-        try:
-            reader, writer = await asyncio.open_connection(host, port)
-            writer.write(JsonCodec.encode(message))
-            await writer.drain()
-            writer.close()
-            await writer.wait_closed()
-            return True
-        except (TimeoutError, ConnectionError, OSError):
-            return False
+        attempts = self.retry_attempts if retries is None else max(0, retries)
+        for attempt in range(attempts + 1):
+            try:
+                _, writer = await asyncio.open_connection(host, port)
+                if self.auth_token:
+                    writer.write((json.dumps({"auth": self.auth_token}) + "\n").encode())
+                writer.write(JsonCodec.encode(message))
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
+                return True
+            except (TimeoutError, ConnectionError, OSError):
+                if attempt < attempts:
+                    await asyncio.sleep(self.retry_backoff_s * (2**attempt))
+        return False
 
     async def recv(self, timeout: float = 30.0) -> Message:
         """从接收队列读取一条 Message。"""
@@ -80,6 +98,14 @@ class TcpTransport:
     ) -> None:
         self._connections.add(writer)
         try:
+            if self.auth_token:
+                auth_line = await reader.readline()
+                try:
+                    auth = json.loads(auth_line.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    return
+                if auth.get("auth") != self.auth_token:
+                    return
             while line := await reader.readline():
                 self._received.put_nowait(JsonCodec.decode(line))
         except (ValueError, ConnectionError, asyncio.IncompleteReadError):

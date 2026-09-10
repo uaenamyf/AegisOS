@@ -112,7 +112,10 @@ def test_dispatch_returns_result(client):
     assert "tier" in body
     # 无节点注册时 dispatch 返回 failure
     if not body["ok"]:
-        assert "no online nodes" in body.get("error", "")
+        assert any(
+            message in body.get("error", "")
+            for message in ("no online nodes", "attempt(s) exhausted")
+        )
 
 
 def test_dispatch_populates_history(client):

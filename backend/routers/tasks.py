@@ -33,6 +33,8 @@ def _task_to_response(task: Task) -> TaskResponse:
         task_id=task.task_id,
         goal=task.goal,
         payload=task.payload or {},
+        result=task.result or {},
+        dependency=task.dependency or [],
         status=task.status.value,
         plan=task.plan or {},
         priority=task.priority,
@@ -63,7 +65,14 @@ async def create_task(
         raise HTTPException(
             status_code=400, detail={"code": "INVALID_GOAL", "message": "goal must not be empty"}
         )
-    task = await service.create_task(body.goal, body.session_id, body.payload)
+    task = await service.create_task(
+        body.goal,
+        body.session_id,
+        body.payload,
+        body.plan,
+        body.dependency,
+        body.priority,
+    )
     return _task_to_response(task)
 
 

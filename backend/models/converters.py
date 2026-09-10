@@ -25,10 +25,12 @@ def task_to_entity(task: Task, session_id: str) -> TaskEntity:
         session_id=session_id,
         goal=task.goal,
         payload=task.payload or {},
+        dependency=task.dependency or [],
+        priority=task.priority,
         # 兼容处理：status 可能为枚举或字符串，统一转为字符串存储
         status=task.status.value if isinstance(task.status, TaskStatus) else str(task.status),
         plan=task.plan or {},
-        result={},
+        result=task.result or {},
     )
 
 
@@ -45,9 +47,11 @@ def entity_to_task(entity: TaskEntity) -> Task:
         task_id=entity.id,
         goal=entity.goal,
         payload=entity.payload or {},
+        dependency=entity.dependency or [],
+        priority=entity.priority,
         status=TaskStatus(entity.status),  # 将状态字符串解析回枚举
         plan=entity.plan or {},
-        priority=0,
+        result=entity.result or {},
     )
 
 

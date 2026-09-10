@@ -12,7 +12,6 @@ import re
 from aegisos_agents.tools.llms.base import LLMRequest, LLMResponse
 from aegisos_agents.tools.llms.mock_provider import MockProvider
 
-
 # 蓝队场景表：ATT&CK 技法 → (严重度, 告警事件, 威胁假设, 响应动作列表, 回滚步骤)
 # kind 合法值：monitor | block | isolate | patch | decoy（见 protocol/cyber.py DefenseAction）
 _BLUE_SCENARIOS: dict[str, dict] = {
@@ -305,13 +304,6 @@ def _build_cyber_mock_responses() -> dict[str, str]:
                         "os": "Debian 12",
                         "exposure": "internal",
                     },
-                    {
-                        "asset_id": "asset-3",
-                        "host": "10.0.0.15",
-                        "services": ["mysql:3306", "ftp:21"],
-                        "os": "CentOS 7",
-                        "exposure": "internal",
-                    },
                 ]
             }
         ),
@@ -506,14 +498,24 @@ class _CyberMockProvider(MockProvider):
         return int(m.group(1)) if m else 0
 
     def _evolve_recon(self, base_text: str, round_no: int) -> str:
-        """侦察演化：round>=2 时才暴露高价值内部资产 asset-4（关键业务/域控）。"""
+        """侦察演化：round2 暴露 asset-3，round3 再暴露高价值 asset-4。"""
         import json as _json
 
         if round_no < 2:
             return base_text
         data = _json.loads(base_text)
         existing = {a["asset_id"] for a in data["assets"]}
-        if "asset-4" not in existing:
+        if "asset-3" not in existing:
+            data["assets"] = data["assets"] + [
+                {
+                    "asset_id": "asset-3",
+                    "host": "10.0.0.15",
+                    "services": ["mysql:3306", "ftp:21"],
+                    "os": "CentOS 7",
+                    "exposure": "internal",
+                }
+            ]
+        if round_no >= 3 and "asset-4" not in existing:
             data["assets"] = data["assets"] + [
                 {
                     "asset_id": "asset-4",
@@ -539,7 +541,7 @@ class _CyberMockProvider(MockProvider):
         data = _json.loads(base_text)
         existing = {s["step_id"] for s in data["steps"]}
 
-        NEW_PER_ROUND = {
+        new_per_round = {
             2: [
                 {"step_id": "step-3", "technique": "T1021",
                  "from_asset": "asset-1", "to_asset": "asset-3", "success": True},
@@ -556,7 +558,7 @@ class _CyberMockProvider(MockProvider):
             ],
         }
         for rn in range(2, round_no + 1):
-            for step in NEW_PER_ROUND.get(rn, []):
+            for step in new_per_round.get(rn, []):
                 if step["step_id"] not in existing:
                     data["steps"] = data["steps"] + [step]
                     existing.add(step["step_id"])
@@ -574,7 +576,7 @@ class _CyberMockProvider(MockProvider):
         if round_no <= 0:
             return base_text
         data = _json.loads(base_text)
-        if round_no <= 3:
+        if round_no == 1:
             # R18e：缺口只引用【资产 ID】与【能存活到链里的技法】（T1078/T1003 无
             # CVE 可绑、不被 _step_evidence 重写）；T1021 会被 CVE→技法反推改写成
             # 其它编号，故缺口文本不再提它，改提目标资产 asset-003。
@@ -748,19 +750,20 @@ class _CyberMockProvider(MockProvider):
         for key, text in self.responses.items():
             if request.prompt.startswith(key):
                 round_no = self._round_from_prompt(request.prompt)
-                if request.prompt.startswith("Scan target range:"):
+                has_round = "[round=" in request.prompt
+                if has_round and request.prompt.startswith("Scan target range:"):
                     text = self._evolve_recon(text, round_no)
-                elif request.prompt.startswith("Plan exploit chain for:"):
+                elif has_round and request.prompt.startswith("Plan exploit chain for:"):
                     text = self._evolve_exploit(text, round_no)
-                elif request.prompt.startswith("Critique: "):
+                elif has_round and request.prompt.startswith("Critique: "):
                     text = self._evolve_critic(text, round_no)
-                elif request.prompt.startswith("Detect anomalies in: "):
+                elif has_round and request.prompt.startswith("Detect anomalies in: "):
                     text = self._evolve_detector(text, request.prompt, "Detect anomalies in: ")
-                elif request.prompt.startswith("Generate hunting hypotheses for: "):
+                elif has_round and request.prompt.startswith("Generate hunting hypotheses for: "):
                     text = self._evolve_threat_hunt(
                         text, request.prompt, "Generate hunting hypotheses for: "
                     )
-                elif request.prompt.startswith("Plan response for: "):
+                elif has_round and request.prompt.startswith("Plan response for: "):
                     text = self._evolve_ir_planner(text, request.prompt, "Plan response for: ")
                 return LLMResponse(
                     text=text,

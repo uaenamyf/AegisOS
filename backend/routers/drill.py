@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import queue
 import threading
@@ -136,10 +137,8 @@ class DrillRuntime:
             self.emit("drill_done", {"drill_id": self.drill_id})
             self.state = "done"
             # 自动落盘运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）
-            try:
+            with contextlib.suppress(Exception):
                 write_drill_report(result)
-            except Exception:  # noqa: BLE001 —— 报告生成失败不影响演练结果
-                pass
         except Exception as exc:  # noqa: BLE001
             self.error = str(exc)
             self.emit("drill_error", {"error": str(exc)})
@@ -292,7 +291,6 @@ async def drill_report(drill_id: str, service: CyberDefenseServiceDep) -> dict[s
     Returns:
         ``{drill_id, report_md, rounds_executed, convergence_code, raw_json_path}``。
     """
-    runtime = _RUNTIMES.get(drill_id)
     record = service.get_drill(drill_id)
     if not record:
         raise HTTPException(status_code=404, detail="Drill record not found")
@@ -433,6 +431,8 @@ async def drill_summary(drill_id: str, service: CyberDefenseServiceDep) -> dict[
     """
     runtime = _RUNTIMES.get(drill_id)
     record = service.get_drill(drill_id)
+    if runtime is None and not record:
+        raise HTTPException(status_code=404, detail=f"Drill not found: {drill_id}")
     if record and record.get("summary"):
         return record["summary"]
     if runtime is not None and runtime.summary:

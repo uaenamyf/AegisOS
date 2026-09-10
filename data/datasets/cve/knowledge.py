@@ -50,6 +50,34 @@ CVE_RECORDS: tuple[dict[str, object], ...] = (
         "cvss": 9.8,
         "attack_surface": "managed file transfer",
     },
+    {
+        "cve_id": "CVE-2021-3156",
+        "keywords": ("sudo", "linux"),
+        "os": ("linux", "ubuntu", "debian"),
+        "cvss": 7.8,
+        "attack_surface": "local privilege escalation",
+    },
+    {
+        "cve_id": "CVE-2022-1388",
+        "keywords": ("f5", "big-ip", "tmui"),
+        "os": ("",),
+        "cvss": 9.8,
+        "attack_surface": "network management interface",
+    },
+    {
+        "cve_id": "CVE-2024-21619",
+        "keywords": ("docker", "containerd", "container"),
+        "os": ("linux", ""),
+        "cvss": 5.5,
+        "attack_surface": "container runtime",
+    },
+    {
+        "cve_id": "CVE-2023-44487",
+        "keywords": ("http2", "nginx", "apache"),
+        "os": ("",),
+        "cvss": 7.5,
+        "attack_surface": "http/2 rapid reset",
+    },
 )
 
 

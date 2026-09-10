@@ -3,6 +3,7 @@
 // changelog: 新建 controllers/events.ts，后端事件控制器：订阅 SSE 并分发到 store
 
 import { sseManager, wsManager } from "@/services/realtime";
+import { taskApi } from "@/services/api/tasks";
 import { useAppStore, type HitlPayload } from "@/lib/store";
 import type { Agent, Event, Task } from "@/protocol/types";
 
@@ -19,6 +20,12 @@ export const eventController = {
     wsManager.connect();
 
     sseManager.on((event: Event) => {
+      const refreshTasks = () => {
+        const sessionId = useAppStore.getState().currentSession?.id;
+        if (sessionId) {
+          void taskApi.list(sessionId).then((tasks) => useAppStore.getState().setTasks(tasks)).catch(() => {});
+        }
+      };
       switch (event.event_type) {
         case "agent.start":
         case "agent.finish": {
@@ -26,6 +33,7 @@ export const eventController = {
           if (agent?.agent_id) {
             useAppStore.getState().upsertAgent(agent);
           }
+          refreshTasks();
           break;
         }
         case "task.retry":
@@ -34,6 +42,11 @@ export const eventController = {
           if (task?.task_id) {
             useAppStore.getState().upsertTask(task);
           }
+          refreshTasks();
+          break;
+        }
+        case "drill.round": {
+          refreshTasks();
           break;
         }
         // date: 2026-08-17

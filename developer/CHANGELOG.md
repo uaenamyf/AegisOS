@@ -2,6 +2,197 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [DRILL-MARKDOWN-EXPORT] 2026-09-10 演练报告 Markdown 导出
+
+### 修改
+- 演练历史详情的报告导出改为调用 `/drill/{id}/report` 获取 Markdown 内容。
+- 浏览器直接下载 `${drill_id}.md` 文件，移除历史工作区对 PDF/reportlab 的依赖。
+- 增加 Markdown Blob 下载、文件名和报告接口调用回归测试。
+
+### 验证
+- 历史页专项：1 passed
+- 前端全量：47 passed
+- Vite 构建：成功
+- 浏览器：真实演练详情显示“↓ 导出 Markdown”
+- `git diff --check`：通过
+
+## [CLEAN-AND-RERUN-DRILL] 2026-09-10 清理历史并生成完整五轮演练
+
+### 修改
+- 清理旧演练 JSON 与 Markdown 报告，仅保留本轮正式结果。
+- 真实模型侦察为空时使用固定安全靶场基线资产继续演示，不执行真实网络扫描。
+- 新演练完整保留红蓝紫三队每轮 Agent trace、输入和输出。
+
+### 验证
+- 正式演练：`drill-cef7887a`，5 / 5 轮，状态 `converged`。
+- 每轮 Agent trace：9 个；红队 findings、蓝队 alerts/response actions、紫队判定均存在。
+- 历史页：只保留 1 场、5 轮、1 场已收敛演练。
+- 编排与报告专项：141 passed；历史页专项：1 passed；Vite 构建：成功。
+
+## [DRILL-AGENT-TRACE] 2026-09-10 演练历史 Agent 产出追踪
+
+### 修改
+- 历史演练轮次接入红蓝紫三队已持久化的 `agent_trace` 数据。
+- 每轮支持展开查看每个 Agent 的执行顺序、输入 Prompt 和结构化输出。
+- 长 JSON 输出使用独立滚动区域，避免详情工作区被单条产出撑破。
+
+### 验证
+- 真实演练 `drill-e5447467` 展示 9 个 Agent 的输入输出。
+- 历史页专项：1 passed
+- 前端全量：47 passed
+- Vite 构建：成功
+- `git diff --check`：通过
+
+## [DRILL-HISTORY-WORKSPACE] 2026-09-10 演练历史工作区
+
+### 修改
+- 左侧菜单新增“演练历史”一级入口。
+- 新增演练历史工作区：统计场次/轮次/收敛数，按后端记录浏览演练，并加载红蓝紫轮次证据。
+- 支持查看演练状态、目标网段、收敛结论和各队 findings/triage/actions/缺口摘要。
+- 支持从历史详情导出演练 PDF 报告；Cyber Defense 原有历史区域保持兼容。
+
+### 验证
+- 历史页专项：1 passed
+- 前端全量：47 passed
+- Vite 构建：成功
+- 浏览器：左侧入口、真实历史列表和 `drill-e5447467` 详情加载成功
+
+## [REAL-DRILL-VALIDATION] 2026-09-10 真实模型攻防演练验收
+
+### 修改
+- Cyber Drill 真实模式统一使用火山方舟 `ark-code-latest` 编排。
+- SSE 断线不再直接显示业务 Error，改为轮询同步；后端完成后自动恢复 `done` 和演练摘要。
+- 真实演练结果支持历史记录加载和可视化恢复。
+
+### 验证
+- 真实单轮演练：`drill-e5447467`，目标 `10.0.0.0/24`，状态 `done`。
+- 红队、蓝队、紫队链路均完成，生成 1 轮记录和紫队一致性审查结果。
+- Python 全量：661 passed；前端全量：46 passed；Vite 构建：成功。
+- Cyber Drill 专项：7 passed。
+
+## [ARK-MODEL-VALIDATION] 2026-09-10 统一火山模型验收
+
+### 修改
+- 端、边、云三层默认模型统一为 `ark-code-latest`。
+- 火山方舟三层默认 URL、OpenAI 兼容请求路径和认证方式保持一致，避免热重载恢复旧的 Ollama、Aegis Edge 或其他模型名。
+
+### 验证
+- device 场景：火山 device → edge → cloud 均成功，按级联置信度最终使用 cloud。
+- edge 场景：火山 edge 成功，模型 `ark-code-latest`。
+- cloud 场景：火山 cloud 成功，模型 `ark-code-latest`。
+- 三层测试均未调用本地 Ollama 或本地 mock 节点。
+- 后端专项：124 passed；前端全量：46 passed；Vite 构建：成功。
+
+## [MULTI-PROVIDER-ROUTING] 2026-09-10 多 Provider 端边云适配
+
+### 修改
+- Provider 支持 Ollama、Aegis Edge、OpenAI 兼容、OpenAI、Anthropic 和自定义 JSON 接口。
+- 节点支持独立配置推理路径、探活路径、认证 Header 和请求格式。
+- OpenAI/Anthropic/自定义 HTTP 适配器可挂载到端、边、云任意层。
+- 自定义认证 Header 原样传递 Key，Authorization 使用 Bearer，Anthropic 使用 `x-api-key`。
+- 设置页支持 Provider 选择和连接参数配置，后端状态继续区分已保存、探活中、在线和离线。
+
+### 验证
+- Provider/Infra 专项：124 passed
+- CloudNode OpenAI/Anthropic/custom 回归：48 passed
+- 前端全量：46 passed
+- Vite 构建：成功
+- 当前用户配置实测：火山方舟路径返回 404，调度器按级联策略回退；需填写实际兼容 API 根路径与对应模型 ID。
+
+## [INFRA-CONFIG-VALIDATION] 2026-09-10 端边云 API 配置验收
+
+### 修改
+- 设置页保存配置时同步调用 `/infra/configure`，端边云 URL、Provider、模型、能力和启用状态进入后端调度器。
+- 后端配置接口复用真实 DeviceNode/CloudNode 工厂，不再把所有配置包装为演示节点。
+- 设置页展示后端实际探活状态、模型和连续失败次数，区分“已保存”和“在线可用”。
+
+### 验证
+- 后端模式：`real`，Provider：`openai`，API Key：已识别且已持久化。
+- Infra 专项：10 passed；前端全量：46 passed；Vite 构建：成功。
+- 实测云端 URL 返回 `404 Not Found`，调度器正确回退到边侧 mock；本地隐私任务正确落到 device 层。
+- 当前不是三层真实 API 全部成功：需将云侧 URL 配置为服务商实际 OpenAI 兼容根路径，并为端/边配置可访问的本地/边缘推理服务。
+
+## [COLLABORATION-CANVAS] 2026-09-09 协作过程与 Agent 产出可视化
+
+### 修改
+- Canvas 任务节点显示执行 Agent 和最新 Agent 产出摘要，并在任务详情中聚合 Chat 消息与 SSE 执行事件。
+- Chat 创建任务后将真实 `task_id` 绑定到助手消息，支持从 Canvas 回看对应生成内容。
+- 贯通 `Task.result` 从协议、ORM 转换器、后端 REST 响应到前端类型，持久化结果可直接展示。
+- 增加 Canvas 回归测试，覆盖 Agent 标识与持久化任务产出。
+
+### 验证
+- Canvas 专项：5 passed
+- 前端全量：46 passed
+- Vite 构建：成功
+- 后端任务专项：64 passed
+- `git diff --check`：通过
+
+## [TASK-EXECUTION-LOOP] 2026-09-10 任务自动执行闭环
+
+### 修改
+- 任务创建持久化后异步调用 MockRuntime，按 payload 或目标语义选择 Agent。
+- 发布 `agent.start` / `agent.finish` 事件，事件携带真实 `task_id` 和 Agent 产出。
+- 执行成功或失败后分别回写任务 `result` 与终态，Canvas 可在刷新后恢复 Agent 和产出。
+- 新增任务服务单元测试，覆盖后台执行、结果持久化和事件顺序。
+
+### 验证
+- 任务后台执行单测：1 passed
+- 后端专项：64 passed
+- 前端全量：46 passed
+- Vite 构建：成功
+
+## [DEMO-RECOVERY] 2026-09-08 核心文件恢复与演示兼容收尾
+
+### 修复
+- 恢复 `aegisos_agents/action/exploit_planner/agent.py`、`aegisos_agents/planning/orchestrator/cyber_orchestrator.py`、`backend/mocks/cyber_provider.py` 三个核心文件。
+- 普通无 round 的红蓝链路恢复旧兼容输出：静态资产、`planned` 攻击链和 `rp-1` 响应计划。
+- CyberDrill 显式 `[round=N]` 继续启用多轮资产/批判演进，不影响演示收敛流程。
+
+### 验证
+- Python 全量：`654 passed`
+- 前端：`44 passed`
+- Vite 构建：成功
+- Ruff：通过
+- 外部 `langsmith/uuid_utils` pytest 插件冲突已通过隔离插件方式规避；项目测试本身通过。
+
+## [DEMO-ENHANCEMENTS] 2026-09-08 比赛演示增强包
+
+### 前端增强
+- Canvas：空态一键加载完整红蓝紫演示流程，支持本地持久化、状态编辑和优先级调整。
+- Graph：节点搜索、节点选中、关联边和权重详情。
+- Monitor：节点状态自动刷新、更新时间和手动刷新入口。
+- Replay：播放/暂停、上一步/下一步、进度滑块和当前事件高亮。
+
+### 通信与数据增强
+- TCP Message transport：可选共享密钥认证、失败重试和指数退避。
+- CVE 数据集扩展到 10 条，覆盖 Linux 提权、F5 管理面、容器运行时和 HTTP/2。
+- ATT&CK 数据集补充收集→外传→影响演示链（T1560/T1041/T1486）。
+
+### 验证
+- Python 全量：`658 passed`
+- 数据/通信专项：`33 passed`
+- 前端全量：通过
+- Vite 构建：成功
+- Ruff：通过
+
+## [REAL-TASK-CANVAS] 2026-09-09 Canvas 接入真实后端任务
+
+### 修改
+- Canvas 挂载时按当前 Session 请求后端 `/tasks`，移除 localStorage 演示任务自动回填。
+- “创建后端攻防流程”通过后端 Task API 创建五个带 `dependency` 的任务，再刷新当前 Session 任务列表。
+- 前端 `taskApi.list()` 按后端实际数组响应解析，同时保留 `ListTasksResponse` 类型兼容导出。
+- 后端 SQLite 启动初始化增加旧 `tasks` 表的 `payload/dependency/priority` 字段迁移，保留已有演示数据。
+
+### 浏览器验证
+- Chat 创建真实任务：`741052d07e8d4cb099bc0eacab428f91`。
+- Canvas 切换后显示同一真实 task ID、目标、`running` 状态和后端任务详情。
+
+### 验证
+- Python 全量：`658 passed`
+- 前端全量：`45 passed`
+- Vite 构建：成功
+- Ruff：通过
+
 ## [CYBER-DRILL] 2026-09-05 R8-R11 跨轮记忆/事件总线/端边云调度/无人干预演示（收尾）
 
 ### R8 · 跨轮记忆与上下文压缩（能力维度 a）
@@ -128,6 +319,27 @@
 - 配置页提供端侧、边侧、云侧的 API / Provider、API URL、Model name、能力标签和启用开关。
 - 保存配置写入浏览器本地存储，并调用 `/api/v1/infra/configure` 同步本地演示调度器。
 - 侧边栏保留唯一“运行配置”入口。
+
+## [DEMO-FINAL] 2026-09-08 演示版任务收尾与剩余项核对
+
+### 修改
+- 活计划与路线图统一为“演示版完成，真实部署跳过”。
+- M5 演示里程碑标记完成：场景 1/2/3 Mock 链路、benchmark 和评测能力均可演示。
+- 补充 Neo4j/Qdrant 适配器惰性构造测试，验证无外部服务时不会提前联网。
+
+### 当前仅剩外部环境验证
+- 真实 Neo4j/Qdrant 在线集成测试。
+- Docker 基础镜像拉取、镜像构建和沙箱工具真实启动。
+
+### 演示版跳过
+- 真实端边云硬件联调、Kubernetes、TLS 证书实测、Gunicorn 生产部署和线上 Secret 管理。
+
+### 最终验证
+- Python 全量：`654 passed`（使用 pytest-asyncio；隔离当前环境损坏的 langsmith/uuid_utils 外部插件）
+- Python Ruff：通过
+- 前端 Vitest：`44 passed`
+- 前端 Vite build：成功
+- 已修复普通 Mock 攻防链路与 CyberDrill 多轮演进之间的兼容性回归。
 
 ### 验证
 - 前端测试：`24 passed`

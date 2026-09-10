@@ -212,3 +212,54 @@ def test_latency_measured(node: CloudNode, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     result = node.infer("test")
     assert result.latency_ms > 0
+
+
+def test_anthropic_messages_provider(node: CloudNode, monkeypatch: pytest.MonkeyPatch):
+    captured = {}
+    profile = _profile(
+        provider=ProviderKind.ANTHROPIC,
+        api_path="/messages",
+        health_path="/models",
+    )
+    anthropic_node = CloudNode(profile)
+
+    def fake_urlopen(req, timeout=None):
+        captured["url"] = req.full_url
+        captured["body"] = json.loads(req.data.decode("utf-8"))
+        captured["headers"] = {k.lower(): v for k, v in req.headers.items()}
+        return FakeResponse(json.dumps({"content": [{"type": "text", "text": "Anthropic OK"}]}).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    result = anthropic_node.infer("分析告警")
+
+    assert result.ok is True
+    assert result.text == "Anthropic OK"
+    assert captured["url"].endswith("/messages")
+    assert captured["body"]["messages"][0]["content"] == "分析告警"
+    assert captured["headers"]["x-api-key"] == "sk-test-key"
+
+
+def test_custom_json_provider(node: CloudNode, monkeypatch: pytest.MonkeyPatch):
+    captured = {}
+    profile = _profile(
+        provider=ProviderKind.CUSTOM,
+        request_format="json",
+        api_path="/generate",
+        api_key_header="X-Token",
+    )
+    custom_node = CloudNode(profile)
+
+    def fake_urlopen(req, timeout=None):
+        captured["url"] = req.full_url
+        captured["body"] = json.loads(req.data.decode("utf-8"))
+        captured["headers"] = {k.lower(): v for k, v in req.headers.items()}
+        return FakeResponse(json.dumps({"output": "Custom OK"}).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    result = custom_node.infer("检查资产")
+
+    assert result.ok is True
+    assert result.text == "Custom OK"
+    assert captured["url"].endswith("/generate")
+    assert captured["body"]["model"] == "gpt-4o"
+    assert captured["headers"]["x-token"] == "sk-test-key"

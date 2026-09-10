@@ -65,6 +65,8 @@ class TaskEntity(Base):
     session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     goal: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    dependency: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    priority: Mapped[int] = mapped_column(nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     plan: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     result: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)

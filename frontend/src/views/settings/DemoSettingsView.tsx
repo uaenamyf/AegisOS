@@ -6,9 +6,9 @@ type TierKey = "device" | "edge" | "cloud";
 type NodeConfig = { enabled: boolean; label: string; api: string; url: string; modelName: string; capabilities: string };
 
 const DEFAULTS: Record<TierKey, NodeConfig> = {
-  device: { enabled: true, label: "本机终端", api: "ollama", url: "http://localhost:11434", modelName: "qwen2.5:0.5b", capabilities: "chat" },
-  edge: { enabled: false, label: "区域边缘节点", api: "aegis_edge", url: "http://localhost:8900", modelName: "qwen2.5:7b", capabilities: "chat, reasoning" },
-  cloud: { enabled: false, label: "云端推理服务", api: "openai_api", url: "https://api.openai.com/v1", modelName: "gpt-4o-mini", capabilities: "chat, reasoning, long_context" },
+  device: { enabled: true, label: "本机终端", api: "ollama", url: "http://localhost:11434", modelName: "ark-code-latest", capabilities: "chat" },
+  edge: { enabled: false, label: "区域边缘节点", api: "aegis_edge", url: "http://localhost:8900", modelName: "ark-code-latest", capabilities: "chat, reasoning" },
+  cloud: { enabled: false, label: "云端推理服务", api: "openai_api", url: "https://api.openai.com/v1", modelName: "ark-code-latest", capabilities: "chat, reasoning, long_context" },
 };
 
 const META: Record<TierKey, { number: string; title: string; subtitle: string }> = {

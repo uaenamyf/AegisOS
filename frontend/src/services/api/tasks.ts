@@ -11,8 +11,10 @@ export interface CreateTaskRequest {
   plan?: Record<string, unknown>;
   dependency?: string[];
   priority?: number;
+  payload?: Record<string, unknown>;
 }
 
+/** 兼容旧 API barrel 的包装响应类型；当前后端列表接口实际返回 Task 数组。 */
 export interface ListTasksResponse {
   tasks: Task[];
 }
@@ -23,9 +25,7 @@ export const taskApi = {
 
   list: (sessionId?: string): Promise<Task[]> => {
     const qs = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
-    return apiClient
-      .get<ListTasksResponse>(`/tasks${qs}`)
-      .then((r) => r.tasks ?? []);
+    return apiClient.get<Task[]>(`/tasks${qs}`).then((tasks) => tasks ?? []);
   },
 
   get: (id: string): Promise<Task> => apiClient.get<Task>(`/tasks/${id}`),

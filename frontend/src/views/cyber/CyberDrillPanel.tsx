@@ -963,6 +963,7 @@ export function CyberDrillPanel() {
   const handleStreamError = useCallback(() => {
     const id = drillIdRef.current;
     if (!id) return;
+    setError("实时通道已断开，正在同步演练结果…");
     stopPolling();
     pollTimerRef.current = setInterval(async () => {
       try {
@@ -970,6 +971,7 @@ export function CyberDrillPanel() {
         if (rec.rounds.length > 0) setRounds(rec.rounds);
         if (rec.summary) {
           setSummary(rec.summary);
+          setError(null);
           setPhase("done");
         }
         if (rec.convergence_code === "aborted") setPhase("aborted");

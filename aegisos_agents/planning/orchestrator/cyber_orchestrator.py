@@ -608,6 +608,37 @@ class CyberOrchestrator(GoalMode[dict]):
         # 因此由编排器统一分配稳定资产 ID（asset-001…按 host 去重排序），
         # recon 的 asset_id 仅作参考、一律以编排器分配为准；host 才是资产事实锚点。
         recon_raw = recon_result.assets[:8]
+        if not recon_raw:
+            # 真实模型可能因安全策略不执行网络探测；演示仅使用固定靶场基线，
+            # 不对 target_range 发起任何真实网络访问。
+            recon_raw = [
+                Asset(
+                    asset_id="baseline-web",
+                    host="10.0.0.10",
+                    services=["http:80", "ssh:22"],
+                    os="Ubuntu 22.04",
+                    exposure="external",
+                ),
+                Asset(
+                    asset_id="baseline-db",
+                    host="10.0.0.20",
+                    services=["redis:6379"],
+                    os="Debian 12",
+                    exposure="internal",
+                ),
+                Asset(
+                    asset_id="baseline-workstation",
+                    host="10.0.0.30",
+                    services=["smb:445"],
+                    os="Windows Server 2022",
+                    exposure="internal",
+                ),
+            ]
+            trace.append({
+                "agent": "recon",
+                "input": "演示靶场基线回退：真实侦察未返回资产，未执行网络扫描",
+                "output": {"assets": [a.model_dump() for a in recon_raw]},
+            })
         _host_order: list[str] = []
         for a in recon_raw:
             h = (a.host or "").strip()
@@ -726,7 +757,12 @@ class CyberOrchestrator(GoalMode[dict]):
         chain.steps = normal_steps
         # R18：字段自洽确定性修正——全部步骤 success=true 但 status 仍 planned 时，
         # 改为 completed（紫队挑"全成功却计划中"矛盾；prompt 第 3 条的硬保险）
-        if chain.steps and all(s.success for s in chain.steps) and chain.status == "planned":
+        if (
+            round is not None
+            and chain.steps
+            and all(s.success for s in chain.steps)
+            and chain.status == "planned"
+        ):
             chain.status = "completed"
 
         return {"assets": assets, "findings": findings, "chain": chain, "agent_trace": trace}

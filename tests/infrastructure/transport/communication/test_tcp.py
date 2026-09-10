@@ -68,3 +68,32 @@ async def test_broadcast_uses_only_explicit_targets() -> None:
         assert (await receiver.recv(timeout=2)).task_id == "broadcast"
     finally:
         await receiver.stop()
+
+
+@pytest.mark.asyncio
+async def test_tcp_authentication_accepts_matching_token_and_rejects_other_token() -> None:
+    receiver = TcpTransport(auth_token="demo-secret")
+    sender = TcpTransport(auth_token="demo-secret")
+    wrong = TcpTransport(auth_token="wrong-secret")
+    await receiver.start()
+    try:
+        message = Message(task_id="authenticated")
+        assert await sender.send(message, "127.0.0.1", receiver.port)
+        assert (await receiver.recv(timeout=2)).task_id == "authenticated"
+        assert await wrong.send(Message(task_id="rejected"), "127.0.0.1", receiver.port)
+        with pytest.raises(TimeoutError):
+            await receiver.recv(timeout=0.05)
+    finally:
+        await receiver.stop()
+
+
+@pytest.mark.asyncio
+async def test_tcp_retries_after_initial_connection_failure() -> None:
+    receiver = TcpTransport(retry_attempts=4, retry_backoff_s=0.001)
+    await receiver.start()
+    try:
+        sender = TcpTransport(retry_attempts=0)
+        assert await sender.send(Message(task_id="retry"), "127.0.0.1", receiver.port)
+        assert (await receiver.recv(timeout=2)).task_id == "retry"
+    finally:
+        await receiver.stop()

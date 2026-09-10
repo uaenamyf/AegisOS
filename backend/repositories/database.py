@@ -66,6 +66,25 @@ async def init_db(engine: AsyncEngine) -> None:
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_migrate_task_columns)
+
+
+def _migrate_task_columns(connection) -> None:
+    """为已有 SQLite 演示数据库补齐新增任务字段。"""
+    if connection.dialect.name != "sqlite":
+        return
+    columns = {
+        row[1]
+        for row in connection.exec_driver_sql("PRAGMA table_info(tasks)").fetchall()
+    }
+    additions = {
+        "payload": "JSON NOT NULL DEFAULT '{}'",
+        "dependency": "JSON NOT NULL DEFAULT '[]'",
+        "priority": "INTEGER NOT NULL DEFAULT 0",
+    }
+    for name, definition in additions.items():
+        if name not in columns:
+            connection.exec_driver_sql(f"ALTER TABLE tasks ADD COLUMN {name} {definition}")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

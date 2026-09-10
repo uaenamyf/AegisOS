@@ -16,6 +16,9 @@ class CreateTaskRequest(BaseModel):
     goal: str = Field(..., description="Natural-language goal for the task")
     session_id: str = Field(..., description="Owning session id")
     payload: dict[str, Any] = Field(default_factory=dict, description="Task execution input")
+    plan: dict[str, Any] = Field(default_factory=dict)
+    dependency: list[str] = Field(default_factory=list)
+    priority: int = 0
 
 
 class InvokeAgentRequest(BaseModel):
@@ -53,6 +56,8 @@ class TaskResponse(BaseModel):
     task_id: str
     goal: str
     payload: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] = Field(default_factory=dict)
+    dependency: list[str] = Field(default_factory=list)
     status: str
     plan: dict[str, Any] = Field(default_factory=dict)
     priority: int = 0

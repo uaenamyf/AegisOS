@@ -216,20 +216,20 @@ def _init_infra_service() -> None:
         _register_profile(registry, NodeProfile(
             node_id="device_local", tier=Tier.DEVICE,
             base_url="http://localhost:11434", provider=ProviderKind.OLLAMA,
-            model_id="mock:0.5b", capabilities=["chat"], cost_weight=0.1,
+            model_id="ark-code-latest", capabilities=["chat"], cost_weight=0.1,
         ))
     if not has_edge:
         _register_profile(registry, NodeProfile(
             node_id="edge_server_01", tier=Tier.EDGE,
             base_url="http://localhost:8900", provider=ProviderKind.AEGIS_EDGE,
-            model_id="mock:7b", capabilities=["chat", "reasoning"],
+            model_id="ark-code-latest", capabilities=["chat", "reasoning"],
             cost_weight=1.0,
         ))
     if not has_cloud:
         _register_profile(registry, NodeProfile(
             node_id="cloud_api", tier=Tier.CLOUD,
             base_url="http://localhost:8001", provider=ProviderKind.OPENAI_API,
-            model_id="mock:gpt-4o", capabilities=["chat", "reasoning", "long_context"],
+            model_id="ark-code-latest", capabilities=["chat", "reasoning", "long_context"],
             cost_weight=10.0,
         ))
 
@@ -333,10 +333,12 @@ def _register_profile(registry: NodeRegistry, profile: NodeProfile) -> None:
                 pass  # 构造失败，回退 mock
 
         # 云侧：真实 OpenAI 兼容 API（DeepSeek/OpenAI 等）
-        if str(prof.tier) == "cloud" and prof.provider == "openai_api":
+        if prof.provider in (
+            "openai_api", "openai", "anthropic", "custom"
+        ):
             try:
-                from infrastructure.nodes.cloud.cloud_node import CloudNode
-                return CloudNode(prof)
+                from infrastructure.nodes.cloud.cloud_node import FlexibleHttpNode
+                return FlexibleHttpNode(prof)
             except Exception:
                 pass  # 构造失败，回退 mock
 

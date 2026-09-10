@@ -41,6 +41,7 @@ export function InfraNodePanel() {
   const [nodes, setNodes] = useState<InfraNode[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +53,7 @@ export function InfraNodePanel() {
           setNodes(data);
           setError(null);
           setLoading(false);
+          setLastUpdated(new Date());
         }
       } catch {
         if (!cancelled) {
@@ -71,7 +73,13 @@ export function InfraNodePanel() {
 
   return (
     <div className="infra-panel">
-      <h3 className="infra-panel__title">端边云节点</h3>
+      <div className="infra-panel__heading">
+        <h3 className="infra-panel__title">端边云节点</h3>
+        <div className="infra-panel__refresh">
+          {lastUpdated ? `更新于 ${lastUpdated.toLocaleTimeString()}` : "等待数据"}
+          <button type="button" onClick={() => window.location.reload()}>刷新</button>
+        </div>
+      </div>
       {error && <p className="infra-panel__error">{error}</p>}
       <div className="infra-panel__cards">
         {(["device", "edge", "cloud"] as const).map((tier) => {

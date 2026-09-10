@@ -8,6 +8,7 @@ import { GraphView } from "@/views/graph";
 import { MonitorView } from "@/views/monitor";
 import { ReplayView } from "@/views/replay";
 import { DemoSettingsView } from "@/views/settings/DemoSettingsView";
+import { DrillHistoryView } from "@/views/drill-history";
 import { eventController } from "@/controllers/events";
 import { agentApi } from "@/services/api/agents";
 import { graphService } from "@/services/graph";
@@ -18,6 +19,7 @@ const VIEWS: Record<ViewName, () => JSX.Element> = {
   canvas: CanvasView,
   chat: ChatView,
   cyber: CyberView,
+  "drill-history": DrillHistoryView,
   graph: GraphView,
   monitor: MonitorView,
   replay: ReplayView,

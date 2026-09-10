@@ -110,7 +110,7 @@ class Composition:
 
         # --- 服务层 ---
         self.session_service = SessionService(self.session_repo)
-        self.task_service = TaskService(self.task_repo, self.runtime)
+        self.task_service = TaskService(self.task_repo, self.runtime, self.event_bus)
         self.agent_service = AgentService(self.agent_registry, self.runtime)
         self.memory_service = MemoryService(self.memory_api)
         self.graph_service = GraphService(self.event_bus)

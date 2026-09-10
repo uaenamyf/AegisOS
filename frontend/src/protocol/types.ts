@@ -222,7 +222,9 @@ export interface SyncPacket {
 export interface Task {
   task_id?: string;
   goal?: string;
+  payload?: Record<string, any>;
   plan?: Record<string, any>;
+  result?: Record<string, any>;
   status?: any;
   retry?: any;
   rollback?: any;
@@ -265,7 +267,7 @@ export interface TopologyResponse {
 export interface AgentTraceEntry {
   agent: string;
   input: string;
-  output: Record<string, any>;
+  output: Record<string, any> | string;
 }
 
 export interface RedAttackResponse {
@@ -355,6 +357,7 @@ export interface DrillRoundRed {
   finding_count: number;
   steps: Record<string, any>[];
   new_steps: Record<string, any>[];
+  agent_trace?: AgentTraceEntry[];
 }
 
 export interface DrillRoundBlue {
@@ -362,6 +365,7 @@ export interface DrillRoundBlue {
   alerts: Record<string, any>[];
   triaged_count: number;
   plan: Record<string, any>;
+  agent_trace?: AgentTraceEntry[];
 }
 
 export interface DrillRoundPurple {
@@ -371,6 +375,7 @@ export interface DrillRoundPurple {
   converged: boolean;
   valid: boolean;
   new_issue_count: number;
+  agent_trace?: AgentTraceEntry[];
 }
 
 /** R10: 演练阶段执行位置标注（端-边-云自适应调度）。 */

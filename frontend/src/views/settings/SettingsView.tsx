@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { systemApi } from "@/services/api/system";
+import { infraApi, type InfraNode } from "@/services/api/infra";
 
 type TierKey = "device" | "edge" | "cloud";
 
@@ -10,6 +11,9 @@ type NodeConfig = {
   provider: string;
   model: string;
   capabilities: string;
+  apiPath: string;
+  healthPath: string;
+  apiKeyHeader: string;
 };
 
 const DEFAULT_CONFIG: Record<TierKey, NodeConfig> = {
@@ -18,24 +22,33 @@ const DEFAULT_CONFIG: Record<TierKey, NodeConfig> = {
     label: "本机终端",
     baseUrl: "http://localhost:11434",
     provider: "ollama",
-    model: "qwen2.5:0.5b",
+    model: "ark-code-latest",
     capabilities: "chat",
+    apiPath: "/api/generate",
+    healthPath: "/api/tags",
+    apiKeyHeader: "Authorization",
   },
   edge: {
     enabled: false,
     label: "区域边缘节点",
     baseUrl: "http://localhost:8900",
     provider: "aegis_edge",
-    model: "qwen2.5:7b",
+    model: "ark-code-latest",
     capabilities: "chat, reasoning",
+    apiPath: "/infer",
+    healthPath: "/health",
+    apiKeyHeader: "Authorization",
   },
   cloud: {
     enabled: false,
     label: "云端推理服务",
     baseUrl: "https://api.openai.com/v1",
     provider: "openai_api",
-    model: "gpt-4o-mini",
+    model: "ark-code-latest",
     capabilities: "chat, reasoning, long_context",
+    apiPath: "/chat/completions",
+    healthPath: "/models",
+    apiKeyHeader: "Authorization",
   },
 };
 
@@ -73,6 +86,7 @@ export function SettingsView() {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [cloudKeySaving, setCloudKeySaving] = useState(false);
   const [cloudKeyMsg, setCloudKeyMsg] = useState<string | null>(null);
+  const [backendNodes, setBackendNodes] = useState<InfraNode[]>([]);
 
   useEffect(() => {
     setConfig(loadConfig());
@@ -80,6 +94,7 @@ export function SettingsView() {
       .getMode()
       .then((m) => setHasKey(m.has_key))
       .catch(() => setHasKey(null));
+    infraApi.listNodes().then(setBackendNodes).catch(() => setBackendNodes([]));
   }, []);
 
   const saveCloudApiKey = async () => {
@@ -111,9 +126,31 @@ export function SettingsView() {
     setSaved(false);
   };
 
-  const saveConfig = () => {
+  const saveConfig = async () => {
+    const nodes = (Object.keys(config) as TierKey[]).map((tier) => {
+      const node = config[tier];
+      return {
+        node_id: `${tier}_local`,
+        tier,
+        base_url: node.baseUrl,
+        provider: node.provider,
+        model_id: node.model,
+        capabilities: node.capabilities.split(",").map((value) => value.trim()).filter(Boolean),
+        api_path: node.apiPath,
+        health_path: node.healthPath,
+        api_key_header: node.apiKeyHeader,
+        request_format: node.provider === "anthropic" ? "anthropic" : node.provider === "custom" ? "json" : "openai",
+        enabled: node.enabled,
+      };
+    });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    setSaved(true);
+    try {
+      setBackendNodes(await infraApi.configureNodes(nodes));
+      setSaved(true);
+    } catch (err) {
+      setSaved(false);
+      setCloudKeyMsg(err instanceof Error ? `配置同步失败：${err.message}` : "配置同步失败");
+    }
   };
 
   const resetConfig = () => {
@@ -126,10 +163,10 @@ export function SettingsView() {
     <section className="view settings-view">
       <header className="settings-hero">
         <div>
-          <span className="eyebrow">RUNTIME CONTROL / LOCAL DEMO</span>
+          <span className="eyebrow">RUNTIME CONTROL / PROVIDER ROUTING</span>
           <h2 className="settings-hero__title">运行配置</h2>
           <p className="settings-hero__desc">
-            配置推理落点、模型和能力标签。修改仅保存在当前浏览器，用于本地演示。
+            为每个端、边、云节点配置协议、连接、模型和健康检查。
           </p>
         </div>
         <div className="settings-hero__status">
@@ -145,7 +182,7 @@ export function SettingsView() {
           <button type="button" className="settings-button settings-button--quiet" onClick={resetConfig}>
             恢复默认
           </button>
-          <button type="button" className="settings-button settings-button--primary" onClick={saveConfig}>
+          <button type="button" className="settings-button settings-button--primary" onClick={() => void saveConfig()}>
             {saved ? "已保存" : "保存配置"}
           </button>
         </div>
@@ -155,6 +192,7 @@ export function SettingsView() {
         {(Object.keys(TIER_META) as TierKey[]).map((tier) => {
           const meta = TIER_META[tier];
           const node = config[tier];
+          const backendNode = backendNodes.find((candidate) => candidate.tier === tier);
           return (
             <article className={`node-config node-config--${tier}`} key={tier}>
               <div className="node-config__header">
@@ -189,12 +227,27 @@ export function SettingsView() {
                   <select value={node.provider} onChange={(event) => updateNode(tier, { provider: event.target.value })}>
                     <option value="ollama">Ollama</option>
                     <option value="aegis_edge">Aegis Edge</option>
-                    <option value="openai_api">OpenAI API</option>
+                    <option value="openai_api">OpenAI 兼容</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="custom">自定义 JSON</option>
                   </select>
                 </label>
                 <label>
                   <span>模型标识</span>
                   <input value={node.model} onChange={(event) => updateNode(tier, { model: event.target.value })} />
+                </label>
+                <label>
+                  <span>请求路径</span>
+                  <input value={node.apiPath} onChange={(event) => updateNode(tier, { apiPath: event.target.value })} />
+                </label>
+                <label>
+                  <span>探活路径</span>
+                  <input value={node.healthPath} onChange={(event) => updateNode(tier, { healthPath: event.target.value })} />
+                </label>
+                <label>
+                  <span>认证 Header</span>
+                  <input value={node.apiKeyHeader} onChange={(event) => updateNode(tier, { apiKeyHeader: event.target.value })} />
                 </label>
                 <label className="node-config__field--wide">
                   <span>能力标签</span>
@@ -203,10 +256,10 @@ export function SettingsView() {
               </div>
 
               {/* 云侧节点：API Key 输入框（端/边暂不单独配置，统一走云 API） */}
-              {node.provider === "openai_api" ? (
+              {["openai_api", "openai", "anthropic", "custom"].includes(node.provider) ? (
                 <div className="node-config__apikey">
                   <div className="node-config__apikey-head">
-                    <span>OpenAI 兼容 API Key</span>
+                    <span>{node.provider === "anthropic" ? "Anthropic API Key" : "API Key（可选）"}</span>
                     <span className={`badge badge--${hasKey ? "succeeded" : "cancelled"}`}>
                       {hasKey === null ? "查询中…" : hasKey ? "已配置" : "未配置"}
                     </span>
@@ -233,8 +286,11 @@ export function SettingsView() {
               ) : null}
 
               <footer className="node-config__footer">
-                <span className={`node-config__dot${node.enabled ? " node-config__dot--on" : ""}`} />
-                <span>{node.enabled ? "参与任务调度" : "已停用"}</span>
+                <span className={`node-config__dot${backendNode?.status === "online" ? " node-config__dot--on" : ""}`} />
+                <span>
+                  {!node.enabled ? "已停用" : backendNode?.status === "online" ? "后端在线" : backendNode?.status === "offline" ? "后端离线" : "等待探活"}
+                </span>
+                {backendNode ? <small>{backendNode.model_id} · 失败 {backendNode.consecutive_failures} 次</small> : null}
                 <code>{tier}</code>
               </footer>
             </article>

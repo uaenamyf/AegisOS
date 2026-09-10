@@ -60,6 +60,9 @@ class ProviderKind(StrEnum):
     OLLAMA = "ollama"          # Ollama REST（POST /api/generate），端/边通用
     AEGIS_EDGE = "aegis_edge"  # 自带边缘服务（POST /infer + GET /health）
     OPENAI_API = "openai_api"  # OpenAI 兼容 ChatCompletions（火山 ARK 等）
+    OPENAI = "openai"          # OpenAI 官方及兼容 ChatCompletions
+    ANTHROPIC = "anthropic"    # Anthropic Messages API
+    CUSTOM = "custom"          # 自定义 JSON POST 接口
 
 
 class PrivacyZone(StrEnum):
@@ -92,7 +95,7 @@ class NodeProfile(BaseModel):
         node_id: 节点唯一标识（如 ``device_local`` / ``edge_server_01``）。
         tier: 所属层级 device | edge | cloud。
         base_url: 推理端点根地址；支持 ``${ENV_VAR}`` 插值。
-        provider: 后端协议 ollama | aegis_edge | openai_api。
+        provider: 后端协议 ollama | aegis_edge | openai_api | openai | anthropic | custom。
         model_id: 该节点承载的模型标识（如 ``qwen2.5:0.5b``）。
         capabilities: 能力标签列表（与 scheduler.Model.capabilities 对齐，
             如 chat / reasoning / long_context）。
@@ -115,6 +118,10 @@ class NodeProfile(BaseModel):
     cost_weight: float = Field(default=1.0, gt=0)
     enabled: bool = True
     timeout_s: float = Field(default=30.0, gt=0)
+    api_path: str = ""
+    health_path: str = ""
+    api_key_header: str = "Authorization"
+    request_format: str = "auto"  # auto | openai | anthropic | json
 
     @field_validator("node_id")
     @classmethod

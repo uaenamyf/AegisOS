@@ -42,10 +42,11 @@ class CloudNode(BaseHttpNode):
         if not self._api_key:
             return False
         try:
+            path = self.profile.health_path or self._models_path()
             status, _ = self._get_json(
-                "/models",
+                path,
                 timeout_s,
-                headers={"Authorization": f"Bearer {self._api_key}"},
+                headers=self._auth_headers(),
             )
             return 200 <= status < 300
         except Exception:  # noqa: BLE001 —— 探活失败即离线
@@ -75,6 +76,11 @@ class CloudNode(BaseHttpNode):
             InferenceResult：ok=True 时 text 含 API 回复；
             ok=False 时 error 含失败原因，绝不抛异常。
         """
+        if self.profile.provider == ProviderKind.ANTHROPIC:
+            return self._infer_anthropic(prompt, system, temperature, max_tokens)
+        if self.profile.provider == ProviderKind.CUSTOM or self.profile.request_format == "json":
+            return self._infer_custom(prompt, system, temperature, max_tokens)
+
         messages: list[dict[str, str]] = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -94,7 +100,7 @@ class CloudNode(BaseHttpNode):
         ).lower():
             payload["thinking"] = {"type": "disabled"}
 
-        auth_headers = {"Authorization": f"Bearer {self._api_key}"}
+        auth_headers = self._auth_headers()
 
         data, elapsed, err = self._timed_infer(
             timeout_s if timeout_s is not None else self.profile.timeout_s,
@@ -121,8 +127,79 @@ class CloudNode(BaseHttpNode):
 
         return self._result(text=text, usage=usage, latency_ms=elapsed)
 
+    def _auth_headers(self) -> dict[str, str]:
+        """按节点配置生成认证头，支持 Bearer、自定义头和 Anthropic。"""
+        if self.profile.provider == ProviderKind.ANTHROPIC:
+            return {
+                "x-api-key": self._api_key,
+                "anthropic-version": "2023-06-01",
+            }
+        header = self.profile.api_key_header or "Authorization"
+        value = f"Bearer {self._api_key}" if header.lower() == "authorization" else self._api_key
+        return {header: value}
+
+    def _models_path(self) -> str:
+        if self.profile.api_path:
+            return self.profile.api_path
+        return "/models" if self.profile.provider != ProviderKind.ANTHROPIC else "/messages"
+
+    def _infer_anthropic(
+        self, prompt: str, system: str, temperature: float, max_tokens: int
+    ) -> InferenceResult:
+        payload: dict[str, object] = {
+            "model": self.profile.model_id,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if system:
+            payload["system"] = system
+        data, elapsed, err = self._timed_infer(
+            self.profile.timeout_s,
+            lambda t: self._post_json(
+                self.profile.api_path or "/messages", payload, t, headers=self._auth_headers()
+            ),
+        )
+        if err:
+            return self._result(latency_ms=elapsed, error=err)
+        content = data.get("content", [])
+        text = content[0].get("text", "") if isinstance(content, list) and content else str(content)
+        return self._result(text=str(text), latency_ms=elapsed)
+
+    def _infer_custom(
+        self, prompt: str, system: str, temperature: float, max_tokens: int
+    ) -> InferenceResult:
+        payload = {
+            "model": self.profile.model_id,
+            "prompt": prompt,
+            "system": system,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        data, elapsed, err = self._timed_infer(
+            self.profile.timeout_s,
+            lambda t: self._post_json(
+                self.profile.api_path or "/infer", payload, t, headers=self._auth_headers()
+            ),
+        )
+        if err:
+            return self._result(latency_ms=elapsed, error=err)
+        text = data.get("text") or data.get("output") or data.get("response") or data.get("content") or data
+        return self._result(text=str(text), latency_ms=elapsed)
+
 
 __all__ = ["CloudNode"]
+
+
+class FlexibleHttpNode(CloudNode):
+    """可挂载在任意端边云层的 OpenAI/Anthropic/自定义 HTTP 节点。"""
+
+    def __init__(self, profile: NodeProfile) -> None:
+        BaseHttpNode.__init__(self, profile)
+        self._api_key = os.getenv("OPENAI_API_KEY", "")
+
+
+__all__.append("FlexibleHttpNode")
 
 
 if __name__ == "__main__":

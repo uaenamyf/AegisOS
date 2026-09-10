@@ -8,12 +8,14 @@ import { Sidebar } from "@/views/layout";
 import { CanvasView } from "@/views/canvas";
 import { ChatView } from "@/views/chat";
 import { CyberView } from "@/views/cyber";
+import { DrillHistoryView } from "@/views/drill-history";
 import { GraphView } from "@/views/graph";
 import { MonitorView } from "@/views/monitor";
 import { ReplayView } from "@/views/replay";
 import { SettingsView } from "@/views/settings";
 import { eventController } from "@/controllers/events";
 import { agentApi } from "@/services/api/agents";
+import { taskApi } from "@/services/api/tasks";
 import { graphService } from "@/services/graph";
 import { sessionService } from "@/services/session";
 import type { ViewName } from "@/protocol/frontend-types";
@@ -22,6 +24,7 @@ const VIEWS: Record<ViewName, () => JSX.Element> = {
   canvas: CanvasView,
   chat: ChatView,
   cyber: CyberView,
+  "drill-history": DrillHistoryView,
   graph: GraphView,
   monitor: MonitorView,
   replay: ReplayView,
@@ -34,9 +37,13 @@ export default function App() {
   useEffect(() => {
     eventController.start();
     const unsub = graphService.subscribe();
-    void sessionService.createSession().catch(() => {
-      /* backend may be offline during skeleton phase */
-    });
+    void sessionService
+      .createSession()
+      .then((session) => taskApi.list(session.id))
+      .then((tasks) => useAppStore.getState().setTasks(tasks))
+      .catch(() => {
+        /* backend may be offline during skeleton phase */
+      });
     void graphService.fetch().catch(() => {
       /* graph fetch optional at boot */
     });

@@ -18,7 +18,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.core.auth import DEV_API_KEY
-from backend.services.drill_report import build_drill_report, build_drill_report_json, write_drill_report
+from backend.services.drill_report import (
+    build_drill_report,
+    build_drill_report_json,
+    write_drill_report,
+)
 
 _AUTH_HEADERS = {"X-API-Key": DEV_API_KEY}
 

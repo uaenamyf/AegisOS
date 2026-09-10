@@ -213,6 +213,30 @@ ATTACK_TECHNIQUES: dict[str, dict[str, str]] = {
         "platform": "host",
         "description": "从本地系统收集敏感数据（检测重点）",
     },
+    "T1053.005": {
+        "name": "Scheduled Task/Job: Scheduled Task",
+        "tactic": "persistence",
+        "platform": "windows",
+        "description": "通过计划任务维持持久化执行",
+    },
+    "T1560": {
+        "name": "Archive Collected Data",
+        "tactic": "collection",
+        "platform": "host",
+        "description": "压缩收集的数据以准备外传",
+    },
+    "T1041": {
+        "name": "Exfiltration Over C2 Channel",
+        "tactic": "exfiltration",
+        "platform": "network",
+        "description": "通过命令控制信道外传数据",
+    },
+    "T1486": {
+        "name": "Data Encrypted for Impact",
+        "tactic": "impact",
+        "platform": "host",
+        "description": "加密数据造成业务可用性影响",
+    },
 }
 
 # 关系边：(src, rel, dst)；rel ∈ contains/precedes/uses/targets
@@ -250,6 +274,10 @@ ATTACK_RELATIONS: list[tuple[str, str, str]] = [
     ("lateral-movement", "contains", "T1550"),
     ("lateral-movement", "contains", "T1080"),
     ("collection", "contains", "T1005"),
+    ("persistence", "contains", "T1053.005"),
+    ("collection", "contains", "T1560"),
+    ("exfiltration", "contains", "T1041"),
+    ("impact", "contains", "T1486"),
     # 攻击链前置/使用关系
     ("T1595", "precedes", "T1592"),
     ("T1592", "precedes", "T1046"),
@@ -259,6 +287,9 @@ ATTACK_RELATIONS: list[tuple[str, str, str]] = [
     ("T1566", "precedes", "T1204"),
     ("T1078", "uses", "T1021"),
     ("T1070", "targets", "T1005"),
+    ("T1005", "precedes", "T1560"),
+    ("T1560", "precedes", "T1041"),
+    ("T1041", "precedes", "T1486"),
 ]
 
 

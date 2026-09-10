@@ -39,14 +39,18 @@ class InfraService:
         return self.registry.snapshot()
 
     def configure_nodes(self, configs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """替换本地演示节点配置并重建调度器。"""
+        """替换节点配置并重建调度器。"""
         profiles = [NodeProfile.model_validate(config) for config in configs]
         if not profiles:
             raise ValueError("at least one node profile is required")
 
+        # 复用组合根的节点工厂：cloud/openai_api 和 device/ollama 走真实适配器，
+        # 其它节点仍保留健康检查与演示回退能力。
+        from backend.main import _register_profile
+
         registry = NodeRegistry()
         for profile in profiles:
-            registry.register_node(_ConfiguredDemoNode(profile))
+            _register_profile(registry, profile)
         registry.tick()
         self.registry = registry
         self.dispatcher = ExecutionDispatcher(

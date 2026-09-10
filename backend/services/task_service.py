@@ -1,12 +1,15 @@
 # date: 2026-06-27
 # dev: myf
-"""Task 服务层：实现任务的创建、查询、列表与取消，委托运行时执行。"""
+"""Task 服务层：实现任务 CRUD，并驱动后台 Agent 执行与结果回写。"""
 
 from __future__ import annotations
 
+import asyncio
+from typing import Any
+
 from aegisos_agents.api import RuntimeAPI
 from backend.repositories.repositories import TaskRepository
-from protocol import Task, TaskStatus
+from protocol import Event, EventType, NodeRef, Task, TaskStatus
 
 
 class TaskService:
@@ -17,17 +20,24 @@ class TaskService:
         _runtime: agent 运行时 API，负责任务的实际执行。
     """
 
-    def __init__(self, repo: TaskRepository, runtime: RuntimeAPI) -> None:
+    def __init__(self, repo: TaskRepository, runtime: RuntimeAPI, event_bus: Any = None) -> None:
         self._repo = repo
         self._runtime = runtime
+        self._event_bus = event_bus
 
     async def create_task(
-        self, goal: str, session_id: str, payload: dict[str, object] | None = None
+        self,
+        goal: str,
+        session_id: str,
+        payload: dict[str, object] | None = None,
+        plan: dict[str, object] | None = None,
+        dependency: list[str] | None = None,
+        priority: int = 0,
     ) -> Task:
         """创建并提交任务。
 
-        将任务委托给 agents 运行时执行（当前为 mock），运行时可能就地修改
-        任务的状态和计划，因此持久化在提交之后进行。
+        将任务提交后交给后台 Agent 执行，执行结果、状态和生命周期事件
+        通过现有仓储与事件总线写回。
 
         Args:
             goal: 任务目标描述。
@@ -36,12 +46,74 @@ class TaskService:
         Returns:
             提交并持久化后的 ``Task`` 对象。
         """
-        task = Task(goal=goal, payload=payload or {})
+        task = Task(
+            goal=goal,
+            payload=payload or {},
+            plan=plan or {},
+            dependency=dependency or [],
+            priority=priority,
+        )
         # 委托 agents 运行时执行任务（当前为 mock），运行时可能就地修改
         # task 的 status/plan，因此在提交之后再持久化。
         submitted = self._runtime.submit(task)
         await self._repo.create(submitted, session_id)
+        asyncio.create_task(self._execute(submitted))
         return submitted
+
+    async def _execute(self, task: Task) -> None:
+        """在任务持久化后执行 Agent，并发布可观测生命周期事件。"""
+        agent_id = self._select_agent(task)
+        self._publish(
+            Event(
+                event_type=EventType.AgentStart,
+                task_id=task.task_id,
+                source=NodeRef(agent_id, "agent", agent_id),
+                payload={"agent_id": agent_id, "goal": task.goal},
+            )
+        )
+        try:
+            output = await asyncio.to_thread(self._runtime.run, agent_id, task)
+            result = output if isinstance(output, dict) else {"output": output}
+            await self._repo.update_result(task.task_id, result)
+            await self._repo.update_status(task.task_id, TaskStatus.Succeeded)
+            self._publish(
+                Event(
+                    event_type=EventType.AgentFinish,
+                    task_id=task.task_id,
+                    source=NodeRef(agent_id, "agent", agent_id),
+                    payload={"agent_id": agent_id, "output": result},
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            result = {"error": str(exc), "agent_id": agent_id}
+            await self._repo.update_result(task.task_id, result)
+            await self._repo.update_status(task.task_id, TaskStatus.Failed)
+            self._publish(
+                Event(
+                    event_type=EventType.AgentFinish,
+                    task_id=task.task_id,
+                    source=NodeRef(agent_id, "agent", agent_id),
+                    payload={"agent_id": agent_id, "output": result, "status": "failed"},
+                )
+            )
+
+    @staticmethod
+    def _select_agent(task: Task) -> str:
+        """按显式 payload 或目标语义选择默认演示 Agent。"""
+        requested = task.payload.get("agent_id") or task.payload.get("agent")
+        if requested:
+            return str(requested)
+        goal = task.goal.lower()
+        if any(word in goal for word in ("检测", "告警", "入侵", "detect", "alert")):
+            return "detector"
+        if any(word in goal for word in ("审查", "复核", "一致", "review", "audit")):
+            return "reviewer-defense"
+        return "recon"
+
+    def _publish(self, event: Event) -> None:
+        """向已装配的事件总线发布事件；无事件总线时保持兼容。"""
+        if self._event_bus is not None:
+            self._event_bus.publish(event)
 
     async def get_task(self, task_id: str) -> Task | None:
         """获取指定任务。

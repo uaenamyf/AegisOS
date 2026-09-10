@@ -172,6 +172,7 @@ export function ChatView() {
         try {
           const task = await taskApi.create({ goal, session_id: sessionId });
           taskInfo = `\nTask: ${task.task_id} (${task.status})`;
+          updateChatMessage(assistantMsgId, { taskId: task.task_id });
         } catch { /* task 创建失败不影响推理 */ }
 
         const res = await infraApi.dispatch({
