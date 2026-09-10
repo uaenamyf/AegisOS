@@ -91,7 +91,7 @@ export function DrillHistoryView() {
     <section className="view drill-history-view">
       <header className="view__header drill-history__header">
         <div>
-          <span className="eyebrow">OPERATIONS / DRILL ARCHIVE</span>
+          <span className="eyebrow">运行记录 / 演练档案</span>
           <h2 className="view__title">演练历史</h2>
           <p className="view__desc">集中回看每次红蓝紫对抗的轮次证据、收敛结论和报告。</p>
         </div>
@@ -137,7 +137,7 @@ export function DrillHistoryView() {
           ) : (
             <>
               <div className="drill-history__detail-head">
-                <div><span className="eyebrow">SELECTED DRILL</span><h3>{selected.drill_id}</h3><p>{selected.target_range}</p></div>
+                <div><span className="eyebrow">当前演练</span><h3>{selected.drill_id}</h3><p>{selected.target_range}</p></div>
                 <button type="button" className="drill-history__report" onClick={() => void downloadReport()} disabled={reportLoading}>{reportLoading ? "导出中…" : "↓ 导出 Markdown"}</button>
               </div>
               <div className="drill-history__summary">
@@ -146,7 +146,7 @@ export function DrillHistoryView() {
                 <div><span>结论</span><strong>{selected.summary?.conclusion || "暂无总结"}</strong></div>
               </div>
               <div className="drill-history__rounds">
-                <div className="drill-history__section-title"><span>ROUND EVIDENCE</span><strong>{selected.rounds.length} 轮记录</strong></div>
+                <div className="drill-history__section-title"><span>轮次证据</span><strong>{selected.rounds.length} 轮记录</strong></div>
                 {selected.rounds.map((round) => {
                   const traces = roundTraces(round);
                   const expanded = expandedRound === round.round;
@@ -162,10 +162,10 @@ export function DrillHistoryView() {
                         <div className="team-pill team-pill--purple"><b>紫队</b><span>{round.purple.valid ? "链路通过" : `${round.purple.new_issue_count} 个缺口`}</span></div>
                       </div>
                       {expanded ? <div className="drill-history__traces">
-                        <div className="drill-history__trace-title">AGENT TRACE <span>按执行顺序展开输入与输出</span></div>
+                        <div className="drill-history__trace-title">智能体轨迹 <span>按执行顺序展开输入与输出</span></div>
                         {traces.length ? traces.map((trace, index) => (
                           <article className="agent-trace" key={`${trace.agent}-${index}`}>
-                            <header><strong>{trace.agent}</strong><span>STEP {String(index + 1).padStart(2, "0")}</span></header>
+                            <header><strong>{trace.agent}</strong><span>步骤 {String(index + 1).padStart(2, "0")}</span></header>
                             <div><label>输入</label><pre>{trace.input}</pre></div>
                             <div><label>输出</label><pre>{formatOutput(trace.output)}</pre></div>
                           </article>

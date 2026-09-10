@@ -187,7 +187,7 @@ export function ThreatIntelPanel() {
       {/* Techniques table */}
       {visible.length === 0 ? (
         <p className="cyber-panel__empty">
-          {cyberLoading ? "Loading…" : query ? `无匹配「${searchTerm}」的结果` : "No threat intel data."}
+          {cyberLoading ? "加载中…" : query ? `无匹配「${searchTerm}」的结果` : "暂无威胁情报数据。"}
         </p>
       ) : (
         <div className="cyber-table cyber-table--intel">

@@ -85,11 +85,11 @@ describe("CyberView", () => {
   it("renders 5 tabs", async () => {
     const { CyberView } = await import("../CyberView");
     renderUI(<CyberView />);
-    expect(screen.getByText("Red Team")).toBeDefined();
-    expect(screen.getByText("Blue Team")).toBeDefined();
-    expect(screen.getByText("Purple Review")).toBeDefined();
-    expect(screen.getByText("Threat Intel")).toBeDefined();
-    expect(screen.getByText("Auto Drill")).toBeDefined();
+    expect(screen.getByText("红队攻击")).toBeDefined();
+    expect(screen.getByText("蓝队防御")).toBeDefined();
+    expect(screen.getByText("紫队审查")).toBeDefined();
+    expect(screen.getByText("威胁情报")).toBeDefined();
+    expect(screen.getByText("自动演练")).toBeDefined();
   });
 
   it("does not show a range creation button", async () => {
@@ -102,7 +102,7 @@ describe("CyberView", () => {
   it("switches to Blue Team tab on click", async () => {
     const { CyberView } = await import("../CyberView");
     renderUI(<CyberView />);
-    fireEvent.click(screen.getByText("Blue Team"));
+    fireEvent.click(screen.getByText("蓝队防御"));
     // Blue team panel should now be rendered — it shows empty hint when no blue result
     // The hint text is "No defense result yet. Execute blue defense to see alerts and response plans."
   });
@@ -110,7 +110,7 @@ describe("CyberView", () => {
   it("does not show a Drill start button", async () => {
     const { CyberView } = await import("../CyberView");
     renderUI(<CyberView />);
-    fireEvent.click(screen.getByText("Auto Drill"));
+    fireEvent.click(screen.getByText("自动演练"));
     expect(screen.queryByText("▶ Start Drill")).toBeNull();
     expect(screen.getByText(/请从 Chat 输入/)).toBeDefined();
   });

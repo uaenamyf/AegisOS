@@ -151,11 +151,11 @@ export function CanvasView() {
       <header className="view__header">
         <div className="canvas-heading-row">
           <div>
-            <span className="eyebrow">OPERATIONS / LIVE EXECUTION</span>
-            <h2 className="view__title">Task Canvas</h2>
+            <span className="eyebrow">实时执行 / 任务协作</span>
+            <h2 className="view__title">任务画布</h2>
           </div>
           <span className={`canvas-live-indicator${runningTasks.length ? " canvas-live-indicator--active" : ""}`}>
-            <i /> {runningTasks.length ? "LIVE" : "STANDBY"}
+            <i /> {runningTasks.length ? "执行中" : "待命"}
           </span>
         </div>
         <p className="view__desc">
@@ -171,7 +171,7 @@ export function CanvasView() {
       </div>
 
       {tasks.length > 0 ? <section className="canvas-activity-strip" aria-label="最近活动">
-        <div className="canvas-activity-strip__heading"><span>RECENT ACTIVITY</span><small>{events.length} 条实时事件</small></div>
+        <div className="canvas-activity-strip__heading"><span>最近活动</span><small>{events.length} 条实时事件</small></div>
         <div className="canvas-activity-strip__items">
           {recentTasks.map((task) => {
             const activity = taskEvents(task, events);
@@ -186,8 +186,11 @@ export function CanvasView() {
       </section> : null}
 
       <div className="canvas-toolbar" role="toolbar" aria-label="任务筛选">
-        <span className="canvas-toolbar__label">任务状态</span>
-        <div className="canvas-toolbar__filters">
+        <div className="canvas-toolbar__intro">
+          <span className="canvas-toolbar__label">任务状态</span>
+          <span className="canvas-toolbar__count"><span>当前显示</span><strong>{visibleTasks.length} 个任务</strong></span>
+        </div>
+        <div className="canvas-toolbar__filters" aria-label="任务状态选项">
           {FILTERS.map((option) => (
             <button
               key={option.value}
@@ -200,7 +203,6 @@ export function CanvasView() {
             </button>
           ))}
         </div>
-        <span className="canvas-toolbar__count">{visibleTasks.length} 个任务</span>
       </div>
 
       {visibleTasks.length === 0 ? (
@@ -287,7 +289,7 @@ export function CanvasView() {
             <div className="canvas-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedId(null); }}>
             <aside className="canvas-inspector" role="dialog" aria-modal="true" aria-label="任务详情">
               <button type="button" className="canvas-inspector__close" aria-label="关闭任务详情" onClick={() => setSelectedId(null)}>×</button>
-              <span className="canvas-inspector__eyebrow">SELECTED TASK</span>
+              <span className="canvas-inspector__eyebrow">当前任务</span>
               <h3>{selectedTask.goal || selectedTask.task_id}</h3>
               <span className={`badge badge--${selectedTask.status ?? "pending"}`}>
                 {statusLabel(selectedTask.status ?? "pending")}

@@ -189,10 +189,7 @@ export function BlueTeamPanel() {
     return (
       <div className="cyber-panel cyber-panel--empty">
         <p className="cyber-panel__hint">
-          No defense response yet. Enter an event stream (JSON or plain text)
-          and click <strong>Execute Blue Defense</strong>. For full
-          red→blue→purple auto cycling (one button, multi-round), switch to
-          the <strong>Auto Drill</strong> tab.
+          暂无防御响应。演练由 Chat 创建后，这里会展示告警、分诊和响应计划。
         </p>
         <textarea
           className="cyber-view__textarea"
@@ -359,7 +356,7 @@ export function BlueTeamPanel() {
             {coveragePct != null ? `${coveragePct}%` : "—"}
           </span>
           <span className="cyber-stat__label">
-            {coveragePct != null ? "coverage" : "coverage (run red first)"}
+            {coveragePct != null ? "防御覆盖率" : "防御覆盖率（请先完成红队）"}
           </span>
         </span>
         <span className="cyber-stat">
@@ -411,7 +408,7 @@ export function BlueTeamPanel() {
         <div className="cyber-panel__section">
           <h4 className="cyber-panel__subtitle">Alerts</h4>
           {alerts.length === 0 ? (
-            <p className="cyber-panel__empty">No alerts generated.</p>
+            <p className="cyber-panel__empty">暂无告警。</p>
           ) : (
             <ul className="cyber-alert-list">
               {alerts.map((alert) => (
@@ -441,7 +438,7 @@ export function BlueTeamPanel() {
             </span>
           </h4>
           {planActions.length === 0 ? (
-            <p className="cyber-panel__empty">No response actions.</p>
+            <p className="cyber-panel__empty">暂无响应动作。</p>
           ) : (
             <ul className="cyber-action-list">
               {planActions.map((action: any) => (

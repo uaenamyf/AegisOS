@@ -1045,8 +1045,7 @@ export function CyberDrillPanel() {
       {phase === "idle" && !drillId ? (
         <div className="cyber-panel__empty cyber-drill__empty">
           <p className="cyber-panel__hint">
-            Run a multi-round red→blue→purple drill with live per-round
-            reports. Start to watch the timeline converge.
+            多轮红蓝紫演练的实时轮次报告会显示在这里。请从 Chat 创建任务后查看执行进度。
           </p>
         </div>
       ) : null}

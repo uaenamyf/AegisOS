@@ -61,10 +61,9 @@ export function GraphView() {
   return (
     <section className="view">
       <header className="view__header">
-        <h2 className="view__title">Graph</h2>
+        <h2 className="view__title">协作拓扑</h2>
         <p className="view__desc">
-          Dynamic heterogeneous graph visualization. Nodes, edges, weights, and
-          entropy rendered with incremental WebGL/Canvas.
+          查看 Agent、任务与记忆节点之间的协作关系、权重和通信熵。
         </p>
       </header>
 
@@ -72,7 +71,7 @@ export function GraphView() {
         {nodeCount === 0 ? (
           <div className="view__empty">
             <p className="view__empty-text">
-              Graph is empty. Connect agents and tasks to populate the topology.
+              暂无拓扑数据。请先从 Chat 发起任务，系统会自动生成协作关系。
             </p>
             <button type="button" className="canvas-demo-cta" onClick={loadDemoGraph}>加载演示拓扑</button>
           </div>
@@ -81,11 +80,11 @@ export function GraphView() {
             <div className="view__metrics">
               <div className="metric">
                 <span className="metric__value">{nodeCount}</span>
-                <span className="metric__label">nodes</span>
+                <span className="metric__label">节点</span>
               </div>
               <div className="metric">
                 <span className="metric__value">{edgeCount}</span>
-                <span className="metric__label">edges</span>
+                <span className="metric__label">连接</span>
               </div>
             </div>
 
@@ -110,7 +109,7 @@ export function GraphView() {
               </ul>
             </div>
             {selectedNode ? <aside className="graph-inspector">
-              <span className="canvas-inspector__eyebrow">NODE DETAIL</span>
+              <span className="canvas-inspector__eyebrow">节点详情</span>
               <h3>{(selectedNode[1] as Record<string, string>).name || selectedNode[0]}</h3>
               <code>{selectedNode[0]}</code>
               <p>{selectedEdges.length} 条关联边</p>

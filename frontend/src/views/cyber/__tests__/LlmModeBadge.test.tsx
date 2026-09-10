@@ -32,7 +32,7 @@ describe("LlmModeBadge", () => {
       available: ["mock", "real"],
     });
     render(<LlmModeBadge />);
-    expect(await screen.findByText("LLM: deepseek (deepseek-chat)")).toBeDefined();
+    expect(await screen.findByText("模型：deepseek（deepseek-chat）")).toBeDefined();
     expect(getMode).toHaveBeenCalledTimes(1);
   });
 
@@ -45,7 +45,7 @@ describe("LlmModeBadge", () => {
       available: ["mock"],
     });
     render(<LlmModeBadge />);
-    expect(await screen.findByText("LLM: Mock")).toBeDefined();
+    expect(await screen.findByText("模型状态：演示模式")).toBeDefined();
   });
 
   it("toggles to mock when clicked in real mode", async () => {
@@ -64,10 +64,10 @@ describe("LlmModeBadge", () => {
       available: ["mock", "real"],
     });
     render(<LlmModeBadge />);
-    const badge = await screen.findByText("LLM: deepseek (deepseek-chat)");
+    const badge = await screen.findByText("模型：deepseek（deepseek-chat）");
     fireEvent.click(badge);
     await waitFor(() => expect(setMode).toHaveBeenCalledWith("mock"));
-    expect(await screen.findByText("LLM: Mock")).toBeDefined();
+    expect(await screen.findByText("模型状态：演示模式")).toBeDefined();
   });
 
   it("does not offer toggle when only mock is available", async () => {
@@ -79,7 +79,7 @@ describe("LlmModeBadge", () => {
       available: ["mock"],
     });
     render(<LlmModeBadge />);
-    const badge = await screen.findByText("LLM: Mock");
+    const badge = await screen.findByText("模型状态：演示模式");
     expect((badge as HTMLButtonElement).disabled).toBe(true);
   });
 });

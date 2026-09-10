@@ -12,13 +12,13 @@ export function MonitorView() {
   return (
     <section className="view">
       <header className="view__header">
-        <h2 className="view__title">Monitor</h2>
+        <h2 className="view__title">运行监控</h2>
         <p className="view__desc">
           端边云资源状态 · Agent 实时监控 · 调度沙盒
         </p>
       </header>
 
-      <div className="view__body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div className="view__body monitor-view__body">
         {/* R11: 端边云节点面板 */}
         <InfraNodePanel />
 
@@ -30,7 +30,7 @@ export function MonitorView() {
           <h3 className="view__section-title">Agent 列表</h3>
           {agents.length === 0 ? (
             <p className="view__empty-text">
-              No agents registered. Agents appear here once they join the swarm.
+              暂无已注册 Agent。Agent 加入协作网络后会显示在这里。
             </p>
           ) : (
             <ul className="view__list">

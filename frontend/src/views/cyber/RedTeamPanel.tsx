@@ -258,10 +258,7 @@ export function RedTeamPanel() {
     return (
       <div className="cyber-panel cyber-panel--empty">
         <p className="cyber-panel__hint">
-          No attack chain yet. Click <strong>Execute Red Attack</strong> to
-          generate an attack chain DAG. For full red→blue→purple auto
-          cycling (one button, multi-round), switch to the{" "}
-          <strong>Auto Drill</strong> tab.
+          暂无攻击链结果。请从 Chat 创建完整红蓝紫演练后查看攻击面、漏洞和攻击步骤。
         </p>
         <button
           className="cyber-view__btn cyber-view__btn--danger"

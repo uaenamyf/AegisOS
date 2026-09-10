@@ -44,14 +44,15 @@ export function LlmModeBadge() {
   }, [info, busy]);
 
   if (!info) {
-    return <span className="llm-badge llm-badge--unknown">LLM: …</span>;
+    return <span className="llm-badge llm-badge--unknown">模型状态：读取中…</span>;
   }
 
   const isReal = info.mode === "real";
   const canToggle = info.available.length > 1;
   const label = isReal
     ? `LLM: ${info.provider}${info.model ? ` (${info.model})` : ""}`
-    : "LLM: Mock";
+    : "模型状态：演示模式";
+  const displayLabel = isReal ? `模型：${info.provider}${info.model ? `（${info.model}）` : ""}` : label;
 
   return (
     <button
@@ -61,15 +62,15 @@ export function LlmModeBadge() {
       disabled={!canToggle || busy}
       title={
         canToggle
-          ? `当前 ${isReal ? "真实 LLM" : "Mock"}，点击切换到 ${isReal ? "Mock" : "真实 LLM"}`
+          ? `当前${isReal ? "真实模型" : "演示模式"}，点击切换到${isReal ? "演示模式" : "真实模型"}`
           : info.mode === "real"
-            ? "真实 LLM（不可切换）"
-            : "Mock（未配置 API Key，不可切换到真实 LLM）"
+            ? "真实模型（不可切换）"
+            : "演示模式（未配置 API Key，不可切换到真实模型）"
       }
       aria-label={`LLM mode: ${info.mode}${canToggle ? ", click to toggle" : ""}`}
     >
       <span className={`llm-badge__dot llm-badge__dot--${info.mode}`} />
-      {label}
+      {displayLabel}
       {canToggle ? <span className="llm-badge__hint">{busy ? "…" : "⇄"}</span> : null}
     </button>
   );

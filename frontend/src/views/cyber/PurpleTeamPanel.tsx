@@ -58,7 +58,7 @@ export function PurpleTeamPanel() {
     const alerts = blueDefenseResult?.alerts ?? [];
 
     if (!chain || !plan) {
-      setCyberError("Execute red attack and blue defense first.");
+      setCyberError("请先从 Chat 创建完整演练。");
       return;
     }
 
@@ -120,8 +120,7 @@ export function PurpleTeamPanel() {
     return (
       <div className="cyber-panel cyber-panel--empty">
         <p className="cyber-panel__hint">
-          No purple review yet. Execute red attack and blue defense first, then
-          click <strong>Run Purple Review</strong> for adversarial validation.
+          暂无紫队审查结果。请先从 Chat 创建完整演练，再查看对抗性校验。
         </p>
         <button
           className="cyber-view__btn cyber-view__btn--primary"
@@ -133,7 +132,7 @@ export function PurpleTeamPanel() {
         </button>
         {(!redAttackResult || !blueDefenseResult) && (
           <p className="cyber-panel__warn">
-            ⚠ Requires both red attack and blue defense results.
+            ⚠ 需要红队和蓝队结果后才能进行审查。
           </p>
         )}
       </div>
@@ -198,7 +197,7 @@ export function PurpleTeamPanel() {
               ))}
             </ul>
           ) : (
-            <p className="cyber-panel__empty">No issues found.</p>
+            <p className="cyber-panel__empty">未发现缺口。</p>
           )}
         </div>
 
@@ -223,7 +222,7 @@ export function PurpleTeamPanel() {
               ))}
             </ul>
           ) : (
-            <p className="cyber-panel__empty">No consistency findings.</p>
+            <p className="cyber-panel__empty">未发现一致性问题。</p>
           )}
         </div>
       </div>

@@ -53,19 +53,17 @@ export function ReplayView() {
   return (
     <section className="view">
       <header className="view__header">
-        <h2 className="view__title">Replay</h2>
+        <h2 className="view__title">事件回放</h2>
         <p className="view__desc">
-          Deterministic event-stream replay timeline with playback controls and
-          state snapshots.
+          按时间回看当前会话的 Agent 执行事件与状态变化。
         </p>
       </header>
 
       <div className="view__body view__empty replay-shell">
         {events.length === 0 ? (
-          <div>
+          <div className="replay-empty-state">
           <p className="view__empty-text">
-            No events captured. Replay becomes available once the event stream
-            is active.
+            当前会话还没有可回放事件。开始一次 Chat 任务后，这里会自动记录执行轨迹。
           </p>
           <button type="button" className="canvas-demo-cta" onClick={loadDemoEvents}>加载演示回放</button>
           </div>
@@ -93,11 +91,11 @@ export function ReplayView() {
             ))}
           </ul>
           {currentEvent ? <aside className="replay-detail" aria-label="当前事件详情">
-            <span className="canvas-inspector__eyebrow">CURRENT EVENT</span>
+            <span className="canvas-inspector__eyebrow">当前事件</span>
             <h3>{currentEvent.event_type}</h3>
             <dl className="canvas-inspector__facts">
               <div><dt>任务</dt><dd>{currentEvent.task_id ?? "全局事件"}</dd></div>
-              <div><dt>来源</dt><dd>{currentEvent.source?.node_id ?? "system"}</dd></div>
+              <div><dt>来源</dt><dd>{currentEvent.source?.node_id ?? "系统"}</dd></div>
               <div><dt>时间</dt><dd>{currentEvent.timestamp ? new Date(currentEvent.timestamp).toLocaleTimeString() : "—"}</dd></div>
             </dl>
             {currentEvent.payload ? <pre>{JSON.stringify(currentEvent.payload, null, 2)}</pre> : null}

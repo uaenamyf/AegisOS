@@ -317,16 +317,16 @@ export function ChatView() {
   return (
     <div className="chat">
       <div className="chat__header">
-        <h2 className="chat__title">Agent Chat</h2>
+        <h2 className="chat__title">智能体对话</h2>
         <div className="chat__agent-select">
-          <label className="chat__agent-label">Agent:</label>
+          <label className="chat__agent-label">智能体：</label>
           <select
             className="chat__agent-dropdown"
             value={selectedAgentId ?? ""}
             onChange={(e) => setSelectedAgentId(e.target.value || null)}
             disabled={isSending}
           >
-            <option value="">Auto (route)</option>
+            <option value="">自动路由</option>
             {agents.map((a) => (
               <option key={a.agent_id} value={a.agent_id}>
                 {a.name} ({a.role})
@@ -340,7 +340,7 @@ export function ChatView() {
               onChange={(e) => setStreamMode(e.target.checked)}
               disabled={isSending || !selectedAgentId}
             />
-            Stream
+            流式执行
           </label>
         </div>
       </div>
@@ -348,13 +348,12 @@ export function ChatView() {
       <div className="chat__messages">
         {chatMessages.length === 0 && (
           <div className="chat__empty">
-            <p className="chat__empty-title">No messages yet</p>
+            <p className="chat__empty-title">还没有消息</p>
             <p className="chat__empty-desc">
-              Send a message below to start a conversation with an agent.
+              在下方输入目标，开始与智能体协作。
             </p>
             <p className="chat__empty-hint">
-              Select an agent above for direct invocation, or leave on "Auto" to
-              let the system route automatically.
+              可选择指定智能体，也可以使用自动路由分配任务。
             </p>
           </div>
         )}
@@ -396,7 +395,7 @@ export function ChatView() {
                 <HitlCard msg={msg} onAnswer={handleHitlAnswer} />
               ) : (
                 <div className="chat__msg-content">
-                  {msg.content || (msg.status === "sending" ? "Thinking..." : "")}
+                  {msg.content || (msg.status === "sending" ? "思考中…" : "")}
                 </div>
               )}
             </div>
@@ -409,7 +408,7 @@ export function ChatView() {
         <textarea
           ref={textareaRef}
           className="chat__input"
-          placeholder="Type your message... (Enter to send, Shift+Enter for newline)"
+          placeholder="输入任务目标，按 Enter 发送，Shift+Enter 换行"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -421,7 +420,7 @@ export function ChatView() {
           onClick={() => void (streamMode ? handleSendStream() : handleSend())}
           disabled={!input.trim() || isSending || (streamMode && !selectedAgentId)}
         >
-          {isSending ? "Sending..." : streamMode ? "Stream" : "Send"}
+          {isSending ? "发送中…" : streamMode ? "流式执行" : "发送"}
         </button>
       </div>
     </div>

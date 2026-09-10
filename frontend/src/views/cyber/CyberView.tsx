@@ -16,11 +16,11 @@ import { ThreatIntelPanel } from "./ThreatIntelPanel";
 type TabId = "red" | "blue" | "purple" | "threat" | "drill";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "red", label: "Red Team" },
-  { id: "blue", label: "Blue Team" },
-  { id: "purple", label: "Purple Review" },
-  { id: "threat", label: "Threat Intel" },
-  { id: "drill", label: "Auto Drill" },
+  { id: "red", label: "红队攻击" },
+  { id: "blue", label: "蓝队防御" },
+  { id: "purple", label: "紫队审查" },
+  { id: "threat", label: "威胁情报" },
+  { id: "drill", label: "自动演练" },
 ];
 
 export function CyberView() {
@@ -35,9 +35,8 @@ export function CyberView() {
         <h2 className="view__title">Cyber Defense Operations</h2>
         <LlmModeBadge />
         <p className="view__desc">
-          Red→Blue→Purple team orchestration with ATT&CK threat intelligence.
-          Start a range session, execute attack/defense chains, and review
-          cross-artifact consistency.
+          红队攻击、蓝队防御与紫队审查的协同态势，以及 ATT&CK 威胁情报。
+          演练由 Chat 创建，这里用于查看过程、证据和收敛结果。
         </p>
       </header>
 
