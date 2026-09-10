@@ -189,3 +189,44 @@ def test_max_attempts_bounded():
     assert result.ok is False
     # attempts 不超过 3
     assert len(result.attempts) <= 3
+
+
+def test_required_capability_without_match_fails_without_infer_call():
+    """能力过滤无匹配时应失败，不能误调用任意节点。"""
+    fake = {k: _FakeNode(p) for k, p in _profiles().items()}
+    reg = _make_registry(fake)
+    result = ExecutionDispatcher(reg).dispatch(_task(), "hi", required_capability="forensics")
+    assert result.ok is False
+    assert all(node.infer_calls == 0 for node in fake.values())
+
+
+def test_node_refs_limit_dispatch_to_selected_tier():
+    """显式 node_refs 时只能调用目标节点。"""
+    fake = {k: _FakeNode(p) for k, p in _profiles().items()}
+    reg = _make_registry(fake)
+    result = ExecutionDispatcher(reg).dispatch(_task(latency_budget=60.0), "hi", node_refs=["edge_01"])
+    assert result.ok is True
+    assert result.node_id == "edge_01"
+    assert fake["device"].infer_calls == 0
+    assert fake["cloud"].infer_calls == 0
+
+
+def test_invalid_privacy_value_is_classified_before_routing():
+    """未知隐私字符串不能绕过隐私分类器。"""
+    fake = {k: _FakeNode(p) for k, p in _profiles().items()}
+    reg = _make_registry(fake)
+    task = _task(privacy="not-a-privacy-level")
+    result = ExecutionDispatcher(reg).dispatch(task, "password=secret", required_capability="chat")
+    assert result.ok is True
+    assert task.privacy == "local"
+    assert "凭据/密钥" in result.privacy_note
+    assert "脱敏" in result.privacy_note
+
+
+def test_infer_failure_attempts_are_bounded_by_max_attempts():
+    """所有节点推理失败时必须停止在 max_attempts 内。"""
+    fake = {k: _FakeNode(p, infer_ok=False) for k, p in _profiles().items()}
+    reg = _make_registry(fake)
+    result = ExecutionDispatcher(reg, max_attempts=2).dispatch(_task(latency_budget=60.0), "hi")
+    assert result.ok is False
+    assert len(result.attempts) <= 2

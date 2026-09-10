@@ -132,6 +132,7 @@ export function ChatView() {
   const addChatMessage = useAppStore((s) => s.addChatMessage);
   const updateChatMessage = useAppStore((s) => s.updateChatMessage);
   const upsertTask = useAppStore((s) => s.upsertTask);
+  const appendEvent = useAppStore((s) => s.appendEvent);
   const setSending = useAppStore((s) => s.setSending);
   const setSelectedAgentId = useAppStore((s) => s.setSelectedAgentId);
 
@@ -182,11 +183,44 @@ export function ChatView() {
         const targetRange = "10.0.0.0/24";
         const started = await cyberApi.startDrill({ target_range: targetRange, max_rounds: 5 });
         syncDrillTasks(started.drill_id, targetRange, [], false, null);
+        let replayedRounds = 0;
+        const appendDrillEvents = (current: any) => {
+          const currentRounds = current.rounds ?? [];
+          for (; replayedRounds < currentRounds.length; replayedRounds += 1) {
+            const round = currentRounds[replayedRounds];
+            appendEvent({
+              event_id: `${started.drill_id}:round:${round.round ?? replayedRounds + 1}`,
+              event_type: "drill.round",
+              task_id: started.drill_id,
+              source: { node_id: "orchestrator" },
+              payload: {
+                session_id: sessionId,
+                drill_id: started.drill_id,
+                round: round.round ?? replayedRounds + 1,
+                red: round.red,
+                blue: round.blue,
+                purple: round.purple,
+                convergence_code: round.convergence_code,
+              },
+              timestamp: Date.now(),
+            });
+          }
+        };
         const record = await waitForDrill(started.drill_id, (current) => {
+          appendDrillEvents(current);
           syncDrillTasks(started.drill_id, targetRange, current.rounds ?? [], Boolean(current.summary), current.summary ?? null);
         });
         const rounds = record.rounds ?? [];
         const summary = record.summary ?? null;
+        appendDrillEvents(record);
+        appendEvent({
+          event_id: `${started.drill_id}:summary`,
+          event_type: "drill.summary",
+          task_id: started.drill_id,
+          source: { node_id: "orchestrator" },
+          payload: { session_id: sessionId, drill_id: started.drill_id, summary, rounds: rounds.length, convergence_code: record.convergence_code },
+          timestamp: Date.now(),
+        });
         syncDrillTasks(started.drill_id, targetRange, rounds, Boolean(summary), summary);
         try {
           sessionStorage.setItem("aegis.cyber-drill.snapshot", JSON.stringify({
@@ -209,7 +243,7 @@ export function ChatView() {
       }
       let resultText = "";
       let resultTier = "";
-      let resultPrivacyNote = "";
+      const resultPrivacyNote = "";
       let trackedTaskId = "";
       try {
         const task = await taskApi.create({

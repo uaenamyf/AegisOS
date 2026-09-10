@@ -47,9 +47,13 @@ export async function streamAgent(
       let buffer = "";
       let currentEvent = "message";
 
-      while (true) {
+      let reading = true;
+      while (reading) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          reading = false;
+          continue;
+        }
         buffer += decoder.decode(value, { stream: true });
 
         // 按双换行分割 SSE 帧
@@ -111,9 +115,13 @@ export async function streamRedChain(
       let buffer = "";
       let currentEvent = "message";
 
-      while (true) {
+      let reading = true;
+      while (reading) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          reading = false;
+          continue;
+        }
         buffer += decoder.decode(value, { stream: true });
 
         const frames = buffer.split("\n\n");

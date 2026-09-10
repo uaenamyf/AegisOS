@@ -7,6 +7,46 @@ import { useAppStore } from "@/lib/store";
 import { apiClient } from "@/lib/api-client";
 import type { Event } from "@/protocol/types";
 
+const EVENT_META: Record<string, { label: string; phase: string; tone: string }> = {
+  "agent.start": { label: "智能体开始执行", phase: "执行开始", tone: "running" },
+  "agent.finish": { label: "智能体完成任务", phase: "执行完成", tone: "success" },
+  "tool.call": { label: "调用工具", phase: "工具调用", tone: "accent" },
+  "tool.finish": { label: "工具返回结果", phase: "工具调用", tone: "success" },
+  "graph.update": { label: "协作拓扑更新", phase: "状态同步", tone: "accent" },
+  "memory.update": { label: "记忆状态更新", phase: "状态同步", tone: "accent" },
+  "task.retry": { label: "任务重试", phase: "异常处理", tone: "warning" },
+  "task.rollback": { label: "任务回滚", phase: "异常处理", tone: "danger" },
+  "drill.round": { label: "攻防轮次完成", phase: "红蓝紫协同", tone: "accent" },
+  "drill.summary": { label: "演练完成并收敛", phase: "演练总结", tone: "success" },
+};
+
+function eventMeta(type: string) {
+  return EVENT_META[type] ?? { label: type || "未知事件", phase: "系统事件", tone: "accent" };
+}
+
+function eventAgent(event: Event): string {
+  return String(event.source?.node_id ?? event.payload?.agent_id ?? "系统");
+}
+
+function eventSummary(event: Event): string {
+  const payload = event.payload ?? {};
+  if (event.event_type === "drill.round") {
+    const red = payload.red ?? {};
+    const blue = payload.blue ?? {};
+    const purple = payload.purple ?? {};
+    return `第 ${payload.round ?? "—"} 轮：红队新增 ${red.new_steps?.length ?? 0} 步，蓝队处置 ${blue.plan?.actions?.length ?? 0} 项，紫队${purple.valid ? "通过校验" : `发现 ${purple.new_issue_count ?? 0} 个缺口`}`;
+  }
+  if (event.event_type === "drill.summary") {
+    return payload.summary?.conclusion ?? `共完成 ${payload.rounds ?? 0} 轮，最终状态为 ${payload.convergence_code ?? "未知"}`;
+  }
+  if (typeof payload.output === "string") return payload.output;
+  if (payload.output && typeof payload.output === "object") return JSON.stringify(payload.output);
+  if (payload.goal) return String(payload.goal);
+  if (payload.error) return `执行失败：${payload.error}`;
+  if (event.event_type === "graph.update") return "协作拓扑已同步";
+  return "已记录执行状态变化";
+}
+
 export function ReplayView() {
   const events = useAppStore((s) => s.events);
   const currentSession = useAppStore((s) => s.currentSession);
@@ -28,6 +68,23 @@ export function ReplayView() {
             { event_id: `${task.task_id}-start`, event_type: "agent.start", task_id: task.task_id, payload: { goal: task.goal, session_id: sessionId }, timestamp: Date.now() },
             ...(task.status === "succeeded" || task.status === "failed" ? [{ event_id: `${task.task_id}-finish`, event_type: "agent.finish", task_id: task.task_id, payload: { output: task.result, session_id: sessionId }, timestamp: Date.now() }] : []),
           ] : []));
+        } else {
+          try {
+            const raw = sessionStorage.getItem("aegis.cyber-drill.snapshot");
+            const snapshot = raw ? JSON.parse(raw) as { drillId?: string; rounds?: any[]; summary?: any } : null;
+            if (snapshot?.drillId && snapshot.rounds?.length) {
+              const replayEvents: Event[] = snapshot.rounds.map((round) => ({
+                event_id: `${snapshot.drillId}:round:${round.round}`,
+                event_type: "drill.round",
+                task_id: snapshot.drillId,
+                source: { node_id: "orchestrator" },
+                payload: { drill_id: snapshot.drillId, round: round.round, red: round.red, blue: round.blue, purple: round.purple, convergence_code: round.convergence_code },
+                timestamp: Date.now(),
+              }));
+              if (snapshot.summary) replayEvents.push({ event_id: `${snapshot.drillId}:summary`, event_type: "drill.summary", task_id: snapshot.drillId, source: { node_id: "orchestrator" }, payload: { summary: snapshot.summary, rounds: snapshot.rounds.length, convergence_code: snapshot.summary.convergence_code }, timestamp: Date.now() });
+              setEvents(replayEvents);
+            }
+          } catch { /* 快照损坏时保持空回放 */ }
         }
       })
       .catch(() => { /* SSE 前端事件仍可用于即时回放 */ });
@@ -82,23 +139,23 @@ export function ReplayView() {
           </div>
           <ul className="view__timeline">
             {events.map((e, index) => (
-              <li key={e.event_id ?? `${e.event_type}-${e.timestamp}`} className={`timeline__item${index === cursor ? " timeline__item--active" : ""}`}>
-                <span className="timeline__type">{e.event_type}</span>
-                {e.task_id ? (
-                  <span className="timeline__task">{e.task_id}</span>
-                ) : null}
+              <li key={e.event_id ?? `${e.event_type}-${e.timestamp}`} className={`timeline__item timeline__item--${eventMeta(String(e.event_type)).tone}${index === cursor ? " timeline__item--active" : ""}`}>
+                  <span className="timeline__type">{eventMeta(String(e.event_type)).label}</span>
+                  <span className="timeline__phase">{eventMeta(String(e.event_type)).phase}</span>
+                  <span className="timeline__task">{e.task_id ? `任务 ${e.task_id}` : "全局事件"}</span>
               </li>
             ))}
           </ul>
           {currentEvent ? <aside className="replay-detail" aria-label="当前事件详情">
             <span className="canvas-inspector__eyebrow">当前事件</span>
-            <h3>{currentEvent.event_type}</h3>
+            <h3>{eventMeta(String(currentEvent.event_type)).label}</h3>
             <dl className="canvas-inspector__facts">
               <div><dt>任务</dt><dd>{currentEvent.task_id ?? "全局事件"}</dd></div>
-              <div><dt>来源</dt><dd>{currentEvent.source?.node_id ?? "系统"}</dd></div>
+              <div><dt>执行者</dt><dd>{eventAgent(currentEvent)}</dd></div>
+              <div><dt>阶段</dt><dd>{eventMeta(String(currentEvent.event_type)).phase}</dd></div>
               <div><dt>时间</dt><dd>{currentEvent.timestamp ? new Date(currentEvent.timestamp).toLocaleTimeString() : "—"}</dd></div>
             </dl>
-            {currentEvent.payload ? <pre>{JSON.stringify(currentEvent.payload, null, 2)}</pre> : null}
+            <div className="replay-detail__summary"><span>事件说明</span><p>{eventSummary(currentEvent)}</p></div>
           </aside> : null}
           </>
         )}

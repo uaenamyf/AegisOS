@@ -54,6 +54,8 @@ export function DrillHistoryView() {
 
   useEffect(() => {
     void loadHistory();
+    // 页面首次加载只执行一次，避免刷新函数依赖导致重复请求。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectDrill = async (drill: DrillMeta) => {
