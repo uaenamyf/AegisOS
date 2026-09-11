@@ -13,6 +13,8 @@ services:
       - "8000"
     networks:
       - app
+    volumes:
+      - aegisos_data:/app/data
     read_only: true
     tmpfs:
       - /tmp
@@ -35,15 +37,16 @@ services:
       - app
     read_only: true
     tmpfs:
-      - /var/cache/nginx
+      - /var/cache/nginx:rw,mode=1777
       - /var/run
       - /tmp
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
     restart: unless-stopped
 
 networks:
   app:
     driver: bridge
+
+volumes:
+  aegisos_data:

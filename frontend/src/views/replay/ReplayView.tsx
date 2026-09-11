@@ -56,35 +56,46 @@ export function ReplayView() {
   const [playing, setPlaying] = useState(false);
   const currentEvent = events[cursor];
 
+  const mergeEvents = (incoming: Event[]): Event[] => {
+    const unique = new Map<string, Event>();
+    for (const event of incoming) {
+      const key = event.event_id ?? `${event.event_type}:${event.task_id ?? ""}:${event.timestamp ?? 0}`;
+      unique.set(key, event);
+    }
+    return [...unique.values()].sort((left, right) => (left.timestamp ?? 0) - (right.timestamp ?? 0));
+  };
+
   useEffect(() => {
     const sessionId = currentSession?.id;
     if (!sessionId) return;
     void apiClient
       .get<{ timeline: Event[] }>(`/replay/${encodeURIComponent(sessionId)}`)
       .then((response) => {
-        if (response.timeline?.length) setEvents(response.timeline);
-        else if (tasks.length) {
+        const snapshotEvents: Event[] = [];
+        try {
+          const raw = sessionStorage.getItem("aegis.cyber-drill.snapshot");
+          const snapshot = raw ? JSON.parse(raw) as { drillId?: string; rounds?: any[]; summary?: any } : null;
+          if (snapshot?.drillId && snapshot.rounds?.length) {
+            snapshot.rounds.forEach((round) => snapshotEvents.push({
+              event_id: `${snapshot.drillId}:round:${round.round}`,
+              event_type: "drill.round",
+              task_id: snapshot.drillId,
+              source: { node_id: "orchestrator" },
+              payload: { drill_id: snapshot.drillId, round: round.round, red: round.red, blue: round.blue, purple: round.purple, convergence_code: round.convergence_code },
+              timestamp: Date.now(),
+            }));
+            if (snapshot.summary) snapshotEvents.push({ event_id: `${snapshot.drillId}:summary`, event_type: "drill.summary", task_id: snapshot.drillId, source: { node_id: "orchestrator" }, payload: { summary: snapshot.summary, rounds: snapshot.rounds.length, convergence_code: snapshot.summary.convergence_code }, timestamp: Date.now() });
+          }
+        } catch { /* 快照损坏时忽略 */ }
+
+        const currentEvents = useAppStore.getState().events;
+        if (response.timeline?.length || currentEvents.length || snapshotEvents.length) {
+          setEvents(mergeEvents([...response.timeline, ...currentEvents, ...snapshotEvents]));
+        } else if (tasks.length) {
           setEvents(tasks.flatMap((task) => task.task_id ? [
             { event_id: `${task.task_id}-start`, event_type: "agent.start", task_id: task.task_id, payload: { goal: task.goal, session_id: sessionId }, timestamp: Date.now() },
             ...(task.status === "succeeded" || task.status === "failed" ? [{ event_id: `${task.task_id}-finish`, event_type: "agent.finish", task_id: task.task_id, payload: { output: task.result, session_id: sessionId }, timestamp: Date.now() }] : []),
           ] : []));
-        } else {
-          try {
-            const raw = sessionStorage.getItem("aegis.cyber-drill.snapshot");
-            const snapshot = raw ? JSON.parse(raw) as { drillId?: string; rounds?: any[]; summary?: any } : null;
-            if (snapshot?.drillId && snapshot.rounds?.length) {
-              const replayEvents: Event[] = snapshot.rounds.map((round) => ({
-                event_id: `${snapshot.drillId}:round:${round.round}`,
-                event_type: "drill.round",
-                task_id: snapshot.drillId,
-                source: { node_id: "orchestrator" },
-                payload: { drill_id: snapshot.drillId, round: round.round, red: round.red, blue: round.blue, purple: round.purple, convergence_code: round.convergence_code },
-                timestamp: Date.now(),
-              }));
-              if (snapshot.summary) replayEvents.push({ event_id: `${snapshot.drillId}:summary`, event_type: "drill.summary", task_id: snapshot.drillId, source: { node_id: "orchestrator" }, payload: { summary: snapshot.summary, rounds: snapshot.rounds.length, convergence_code: snapshot.summary.convergence_code }, timestamp: Date.now() });
-              setEvents(replayEvents);
-            }
-          } catch { /* 快照损坏时保持空回放 */ }
         }
       })
       .catch(() => { /* SSE 前端事件仍可用于即时回放 */ });

@@ -7,13 +7,11 @@ import { useAppStore, type ChatMessage, type HitlPayload } from "@/lib/store";
 import { humanApi } from "@/services/api/human";
 import { taskApi } from "@/services/api/tasks";
 import { cyberApi } from "@/services/api/cyber";
+import { parseChatIntent } from "@/services/intent/chatIntent";
+import { memoryApi } from "@/services/api/memory";
 
 function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function isCyberDrillRequest(goal: string): boolean {
-  return /模拟.*攻防|红蓝紫|攻防演练|自动演练|完整.*演练|red.?blue.?purple/i.test(goal);
 }
 
 async function waitForDrill(drillId: string, onUpdate?: (record: any) => void): Promise<any> {
@@ -24,6 +22,56 @@ async function waitForDrill(drillId: string, onUpdate?: (record: any) => void): 
     await new Promise((resolve) => window.setTimeout(resolve, 500));
   }
   throw new Error("演练执行超时，请到 Cyber Defense 查看当前进度");
+}
+
+async function readChatMemory(sessionId: string): Promise<Record<string, any>> {
+  if (!sessionId) return {};
+  try {
+    const packet = await memoryApi.read(sessionId);
+    return packet.working ?? {};
+  } catch {
+    return {};
+  }
+}
+
+async function writeDrillMemory(
+  sessionId: string,
+  intent: { targetRange: string; maxRounds: number },
+  drillId: string,
+  rounds: number,
+  convergence: string,
+  summary: any,
+): Promise<void> {
+  if (!sessionId) return;
+  try {
+    const packet = await memoryApi.read(sessionId);
+    await memoryApi.write(sessionId, {
+      ...packet,
+      session_id: sessionId,
+      task_id: drillId,
+      kind: "digest",
+      working: {
+        ...packet.working,
+        preferred_target_range: intent.targetRange,
+        preferred_max_rounds: intent.maxRounds,
+        last_drill_id: drillId,
+        last_drill_status: convergence,
+      },
+      episodic: {
+        ...packet.episodic,
+        last_drill: {
+          drill_id: drillId,
+          target_range: intent.targetRange,
+          rounds,
+          convergence,
+          conclusion: summary?.conclusion ?? "",
+        },
+      },
+      summary: `最近一次攻防演练 ${drillId} 在 ${intent.targetRange} 执行 ${rounds} 轮，状态为 ${convergence}。`,
+    });
+  } catch {
+    // 记忆不可用不阻断演练结果返回。
+  }
 }
 
 function syncDrillTasks(drillId: string, targetRange: string, rounds: any[], done: boolean, summary: any): void {
@@ -179,9 +227,18 @@ export function ChatView() {
     addChatMessage(assistantMsg);
 
     try {
-      if (isCyberDrillRequest(goal)) {
-        const targetRange = "10.0.0.0/24";
-        const started = await cyberApi.startDrill({ target_range: targetRange, max_rounds: 5 });
+      const memoryHints = await readChatMemory(sessionId);
+      const intent = parseChatIntent(goal, memoryHints);
+      if (intent.kind === "cyber_drill" && intent.needsClarification) {
+        updateChatMessage(assistantMsgId, {
+          content: intent.clarification ?? "请补充明确的演练目标和安全靶场范围。",
+          status: "done",
+        });
+        return;
+      }
+      if (intent.kind === "cyber_drill") {
+        const targetRange = intent.targetRange;
+        const started = await cyberApi.startDrill({ target_range: targetRange, max_rounds: intent.maxRounds });
         syncDrillTasks(started.drill_id, targetRange, [], false, null);
         let replayedRounds = 0;
         const appendDrillEvents = (current: any) => {
@@ -222,6 +279,14 @@ export function ChatView() {
           timestamp: Date.now(),
         });
         syncDrillTasks(started.drill_id, targetRange, rounds, Boolean(summary), summary);
+        await writeDrillMemory(
+          sessionId,
+          { targetRange, maxRounds: intent.maxRounds },
+          started.drill_id,
+          rounds.length,
+          record.convergence_code ?? (summary ? "converged" : "aborted"),
+          summary,
+        );
         try {
           sessionStorage.setItem("aegis.cyber-drill.snapshot", JSON.stringify({
             drillId: started.drill_id,

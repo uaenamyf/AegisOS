@@ -2333,6 +2333,12 @@ select:focus-visible {
 .dispatch-sandbox__tier { margin-top: 2px; }
 .monitor-view__body { display: flex; flex-direction: column; gap: 24px; }
 
+/* Canvas 最终布局覆盖：说明、数量和筛选按钮各自占据稳定区域。 */
+.canvas-toolbar { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+.canvas-toolbar__intro { display: flex !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; }
+.canvas-toolbar__filters { display: flex !important; align-items: center !important; justify-content: flex-start !important; width: 100% !important; gap: 6px !important; }
+.canvas-toolbar__count { margin-left: 0 !important; align-self: auto !important; }
+
         .canvas-toolbar__filters {
           display: flex;
           flex-wrap: wrap;

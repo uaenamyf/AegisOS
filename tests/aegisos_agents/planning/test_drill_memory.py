@@ -113,3 +113,56 @@ def test_run_purple_review_with_prior_summary_keeps_evolution():
     # R18d：mock 紫队按轮演化，round4 起补齐（valid=True），prior_summary 不干预
     assert with_prior["critique"]["valid"] is True  # 末轮补齐
     assert "critique" in with_prior and "review" in with_prior
+
+
+# date: 2026-09-11
+# dev: AegisOS
+# changelog: 新增长程攻防不漂移回归测试，锁定目标、事件同源与记忆归属不变量
+def test_long_range_drill_preserves_target_and_memory_scope():
+    """五轮长程演练中，目标范围、红蓝事件和记忆不得发生漂移。"""
+    orch = _make_orchestrator()
+    memory = MemoryStore()
+    target_range = "192.168.10.0/24"
+    drill_id = "drill-long-scope"
+
+    result = orch.run_drill(
+        target_range,
+        max_rounds=5,
+        min_rounds=5,
+        drill_id=drill_id,
+        memory=memory,
+    )
+
+    assert result["rounds_executed"] == 5
+    assert [item["round"] for item in result["rounds"]] == [1, 2, 3, 4, 5]
+
+    for round_data in result["rounds"]:
+        round_no = round_data["round"]
+        recon_trace = next(
+            trace for trace in round_data["red"]["agent_trace"] if trace["agent"] == "recon"
+        )
+        assert target_range in recon_trace["input"]
+
+        red_step_ids = {step["step_id"] for step in round_data["red"]["steps"]}
+        event_step_ids = {event["step_id"] for event in round_data["event_stream"]}
+        assert event_step_ids == red_step_ids
+        assert {event["round"] for event in round_data["event_stream"]} == {round_no}
+
+        detector_trace = next(
+            trace for trace in round_data["blue"]["agent_trace"] if trace["agent"] == "detector"
+        )
+        assert all(
+            event["step_id"] in detector_trace["input"]
+            for event in round_data["event_stream"]
+        )
+
+    stack = memory.working.get(drill_id)
+    assert stack
+    assert all(packet.session_id == drill_id for packet in stack)
+    original_packets = [packet for packet in stack if packet.kind != "digest"]
+    assert original_packets
+    assert all(packet.task_id.startswith(f"{drill_id}:r") for packet in original_packets)
+    assert all(
+        packet.task_id.startswith(drill_id) or packet.kind == "digest"
+        for packet in stack
+    )

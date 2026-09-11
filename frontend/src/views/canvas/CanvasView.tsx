@@ -81,7 +81,11 @@ export function CanvasView() {
           localDrillTasks.push(...saved);
         } catch { /* 忽略损坏的旧快照 */ }
       }
-      setTasks([...remoteTasks, ...localDrillTasks.filter((local) => !remoteTasks.some((remote) => remote.task_id === local.task_id))]);
+      const merged = new Map<string, Task>();
+      [...remoteTasks, ...localDrillTasks].forEach((task) => {
+        if (task.task_id) merged.set(task.task_id, task);
+      });
+      setTasks([...merged.values()]);
     }).catch(() => {});
   }, [currentSession?.id, setTasks]);
 
@@ -235,7 +239,10 @@ export function CanvasView() {
                       {phaseColumns.map(([depth, column]) => (
                         <div className="canvas-column" key={depth}>
                           <span className="canvas-column__label">阶段 {depth + 1}</span>
-                          {column.map((task, index) => {
+                          {column.filter((task) => {
+                            const taskPhase = task.payload?.phase;
+                            return taskPhase ? taskPhase === tone : phaseMeta(Number(task.payload?.stage ?? depth + 1)).tone === tone;
+                          }).map((task, index) => {
                             const id = taskId(task, index);
                             const status = task.status || "pending";
                             const stage = Number(task.payload?.stage ?? depth + 1);
