@@ -1,0 +1,117 @@
+# AegisOS 部署配置
+# =============================================================================
+# 用途：声明各环境的部署拓扑（节点规格/端口/副本数/健康检查）
+# 加载方：infrastructure/delivery/deployment/ 的 docker-compose 生成器
+# 与 environments/*.yaml 的关系：env 决定"用什么配置"，deployment 决定"怎么部署"
+# =============================================================================
+
+deployments:
+  # ---- 本地开发 ----
+  dev:
+    profile: local
+    description: "开发者单机 docker-compose（mock + dev 工具）"
+    compose_file: "infrastructure/delivery/deployment/docker-compose.dev.yml"
+    services:
+      backend:
+        image: "aegis-backend:dev"
+        replicas: 1
+        ports: ["8000:8000"]
+        env_file: ".env.dev"
+        healthcheck:
+          path: "/api/v1/health"
+          interval_s: 30
+
+  # ---- 预发布/演示 ----
+  staging:
+    profile: edge-cluster
+    description: "预发布集群（Kubernetes 3 节点 + 真库）"
+    compose_file: "infrastructure/delivery/deployment/k8s/staging/"
+    nodes:
+      - role: control-plane
+        count: 1
+        cpu: 2
+        memory_gb: 4
+        storage_gb: 50
+      - role: worker
+        count: 2
+        cpu: 4
+        memory_gb: 8
+        storage_gb: 100
+    services:
+      backend:
+        replicas: 2
+        cpu_request: 500m
+        memory_request: 512Mi
+        healthcheck:
+          path: "/api/v1/health"
+          interval_s: 15
+      neo4j:
+        image: "neo4j:5.20"
+        cpu_request: 1000m
+        memory_request: 2Gi
+        storage_gb: 50
+        ports: ["7687:7687"]
+      qdrant:
+        image: "qdrant/qdrant:v1.8.0"
+        cpu_request: 500m
+        memory_request: 1Gi
+        storage_gb: 20
+        ports: ["6333:6333"]
+
+  # ---- 生产 ----
+  prod:
+    profile: cloud
+    description: "生产环境（高可用 5 worker + 真库 + 反代）"
+    compose_file: "infrastructure/delivery/deployment/k8s/prod/"
+    nodes:
+      - role: control-plane
+        count: 3
+        cpu: 4
+        memory_gb: 8
+        storage_gb: 100
+      - role: worker
+        count: 5
+        cpu: 8
+        memory_gb: 16
+        storage_gb: 200
+    services:
+      backend:
+        replicas: 5
+        cpu_request: 1000m
+        memory_request: 1Gi
+        autoscaling:
+          min_replicas: 3
+          max_replicas: 10
+          cpu_target_pct: 70
+        healthcheck:
+          path: "/api/v1/health"
+          interval_s: 10
+      frontend:
+        replicas: 3
+        cpu_request: 200m
+        memory_request: 256Mi
+      neo4j:
+        image: "neo4j:5.20"
+        cpu_request: 2000m
+        memory_request: 4Gi
+        storage_gb: 200
+        cluster_mode: causal_cluster
+      qdrant:
+        image: "qdrant/qdrant:v1.8.0"
+        cpu_request: 1000m
+        memory_request: 2Gi
+        storage_gb: 100
+        cluster_mode: distributed
+      nginx:
+        image: "nginx:1.27"
+        cpu_request: 200m
+        memory_request: 128Mi
+        ports: ["80:80", "443:443"]
+
+# 安全基线
+security_baseline:
+  read_only_root_fs: true       # 容器根文件系统只读
+  run_as_non_root: true         # 禁止以 root 运行
+  drop_capabilities: ["ALL"]    # 禁用所有 Linux capabilities
+  seccomp_profile: "runtime/default"
+  network_isolation: true       # 默认网络隔离，按需开放

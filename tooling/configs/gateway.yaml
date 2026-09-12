@@ -1,0 +1,17 @@
+# @aegis-gen
+# date: 2026-06-27
+# dev: myf
+# change: 新建 gateway.yaml 网关配置
+
+gateway:
+  auth:
+    enabled: true
+    mode: "api-key"
+    api_key_header: "X-API-Key"
+    default_key: "aegis-dev-key"
+  rate_limit:
+    enabled: true
+    requests_per_minute: 120
+  trace:
+    enabled: true
+    header: "X-Trace-Id"

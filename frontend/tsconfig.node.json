@@ -1,0 +1,18 @@
+{
+  // @aegis-gen
+  // date: 2026-06-27
+  // dev: Claude Code (glm-5.2)
+  // change: 新建 tsconfig.node.json，Vite/Node 端 TS 配置
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "types": ["node"],
+    "outDir": "./node_modules/.tmp/tsc-node",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsc-node/.tsbuildinfo"
+  },
+  "include": ["vite.config.ts", "playwright.config.ts"]
+}
