@@ -8,7 +8,6 @@ import { useAppStore } from "@/lib/store";
 import { InfraNodePanel } from "@/components/InfraNodePanel";
 import { DispatchSandbox } from "@/components/DispatchSandbox";
 import {
-  decayAgentActivity,
   getAgentActivity,
   isAnyDrillRunning,
   subscribeAgentActivity,
@@ -33,18 +32,17 @@ export function MonitorView() {
   const [, forceTick] = useState(0);
   const [activities, setActivities] = useState<AgentActivity[]>([]);
 
-  // 订阅活跃状态变化 + 定时衰减（running 超时归 idle）+ 相对时间跳动
+  // 订阅活跃状态变化（纯事件驱动，无定时休眠）+ 相对时间跳动
   useEffect(() => {
     const unsub = subscribeAgentActivity(() => setActivities(getAgentActivity()));
-    const decayTimer = window.setInterval(() => {
-      decayAgentActivity();
+    const tickTimer = window.setInterval(() => {
       setActivities(getAgentActivity());
       forceTick((t) => t + 1);
-    }, 2000);
+    }, 5000);
     setActivities(getAgentActivity());
     return () => {
       unsub();
-      window.clearInterval(decayTimer);
+      window.clearInterval(tickTimer);
     };
   }, []);
 
