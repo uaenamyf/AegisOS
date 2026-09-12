@@ -26,6 +26,7 @@ import contextlib
 import json
 import queue
 import threading
+import time
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -78,6 +79,51 @@ class DrillRuntime:
         """把一条 SSE 事件投递到线程安全队列。"""
         self.events.put({"event": event, "data": data})
 
+    # ---- CoT/ToT 可视化：agent 级事件 ----
+
+    # 每个 agent 的人类可读职责描述（前端 CoT 时间线直接展示）
+    _AGENT_LABELS: dict[str, str] = {
+        "recon": "侦察资产",
+        "vuln_correlator": "关联漏洞",
+        "exploit_planner": "规划攻击链",
+        "detector": "检测入侵",
+        "triage": "告警分诊",
+        "threat_hunt": "威胁狩猎",
+        "ir_planner": "制定响应",
+        "critic": "攻击链校验",
+        "reviewer": "一致性审查",
+    }
+
+    def _emit_agent(self, stage: str, agent: str) -> None:
+        """发一个 agent 开始执行的 CoT 事件（SSE + 全局总线）。"""
+        data = {
+            "drill_id": self.drill_id,
+            "stage": stage,
+            "agent": agent,
+            "label": self._AGENT_LABELS.get(agent, agent),
+            "ts": time.time(),
+        }
+        self.emit("drill_agent", data)
+        with contextlib.suppress(Exception):
+            self.event_bus.publish(
+                Event(
+                    event_type=EventType.DrillAgent,
+                    task_id=self.drill_id,
+                    payload=data,
+                )
+            )
+
+    def _publish_status(self, status: str) -> None:
+        """演练状态变更发布到全局总线（供 Monitor 派生活跃状态）。"""
+        with contextlib.suppress(Exception):
+            self.event_bus.publish(
+                Event(
+                    event_type=EventType.DrillStatus,
+                    task_id=self.drill_id,
+                    payload={"drill_id": self.drill_id, "status": status},
+                )
+            )
+
     # ---- 编排线程入口 ----
 
     def _run(self) -> None:
@@ -118,7 +164,13 @@ class DrillRuntime:
                     )
                 )
 
-            self.emit("drill_start", {"drill_id": self.drill_id, "max_rounds": self.max_rounds})
+            self.emit(
+                "drill_start",
+                {"drill_id": self.drill_id, "max_rounds": self.max_rounds},
+            )
+            # CoT/ToT 可视化：演练运行状态发布到全局总线，供 Monitor 派生
+            # Agent 活跃状态（不再永远 idle）
+            self._publish_status("running")
             # R18d：mock 演示多轮趋势——强制至少展示 min_rounds 轮再判收敛；
             # 真实 LLM 保持 0（越快收敛越好），两种模式互不影响。
             try:
@@ -135,13 +187,18 @@ class DrillRuntime:
                 drill_id=self.drill_id,
                 min_rounds=_min_rounds,
                 on_stage=lambda stage, r: self.emit(
-                    "drill_stage", {"stage": stage, "round": r, "drill_id": self.drill_id}
+                    "drill_stage",
+                    {"stage": stage, "round": r, "drill_id": self.drill_id},
+                ),
+                on_agent=lambda stage, agent: self._emit_agent(
+                    stage, agent
                 ),
             )
             self.summary = result.get("summary") or {}
             self.emit("drill_summary", self.summary)
             self.emit("drill_done", {"drill_id": self.drill_id})
             self.state = "done"
+            self._publish_status("done")
             # 自动落盘运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）
             with contextlib.suppress(Exception):
                 write_drill_report(result)
@@ -150,6 +207,7 @@ class DrillRuntime:
             self.emit("drill_error", {"error": str(exc)})
             self.emit("drill_done", {"drill_id": self.drill_id, "error": True})
             self.state = "aborted"
+            self._publish_status("error")
 
     @staticmethod
     def _sse_frame(event: str, data: dict[str, Any]) -> str:

@@ -39,6 +39,9 @@ class EventType(StrEnum):
     NodeStatusChange = "node.status_change"  # 基础设施节点上线/离线/恢复
     # R9: CyberDrill 演练轮次事件（低熵增量战报，topic 可被 /events SSE 订阅）
     DrillRound = "drill.round"  # 演练每轮完成：payload 仅含增量与摘要
+    # CoT/ToT 可视化：agent 级推理过程 + 演练运行状态（Monitor 活跃态数据源）
+    DrillAgent = "drill.agent"  # 某 agent 开始执行：stage/agent/label/ts
+    DrillStatus = "drill.status"  # 演练状态变更：running/done/error
 
 
 class Event(BaseModel):

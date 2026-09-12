@@ -64,6 +64,8 @@ export interface AppState {
   chatMessages: ChatMessage[];
   isSending: boolean;
   selectedAgentId: string | null;
+  /** Agent 活跃状态版本号：agentActivity 模块通知 Monitor 重渲染用 */
+  agentActivityVersion: number;
 
   // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 新增攻防演练状态字段
   currentRange: RangeResponse | null;
@@ -116,6 +118,7 @@ const initialState = {
   chatMessages: [] as ChatMessage[],
   isSending: false,
   selectedAgentId: null as string | null,
+  agentActivityVersion: 0,
   // date: 2026-07-06 dev: Claude Code (glm-5.2) changelog: 攻防演练初始状态
   currentRange: null as RangeResponse | null,
   redAttackResult: null as RedAttackResponse | null,

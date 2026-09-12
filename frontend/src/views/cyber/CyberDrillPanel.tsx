@@ -916,8 +916,27 @@ export function CyberDrillPanel() {
   const [stopping, setStopping] = useState(false);
   // 阶段级进度：当前执行中的阶段（red|blue|purple），由 SSE drill_stage 事件驱动
   const [stage, setStage] = useState<"red" | "blue" | "purple" | null>(null);
+  // CoT/ToT 可视化：agent 级推理时间线（第几轮 · 哪个队 · 哪个 agent 正在做什么）
+  const [agentTrace, setAgentTrace] = useState<
+    Array<{ round: number; stage: string; agent: string; label: string; ts: number }>
+  >([]);
+  // 演练已运行时长（秒）——running 期间每秒跳动，缓解“不知道在等什么”
+  const [elapsed, setElapsed] = useState(0);
   // 真实总轮数：以服务端为准（Chat 发起时轮数可与本地输入框不同）
   const [liveMaxRounds, setLiveMaxRounds] = useState<number | null>(null);
+
+  // CoT 时间线自动滚动到底部
+  const cotRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (cotRef.current) cotRef.current.scrollTop = cotRef.current.scrollHeight;
+  }, [agentTrace.length]);
+
+  // 运行时长计时器：running 时每秒 +1，结束时停止
+  useEffect(() => {
+    if (phase !== "running") return;
+    const t = window.setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [phase]);
 
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const drillIdRef = useRef<string | null>(initialSnapshot?.drillId ?? null);
@@ -957,9 +976,27 @@ export function CyberDrillPanel() {
       // 阶段级实时进度：红/蓝/紫当前执行位置
       const s = ev.data?.stage;
       if (s === "red" || s === "blue" || s === "purple") setStage(s);
+    } else if (ev.name === "drill_agent") {
+      // CoT 时间线：某个 agent 开始执行（用户能看到推理推进，不再傻等）
+      const stg = String(ev.data?.stage ?? "");
+      const ag = String(ev.data?.agent ?? "");
+      if (stg && ag) {
+        setAgentTrace((prev) => [
+          ...prev.slice(-59),
+          {
+            round: Number(ev.data?.round ?? rounds.length + 1) || rounds.length + 1,
+            stage: stg,
+            agent: ag,
+            label: String(ev.data?.label ?? ag),
+            ts: Number(ev.data?.ts ?? Date.now() / 1000),
+          },
+        ]);
+      }
     } else if (ev.name === "drill_round") {
       const round = ev.data as unknown as DrillRound;
       setStage(null);
+      // 轮末：推断本轮已完成的 agent 轨迹（服务端按阶段顺序执行，轮完成时上一轮的
+      // agent 事件已全部到齐；用轮次边界把时间线分组成“第 N 轮已完成 9 agent”提示）
       setRounds((prev) => [
         ...prev.filter((r) => r.round !== round.round),
         round,
@@ -970,9 +1007,10 @@ export function CyberDrillPanel() {
       setStage(null);
       setPhase("done");
     } else if (ev.name === "drill_error") {
+      setStage(null);
       setPhase("error");
     }
-  }, []);
+  }, [rounds.length]);
 
   /** 订阅某场演练的 SSE；断线自动转轮询补拉直至结束。 */
   const subscribeDrill = useCallback(
@@ -998,6 +1036,8 @@ export function CyberDrillPanel() {
       setPhase("running");
       setStage(null);
       setLiveMaxRounds(null);
+      setAgentTrace([]);
+      setElapsed(0);
       if (!currentRange) {
         const range = await cyberApi.startRange({
           target_range: targetRange,
@@ -1134,7 +1174,16 @@ export function CyberDrillPanel() {
       .then((rec) => {
         if (cancelled || drillIdRef.current !== id) return;
         if (rec.status === "running") {
-          // 仍活着：补齐已有轮次 + 接管 SSE 直播
+          // 仍活着：补齐已有轮次 + 接管 SSE 直播；已耗时过长的演练（服务端
+          // 运行中但超过 30 分钟无落盘）视为僵死快照，不接管，避免永久转圈
+          const stale = rec.rounds.length === 0 && rec.max_rounds === undefined;
+          if (stale) {
+            clearSnapshot();
+            setPhase("idle");
+            setDrillId(null);
+            drillIdRef.current = null;
+            return;
+          }
           if (rec.rounds.length > 0) setRounds(rec.rounds);
           if (rec.max_rounds) setLiveMaxRounds(rec.max_rounds);
           subscribeDrill(id);
@@ -1151,7 +1200,14 @@ export function CyberDrillPanel() {
         }
       })
       .catch(() => {
-        /* 服务端不可达：保持现状，等用户手动重试 */
+        // 服务端无此演练（后端已重启，内存 runtime 丢失）：快照是过期的，
+        // 自愈为空闲态，不再永远转圈等一个不存在的演练
+        if (!cancelled && drillIdRef.current === id) {
+          clearSnapshot();
+          setPhase("idle");
+          setDrillId(null);
+          drillIdRef.current = null;
+        }
       });
     return () => {
       cancelled = true;
@@ -1244,6 +1300,9 @@ export function CyberDrillPanel() {
           <div className="cyber-drill__progress-head">
             <span>
               ▶ 演练进行中 · 第 {Math.min(rounds.length + 1, liveMaxRounds ?? maxRounds)} / {liveMaxRounds ?? maxRounds} 轮
+              <span className="cyber-drill__elapsed">
+                （已运行 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}）
+              </span>
             </span>
             <span>
               已完成 {rounds.length} 轮
@@ -1262,6 +1321,29 @@ export function CyberDrillPanel() {
             每轮 = 红队攻击 → 蓝队防御 → 紫队评审；mock 模式约 5-8s/轮，真实模型约 30-60s/轮，
             最多 {liveMaxRounds ?? maxRounds} 轮或证据收敛即止，可随时 ⏹ 停止。
           </p>
+          {/* CoT/ToT 推理时间线：每个 agent 开始执行时实时展示 */}
+          <div className="cyber-drill__cot" ref={cotRef} aria-label="推理过程">
+            <div className="cyber-drill__cot-head">
+              推理过程（CoT）· {agentTrace.length} 步
+            </div>
+            {agentTrace.length === 0 ? (
+              <div className="cyber-drill__cot-empty">等待首个 agent 启动…</div>
+            ) : (
+              <ul className="cyber-drill__cot-list">
+                {agentTrace.map((t, i) => (
+                  <li key={`${t.round}-${t.agent}-${i}`} className={`cyber-drill__cot-item cyber-drill__cot-item--${t.stage}`}>
+                    <span className="cyber-drill__cot-round">R{t.round}</span>
+                    <span className={`cyber-drill__cot-stage cyber-drill__cot-stage--${t.stage}`}>
+                      {t.stage === "red" ? "红队" : t.stage === "blue" ? "蓝队" : "紫队"}
+                    </span>
+                    <span className="cyber-drill__cot-agent">{t.label}</span>
+                    <span className="cyber-drill__cot-agentid">{t.agent}</span>
+                    <span className="cyber-drill__cot-spin" aria-hidden>⋯</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       ) : null}
 

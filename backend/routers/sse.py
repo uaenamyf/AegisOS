@@ -61,8 +61,9 @@ async def stream_events(
             new_events = events[seen:]  # 仅取尚未推送的增量部分
             seen = len(events)
             for event in new_events:
-                # 主题过滤：指定了 stream 时跳过不匹配的事件
-                if stream and event.topic != stream:
+                # 主题过滤："all" 视为不过滤（前端全局流默认带 stream=all）；
+                # 其余值按主题精确匹配
+                if stream and stream != "all" and event.topic != stream:
                     continue
                 payload = _asdict(event)
                 yield f"event: {event.topic}\ndata: {json.dumps(payload)}\n\n"

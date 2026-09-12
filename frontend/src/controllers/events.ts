@@ -4,6 +4,7 @@
 
 import { sseManager, wsManager } from "@/services/realtime";
 import { taskApi } from "@/services/api/tasks";
+import { handleAgentActivityEvent } from "@/services/agentActivity";
 import { useAppStore, type HitlPayload } from "@/lib/store";
 import type { Agent, Event, Task } from "@/protocol/types";
 
@@ -47,6 +48,12 @@ export const eventController = {
         }
         case "drill.round": {
           refreshTasks();
+          break;
+        }
+        // CoT/ToT 可视化 + Monitor 活跃状态：演练 agent 级事件与状态变更
+        case "drill.agent":
+        case "drill.status": {
+          handleAgentActivityEvent(event.event_type, event.payload);
           break;
         }
         // date: 2026-08-17

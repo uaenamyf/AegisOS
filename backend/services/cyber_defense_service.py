@@ -374,6 +374,7 @@ class CyberDefenseService:
         memory_budget: int = 512,
         min_rounds: int = 0,
         on_stage=None,
+        on_agent=None,
     ) -> dict[str, Any]:
         """执行一键多轮攻防演练并持久化演练记录。
 
@@ -392,6 +393,8 @@ class CyberDefenseService:
             on_round: 可选回调 ``on_round(round_data, round_no)``，供 SSE 实时推送。
             on_stage: 可选回调 ``on_stage(stage, round_no)``，阶段级实时推送
                 （stage ∈ red|blue|purple），透传给编排器。
+            on_agent: 可选回调 ``on_agent(stage, agent)``，agent 级推理过程
+                实时推送（CoT/ToT 可视化数据源），透传给编排器。
             summary_factory: 可选总结定制回调；None 时用编排器默认总结。
             abort: 可选 ``abort() -> bool`` 轮询中止回调；置真时演练在下一轮
                 边界终止（配合收敛规则 4），返回已收敛部分记录。
@@ -415,6 +418,7 @@ class CyberDefenseService:
             memory_budget=memory_budget,
             min_rounds=min_rounds,
             on_stage=on_stage,
+            on_agent=on_agent,
         )
         drill_id = result["drill_id"]
         record = {

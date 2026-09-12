@@ -448,6 +448,7 @@ export type DrillEventName =
   | "drill_start"
   | "drill_round"
   | "drill_stage"
+  | "drill_agent"
   | "drill_summary"
   | "drill_done"
   | "drill_error";
