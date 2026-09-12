@@ -2,6 +2,24 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [USABILITY-ROUND-2] 2026-09-12 CoT 时间线 + 真实 Agent 活跃态 + Graph 真图 + SSE 管道修复
+
+### 修改
+- **后端 CoT 事件**：`run_drill` 新增 `on_agent` 回调，红 3 / 蓝 4 / 紫 2 共 9 个 agent 调用点发 `drill.agent` 事件（SSE `drill_agent` + 全局总线）；演练开始/结束发 `drill.status`；`EventType` 新增 `DrillAgent`/`DrillStatus`。
+- **全局 SSE 管道修复（Monitor/Canvas 无实时数据的共同根因）**：
+  1. 后端 `/events` 的 `stream=all` 此前被当具体主题过滤，所有事件被滤光 → 特判 `all` 放行；
+  2. 前端全局 SSE 用 `onmessage` 收不到命名事件帧（`event: <topic>`）→ 改为按主题 `addEventListener` 逐一监听并归一化入 store。
+- **Monitor 真实活跃状态**：新模块 `agentActivity.ts` 从事件流派生 running/idle（含所属队伍、职责、最近活动时间、12s 衰减），顶部加演练运行状态条；静态注册表列表叠加实时态。
+- **Graph 真图化**：SVG 分层有向图（BFS 分层布局、箭头、权重=线宽、熵>0.2=虚线、节点按 kind 着色、图例），点击节点联动详情；保留原列表与落点徽标。
+- **Drill 面板 CoT 时间线**：消费 `drill_agent` 事件，显示"第 N 轮 · 红队 · 规划攻击链"滚动时间线 + 已运行时长计时；进度条头部补阶段描述。
+- **过期快照自愈**：接管时服务端查无此演练（后端重启内存丢失）或明显僵死 → 快照自动清空回 idle，不再永久转圈。
+
+### 验证
+- Python 全量 666 passed；tsc 0 错误；前端单测 52 passed（6 个失败仍为 e2e 误扫 collect-only 历史遗留）；vite build 成功。
+- e2e drill-direct：1 passed（11.8s，新代码后端 + mock 模式）。
+- 后端已重启加载新代码（16:11 health OK，前端 SSE 已重连 `GET /events?stream=all` 200）。
+- git：`84d0014` 基线 → `2c70747` 本轮改动（本地仓库，未推送）。
+
 ## [CYBER-DRILL-USABILITY] 2026-09-12 演练进度可见性 + Chat 接管 + 实时轮次
 
 ### 修改
