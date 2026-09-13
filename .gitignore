@@ -25,6 +25,9 @@ htmlcov/
 logs/
 *.log
 
+# --- AegisOS 记忆持久化运行时产物（跨重启落盘数据，非源码）---
+data/memory_store.json
+
 # --- Generated drill records (runtime) ---
 data/drills/
 
