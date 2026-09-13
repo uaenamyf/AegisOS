@@ -4,7 +4,7 @@ import type { AgentTraceEntry, DrillMeta, DrillRecord } from "@/protocol/types";
 
 function statusLabel(code: string): string {
   if (code === "converged") return "已收敛";
-  if (code === "max_rounds") return "达到轮次上限";
+  if (code === "max_rounds") return "充分探索至轮次上限";
   if (code === "aborted") return "已中止";
   return code || "未知";
 }

@@ -230,7 +230,7 @@ function TrendChart({ rounds }: { rounds: DrillRound[] }) {
       </svg>
       <p className="cyber-trend__note">
         {lastRound.convergence_code === "max_rounds"
-          ? `已达最大轮次上限收敛（${lastRound.convergence_code}）`
+          ? `充分探索 ${rounds.length} 轮，遗留 ${lastRound.purple.new_issue_count ?? 0} 个待验证缺陷`
           : `证据驱动收敛（${lastRound.convergence_code ?? "converged"}）：紫队反馈驱动红队演化，缺口逐步闭合`}
       </p>
     </div>
@@ -455,7 +455,7 @@ function GapClosureChart({ rounds }: { rounds: DrillRound[] }) {
         {closedTotal}/{totalGaps} 条缺口；
         {last.purpleValid
           ? "末轮紫队判定通过，循环收敛终止"
-          : `末轮仍未通过（${last.code || "未收敛"}），最后一批缺口转人工复核`}
+          : `充分探索 ${loops.length} 轮，遗留 ${last.purpleIssues} 个待验证缺陷（${last.code}），缺口转人工复核`}
       </p>
     </div>
   );
