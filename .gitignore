@@ -57,6 +57,11 @@ memory/
 !aegisos_agents/memory/**
 !tests/aegisos_agents/memory/
 !tests/aegisos_agents/memory/**
+# 重新忽略源码目录下的字节码缓存（上方 ! 会穿透 __pycache__/）
+aegisos_agents/memory/**/__pycache__/
+tests/aegisos_agents/memory/**/__pycache__/
+aegisos_agents/memory/**/*.pyc
+tests/aegisos_agents/memory/**/*.pyc
 
 # --- Agent local attachments ---
 .opensquilla/
