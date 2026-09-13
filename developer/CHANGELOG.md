@@ -2,6 +2,31 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [MEMORY-REFACTOR-3] 2026-09-13 激活向量检索通道（RRF 三通道名实相符）
+
+### 背景
+MEMORY_REFACTOR_REPORT 问题 2："向量通道是休眠的"——全项目无生产代码生成 embedding，
+三通道 RRF 实际只有关键词+图两通道在工作，削弱"核心算法突破"评分。
+
+### 修改
+- **新增 `aegisos_agents/memory/vector/embedding.py`（HashingEmbedder + embed_text）**：
+  轻量确定性字符 n-gram 哈希嵌入，纯标准库离线运行（演示/评测零依赖）；L2 单位范数、
+  固定维度(默认 256)；接真实 embedding 模型时仅需替换实现、保持同签名。
+- **MemoryStore 新增 `auto_embed` 开关（默认 False）**：
+  - `write()`：开启时自动为缺失 embedding 的记忆生成文本向量（激活向量索引）；
+  - `recall()`：开启时自动为触发词生成查询向量（激活向量召回）。
+  - 默认 False 完全保持既有语义（仅显式 embedding 进向量），既有测试零破坏。
+- **composition.py**：运行时可启动 `auto_embed=True`，让生产链路 RRF 三通道真正参与召回。
+
+### 验证
+- 新增 `tests/aegisos_agents/memory/test_vector_embedding.py`（4 例）：确定性/维度/归一化、
+  语义相近更近、默认关闭、开启后向量通道激活并被 recall 召回。
+- Python 全量 **684 passed**。
+- 单点验证：auto_embed 演练 3 轮产生 6 条向量索引 + 3 条情景记忆；决策 embedding 可被
+  向量 recall 命中。
+
+---
+
 ## [MEMORY-REFACTOR-2] 2026-09-13 记忆持久化：跨重启恢复决策经验/检查点/快照
 
 ### 背景

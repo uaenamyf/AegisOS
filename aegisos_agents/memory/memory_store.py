@@ -33,9 +33,20 @@ from aegisos_agents.memory.semantic.store import SemanticMemory
 from aegisos_agents.memory.snapshot.manager import SnapshotManager
 from aegisos_agents.memory.sync.sync import MemorySync
 from aegisos_agents.memory.vector.store import VectorMemory
+from aegisos_agents.memory.vector.embedding import embed_text
 from aegisos_agents.memory.working.store import WorkingMemory
 from data.api import GraphStoreAPI, VectorStoreAPI
 from protocol.memory import MemoryPacket
+
+
+def _packet_text(packet: MemoryPacket) -> str:
+    """从记忆包提取用于嵌入的文本特征（summary + working + episodic + semantic）。"""
+    parts = [packet.summary or ""]
+    for field in ("working", "episodic", "semantic"):
+        val = getattr(packet, field)
+        if val:
+            parts.append(str(val))
+    return " ".join(p for p in parts if p)
 
 
 class MemoryStore:
@@ -67,6 +78,7 @@ class MemoryStore:
         vector_backend: VectorStoreAPI | None = None,
         graph_backend: GraphStoreAPI | None = None,
         persistence_file: str | None = None,
+        auto_embed: bool = False,
     ) -> None:
         """初始化记忆集成存储，装配四层子存储 + 七个 v2 子模块。
 
@@ -75,7 +87,10 @@ class MemoryStore:
             graph_backend: 可选的外部图存储后端（默认 None → 内置内存知识库）。
             persistence_file: 可选记忆持久化文件路径；None 时不启用落盘。
                 启用后构造时会尝试 ``load`` 恢复历史经验（跨重启记忆保持）。
+            auto_embed: 是否自动为写入的记忆生成确定性文本向量（激活向量通道）。
+                默认 False 保持既有行为（仅显式 embedding 进向量）；运行时可开启。
         """
+        self.auto_embed = auto_embed
         self.working = WorkingMemory()
         self.episodic = EpisodicMemory()
         self.semantic = SemanticMemory(seed=True, graph_backend=graph_backend)
@@ -140,6 +155,14 @@ class MemoryStore:
         Returns:
             始终返回 ``True``（写入不失败）。
         """
+        # R-mem：auto_embed 开启时，自动为缺失 embedding 的记忆生成确定性文本向量，
+        # 激活向量检索通道（离线、零模型依赖；已有显式 embedding 的包保持不变）。
+        # 默认关闭保持既有语义（仅显式 embedding 进向量）。
+        if self.auto_embed and not packet.embedding:
+            _txt = _packet_text(packet)
+            if _txt:
+                packet.embedding = embed_text(_txt)
+
         # 1) 工作记忆：当前会话上下文栈
         self.working.add(packet)
         # 2) 情景记忆：决策类或显式 episodic 内容记为历史经验
@@ -204,8 +227,12 @@ class MemoryStore:
         cached = self.cache.get_query(trigger)
         if cached is not None:
             return cached
-        # 2) 混合检索（三通道 RRF 融合）
-        scored = self.retrieval_engine.retrieve(trigger, top_k=20)
+        # 2) 混合检索（三通道 RRF 融合）——R-mem：auto_embed 开启时，为触发词生成
+        #    兜底查询向量，使向量通道真正参与召回（而非空转）
+        query_emb = embed_text(trigger) if self.auto_embed else None
+        scored = self.retrieval_engine.retrieve(
+            trigger, query_embedding=query_emb or None, top_k=20
+        )
         # 3) 反思重排序
         ranked = self.reflection.rank([s.packet for s in scored])
         results = [p for p, _ in ranked[:5]]

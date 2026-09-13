@@ -106,6 +106,7 @@ class Composition:
             vector_backend=self._build_vector_backend(),
             graph_backend=self._build_graph_backend(),
             persistence_file=_mem_file,
+            auto_embed=True,  # R-mem: 激活向量检索通道（确定性文本嵌入）
         )
         self.execution_api = MockExecutionAPI()
         self.event_bus = MockEventBusAPI()
