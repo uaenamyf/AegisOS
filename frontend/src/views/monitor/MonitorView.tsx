@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { InfraNodePanel } from "@/components/InfraNodePanel";
 import { DispatchSandbox } from "@/components/DispatchSandbox";
+import { MemoryPanel } from "@/components/MemoryPanel";
 import {
   getAgentActivity,
   isAnyDrillRunning,
@@ -71,6 +72,9 @@ export function MonitorView() {
 
         {/* R11: 调度沙盒 */}
         <DispatchSandbox />
+
+        {/* R-mem: 记忆子系统面板（分层记忆/检查点/快照/向量通道/持久化） */}
+        <MemoryPanel />
 
         {/* 实时活跃 Agent（事件驱动，非静态注册表） */}
         <div>

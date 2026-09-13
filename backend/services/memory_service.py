@@ -41,3 +41,20 @@ class MemoryService:
         """
         packet.session_id = session_id  # 绑定记忆包到对应会话
         return self._memory.write(packet)
+
+    # date: 2026-09-13
+    # changelog: 新增 stats——暴露记忆子系统可观测统计（供前端 Monitor 面板）
+    async def stats(self) -> dict:
+        """返回记忆子系统统计。
+
+        委托底层 ``MemoryStore.stats``，暴露各层记忆条数、检查点/快照数、
+        持久化与最近决策经验，供前端记忆可视化。
+
+        Returns:
+            记忆子系统统计字典。
+        """
+        s = getattr(self._memory, "stats", None)
+        if s is None:
+            # 兼容未实现 stats 的 MemoryAPI（如 MockMemoryAPI）
+            return {"supported": False}
+        return s()

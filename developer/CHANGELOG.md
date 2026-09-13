@@ -2,6 +2,42 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [MEMORY-REFACTOR-4] 2026-09-13 记忆可视化：/memory/stats 端点 + Monitor 记忆面板
+
+### 背景
+MEMORY_REFACTOR_REPORT 问题 5/报告的"前端 UI 与后端接口调整"——记忆子系统改完后，
+需要让"记忆保持/向量/检查点"在界面可观测、可演示，且对外接口跟上。
+
+### 修改
+- **后端 `/api/v1/memory/stats` 端点**：
+  - `MemoryStore.stats()`：暴露工作/情景/语义/向量/归档各层条数、检查点/快照数、
+    持久化状态、auto_embed 状态与最近决策经验。
+  - `CheckpointManager.stats()`：跨会话检查点总数。
+  - `MemoryService.stats()` 与 `backend/routers/memory.py` 新增 `GET /api/v1/memory/stats`
+    （先于 `/{session_id}` 注册避免路由吞并；沿用网关 X-API-Key 鉴权）。
+- **前端**：
+  - `frontend/src/services/api/memory.ts`：新增 `MemoryStats` 类型与 `memoryApi.stats()`。
+  - `frontend/src/components/MemoryPanel.tsx`：记忆子系统面板——分层计数卡片+
+    持久化/向量通道徽标+最近决策经验，5s 轮询。
+  - `MonitorView.tsx`：接入 MemoryPanel；`index.css` 新增面板样式。
+
+### 验证
+- 新增 `tests/backend/test_memory_endpoints.py`（2 例）：stats 返回各层字段 + 无鉴权 401。
+- Python 全量 **686 passed**；`npx tsc --noEmit` 0 错误；前端服务单测 26 passed。
+- 端点实测：`GET /api/v1/memory/stats` 200（episodic_total/checkpoint_total/snapshot_total/
+  persisted/auto_embed 均正确返回，与演练写入一致）。
+
+### 本轮记忆改造素描（MEMORY-REFACTOR → 4）
+- ① 单例统一（组合根一个 MemoryStore 注入 Cyber/Task 服务，消孤岛）✅
+- ② 推理前唤醒接通（recall 注入 [memory_recall] prompt）✅
+- ③ 持久化（JSON 落盘跨重启恢复）✅
+- ④ 检查点/快照接线（每轮可恢复点 + 全局快照）✅
+- ⑤ 向量通道激活（轻量确定性 embedding + auto_embed）✅
+- ⑥ 前端/后端接口：/memory/stats + Monitor 记忆面板 ✅
+- 🔲 后续可选：真实 embedding 模型、SQLite 后端、Replay/Purple 面板联动记忆轨迹
+
+---
+
 ## [MEMORY-REFACTOR-3] 2026-09-13 激活向量检索通道（RRF 三通道名实相符）
 
 ### 背景

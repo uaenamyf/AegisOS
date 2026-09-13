@@ -2490,6 +2490,15 @@ select:focus-visible {
 .dispatch-sandbox__tier { margin-top: 2px; }
 .monitor-view__body { display: flex; flex-direction: column; gap: 24px; }
 
+/* R-mem: 记忆子系统面板 */
+.memory-panel__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 10px; }
+.memory-panel__cell { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--bg-secondary, rgba(127,127,127,0.06)); }
+.memory-panel__value { font-size: 24px; font-weight: 700; font-family: var(--font-mono); color: var(--accent); }
+.memory-panel__label { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.memory-panel__desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.memory-panel__recent { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.memory-panel__recent .view__list { margin-top: 6px; }
+
 /* Canvas 最终布局覆盖：说明、数量和筛选按钮各自占据稳定区域。 */
 .canvas-toolbar { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
 .canvas-toolbar__intro { display: flex !important; align-items: center !important; justify-content: space-between !important; width: 100% !important; }

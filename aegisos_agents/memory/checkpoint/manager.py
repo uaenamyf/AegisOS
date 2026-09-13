@@ -118,6 +118,14 @@ class CheckpointManager:
 
     # ---- R-mem: 持久化辅助（供 MemoryPersistence 使用，避免触及私有态）----
 
+    def stats(self) -> int:
+        """返回全部会话的检查点总数（供统计/监控）。
+
+        Returns:
+            检查点总数。
+        """
+        return sum(len(dq) for dq in self._checkpoints.values())
+
     def dump(self) -> dict[str, list["MemoryPacket"]]:
         """导出全部检查点（供落盘恢复使用）。
 

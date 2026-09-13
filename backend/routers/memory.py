@@ -20,6 +20,24 @@ from protocol import MemoryPacket
 router = APIRouter(prefix="/memory", tags=["memory"])
 
 
+# date: 2026-09-13
+# changelog: 新增 /memory/stats——记忆子系统统览（先于 /{session_id} 注册避免路由吞并）
+@router.get("/stats", response_model=dict)
+async def memory_stats(service: MemoryServiceDep) -> dict:
+    """返回记忆子系统统计。
+
+    暴露工作/情景/语义/向量/归档各层条数、检查点/快照数、持久化与最近决策，
+    供前端 Monitor/Replay 面板做记忆可视化。
+
+    Args:
+        service: 记忆服务依赖。
+
+    Returns:
+        记忆子系统统计字典。
+    """
+    return await service.stats()
+
+
 @router.get("/{session_id}", response_model=MemoryResponse)
 async def read_memory(
     session_id: str,

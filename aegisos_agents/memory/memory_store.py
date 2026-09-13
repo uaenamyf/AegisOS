@@ -370,3 +370,30 @@ class MemoryStore:
             label=f"snapshot_{session_id}",
             state=stats,
         )
+
+    # ---- R-mem: 记忆子系统统计（供 /memory/stats 端点与前端 Monitor 面板）----
+
+    def stats(self) -> dict[str, Any]:
+        """返回记忆子系统的可观测统计。
+
+        Returns:
+            各层记忆条数、检查点/快照数、持久化状态与最近的决策经验摘要。
+        """
+        snap_stats = self.snapshot.stats()
+        recent_decisions = [
+            m.to_dict()
+            for m in self.episodic.all()[-5:]
+            if m.kind == "decision"
+        ]
+        return {
+            "working_sessions": len(self.working.sessions()),
+            "episodic_total": len(self.episodic),
+            "semantic_total": len(self.semantic),
+            "vector_total": len(self.vector),
+            "archive_total": self.archive.size(),
+            "checkpoint_total": self.checkpoint.stats(),
+            "snapshot_total": snap_stats.get("total_snapshots", 0),
+            "persisted": self.persistence is not None,
+            "auto_embed": self.auto_embed,
+            "recent_decisions": recent_decisions,
+        }
