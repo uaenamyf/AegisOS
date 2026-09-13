@@ -110,13 +110,24 @@ class Composition:
 
         # --- 服务层 ---
         self.session_service = SessionService(self.session_repo)
-        self.task_service = TaskService(self.task_repo, self.runtime, self.event_bus)
+        # R-mem: 统一注入同一个 MemoryStore 单例，消除"组合根与 CyberDefenseService
+        # 各自持有 MemoryStore"的记忆孤岛（见 MEMORY_REFACTOR_REPORT 问题 2）。
+        # TaskService 接入同一实例，使普通任务链路也具备记忆写入能力。
+        self.task_service = TaskService(
+            self.task_repo,
+            self.runtime,
+            self.event_bus,
+            memory=self.memory_api,
+        )
         self.agent_service = AgentService(self.agent_registry, self.runtime)
         self.memory_service = MemoryService(self.memory_api)
         self.graph_service = GraphService(self.event_bus)
         # R4.7/R7: CyberDefenseService 动态跟随运行时模式（不传固定 orchestrator，
         # 由 service 每次调用经 runtime_mode.get_orchestrator() 解析）。
+        # R-mem: 传入 memory=self.memory_api —— 复用组合根里的同一 MemoryStore 单例，
+        # 使 REST /memory 端点与演练记忆读写同一个实例，记忆真正统一、可跨接入。
         self.cyber_defense_service = CyberDefenseService(
+            memory=self.memory_api,
             graph_store=self._build_graph_backend(),
         )
 

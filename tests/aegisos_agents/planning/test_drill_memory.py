@@ -166,3 +166,43 @@ def test_long_range_drill_preserves_target_and_memory_scope():
         packet.task_id.startswith(drill_id) or packet.kind == "digest"
         for packet in stack
     )
+
+
+# date: 2026-09-13
+# dev: OpenSquilla
+# changelog: R-mem 新增——唤醒(recall)注入与检查点/快照接线回归测试
+def test_run_drill_recall_aware_and_checkpointed():
+    """R-mem：演练启用记忆时，每轮应生成可恢复检查点与快照，推理前唤醒不抛错。"""
+    orch = _make_orchestrator()
+    memory = MemoryStore()
+    drill_id = "drill-recalled"
+
+    result = orch.run_drill(
+        "10.0.0.0/24",
+        max_rounds=5,
+        min_rounds=3,
+        drill_id=drill_id,
+        memory=memory,
+    )
+
+    # 每轮都保存了可恢复检查点（含 round / step_index / drill_id 状态）
+    checkpoints = memory.checkpoint.list_checkpoints(drill_id)
+    assert checkpoints, "启用记忆时每轮后应保存检查点"
+    assert len(checkpoints) == result["rounds_executed"]  # 每轮一个可恢复点
+    assert all(cp.get("drill_id") == drill_id for cp in checkpoints)
+    # 从最新检查点恢复：返回最后一轮状态
+    restored = memory.checkpoint.restore(drill_id)
+    assert restored is not None
+    assert restored["step_index"] == result["rounds_executed"]
+
+    # 快照已接线并承载全局记忆统计
+    snapshot_ids = memory.snapshot.list_snapshots()
+    assert snapshot_ids, "演练结束后应有至少一条全局快照"
+    latest = memory.snapshot.restore(snapshot_ids[-1])
+    assert latest is not None
+    assert "topology_state" in latest  # 快照含拓扑/全局状态
+
+    # 推理前唤醒（recall）调用不抛错，且本演练决策已入长期(情景)记忆
+    recalled = memory.recall("10.0.0.0/24")
+    assert isinstance(recalled, list)
+    assert any(p.task_id.startswith(f"{drill_id}:r") for p in memory.episodic.all())

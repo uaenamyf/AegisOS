@@ -2,6 +2,33 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [MEMORY-REFACTOR] 2026-09-13 记忆系统改造：单例统一 + 唤醒接通 + 检查点/快照接线
+
+### 背景
+依据 `developer/MEMORY_REFACTOR_REPORT.md` 诊断：记忆系统"压缩做得好，唤醒/持久化/容错/可视化没接成闭环"。本轮修复 P0（记忆孤岛、唤醒半闭环）与 P1（检查点/快照未接线）核心问题。
+
+### 修改
+- **统一 MemoryStore 单例（消除记忆孤岛）**：
+  - `backend/core/composition.py`：组合根持有唯一的 `MemoryStore`（`self.memory_api`），统一注入 `CyberDefenseService(memory=...)` 与 `TaskService(memory=...)`；REST `/memory` 与演练/普通任务记忆读写同一实例。
+  - 原 `CyberDefenseService` 内部 `memory or MemoryStore()` 自建临时实例的孤岛问题解决。
+- **普通任务接入记忆（问题 6）**：
+  - `backend/services/task_service.py`：`__init__` 新增可选 `memory`；任务成功/失败执行完写入 `MemoryPacket`（成功为 decision → 自动路由到情景记忆，供 recall 唤醒），失败不阻断主流程。
+- **接通推理前唤醒（问题 1，recall 生产化）**：
+  - `aegisos_agents/planning/orchestrator/cyber_orchestrator.py`：
+    - `run_drill` 每周紫队评审前调 `_build_recall_summary(memory, drill_id, target_range, round)`，经 `MemoryStore.recall()` 唤醒长期历史经验；
+    - `run_purple_review` 新增可选参数 `memory_recall_summary`，critic prompt 注入 `[memory_recall]` 片段，与 `[prior_rounds_summary]` 并存——"压缩 + 唤醒"完整闭环。
+- **接线检查点与快照（问题 5，容错恢复数据源）**：
+  - `run_drill` 每轮结束后调 `memory.checkpoint.save(drill_id, {step_index, round, ...}, label=after_round_N)`（直接 save 而非 5 步间隔的 `checkpoint_cycle`，保证短演练也有可恢复点）与 `memory.snapshot_cycle(drill_id, {round, code})`。
+
+### 验证
+- 新增回归测试 `test_run_drill_recall_aware_and_checkpointed`（tests/aegisos_agents/planning/test_drill_memory.py）：每轮检查点、快照、recall 唤醒不抛错、决策入长期记忆。
+- Python 全量 **677 passed**（含新增记忆/编排/服务测试 24 passed）；单点验证：3 轮演练产生 3 个可恢复检查点 + 3 条全局快照，最新检查点可 restore。
+
+### 后续（报告第 5 步 ②③⑤，待做）
+- ② 激活向量通道（embedding 生产源）；③ 记忆持久化（SQLite 落盘）；⑤ 前端记忆可视化（Memory API 新端点 + Monitor/Replay 面板）。
+
+---
+
 ## [USABILITY-ROUND-2] 2026-09-12 CoT 时间线 + 真实 Agent 活跃态 + Graph 真图 + SSE 管道修复
 
 ### 修改

@@ -1198,6 +1198,7 @@ class CyberOrchestrator(GoalMode[dict]):
         alerts: list[Alert],
         round: int | None = None,
         prior_rounds_summary: str | None = None,
+        memory_recall_summary: str | None = None,
         abort: Callable[[], bool] | None = None,
         assets: list[Asset] | None = None,
         on_agent: Callable[[str, str], None] | None = None,
@@ -1218,12 +1219,17 @@ class CyberOrchestrator(GoalMode[dict]):
         前序轮次决策摘要（跨轮记忆），对抗长链推理的注意力稀释与记忆坍缩。
         默认 None 完全保持旧行为。
 
+        R-mem：新增可选 ``memory_recall_summary`` 参数——显式传入时在 critic
+        的 prompt 额外注入 ``[memory_recall]`` 片段（推理前唤醒的长期经验），
+        与 ``prior_rounds_summary`` 并存，补全"压缩 + 唤醒"记忆闭环。
+
         Args:
             chain: 红队攻击链产出。
             plan: 蓝队响应计划产出。
             alerts: 蓝队告警列表。
             round: 显式演练轮次；None 表示不演化（默认）。
             prior_rounds_summary: 前序轮次压缩摘要文本；None 表示不注入（默认）。
+            memory_recall_summary: 推理前唤醒的长期经验摘要；None 表示不注入（默认）。
 
         Returns:
             含 ``critique`` / ``review`` / ``agent_trace`` 的字典（均为 dict）。
@@ -1240,7 +1246,15 @@ class CyberOrchestrator(GoalMode[dict]):
             if prior_rounds_summary
             else ""
         )
-        critique_prompt = f"Critique: {json.dumps(chain.to_dict())}{round_tag}{prior_tag}{self._assets_tag(assets)}"
+        recall_tag = (
+            f"\n[memory_recall] {memory_recall_summary}"
+            if memory_recall_summary
+            else ""
+        )
+        critique_prompt = (
+            f"Critique: {json.dumps(chain.to_dict())}{round_tag}{prior_tag}{recall_tag}"
+            f"{self._assets_tag(assets)}"
+        )
         critique_result = self.critic._run(critique_prompt)
         trace.append(self._trace_entry("critic", critique_prompt, critique_result))
         critique = critique_result.model_dump()
@@ -2877,12 +2891,21 @@ class CyberOrchestrator(GoalMode[dict]):
             if callable(on_stage):
                 on_stage("purple", r)
             try:
+                # R-mem: 推理前从长期记忆唤醒相关历史经验（recall），
+                # 与跨轮压缩摘要一并注入紫队 prompt，补全"压缩+唤醒"闭环
+                # （见 MEMORY_REFACTOR_REPORT 问题 1）。
+                recall_summary = (
+                    self._build_recall_summary(memory, drill_id, target_range, r)
+                    if memory is not None
+                    else None
+                )
                 purple = self.run_purple_review(
                     chain=chain,
                     plan=blue["plan"],
                     alerts=blue["alerts"],
                     round=r,
                     prior_rounds_summary=prior_rounds_summary,
+                    memory_recall_summary=recall_summary,
                     abort=abort if callable(abort) else None,
                     assets=red.get("assets"),
                     on_agent=on_agent if callable(on_agent) else None,
@@ -2950,6 +2973,27 @@ class CyberOrchestrator(GoalMode[dict]):
             rounds.append(round_data)
             if callable(on_round):
                 on_round(round_data, r)
+
+            # R-mem: 接线编排器检查点钩子——每轮结束后保存编排器状态到检查点，
+            # 供任务中断后从最近检查点恢复（交付物要求"动态注入节点失效并无
+            # 人工干预恢复"，见 MEMORY_REFACTOR_REPORT 问题 5）。快照同样采集，
+            # 供 replay/monitor 展示记忆子系统状态。
+            # 注：直接调 checkpoint.save 而非 checkpoint_cycle（后者按 5 步间隔
+            # 计步，短演练可能不触发），保证每轮都有可恢复检查点。
+            if memory is not None:
+                memory.checkpoint.save(
+                    drill_id,
+                    {
+                        "step_index": r,
+                        "round": r,
+                        "drill_id": drill_id,
+                        "target_range": target_range,
+                        "convergence_code": code,
+                        "working_summary": prior_rounds_summary,
+                    },
+                    label=f"after_round_{r}",
+                )
+                memory.snapshot_cycle(drill_id, {"round": r, "code": code})
 
             # R8: 跨轮记忆——写本轮决策 → 压缩工作记忆 → 生成下一轮摘要
             if memory is not None:
@@ -3063,6 +3107,44 @@ class CyberOrchestrator(GoalMode[dict]):
         return ["cloud"]
 
     # ---- R8: 跨轮记忆与上下文压缩辅助 ----
+
+    @staticmethod
+    def _build_recall_summary(
+        memory: "MemoryStore",
+        drill_id: str,
+        target_range: str,
+        round_no: int,
+        max_hits: int = 3,
+    ) -> str | None:
+        """推理前从长期记忆唤醒相关历史经验（recall），拼成注入文本。
+
+        R-mem：调用 ``MemoryStore.recall(trigger)`` 唤醒与目标相关的历史决策
+        经验（不限于本轮，也覆盖同一 drill_id 之前的轮次与其他任务写入的
+        情景记忆），把唤醒结果压缩成一段 prompt 片段。无命中返回 None。
+
+        Args:
+            memory: 记忆存储实例。
+            drill_id: 当前演练 ID（用于过滤本演练内的记忆）。
+            target_range: 目标网络范围，用作唤醒触发词。
+            round_no: 当前轮次。
+            max_hits: 注入的最多召回条数。
+
+        Returns:
+            唤醒摘要文本；无可用召回时返回 None。
+        """
+        try:
+            hits = memory.recall(trigger=target_range)[:max_hits]
+        except Exception:  # noqa: BLE001 —— 唤醒失败不应阻断演练
+            return None
+        if not hits:
+            return None
+        lines: list[str] = []
+        for m in hits:
+            if m.summary:
+                lines.append(m.summary)
+        if not lines:
+            return None
+        return " | ".join(lines)
 
     def _store_round_memory(
         self,

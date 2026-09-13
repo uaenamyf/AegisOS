@@ -8,8 +8,10 @@ import asyncio
 from typing import Any
 
 from aegisos_agents.api import RuntimeAPI
+from aegisos_agents.memory.memory_store import MemoryStore
 from backend.repositories.repositories import TaskRepository
 from protocol import Event, EventType, NodeRef, Task, TaskStatus
+from protocol.memory import MemoryPacket
 
 
 class TaskService:
@@ -18,12 +20,20 @@ class TaskService:
     Attributes:
         _repo: 任务仓储，负责任务数据的持久化操作。
         _runtime: agent 运行时 API，负责任务的实际执行。
+        _memory: 可选记忆存储，任务执行结果写入短期/情景记忆（普通任务记忆闭环）。
     """
 
-    def __init__(self, repo: TaskRepository, runtime: RuntimeAPI, event_bus: Any = None) -> None:
+    def __init__(
+        self,
+        repo: TaskRepository,
+        runtime: RuntimeAPI,
+        event_bus: Any = None,
+        memory: MemoryStore | None = None,
+    ) -> None:
         self._repo = repo
         self._runtime = runtime
         self._event_bus = event_bus
+        self._memory = memory
 
     async def create_task(
         self,
@@ -76,6 +86,9 @@ class TaskService:
             result = output if isinstance(output, dict) else {"output": output}
             await self._repo.update_result(task.task_id, result)
             await self._repo.update_status(task.task_id, TaskStatus.Succeeded)
+            # R-mem: 任务成功完成即写入记忆——普通任务链路纳入认知闭环，
+            # 供后续 recall 唤醒复用（见 MEMORY_REFACTOR_REPORT 问题 6）。
+            self._write_task_memory(task, agent_id, session_id, result, succeeded=True)
             self._publish(
                 Event(
                     event_type=EventType.AgentFinish,
@@ -88,6 +101,7 @@ class TaskService:
             result = {"error": str(exc), "agent_id": agent_id}
             await self._repo.update_result(task.task_id, result)
             await self._repo.update_status(task.task_id, TaskStatus.Failed)
+            self._write_task_memory(task, agent_id, session_id, result, succeeded=False)
             self._publish(
                 Event(
                     event_type=EventType.AgentFinish,
@@ -96,6 +110,42 @@ class TaskService:
                     payload={"agent_id": agent_id, "output": result, "status": "failed", "session_id": session_id},
                 )
             )
+
+    def _write_task_memory(
+        self,
+        task: Task,
+        agent_id: str,
+        session_id: str,
+        result: dict[str, Any],
+        *,
+        succeeded: bool,
+    ) -> None:
+        """把任务执行结论写入共享记忆存储（MemoryStore 单例）。
+
+        决策类任务（kind="decision"）会自动路由到情景记忆，变成可被
+        ``recall()`` 唤醒的长期经验；其余写入工作记忆。无记忆时不抛错。
+        """
+        if self._memory is None:
+            return
+        try:
+            self._memory.write(
+                MemoryPacket(
+                    session_id=session_id,
+                    task_id=task.task_id,
+                    kind="decision" if succeeded else "normal",
+                    summary=(
+                        f"[task] {agent_id} {'完成' if succeeded else '失败'}: {task.goal}"
+                    ),
+                    working={
+                        "agent_id": agent_id,
+                        "goal": task.goal,
+                        "status": "succeeded" if succeeded else "failed",
+                    },
+                    episodic={"task": task.task_id, "agent_id": agent_id} if succeeded else {},
+                )
+            )
+        except Exception:  # noqa: BLE001 —— 记忆写入失败不应阻断主任务
+            pass
 
     @staticmethod
     def _select_agent(task: Task) -> str:
