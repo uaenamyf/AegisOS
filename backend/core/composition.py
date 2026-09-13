@@ -11,6 +11,8 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends
@@ -95,9 +97,15 @@ class Composition:
         # date: 2026-08-06
         # dev: czy
         # changelog: MemoryStore 注入 data 层存储后端（默认 in_memory，真实库按配置启用）
+        # R-mem: 追加 persistence_file —— 记忆跨重启落盘到 data/memory_store.json，
+        # 解决"全内存、重启清零"短板（MEMORY_REFACTOR_REPORT 问题 3）。
+        _mem_file = os.environ.get("AEGIS_MEMORY_PERSIST_FILE") or str(
+            Path(__file__).resolve().parent.parent.parent / "data" / "memory_store.json"
+        )
         self.memory_api = MemoryStore(
             vector_backend=self._build_vector_backend(),
             graph_backend=self._build_graph_backend(),
+            persistence_file=_mem_file,
         )
         self.execution_api = MockExecutionAPI()
         self.event_bus = MockEventBusAPI()

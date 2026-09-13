@@ -2994,6 +2994,8 @@ class CyberOrchestrator(GoalMode[dict]):
                     label=f"after_round_{r}",
                 )
                 memory.snapshot_cycle(drill_id, {"round": r, "code": code})
+                # R-mem: 每轮结束落盘——决策经验/检查点/快照跨重启可恢复
+                memory.save_to_disk()
 
             # R8: 跨轮记忆——写本轮决策 → 压缩工作记忆 → 生成下一轮摘要
             if memory is not None:

@@ -51,6 +51,12 @@ frontend/.env.local
 
 # --- Agent local notes ---
 memory/
+# AegisOS 智能体记忆源码目录（aegisos_agents/memory 与 tests/aegisos_agents/memory）
+# 是版本化源码，需排除根层级 memory/ 忽略规则的影响
+!aegisos_agents/memory/
+!aegisos_agents/memory/**
+!tests/aegisos_agents/memory/
+!tests/aegisos_agents/memory/**
 
 # --- Agent local attachments ---
 .opensquilla/

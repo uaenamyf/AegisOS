@@ -2,6 +2,27 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [MEMORY-REFACTOR-2] 2026-09-13 记忆持久化：跨重启恢复决策经验/检查点/快照
+
+### 背景
+MEMORY_REFACTOR_REPORT 问题 3："记忆不持久，跨重启全丢"——MemoryStore 全内存，`data/aegisos.db` 只管 session/task 仓储，"分布式记忆架构/跨会话记忆保持"名不副实。
+
+### 修改
+- **新增 `aegisos_agents/memory/persistence/`（MemoryPersistence）**：
+  - 将情景记忆(长期决策经验)/工作记忆栈/检查点/快照序列化为 JSON 落盘，构造时从同文件恢复，实现跨重启记忆保持。
+  - 语义知识库（ATT&CK/CVE）由数据集在启动时重建，不需落盘。
+- **CheckpointManager / SnapshotManager 新增公开 dump()/restore_all()**：避免持久化触及私有态，保持封装。
+- **MemoryStore 支持 `persistence_file` 参数**：启用时构造自动 `load`；新增 `save_to_disk()/load_from_disk()`；`MemoryStore.persistence` 未启用时为 None、save/load 返回 False（零破坏默认行为）。
+- **composition.py**：组合根 MemoryStore 单例默认落盘到 `data/memory_store.json`（可用 `AEGIS_MEMORY_PERSIST_FILE` 覆盖）。
+- **cyber_orchestrator.py**：`run_drill` 每轮结束（快照后）调 `memory.save_to_disk()`。
+
+### 验证
+- 新增 `tests/aegisos_agents/memory/test_persistence.py`：round-trip 恢复情景记忆/检查点/快照 + 未启用时 save/load 为 noop。
+- Python 全量 **680 passed**（+3：2 持久化 + 1 唤醒/检查点回归）。
+- 单点验证：3 轮演练落盘（2 决策经验 + 3 检查点 + 3 快照），新实例可完整恢复。
+
+---
+
 ## [MEMORY-REFACTOR] 2026-09-13 记忆系统改造：单例统一 + 唤醒接通 + 检查点/快照接线
 
 ### 背景
