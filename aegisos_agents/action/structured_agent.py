@@ -105,13 +105,50 @@ class StructuredAgent(Generic[T]):
         # Mock / 非 DeepSeek 路径：复用同一个 SDK Agent（共享 model）
         self._sdk_agent: Agent = self._build_agent(self._model)
 
+    def _model_settings(self) -> "ModelSettings":
+        """构造 ModelSettings（R19：默认关闭 ARK 深度思考以砍掉主要耗时）。
+
+        走**完全相同**的 Agent 链路 A/B 实测（drill-7b797871 第 5 轮真实 critic
+        prompt，2,039 tok 输入）：
+
+            思考开  222.7s  issues=4  suggestion=432ch
+            思考关   16.5s  issues=5  suggestion=497ch   ← 13.5x，质量相当
+
+        耗时几乎全花在 reasoning token 上，与**输入大小无关**，且波动极大。
+        故：
+          * 本处**不设** max_tokens——实测封顶反而更慢（41.6s→100.9s，思考被
+            拉长），且会截断 JSON 破坏结构化输出；
+          * 默认关闭思考，可用 ``AEGIS_DISABLE_THINKING=false`` 切回（需要展示
+            深度推理链时）。
+
+        火山 ARK 通过 ``extra_body.thinking.type=disabled`` 传达，SDK 会将其
+        透传给 ``chat.completions.create``（已验证 model_settings.extra_body 直达）。
+
+        厂商限定（重要）：``thinking`` 是 ARK 专有字段，发给 OpenAI 官方或其他
+        兼容端点可能被 400 拒绝，因此仅在 base_url 指向 ARK（volces）时注入；
+        其他厂商保持原行为不变。
+        """
+        from agents import ModelSettings
+
+        kw: dict[str, object] = {"temperature": self.TEMPERATURE}
+        want_disable = os.getenv("AEGIS_DISABLE_THINKING", "true").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        base_url = (os.getenv("OPENAI_BASE_URL") or "").lower()
+        is_ark = "volces" in base_url or "ark" in base_url
+        if want_disable and is_ark:
+            kw["extra_body"] = {"thinking": {"type": "disabled"}}
+        return ModelSettings(**kw)
+
     def _build_agent(self, model) -> Agent:
         """用给定 model 构造 SDK Agent（复用 __init__ 的构造逻辑）。
 
         真实模式（``_plain_json``）每次调用用独立 model + client 时也会
         走到这里，因此 instructions 提前存到 ``self._instructions``。
         """
-        from agents import AgentOutputSchema, ModelSettings
+        from agents import AgentOutputSchema
 
         if self._plain_json:
             # DeepSeek：不设 output_type → SDK 不传 response_format，避免 400
@@ -119,7 +156,7 @@ class StructuredAgent(Generic[T]):
                 name=self.__class__.__name__,
                 instructions=self._instructions,
                 model=model,
-                model_settings=ModelSettings(temperature=self.TEMPERATURE),
+                model_settings=self._model_settings(),
             )
         # 构造 SDK Agent：instructions + output_type + model + temperature
         # 用 AgentOutputSchema(strict_json_schema=False) 包装 output_type，
@@ -130,7 +167,7 @@ class StructuredAgent(Generic[T]):
             instructions=self._instructions,
             output_type=AgentOutputSchema(self.OUTPUT_TYPE or str, strict_json_schema=False),
             model=model,
-            model_settings=ModelSettings(temperature=self.TEMPERATURE),
+            model_settings=self._model_settings(),
         )
 
     def _fresh_model(self):
@@ -149,6 +186,9 @@ class StructuredAgent(Generic[T]):
             openai_client=AsyncOpenAI(
                 api_key=os.getenv("OPENAI_API_KEY", ""),
                 base_url=os.getenv("OPENAI_BASE_URL") or None,
+                # R19：与 SDKProvider 同样收紧超时/重试（旧版用库默认 600s x3）
+                timeout=float(os.getenv("AEGIS_LLM_TIMEOUT", "180") or 180),
+                max_retries=int(os.getenv("AEGIS_LLM_MAX_RETRIES", "1") or 1),
             ),
         )
 

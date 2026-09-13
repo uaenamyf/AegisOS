@@ -2630,24 +2630,64 @@ class CyberOrchestrator(GoalMode[dict]):
 
     @staticmethod
     def _step_fingerprint(step: AttackStep) -> tuple:
-        """步骤内容指纹（R18）：真实 LLM 每轮重新编号 step_id，内容才是事实。"""
+        """步骤内容指纹（R19）：ATT&CK 技法编号 + CVE 编号 + 端点，忽略散文措辞。
+
+        旧版直接拿 ``technique`` **全文小写**入指纹，但该字段是 LLM 自由散文：
+        同一条边第 1 轮写 ``T1210 (CVE-2024-6387 on asset-001)``、第 3 轮只写
+        ``T1210``、第 5 轮换成 ``T1203 (CVE-2022-0543 ...)``，字串永远不相等 →
+        ``new_steps`` **永不为空** → ``converged``/``no_progress`` 两条真收敛规
+        则在数学上不可能触发，只能以 ``max_rounds`` 收尾（实测 drill-7b797871
+        5 轮全报 new_steps=3~5）。
+
+        现只抽**结构化不变量**：技法编号（T1210 / T1021.002）、CVE 编号、两端资
+        产。抽不到编号时才退化到文本前缀，保证仍有区分度。
+
+        注：CVE 集**故意不计入**指纹。模型换 CVE 不算拓扑推进（旧版正是把每个
+        新 CVE 当作新步骤，导致永不收敛）；若计入了，多轮探索不同 CVE 就又变成
+        无限挖新。
+        """
+        raw = step.technique or ""
+        techniques = tuple(
+            sorted({m.upper() for m in re.findall(r"\bT\d{4}(?:\.\d{3})?\b", raw, re.I)})
+        )
+        technique_key = techniques if techniques else raw.strip().lower()[:48]
         return (
             (step.from_asset or "").strip().lower(),
             (step.to_asset or "").strip().lower(),
-            (step.technique or "").strip().lower(),
+            technique_key,
         )
 
     @classmethod
     def _diff_chain_steps(
-        cls, prev_chain: AttackChain | None, new_chain: AttackChain
+        cls,
+        prev_chain: AttackChain | None,
+        new_chain: AttackChain,
+        explored: set[tuple] | None = None,
     ) -> list[AttackStep]:
-        """对比上一轮与本轮，返回本轮新增的步骤（R18：按步骤内容指纹去重）。
+        """返回本轮**真正新增**的攻击面步骤（R19：累计集语义）。
 
-        真实 LLM 每轮输出相同的 step_id（S-001..N）但内容全新，旧版按 step_id
-        去重会把全新链误判为"无新增"；mock 链内容稳定，两种键行为一致。
+        旧版只与**上一轮**比（prev_chain），真实 LLM 在两个链变体之间来回切换
+        （r4 换成 B 链、r5 又切回 A 链的变体）时，每轮都算"全是新增" →
+        ``consecutive_no_new`` 永远归零 → ``no_progress`` 也永远不触发。
+        实测 drill-7b797871 五轮逐轮 new=3/4/2/5/3，从不归零。
+
+        现在传入 ``explored``（跨轮累计指纹集）时按累计集判定：只要本轮没有
+        探出新技法-端点三元组，就算无新增。这才是"攻击面已挖尽"的本意。
+
+        Args:
+            prev_chain: 上一轮链（保留形参兼容既有调用与单测）。
+            new_chain: 本轮链。
+            explored: 已探明的指纹累计集合；None 时退回旧的"只比上一轮"语义。
         """
-        prev_fps = {cls._step_fingerprint(s) for s in prev_chain.steps} if prev_chain else set()
-        return [s for s in new_chain.steps if cls._step_fingerprint(s) not in prev_fps]
+        if explored is None:
+            base = (
+                {cls._step_fingerprint(s) for s in prev_chain.steps}
+                if prev_chain
+                else set()
+            )
+        else:
+            base = explored
+        return [s for s in new_chain.steps if cls._step_fingerprint(s) not in base]
 
     @classmethod
     def _evaluate_stop(
@@ -2757,6 +2797,8 @@ class CyberOrchestrator(GoalMode[dict]):
         drill_id = drill_id or f"drill_{target_range.replace('/', '_')}"
         prev_chain: AttackChain | None = None
         prev_event_stream: list[dict[str, Any]] = []
+        # R19：跨轮累计的已探明步骤指纹集（收敛判定的真实基准）
+        explored_fps: set[tuple] = set()
         consecutive_no_new = 0
         rounds: list[dict[str, Any]] = []
         memory_trace: list[dict[str, Any]] = []
@@ -2784,7 +2826,10 @@ class CyberOrchestrator(GoalMode[dict]):
                 code = "aborted"
                 break
             chain: AttackChain = red["chain"]
-            new_steps = self._diff_chain_steps(prev_chain, chain)
+            # R19：按**累计**已探明指纹判定新增——只比上一轮时，模型在两个链
+            # 变体间来回切换会每轮都"全新增"，no_progress 永远不触发
+            new_steps = self._diff_chain_steps(prev_chain, chain, explored_fps)
+            explored_fps |= {self._step_fingerprint(s) for s in chain.steps}
             consecutive_no_new = 0 if new_steps else consecutive_no_new + 1
 
             # 中止检查点 2：红队阶段后——跳过蓝/紫，保留已完成的红队产物
@@ -2923,12 +2968,24 @@ class CyberOrchestrator(GoalMode[dict]):
             if stop:
                 break
 
-        summary = {
-            "conclusion": (
+        # R19：结论话术——真实模式下 max_rounds/no_progress 不是"失败"，而是
+        # "已充分探索该攻击面、遗留缺口转入待验证"；只有真收敛才宣称达成收敛。
+        last_purple = rounds[-1]["purple"] if rounds else {}
+        pending_issues = last_purple.get("new_issue_count", 0)
+        if code == "converged":
+            _conclusion = (
                 "多轮红蓝紫对抗后达成收敛：攻击链覆盖全部暴露面并通过紫队一致性校验。"
-                if rounds and rounds[-1]["purple"]["valid"] and code == "converged"
-                else "演练在到达停止条件时结束（见 convergence_code）。"
-            ),
+            )
+        elif code in ("max_rounds", "no_progress"):
+            _conclusion = (
+                f"充分探索 {len(rounds)} 轮、遗留 {pending_issues} 个待验证缺陷"
+                f"（{code}），建议对遗留缺口转人工复核。"
+            )
+        else:
+            _conclusion = f"演练因 {code} 提前结束（共 {len(rounds)} 轮）。"
+
+        summary = {
+            "conclusion": _conclusion,
             "convergence_code": code,
             "rounds_executed": len(rounds),
         }

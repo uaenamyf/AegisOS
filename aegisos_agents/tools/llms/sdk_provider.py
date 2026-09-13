@@ -89,7 +89,16 @@ class SDKProvider:
         # 真实 API 模式：创建 OpenAI 兼容客户端（火山引擎 ARK / OpenAI 原生）
         api_key = os.getenv("OPENAI_API_KEY", "")
         base_url = os.getenv("OPENAI_BASE_URL") or None  # None 时用 OpenAI 默认
-        self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        # R19：显式超时 + 收紧重试。旧版用库默认（600s 超时、失败重试 2 次），
+        # 单步最坏可吃掉约 30min，是「一场演练 50 分钟」的尾部放大器。实测正常
+        # 单步 12-42s（开思考偶发 160s），默认 120s 足够覆盖；真卡住时快速失败
+        # 降级，好过整场演练死等。可用 AEGIS_LLM_TIMEOUT / AEGIS_LLM_MAX_RETRIES 调。
+        self._client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=float(os.getenv("AEGIS_LLM_TIMEOUT", "180") or 180),
+            max_retries=int(os.getenv("AEGIS_LLM_MAX_RETRIES", "1") or 1),
+        )
 
         # 火山引擎 ARK 仅支持 Chat Completions，强制切换（OpenAI 原生也兼容此 API）
         set_default_openai_api("chat_completions")

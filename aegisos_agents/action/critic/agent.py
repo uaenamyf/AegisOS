@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 
-from agents import Agent, AgentOutputSchema, ModelSettings
+from agents import Agent, AgentOutputSchema
 
 from aegisos_agents.action.output_types import CritiqueResult
 from aegisos_agents.action.structured_agent import StructuredAgent
@@ -94,7 +94,9 @@ class CriticAgent(StructuredAgent[CritiqueResult], AskMode):
             instructions=SYSTEM_PROMPT_BLUE,
             output_type=AgentOutputSchema(self.OUTPUT_TYPE, strict_json_schema=False),
             model=self._model,
-            model_settings=ModelSettings(temperature=self.TEMPERATURE),
+            # R19：走基类 _model_settings()，否则 AEGIS_DISABLE_THINKING 对本
+            # Agent 无效——critic 是实测单次耗时最高的环节（开思考偶发 160s+）。
+            model_settings=self._model_settings(),
         )
 
     def critique(self, target: dict, side: str = "red") -> dict:
