@@ -60,6 +60,10 @@ export interface AppState {
   graph: Graph;
   events: Event[];
   activeView: ViewName;
+  /** R21: TaskMap 当前模式（chat=对话任务流 / cyber=演练流） */
+  taskMapMode: "chat" | "cyber";
+  /** R21: TaskMap 选中节点 key（切换模式后仍保留以便回看） */
+  taskMapSelectedNode: string | null;
   connectionStatus: ConnectionStatus;
   chatMessages: ChatMessage[];
   isSending: boolean;
@@ -86,6 +90,8 @@ export interface AppState {
   appendEvent: (event: Event) => void;
   setEvents: (events: Event[]) => void;
   setActiveView: (view: ViewName) => void;
+  setTaskMapMode: (mode: "chat" | "cyber") => void;
+  setTaskMapSelectedNode: (nodeKey: string | null) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
   addChatMessage: (msg: ChatMessage) => void;
   updateChatMessage: (id: string, patch: Partial<ChatMessage>) => void;
@@ -109,10 +115,17 @@ const MAX_EVENTS = 500;
 
 // 视图切换记忆：activeView 落 sessionStorage，刷新/重进后停在用户最后所在页
 const VIEW_KEY = "aeg...eView";
+// R21: 旧版视图名迁移——graph/canvas 收敛为 taskmap，replay 移除后回落 chat
+const VIEW_ALIASES: Record<string, ViewName> = {
+  graph: "taskmap",
+  canvas: "taskmap",
+  replay: "chat",
+};
 function readStoredView(): ViewName | null {
   try {
     const v = typeof window !== "undefined" ? window.sessionStorage.getItem(VIEW_KEY) : null;
-    return v ? (v as ViewName) : null;
+    if (!v) return null;
+    return (VIEW_ALIASES[v] as ViewName) ?? (v as ViewName);
   } catch {
     return null;
   }
@@ -132,6 +145,9 @@ const initialState = {
   graph: { nodes: {}, edges: [] } as Graph,
   events: [] as Event[],
   activeView: readStoredView() ?? ("chat" as ViewName),
+  // R21: 任务图当前模式——chat=对话任务流，cyber=攻防演练流（TaskMap 内部切换）
+  taskMapMode: "chat" as "chat" | "cyber",
+  taskMapSelectedNode: null as string | null,
   connectionStatus: "disconnected" as ConnectionStatus,
   chatMessages: [] as ChatMessage[],
   isSending: false,
@@ -201,6 +217,11 @@ export const useAppStore = create<AppState>((set) => ({
     writeStoredView(view);
     set({ activeView: view });
   },
+
+  // R21: TaskMap 模式切换与节点选择（全局存，切页回来不丢）
+  setTaskMapMode: (mode) => set({ taskMapMode: mode, taskMapSelectedNode: null }),
+
+  setTaskMapSelectedNode: (nodeKey) => set({ taskMapSelectedNode: nodeKey }),
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 

@@ -13,7 +13,7 @@
 | [`protocol/`](#protocol) | 10 `.py` | 6 | ✅ 核心完成 | [AGENT.md](../protocol/AGENT.md) |
 | [`aegisos_agents/`](#agents) | 99 `.py` | Python 全量回归的一部分 | ✅ 核心算法完成 / ✅ SDK S1-S4+R4-R6 / ✅ 编排器 / ✅ Plan+Goal+ReAct 范式 / ✅ P2 感知/记忆/工具补全 | [AGENT.md](../aegisos_agents/AGENT.md) |
 | [`backend/`](#backend) | 20+ `.py` | — | ✅ REST+WS+SSE+DB 可用 / ✅ 攻防端点 F | [AGENT.md](../backend/AGENT.md) |
-| [`frontend/`](#frontend) | 35+ `.ts/.tsx` | 24 | ✅ Chat/攻防/Canvas/Monitor/Graph/Replay/端边云配置演示 | [AGENT.md](../frontend/AGENT.md) |
+| [`frontend/`](#frontend) | 35+ `.ts/.tsx` | 24 | ✅ Chat/攻防/TaskMap/Monitor/演练历史/端边云配置演示 | [AGENT.md](../frontend/AGENT.md) |
 | [`infrastructure/`](#infrastructure) | 15+ `.py` | 50+ | ✅ 节点/注册/派发/JSON-TCP/Docker 沙箱基础；🔲 真实容器实测 | [AGENT.md](../infrastructure/AGENT.md) |
 | [`observability/`](#observability) | 10+ `.py` | 41 | ✅ H5 完成（监控/回放/基准/评测/可视化） | [AGENT.md](../observability/AGENT.md) |
 | [`data/`](#data) | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现 + ATT&CK 数据集 + memory 对接） | [AGENT.md](../data/AGENT.md) |
@@ -221,8 +221,8 @@
 - 自动滚动
 
 ### 当前状态
-- ✅ Canvas/Monitor/Replay 已有演示版基础视图，设置页支持 API/Provider、API URL、Model name
-- 🔲 拖拽编辑、实时告警、播放控制、快照恢复和后端 DAG 持久化
+- ✅ TaskMap（Graph+Canvas 合并）/ Monitor / 演练历史 基础视图；设置页支持 API/Provider、API URL、Model name
+- 🔲 拖拽编辑、实时告警、后端 DAG 持久化
 
 📎 详细文档：[`frontend/AGENT.md`](../frontend/AGENT.md) 末尾「📋 模块实现详解」
 

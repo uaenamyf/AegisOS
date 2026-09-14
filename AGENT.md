@@ -245,7 +245,7 @@ frontend/services ← 调用 backend REST API
 ### 4. `frontend/` — 表现层（React + Vite）
 
 #### 是什么
-AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视图（Chat / Canvas / Graph / Monitor / Replay）。
+AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 6 个视图（Chat / Task Map / Monitor / Cyber Defense / 演练历史 / 运行配置）。
 
 #### 做了什么
 - **类型系统**：`gen_ts_types.py` 自动生成的 36 个 TS 类型
@@ -255,10 +255,10 @@ AI Native IDE 前端，采用 Controller-Service-Lib + Views 模式 + 5 个视�
 - **实时通信**：SSE + WebSocket 封装
 - **ChatView 完整实现**：Agent 选择 + 消息收发 + 任务提交 + 状态轮询 + 自动滚动
 - **攻防视图（4 面板）**：RedTeamPanel（攻击链 DAG）+ BlueTeamPanel（防御看板）+ PurpleTeamPanel（时序回放）+ ThreatIntelPanel（ATT&CK 情报表）
-- **5 个视图骨架**：chat ✅ / cyber ✅ / canvas 🔲 / monitor 🔲 / replay 🔲
+- **TaskMapView（R21）**：Graph+Canvas 合并为「任务图」——Chat 对话流 / Cyber 演练流双模式切换，点节点查看 Agent 输入/输出，演练随新一轮自动刷新并支持历史回看
 
 #### 未实现
-- 🔲 CanvasView / MonitorView / ReplayView（replay 数据源 H5.2 已完成）
+- 🔲 TaskMapView 拖拽编辑与后端 DAG 持久化 / MonitorView 实时告警对接
 
 📎 架构 + ChatView 详解：[`frontend/AGENT.md`](frontend/AGENT.md) · 计划：[`plans/13_FRONTEND_BACKEND_PLAN.md`](developer/specs/plans/13_FRONTEND_BACKEND_PLAN.md)
 

@@ -2,6 +2,43 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [R21-TASKMAP] 2026-09-14 Graph+Canvas 合并为「任务图」+ Replay 移除
+
+### 用户诉求
+1. 只要验证路由是否正常（不做本地 Ollama）
+2. 去掉 Replay（历史回顾统一走「演练历史」+ 任务图回看）
+3. Graph / Canvas 对用户不友好 → 合并成一个图，点节点看 Agent 输入/输出（低代码风格）
+4. Chat 与 Cyber Defense 在同一页面用切换按钮区分，随不同任务整体刷新（不堆叠）
+5. 支持查看历史演练记录供回顾
+
+### 路由验证结论（本轮实测）
+- 后端 `real` 模式运行，三节点（device/edge/cloud）全部 online，`/api/v1/drill/{id}` 的
+  `phase` 字段真实决策：red→device、blue→edge、purple→cloud（R20 自适应调度生效）
+- `pytest tests/infrastructure/nodes/test_node_registry.py tests/backend` → 82 passed
+- 本地 Ollama 按用户要求不做配置，路由维持 ARK 单端点 + 执行时调度
+
+### 修改
+- **新增** `frontend/src/views/taskmap/TaskMapView.tsx`（R21 合并视图）：
+  - 顶部 Chat 对话流 / Cyber Defense 演练流切换按钮（全局 store 记忆，切页不丢）
+  - Chat 模式：任务 DAG（含 Chat 发起的演练任务）+ 底部「对话记忆」条，5s 轮询随新问题刷新
+  - Cyber 模式：红→蓝→紫轮次图（含端边云落点徽标），4s 跟随 CyberDrillPanel 现场快照，
+    新一轮演练整体替换不堆叠；历史下拉可回看任意演练；点节点右侧看输入/输出
+- `frontend/src/protocol/frontend-types.ts` / `controllers/routes.ts`：视图收敛为 6 个
+  （chat/taskmap/monitor/cyber/drill-history/settings），旧名 graph/canvas/replay 自动迁移
+- `frontend/src/lib/store/index.ts`：新增 `taskMapMode` / `taskMapSelectedNode` 与 setter
+- 删除 `views/graph/`、`views/canvas/`、`views/replay/` 及 CanvasView 单测
+- `views/chat/ChatView.tsx`：演练快照 key `aegis.canvas.drill.*` → `aegis.taskmap.drill.*`，
+  超时文案指向任务图
+- `views/drill-history/DrillHistoryView.tsx`：新增「↗ 在任务图中查看」跳转（双向打通）
+- `e2e/`：modules-smoke/interactions 改为任务图巡检（模式切换 + 节点检视 + 历史选择器）
+
+### 验证
+- `npx tsc -b` 0 错误；`npm run build` 成功
+- 前端单测 50 passed（e2e/*.spec.ts 6 个文件级失败为 vitest 误扫 Playwright spec 的历史遗留）
+- Playwright 任务图相关 5 用例（含导航 6 项）全过
+
+## [DRILL-RESUME-FIX] 2026-09-14 切页状态恢复 + Stop 失效 + 端边云误报离线
+
 ## [DRILL-RESUME-FIX] 2026-09-14 切页状态恢复 + Stop 失效 + 端边云误报离线
 
 ### 用户症状

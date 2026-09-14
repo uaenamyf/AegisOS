@@ -13,14 +13,23 @@
 - **顶层结构**:frontend / backend / aegisos_agents / protocol / infrastructure / observability / data / tooling / docs / tests / developer
 - **规范入口**:`developer/plan.md`(任务清单)、`developer/CHANGELOG.md`、`AGENT.md`
 
-## 2. 当前状态(2026-09-12)
+## 2. 当前状态(2026-09-14)
 
 - **cyber-drill R1-R11 全部完成**;2026-09-12 追加可用性修复(CYBER-DRILL-USABILITY):
   - 阶段级 SSE `drill_stage` 事件(红/蓝/紫推进实时可见)
   - Chat 发起 → Cyber 面板接管(running 快照 + SSE 补订阅 + 终态展示)
   - 运行中 get_drill 返回实时轮次(修复 Chat 轮询误报超时)
   - 前端进度条「第 X/N 轮 · 当前阶段」
-- **验证基线**:Python 666 passed · 前端单测 52 passed · e2e drill-direct 通过(mock 1.9m)· tsc/vite build 成功
+- **2026-09-14 R21 前端视图收敛(TASKMAP)**:
+  - Graph + Canvas 合并为「任务图 TaskMap」(`views/taskmap/`):Chat 对话流 / Cyber 演练流
+    双模式切换;点节点看 Agent 输入/输出(低代码风格);演练随新一轮整体刷新不堆叠;
+    历史下拉回看;底部对话记忆条
+  - Replay / Canvas / Graph 视图与路由移除(6 个导航:Chat/Task Map/Monitor/Cyber Defense/演练历史/运行配置)
+  - 演练历史页新增「↗ 在任务图中查看」跳转;ChatView 快照 key 迁移为 aegis.taskmap.drill.*
+  - 路由验证:三节点 online、real 模式、phase 决策 red→device/blue→edge/purple→cloud 正常;
+    本地 Ollama 按用户要求不配置
+- **验证基线**:Python 82 passed(路由相关)· 前端单测 50 passed · tsc/vite build 成功 ·
+  Playwright 任务图 5 用例通过
 - **注意**:本目录当前**不是 git 仓库**(`.git` 不存在,与 9-04 handoff 记录的 `1cd9ffe` 不符,可能仓库在别处或未初始化;待用户确认)
 
 ## 3. 下一步优先级

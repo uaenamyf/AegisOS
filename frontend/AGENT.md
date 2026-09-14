@@ -86,7 +86,7 @@ REST + WebSocket + SSE；详见 developer/specs/05_API_SPEC.md。
 - **frontend/src/controllers/** — 控制器：接收用户交互与后端推送事件，参数校验，调用 service，分发到 views。不含业务逻辑。对应后端 `routers/`。
 - **frontend/src/services/** — 服务：前端业务逻辑核心。`api/`(REST 调用)、`realtime/`(WS/SSE 连接管理)、`session/`+`graph/`(状态编排)。对应后端 `services/`。
 - **frontend/src/lib/** — 基础设施：`api-client/`(HTTP 客户端封装，对应后端 `core/` 网关职责)、`store/`(Zustand 全局状态，对应后端 `core/composition.py` 运行时状态)。对应后端 `core/` + `repositories/`。
-- **frontend/src/views/** — 视图：按功能特性的 UI 组件。`chat/`(Agent 对话)、`canvas/`(任务画布)、`graph/`(动态图可视化)、`monitor/`(Agent 监控)、`replay/`(回放时间线)。
+- **frontend/src/views/** — 视图：按功能特性的 UI 组件。`chat/`(Agent 对话)、`taskmap/`(任务图——Graph+Canvas 合并，Chat/Cyber 双模式)、`cyber/`(攻防演练)、`monitor/`(Agent 监控)、`drill-history/`(演练历史)。
 - **frontend/src/protocol/** — 类型定义：`types.ts`(自动生成，经 `tooling/scripts/gen_ts_types.py`) + `frontend-types.ts`(手维护前端本地类型)。对应后端 `protocol/`。
 - **frontend/src/protocol/** — 类型定义：`types.ts`(自动生成) + `frontend-types.ts`(手维护前端本地类型)。
 
@@ -209,15 +209,13 @@ frontend/
 
 | 视图 | 路由 | 状态 | 说明 |
 |------|------|------|------|
-| **ChatView** | `chat` | ✅ 完整实现 | Agent 对话 + 任务提交 |
-| **攻防视图 4 面板** | `cyber` | ✅ 完整实现 | RedTeamPanel + BlueTeamPanel + PurpleTeamPanel + ThreatIntelPanel |
-| CanvasView | `canvas` | ✅ 演示版 DAG | 依赖分层、状态筛选和任务详情 |
+| **ChatView** | `chat` | ✅ 完整实现 | Agent 对话 + 任务提交（对话是记忆的载体） |
+| **攻防视图 4 面板** | `cyber` | ✅ 完整实现 | RedTeamPanel + BlueTeamPanel + PurpleTeamPanel + ThreatIntelPanel + 自动演练 |
+| **TaskMapView** | `taskmap` | ✅ R21 实现 | Graph+Canvas 合并：Chat 对话流 / Cyber 演练流双模式切换，点节点看 Agent 输入输出，演练历史回看 |
 | MonitorView | `monitor` | ⚠️ 基础看板 | 节点面板/调度沙盒已接入，实时监控仍待深化 |
-| ReplayView | `replay` | ⚠️ 基础列表 | 事件列表已接入，播放控制与快照恢复仍待深化 |
+| DrillHistoryView | `drill-history` | ✅ 完整实现 | 演练档案回看 + 导出 + 「在任务图中查看」跳转 |
 
 ### 当前未完成
 
-- 🔲 CanvasView：拖拽编辑和后端 DAG 持久化（演示版已完成只读交互）
+- 🔲 TaskMapView：拖拽编辑和后端 DAG 持久化（当前为只读交互 + 实时刷新）
 - 🔲 MonitorView：实时告警/响应状态对接
-- 🔲 ReplayView：播放控制与快照恢复
-- 🔲 GraphView：动态拓扑图交互

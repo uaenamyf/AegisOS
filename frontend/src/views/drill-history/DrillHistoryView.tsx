@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { routeController } from "@/controllers/routes";
+import { useAppStore } from "@/lib/store";
 import { cyberApi } from "@/services/api/cyber";
 import type { AgentTraceEntry, DrillMeta, DrillRecord } from "@/protocol/types";
 
@@ -140,7 +142,20 @@ export function DrillHistoryView() {
             <>
               <div className="drill-history__detail-head">
                 <div><span className="eyebrow">当前演练</span><h3>{selected.drill_id}</h3><p>{selected.target_range}</p></div>
-                <button type="button" className="drill-history__report" onClick={() => void downloadReport()} disabled={reportLoading}>{reportLoading ? "导出中…" : "↓ 导出 Markdown"}</button>
+                <div className="drill-history__actions">
+                  <button
+                    type="button"
+                    className="drill-history__report"
+                    onClick={() => {
+                      routeController.goTo("taskmap");
+                      useAppStore.getState().setTaskMapMode("cyber");
+                      useAppStore.getState().setTaskMapSelectedNode(selected.drill_id);
+                    }}
+                  >
+                    ↗ 在任务图中查看
+                  </button>
+                  <button type="button" className="drill-history__report" onClick={() => void downloadReport()} disabled={reportLoading}>{reportLoading ? "导出中…" : "↓ 导出 Markdown"}</button>
+                </div>
               </div>
               <div className="drill-history__summary">
                 <div><span>状态</span><strong>{statusLabel(selected.convergence_code)}</strong></div>

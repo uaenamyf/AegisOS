@@ -1,14 +1,12 @@
 import { useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import { DemoSidebar } from "@/views/layout/DemoSidebar";
-import { CanvasView } from "@/views/canvas";
 import { ChatView } from "@/views/chat";
 import { CyberView } from "@/views/cyber";
-import { GraphView } from "@/views/graph";
-import { MonitorView } from "@/views/monitor";
-import { ReplayView } from "@/views/replay";
-import { DemoSettingsView } from "@/views/settings/DemoSettingsView";
 import { DrillHistoryView } from "@/views/drill-history";
+import { MonitorView } from "@/views/monitor";
+import { DemoSettingsView } from "@/views/settings/DemoSettingsView";
+import { TaskMapView } from "@/views/taskmap";
 import { eventController } from "@/controllers/events";
 import { agentApi } from "@/services/api/agents";
 import { graphService } from "@/services/graph";
@@ -16,13 +14,11 @@ import { sessionService } from "@/services/session";
 import type { ViewName } from "@/protocol/frontend-types";
 
 const VIEWS: Record<ViewName, () => JSX.Element> = {
-  canvas: CanvasView,
   chat: ChatView,
+  taskmap: TaskMapView,
   cyber: CyberView,
   "drill-history": DrillHistoryView,
-  graph: GraphView,
   monitor: MonitorView,
-  replay: ReplayView,
   settings: DemoSettingsView,
 };
 

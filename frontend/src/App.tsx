@@ -5,14 +5,12 @@
 import { useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import { Sidebar } from "@/views/layout";
-import { CanvasView } from "@/views/canvas";
 import { ChatView } from "@/views/chat";
 import { CyberView } from "@/views/cyber";
 import { DrillHistoryView } from "@/views/drill-history";
-import { GraphView } from "@/views/graph";
 import { MonitorView } from "@/views/monitor";
-import { ReplayView } from "@/views/replay";
 import { SettingsView } from "@/views/settings";
+import { TaskMapView } from "@/views/taskmap";
 import { eventController } from "@/controllers/events";
 import { agentApi } from "@/services/api/agents";
 import { taskApi } from "@/services/api/tasks";
@@ -21,13 +19,11 @@ import { sessionService } from "@/services/session";
 import type { ViewName } from "@/protocol/frontend-types";
 
 const VIEWS: Record<ViewName, () => JSX.Element> = {
-  canvas: CanvasView,
   chat: ChatView,
+  taskmap: TaskMapView,
   cyber: CyberView,
   "drill-history": DrillHistoryView,
-  graph: GraphView,
   monitor: MonitorView,
-  replay: ReplayView,
   settings: SettingsView,
 };
 
@@ -59,7 +55,7 @@ export default function App() {
     };
   }, []);
 
-  const ActiveView = VIEWS[activeView] ?? CanvasView;
+  const ActiveView = VIEWS[activeView] ?? ChatView;
 
   return (
     <div className="app">

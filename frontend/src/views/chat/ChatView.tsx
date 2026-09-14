@@ -88,7 +88,7 @@ function syncDrillTasks(drillId: string, targetRange: string, rounds: any[], don
   const store = useAppStore.getState();
   tasks.forEach((task) => store.upsertTask(task));
   try {
-    sessionStorage.setItem(`aegis.canvas.drill.${drillId}`, JSON.stringify(tasks));
+    sessionStorage.setItem(`aegis.taskmap.drill.${drillId}`, JSON.stringify(tasks));
   } catch { /* 页面存储不可用时仍保留当前会话内的实时任务 */ }
 }
 
@@ -100,7 +100,7 @@ async function waitForTask(taskId: string): Promise<{ status?: string; result?: 
     }
     await new Promise((resolve) => window.setTimeout(resolve, 250));
   }
-  throw new Error("任务执行超时，请到 Canvas 查看后台状态");
+  throw new Error("任务执行超时，请到任务图查看当前状态");
 }
 
 // date: 2026-08-17

@@ -10,7 +10,7 @@
 // UI / API-client types that are not part of the global protocol contract.
 
 /** Routed views. 'chat' is the default landing view. */
-export type ViewName = 'chat' | 'canvas' | 'graph' | 'monitor' | 'replay' | 'cyber' | 'drill-history' | 'settings';
+export type ViewName = 'chat' | 'taskmap' | 'monitor' | 'cyber' | 'drill-history' | 'settings';
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error';
 
