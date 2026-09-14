@@ -838,6 +838,17 @@ interface DrillSnapshot {
   rounds: DrillRound[];
   summary: DrillSummaryResponse | null;
   reportMd: string | null;
+  /** R19f：切页恢复进度——CoT 轨迹 / 当前阶段 / 已运行时长 / 服务端总轮数一并入快照 */
+  agentTrace: Array<{
+    round: number;
+    stage: string;
+    agent: string;
+    label: string;
+    ts: number;
+  }>;
+  stage: "red" | "blue" | "purple" | null;
+  elapsed: number;
+  liveMaxRounds: number | null;
 }
 
 function loadSnapshot(): DrillSnapshot | null {
@@ -906,7 +917,6 @@ export function CyberDrillPanel() {
   const [summary, setSummary] = useState<DrillSummaryResponse | null>(
     initialSnapshot?.summary ?? null,
   );
-  const [expandedRound, setExpandedRound] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reportMd, setReportMd] = useState<string | null>(
     initialSnapshot?.reportMd ?? null,
@@ -915,15 +925,20 @@ export function CyberDrillPanel() {
   const [reportLoading, setReportLoading] = useState(false);
   const [stopping, setStopping] = useState(false);
   // 阶段级进度：当前执行中的阶段（red|blue|purple），由 SSE drill_stage 事件驱动
-  const [stage, setStage] = useState<"red" | "blue" | "purple" | null>(null);
+  const [stage, setStage] = useState<"red" | "blue" | "purple" | null>(
+    initialSnapshot?.stage ?? null,
+  );
   // CoT/ToT 可视化：agent 级推理时间线（第几轮 · 哪个队 · 哪个 agent 正在做什么）
   const [agentTrace, setAgentTrace] = useState<
     Array<{ round: number; stage: string; agent: string; label: string; ts: number }>
-  >([]);
+  >(initialSnapshot?.agentTrace ?? []);
   // 演练已运行时长（秒）——running 期间每秒跳动，缓解“不知道在等什么”
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(initialSnapshot?.elapsed ?? 0);
   // 真实总轮数：以服务端为准（Chat 发起时轮数可与本地输入框不同）
-  const [liveMaxRounds, setLiveMaxRounds] = useState<number | null>(null);
+  const [liveMaxRounds, setLiveMaxRounds] = useState<number | null>(
+    initialSnapshot?.liveMaxRounds ?? null,
+  );
+  const [expandedRound, setExpandedRound] = useState<number | null>(null);
 
   // CoT 时间线自动滚动到底部
   const cotRef = useRef<HTMLDivElement | null>(null);
@@ -950,6 +965,23 @@ export function CyberDrillPanel() {
         const rec = await cyberApi.getDrill(id);
         setRounds(rec.rounds ?? []);
         if (rec.summary) setSummary(rec.summary);
+        // 断线兼底路径下同样要恢复 CoT 时间线与当前阶段，否则界面停在
+        // 「等待首个 agent 启动」而实际演练早已推进
+        if (Array.isArray(rec.agent_trace) && rec.agent_trace.length > 0) {
+          setAgentTrace(
+            rec.agent_trace.slice(-60).map((a) => ({
+              round: Number(a.round ?? rec.current_round ?? 1) || 1,
+              stage: String(a.stage ?? ""),
+              agent: String(a.agent ?? ""),
+              label: String(a.label ?? a.agent ?? ""),
+              ts: Number(a.ts ?? 0),
+            })),
+          );
+        }
+        const stg = rec.current_stage;
+        if (rec.status === "running" && (stg === "red" || stg === "blue" || stg === "purple")) {
+          setStage(stg);
+        }
         if (rec.summary || rec.convergence_code === "aborted") {
           setPhase(rec.convergence_code === "aborted" ? "aborted" : "done");
           return;
@@ -981,16 +1013,17 @@ export function CyberDrillPanel() {
       const stg = String(ev.data?.stage ?? "");
       const ag = String(ev.data?.agent ?? "");
       if (stg && ag) {
-        setAgentTrace((prev) => [
-          ...prev.slice(-59),
-          {
-            round: Number(ev.data?.round ?? rounds.length + 1) || rounds.length + 1,
-            stage: stg,
-            agent: ag,
-            label: String(ev.data?.label ?? ag),
-            ts: Number(ev.data?.ts ?? Date.now() / 1000),
-          },
-        ]);
+        const round = Number(ev.data?.round ?? rounds.length + 1) || rounds.length + 1;
+        const ts = Number(ev.data?.ts ?? Date.now() / 1000);
+        setAgentTrace((prev) => {
+          // 去重：切页返回时 get_drill 预填与 SSE 历史重放会给出同一步，
+          // 时间戳 + agent 唯一确定一步，重复到达不追加
+          if (prev.some((e) => e.agent === ag && e.ts === ts)) return prev;
+          return [
+            ...prev.slice(-59),
+            { round, stage: stg, agent: ag, label: String(ev.data?.label ?? ag), ts },
+          ];
+        });
       }
     } else if (ev.name === "drill_round") {
       const round = ev.data as unknown as DrillRound;
@@ -1006,9 +1039,11 @@ export function CyberDrillPanel() {
     } else if (ev.name === "drill_done") {
       setStage(null);
       setPhase("done");
+      setStopping(false);
     } else if (ev.name === "drill_error") {
       setStage(null);
       setPhase("error");
+      setStopping(false);
     }
   }, [rounds.length]);
 
@@ -1089,6 +1124,12 @@ export function CyberDrillPanel() {
     }
   }, [stopping, setCyberError]);
 
+  // R19f：演练结束（含兑底轮询发现 summary/aborted）时复位 stopping，
+  // 否则按钮永远停在「停止中…」，无法开始下一轮。
+  useEffect(() => {
+    if (phase !== "running") setStopping(false);
+  }, [phase]);
+
   /** 拉取并切换展示运行记录报告（每轮红/蓝/紫产物 + 卸载轨迹 + 收敛总结）。 */
   const handleViewReport = useCallback(async () => {
     const id = drillIdRef.current;
@@ -1117,18 +1158,33 @@ export function CyberDrillPanel() {
   }, [rounds.length]);
 
   // 结果持久化：drillId 存在时持续把最近一轮结果写入 sessionStorage，切 tab/刷新后恢复。
+  // R19f：阶段/CoT/耗时/总轮数一并入快照，切页回来立即还原进度，不再闪回空态。
   useEffect(() => {
     if (!drillId) {
       clearSnapshot();
       return;
     }
-    saveSnapshot({ drillId, phase, rounds, summary, reportMd });
-  }, [drillId, phase, rounds, summary, reportMd]);
+    saveSnapshot({
+      drillId,
+      phase,
+      rounds,
+      summary,
+      reportMd,
+      agentTrace,
+      stage,
+      elapsed,
+      liveMaxRounds,
+    });
+  }, [drillId, phase, rounds, summary, reportMd, agentTrace, stage, elapsed, liveMaxRounds]);
 
-  // 卸载清理：关闭 SSE + 停止轮询
+  // 卸载清理：关闭 SSE + 停止轮询。
+  // R19f：不再清 drillIdRef——StrictMode（vite dev）会模拟「挂载→卸载→再挂载」，
+  // ref 不会重新初始化，置空后切页回来 drillIdRef 永远为 null，
+  // 导致 Stop 读不到演练 ID（点了没反应）、兑底轮询直接 return
+  // （CoT 永远卡「等待首个 agent 启动」）、接管 effect 不订阅 SSE（UI 冻结）。
+  // drillIdRef 仅由 handleStart 写入新值，关闭连接本身就能阻止事件流入旧回调。
   useEffect(() => {
     return () => {
-      drillIdRef.current = null;
       closeDrillStreamRef.current?.();
     };
   }, []);
@@ -1174,18 +1230,30 @@ export function CyberDrillPanel() {
       .then((rec) => {
         if (cancelled || drillIdRef.current !== id) return;
         if (rec.status === "running") {
-          // 仍活着：补齐已有轮次 + 接管 SSE 直播；已耗时过长的演练（服务端
-          // 运行中但超过 30 分钟无落盘）视为僵死快照，不接管，避免永久转圈
-          const stale = rec.rounds.length === 0 && rec.max_rounds === undefined;
-          if (stale) {
-            clearSnapshot();
-            setPhase("idle");
-            setDrillId(null);
-            drillIdRef.current = null;
-            return;
-          }
+          // 仍活着：补齐已有轮次 + 接管 SSE 直播。
+          // R19f：不再用启发式误杀刚发起的演练——旧条件（rounds 为空且无
+          // max_rounds）在真实后端 get_drill 永远返回 max_rounds，等于永假；
+          // 接管后由 3s 兑底轮询持续对齐服务端状态，后端重启场景由下方
+          // .catch 404 自愈分支处理，无需在此猜测演练死活。
           if (rec.rounds.length > 0) setRounds(rec.rounds);
           if (rec.max_rounds) setLiveMaxRounds(rec.max_rounds);
+          // 补齐切走期间错过的实时进度：阶段 / CoT 轨迹 / 已运行时长
+          const stg = rec.current_stage;
+          if (stg === "red" || stg === "blue" || stg === "purple") setStage(stg);
+          if (Array.isArray(rec.agent_trace) && rec.agent_trace.length > 0) {
+            setAgentTrace(
+              rec.agent_trace.slice(-60).map((a) => ({
+                round: Number(a.round ?? rec.current_round ?? 1) || 1,
+                stage: String(a.stage ?? ""),
+                agent: String(a.agent ?? ""),
+                label: String(a.label ?? a.agent ?? ""),
+                ts: Number(a.ts ?? 0),
+              })),
+            );
+          }
+          if (Number.isFinite(rec.elapsed)) {
+            setElapsed(Math.max(0, Math.round(Number(rec.elapsed))));
+          }
           subscribeDrill(id);
         } else {
           // 已结束（后台可能已落盘）：直接展示终态结果
@@ -1217,6 +1285,69 @@ export function CyberDrillPanel() {
   }, []);
 
   const running = phase === "running";
+
+  // SSE 兜底轮询：running 期间每 3s 拉一次服务端实时状态。
+  // 实测部分浏览器环境下 EventSource 连接建立（HTTP 200、服务端正常推流）
+  // 但帧不触发任何回调且不触发 onerror，导致 CoT/进度条永远停在初始态；
+  // 以 REST 状态（agent_trace/current_stage/rounds/elapsed）为事实源兜底，
+  // 保证无论 SSE 是否工作，界面都必然推进。
+  useEffect(() => {
+    if (!running) return;
+    const id = drillIdRef.current;
+    if (!id) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const rec = await cyberApi.getDrill(id);
+        if (cancelled || drillIdRef.current !== id) return;
+        if (rec.rounds.length > 0) {
+          setRounds((prev) =>
+            rec.rounds.length > prev.length ? rec.rounds : prev,
+          );
+        }
+        const stg = rec.current_stage;
+        if (
+          rec.status === "running" &&
+          (stg === "red" || stg === "blue" || stg === "purple")
+        ) {
+          setStage(stg);
+        }
+        if (Array.isArray(rec.agent_trace) && rec.agent_trace.length > 0) {
+          setAgentTrace(
+            rec.agent_trace.slice(-60).map((a) => ({
+              round: Number(a.round ?? rec.current_round ?? 1) || 1,
+              stage: String(a.stage ?? ""),
+              agent: String(a.agent ?? ""),
+              label: String(a.label ?? a.agent ?? ""),
+              ts: Number(a.ts ?? 0),
+            })),
+          );
+        }
+        if (Number.isFinite(rec.elapsed)) {
+          setElapsed(Math.max(0, Math.round(Number(rec.elapsed))));
+        }
+        if (rec.summary) {
+          setStage(null);
+          setSummary(rec.summary);
+          setPhase(rec.convergence_code === "aborted" ? "aborted" : "done");
+        } else if (
+          rec.status === "aborted" ||
+          rec.convergence_code === "aborted"
+        ) {
+          setStage(null);
+          setPhase("aborted");
+        }
+      } catch {
+        /* 后端瞬时不可达：下一轮重试，SSE 仍是主通道 */
+      }
+    };
+    void tick();
+    const t = window.setInterval(() => void tick(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [running]);
 
   return (
     <div className="cyber-panel cyber-drill">

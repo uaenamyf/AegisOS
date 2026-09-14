@@ -20,9 +20,16 @@ export interface InfraNode {
   last_latency_ms?: number | null;
 }
 
-/** 后端 status → 前端 online 布尔 */
+/** 后端 status → 前端 online 布尔。
+ *
+ * R19f：只信任后端状态机的 offline 判定，不再重复阈值判断——
+ * 旧条件 `consecutive_failures < 2` 与后端 fail_threshold=3 并行生效，
+ * 会把「后端仍认为在线、但连续探活过 1 次失败」的节点提前显示为离线，
+ * 造成 Monitor 端边云全断联的误报（实际上后端三节点同指向同一 API 端点，
+ * 一次网络抖动会同时抬高三者的 consecutive_failures）。
+ */
 export function isOnline(node: InfraNode): boolean {
-  return node.status !== "offline" && node.consecutive_failures < 2;
+  return node.status !== "offline";
 }
 
 export interface DispatchResult {

@@ -92,6 +92,32 @@ export function decayAgentActivity(): void {
   /* 纯事件驱动：无定时衰减 */
 }
 
+/**
+ * 断线自愈：后端重连成功时调用。
+ *
+ * 后端重启/崩溃期间演练中断，"drill.status=done" 结束事件永远不会再送达，
+ * Agent 会永久卡在"执行中"（纯事件驱动无超时，这是与 30-90s 真实单步时长的
+ * 权衡）。重连后旧会话不可能再推进，统一切回 idle 并清空演练运行标记，
+ * 使 Monitor 状态条同步复位。
+ */
+export function resetStaleActivity(): void {
+  let changed = false;
+  for (const [agent, rec] of tracked) {
+    if (rec.status === "running") {
+      tracked.set(agent, { ...rec, status: "idle" });
+      changed = true;
+    }
+  }
+  activeAgentByDrill.clear();
+  for (const [drillId, status] of drillStates) {
+    if (status === "running") {
+      drillStates.set(drillId, "done");
+      changed = true;
+    }
+  }
+  if (changed) notify();
+}
+
 /** 订阅变化（Monitor 组件挂载时） */
 export function subscribeAgentActivity(fn: () => void): () => void {
   subscribers.add(fn);

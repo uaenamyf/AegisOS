@@ -14,9 +14,12 @@
 - ``POST /api/v1/drill/{id}/abort`` —— 请求中止（收敛规则 4）。
 
 并发模型（评审修订）：编排器为**同步**逻辑，不可直接 ``asyncio.create_task``
-（会阻塞事件循环）。这里用 ``asyncio.to_thread`` 把同步编排放到线程池，
-每轮经**线程安全** ``queue.Queue`` + ``asyncio.to_thread(q.get)`` 回传给 SSE，
-既不阻塞 FastAPI 事件循环，也保持 SSE 流式响应模型。
+（会阻塞事件循环）。这里用 ``asyncio.to_thread`` 把同步编排放到线程池。
+
+事件回传采用**可重放的事件历史**（``_history`` + ``threading.Condition``），
+而非旧的单消费 ``queue.Queue``：SSE 订阅者按 cursor 增量读取，先回放历史再等
+待新事件，因此「切走再切回」「Chat 发起后面板接管」等任意时刻接入都能看到
+完整的已发生过程。
 """
 
 from __future__ import annotations
@@ -24,7 +27,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-import queue
 import threading
 import time
 import uuid
@@ -67,17 +69,61 @@ class DrillRuntime:
         self.service = service
         # R9: 事件总线注入；None 时取全局 composition 单例（/events SSE 可订阅）
         self.event_bus = event_bus if event_bus is not None else get_composition().event_bus
-        self.events: queue.Queue[dict[str, Any]] = queue.Queue()
+        # 事件历史 + 条件变量：替代旧的单消费队列。
+        # 旧实现用 queue.Queue，事件一旦被某个 SSE 连接消费即丢失，导致
+        # 「切走再切回 / Chat 发起后面板接管」时新订阅者只能收到未来的事件，
+        # 已经发生过的 drill_start / drill_stage / drill_agent 永远收不到，
+        # 前端 CoT 时间线空白、卡在「等待首个 agent 启动」。
+        # 现在所有事件留档在 _history，订阅者按 cursor 增量读取：先回放历史，
+        # 再阻塞等待新事件，任意时刻接入都能看到完整推理过程。
+        self._history: list[dict[str, Any]] = []
+        self._cond = threading.Condition()
         # 运行中轮次内存暂存：get_drill 在记录落盘前也能返回实时进度
         self.rounds: list[dict[str, Any]] = []
         self.abort_evt = threading.Event()
         self.state = "running"  # running | done | aborted
         self.summary: dict[str, Any] | None = None
         self.error: str | None = None
+        # 实时进度快照：供 get_drill 在「切页返回」时恢复阶段/轮次/耗时
+        self.current_round = 0
+        self.current_stage: str | None = None
+        self.started_at = time.time()
 
     def emit(self, event: str, data: dict[str, Any]) -> None:
-        """把一条 SSE 事件投递到线程安全队列。"""
-        self.events.put({"event": event, "data": data})
+        """把一条 SSE 事件写入历史并唤醒所有订阅者（支持任意时刻重放）。"""
+        with self._cond:
+            self._history.append({"event": event, "data": data})
+            self._cond.notify_all()
+
+    def wait_events(
+        self, cursor: int, timeout: float = 1.0
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """返回 ``cursor`` 之后的事件批次。
+
+        无新事件时阻塞至多 ``timeout`` 秒。第二个返回值表示流已终止
+        （编排线程已结束且历史排空），调用方据此关闭 SSE。
+        """
+        with self._cond:
+            if cursor >= len(self._history) and self.state == "running":
+                self._cond.wait(timeout=timeout)
+            batch = self._history[cursor:]
+            done = self.state != "running" and cursor + len(batch) >= len(
+                self._history
+            )
+            return batch, done
+
+    def agent_trace(self) -> list[dict[str, Any]]:
+        """从事件历史提取 CoT agent 轨迹，供 get_drill 返回。
+
+        前端切页返回时用它恢复「推理过程」时间线，不再空白显示
+        「等待首个 agent 启动」。
+        """
+        with self._cond:
+            return [
+                item["data"]
+                for item in self._history
+                if item["event"] == "drill_agent"
+            ]
 
     # ---- CoT/ToT 可视化：agent 级事件 ----
 
@@ -101,6 +147,7 @@ class DrillRuntime:
             "stage": stage,
             "agent": agent,
             "label": self._AGENT_LABELS.get(agent, agent),
+            "round": self.current_round,
             "ts": time.time(),
         }
         self.emit("drill_agent", data)
@@ -112,6 +159,15 @@ class DrillRuntime:
                     payload=data,
                 )
             )
+
+    def _emit_stage(self, stage: str, round_no: int) -> None:
+        """记录当前阶段并推送阶段级事件（供切页返回后恢复进度）。"""
+        self.current_stage = stage
+        self.current_round = round_no or self.current_round
+        self.emit(
+            "drill_stage",
+            {"stage": stage, "round": round_no, "drill_id": self.drill_id},
+        )
 
     def _publish_status(self, status: str) -> None:
         """演练状态变更发布到全局总线（供 Monitor 派生活跃状态）。"""
@@ -134,6 +190,8 @@ class DrillRuntime:
 
             def on_round(round_data: dict[str, Any], round_no: int) -> None:
                 self.rounds.append(round_data)
+                self.current_round = round_no
+                self.current_stage = None
                 self.emit("drill_round", {"round": round_no, **round_data})
                 # R9: 低熵增量事件发布到 EventBus——payload 只含增量与摘要，
                 # 不含全量 AttackChain/ResponsePlan，抑制通信冗余。
@@ -186,10 +244,7 @@ class DrillRuntime:
                 abort=abort,
                 drill_id=self.drill_id,
                 min_rounds=_min_rounds,
-                on_stage=lambda stage, r: self.emit(
-                    "drill_stage",
-                    {"stage": stage, "round": r, "drill_id": self.drill_id},
-                ),
+                on_stage=lambda stage, r: self._emit_stage(stage, r),
                 on_agent=lambda stage, agent: self._emit_agent(
                     stage, agent
                 ),
@@ -271,11 +326,17 @@ async def stream_drill(drill_id: str) -> StreamingResponse:
     runtime = _get_runtime(drill_id)
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        """SSE 生成器：从线程安全队列消费事件。"""
+        """SSE 生成器：按 cursor 读取事件历史，先回放再等新增。
+
+        任意时刻接入（切页返回 / Chat 发起后接管）都能拿到已发生的全过程。
+        """
+        cursor = 0
         while True:
-            item = await asyncio.to_thread(runtime.events.get)
-            yield DrillRuntime._sse_frame(item["event"], item["data"])
-            if item["event"] == "drill_done":
+            batch, done = await asyncio.to_thread(runtime.wait_events, cursor)
+            for item in batch:
+                cursor += 1
+                yield DrillRuntime._sse_frame(item["event"], item["data"])
+            if done:
                 return
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -338,6 +399,11 @@ async def get_drill(drill_id: str, service: CyberDefenseServiceDep) -> dict[str,
         ),
         "summary": runtime.summary,
         "error": runtime.error,
+        # 切页返回时恢复实时进度：当前阶段 + CoT agent 轨迹 + 已进时间
+        "current_stage": runtime.current_stage,
+        "current_round": runtime.current_round,
+        "elapsed": round(time.time() - runtime.started_at, 1),
+        "agent_trace": runtime.agent_trace(),
     }
 
 

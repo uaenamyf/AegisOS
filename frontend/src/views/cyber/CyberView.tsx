@@ -23,9 +23,29 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "drill", label: "自动演练" },
 ];
 
+// 子标签记忆：切走再切回 Cyber 时停在用户上次看的 tab，而不是永远弹回默认页
+const CYBER_TAB_KEY = "aegiscybe…r_tab";
+function readCyberTab(): TabId {
+  try {
+    const v = window.sessionStorage.getItem(CYBER_TAB_KEY);
+    return TABS.some((t) => t.id === v) ? (v as TabId) : "drill";
+  } catch {
+    return "drill";
+  }
+}
+
 export function CyberView() {
   // 默认落在循环对抗 tab：产品定位是「一键多轮自动对抗」，红/蓝/紫为单链演示
-  const [activeTab, setActiveTab] = useState<TabId>("drill");
+  // 记忆上次所在子页（自动演练的运行中结果不会因切页丢失）
+  const [activeTab, setActiveTabState] = useState<TabId>(() => readCyberTab());
+  const setActiveTab = (t: TabId) => {
+    setActiveTabState(t);
+    try {
+      window.sessionStorage.setItem(CYBER_TAB_KEY, t);
+    } catch {
+      /* 存储不可用时静默降级 */
+    }
+  };
   const currentRange = useAppStore((s) => s.currentRange);
   const cyberError = useAppStore((s) => s.cyberError);
 

@@ -35,10 +35,12 @@ export class SseManager {
   private source: EventSource | null = null;
   private stream: string;
   private handlers = new Set<SseHandler>();
+  private reconnectHandlers = new Set<() => void>();
   private reconnectDelay = 1000;
   private maxReconnectDelay = 30000;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
+  private everConnected = false;
 
   constructor(stream = "all") {
     this.stream = stream;
@@ -47,6 +49,12 @@ export class SseManager {
   on(handler: SseHandler): () => void {
     this.handlers.add(handler);
     return () => this.handlers.delete(handler);
+  }
+
+  /** 注册"断线后重连成功"回调（首次连接成功不触发） */
+  onReconnected(handler: () => void): () => void {
+    this.reconnectHandlers.add(handler);
+    return () => this.reconnectHandlers.delete(handler);
   }
 
   connect(): void {
@@ -63,6 +71,11 @@ export class SseManager {
     source.onopen = () => {
       this.reconnectDelay = 1000;
       this.setStatus("connected");
+      // 断线后重连成功：通知订阅者做状态自愈（首次连接不触发）
+      if (this.everConnected) {
+        this.reconnectHandlers.forEach((fn) => fn());
+      }
+      this.everConnected = true;
     };
 
     // 命名事件分发：后端以 event: <topic> 帧推送，必须按主题监听。

@@ -7,6 +7,11 @@ Trace ID 中间件、健康检查/网关/WebSocket 路由挂载、统一错误�
 以及基于 lifespan 的数据库引擎初始化与释放。配置统一从
 :mod:`tooling.configs.settings` 读取，支持环境变量 > .env > defaults.yaml
 的多级覆盖。
+
+R19f：节点探活 fail_threshold 提升到 3——三节点常指向同一云端 API，
+一次网络抖动会同时抬高三者的 consecutive_failures，阈传 2 时一次抖动
+就会把端边云全部打成 offline（Monitor 误报断联，而演练走独立 LLM 客户端
+不受影响），阈值 3 需连续 45s 失败才判离线。
 """
 
 from __future__ import annotations
@@ -195,7 +200,7 @@ def _init_infra_service() -> None:
     from infrastructure.nodes.dispatcher import ExecutionDispatcher
     from infrastructure.nodes.registry import NodeRegistry
 
-    registry = NodeRegistry()
+    registry = NodeRegistry(fail_threshold=3)
 
     # 从配置文件加载节点，未配置的用 mock fallback 补全
     profiles, skipped = load_node_profiles()

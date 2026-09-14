@@ -3,7 +3,11 @@
 // R11: 端边云节点面板 —— 三张卡片展示 device/edge/cloud 在线状态
 
 import { useEffect, useState } from "react";
-import { infraApi, type InfraNode } from "@/services/api/infra";
+import {
+  infraApi,
+  isOnline as nodeIsOnline,
+  type InfraNode,
+} from "@/services/api/infra";
 
 const TIER_LABELS: Record<string, string> = {
   device: "端 (Device)",
@@ -34,7 +38,7 @@ const TIER_COLORS: Record<string, string> = {
 
 function isOnline(node: InfraNode | undefined): boolean {
   if (!node) return false;
-  return node.status !== "offline" && node.consecutive_failures < 2;
+  return nodeIsOnline(node);
 }
 
 export function InfraNodePanel() {

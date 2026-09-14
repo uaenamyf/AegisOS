@@ -2,6 +2,48 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [DRILL-RESUME-FIX] 2026-09-14 切页状态恢复 + Stop 失效 + 端边云误报离线
+
+### 用户症状
+1. 点「开始演练」后切到其他模块再回来，UI 不保持原状态
+2. Stop 点了没反应
+3. CoT 时间线一直显示「等待首个 agent 启动」（任务实际在推进）
+4. Monitor 端边云全部显示断联，但演练任务仍在跑
+
+### 根因
+- **1/2/3 同一条因果链**：`CyberDrillPanel` 卸载清理把 `drillIdRef.current` 置 null，
+  而 React StrictMode（vite dev）卸载重挂不重新初始化 ref → 切页回来后 ref 永远 null：
+  `handleStop` 读 null 直接 return（Stop 无反应）；3s 兑底轮询读 null 直接 return
+  （CoT 永远空态）；接管 effect 读 null 不订阅 SSE（UI 冻结，而演练仍在跑）。
+  叠加因素：快照只存轮次不存 agentTrace/stage/elapsed，切回瞬间也闪回空态。
+- **4**：三节点常指向同一云端 API，一次网络抖动同时抬高三者 consecutive_failures，
+  后端 fail_threshold=2 + 前端重复阈值 `<2` 并行生效 → 一次抖动约 30s 内全部误判离线；
+  演练走独立 LLM 客户端不经节点注册表，所以任务照常推进（表现即"都断联了还在跑"）。
+
+### 修改
+- `frontend/src/views/cyber/CyberDrillPanel.tsx`：
+  - 卸载清理不再置空 `drillIdRef`（仅关闭 SSE；ref 只由 handleStart 写新值）
+  - 快照增加 agentTrace/stage/elapsed/liveMaxRounds，切页回来立即还原进度
+  - drill_done/drill_error 复位 stopping，phase 离开 running 时兑底复位（修复
+    兑底轮询发现终态后按钮永久卡「停止中…」）
+  - 移除接管 effect 中永假/误伤的 stale 启发式：后端报 running 即接管
+    （后端重启场景由 404 自愈分支处理）
+- `frontend/src/services/api/infra.ts`：isOnline 只信后端 offline 判定，去掉重复阈值
+- `frontend/src/components/InfraNodePanel.tsx`：复用统一 isOnline（别名导入防冲突）
+- `backend/main.py`：NodeRegistry fail_threshold 2→3（需连续 45s 失败才判离线）
+- 新增 `frontend/src/views/cyber/__tests__/CyberDrillPanel.restore.test.tsx`（3 用例：
+  切回后 Stop 可用 / 兑底轮询存活 / CoT+阶段从服务端补齐）
+
+### 验证
+- `npx tsc --noEmit` 0 错误；前端单测 55 passed（e2e/*.spec.ts 6 个文件级失败为
+  Playwright spec 被 vitest 误扫的历史遗留，与本轮无关）
+- 新增回归测试 3 passed
+- `python -m pytest tests/infrastructure/nodes/test_node_registry.py tests/backend -q`
+  → 82 passed
+- 端边云探活实测：ARK /models 连发 10 次 10 通（133-738ms），一次抖动不再触发离线
+
+---
+
 ## [MEMORY-REFACTOR-4] 2026-09-13 记忆可视化：/memory/stats 端点 + Monitor 记忆面板
 
 ### 背景

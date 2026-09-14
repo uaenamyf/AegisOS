@@ -86,6 +86,44 @@ class TestDrillStream:
         resp = client.get("/api/v1/drill/drill-nope/stream", headers=_AUTH_HEADERS)
         assert resp.status_code == 404
 
+    def test_stream_replays_history_to_late_subscriber(self, client: TestClient):
+        """切走再切回：第二个订阅者中途接入仍须拿到已发生的全部事件。
+
+        旧实现用单消费 ``queue.Queue``，事件被第一个连接消费即丢失，导致
+        重连只能收到未来事件、CoT 时间线空白并卡在「等待首个 agent 启动」。
+        """
+        drill_id = _start_drill(client, max_rounds=3)
+
+        def _read_stream() -> list[str]:
+            with client.stream(
+                "GET", f"/api/v1/drill/{drill_id}/stream", headers=_AUTH_HEADERS
+            ) as resp:
+                assert resp.status_code == 200
+                body = resp.read().decode("utf-8")
+            return [ln.split("event: ")[1] for ln in body.splitlines() if ln.startswith("event: ")]
+
+        # 第一个连接：读完整场（把历史全部消费掉）
+        first = _read_stream()
+        assert first[-1] == "drill_done"
+
+        # 第二个连接：演练早已结束，仍须重放出完整生命周期
+        second = _read_stream()
+        assert second == first, "重放结果必须与首次订阅完全一致"
+        assert second.count("drill_start") == 1
+        assert second[-1] == "drill_done"
+
+    def test_get_drill_exposes_restore_snapshot(self, client: TestClient):
+        """get_drill 须返回前端「切页返回」恢复进度所需的字段。"""
+        drill_id = _start_drill(client, max_rounds=2)
+        time.sleep(2.0)
+        data = client.get(f"/api/v1/drill/{drill_id}", headers=_AUTH_HEADERS).json()
+        for key in ("status", "current_stage", "current_round", "elapsed", "agent_trace"):
+            assert key in data, f"get_drill 缺少恢复字段 {key}"
+        assert isinstance(data["agent_trace"], list)
+        assert data["agent_trace"], "mock 演练应产生 drill_agent 轨迹"
+        entry = data["agent_trace"][0]
+        assert {"stage", "agent", "label", "ts"} <= set(entry)
+
 
 class TestDrillQuery:
     """状态查询与总结端点。"""

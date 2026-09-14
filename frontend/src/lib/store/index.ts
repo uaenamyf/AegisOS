@@ -107,13 +107,31 @@ export interface AppState {
 
 const MAX_EVENTS = 500;
 
+// 视图切换记忆：activeView 落 sessionStorage，刷新/重进后停在用户最后所在页
+const VIEW_KEY = "aeg...eView";
+function readStoredView(): ViewName | null {
+  try {
+    const v = typeof window !== "undefined" ? window.sessionStorage.getItem(VIEW_KEY) : null;
+    return v ? (v as ViewName) : null;
+  } catch {
+    return null;
+  }
+}
+function writeStoredView(view: string): void {
+  try {
+    window.sessionStorage.setItem(VIEW_KEY, view);
+  } catch {
+    /* 隐私模式等存储不可用时静默降级 */
+  }
+}
+
 const initialState = {
   currentSession: null as Session | null,
   tasks: [] as Task[],
   agents: [] as Agent[],
   graph: { nodes: {}, edges: [] } as Graph,
   events: [] as Event[],
-  activeView: "chat" as ViewName,
+  activeView: readStoredView() ?? ("chat" as ViewName),
   connectionStatus: "disconnected" as ConnectionStatus,
   chatMessages: [] as ChatMessage[],
   isSending: false,
@@ -179,7 +197,10 @@ export const useAppStore = create<AppState>((set) => ({
 
   setEvents: (events) => set({ events }),
 
-  setActiveView: (view) => set({ activeView: view }),
+  setActiveView: (view) => {
+    writeStoredView(view);
+    set({ activeView: view });
+  },
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 

@@ -105,6 +105,77 @@ class TestDrillRoundEventPublish:
         assert events[0].payload["new_steps"] >= 1
 
 
+class TestDrillRuntimeReplay:
+    """DrillRuntime 事件历史可重放：运行中晚接入的订阅者不丢已发生事件。
+
+    对应线上症状「切走再切回，CoT 时间线空白 / 卡在等待首个 agent」。
+    """
+
+    def test_wait_events_replays_history_of_running_drill(self):
+        """state=running 时，新 cursor=0 的订阅者应立刻拿到全部历史。"""
+        from backend.mocks.event_bus import MockEventBusAPI
+        from backend.services.cyber_defense_service import CyberDefenseService
+
+        runtime = DrillRuntime(
+            CyberDefenseService(), "10.0.0.0/24", max_rounds=5, event_bus=MockEventBusAPI()
+        )
+        # 模拟编排已推进若干事件但尚未结束（真实 LLM 下单步 30-90s）
+        runtime.emit("drill_start", {"drill_id": runtime.drill_id, "max_rounds": 5})
+        runtime._emit_stage("red", 1)
+        runtime._emit_agent("red", "recon")
+        assert runtime.state == "running"
+
+        batch, done = runtime.wait_events(0, timeout=0.1)
+        assert done is False, "演练仍在运行时流不应终止"
+        assert [item["event"] for item in batch] == [
+            "drill_start",
+            "drill_stage",
+            "drill_agent",
+        ]
+        # 第二个订阅者（切页返回）从 0 接入，看到的历史完全一致
+        batch2, _ = runtime.wait_events(0, timeout=0.1)
+        assert [i["event"] for i in batch2] == [i["event"] for i in batch]
+        # 增量订阅只拿新增
+        batch3, _ = runtime.wait_events(len(batch), timeout=0.1)
+        assert batch3 == []
+
+    def test_agent_trace_and_stage_snapshot_survive_disconnect(self):
+        """agent_trace / current_stage 在 SSE 断开后仍可供 get_drill 恢复。"""
+        from backend.mocks.event_bus import MockEventBusAPI
+        from backend.services.cyber_defense_service import CyberDefenseService
+
+        runtime = DrillRuntime(
+            CyberDefenseService(), "10.0.0.0/24", max_rounds=5, event_bus=MockEventBusAPI()
+        )
+        runtime._emit_stage("blue", 2)
+        runtime._emit_agent("blue", "detector")
+        runtime._emit_agent("blue", "triage")
+
+        assert runtime.current_stage == "blue"
+        assert runtime.current_round == 2
+        trace = runtime.agent_trace()
+        assert [t["agent"] for t in trace] == ["detector", "triage"]
+        # round 随事件下发，前端恢复时间线时不需要再推断当前轮
+        assert all(t["round"] == 2 for t in trace)
+        assert all(t["label"] and t["ts"] > 0 for t in trace)
+
+    def test_stream_terminates_after_drill_done(self):
+        """演练结束后接入的订阅者应拿到完整历史并正常收尾（done=True）。"""
+        from backend.mocks.event_bus import MockEventBusAPI
+        from backend.services.cyber_defense_service import CyberDefenseService
+
+        runtime = DrillRuntime(
+            CyberDefenseService(), "10.0.0.0/24", max_rounds=5, event_bus=MockEventBusAPI()
+        )
+        runtime._run()  # 同步跑完
+        assert runtime.state == "done"
+        batch, done = runtime.wait_events(0, timeout=0.1)
+        names = [item["event"] for item in batch]
+        assert names[0] == "drill_start"
+        assert names[-1] == "drill_done"
+        assert done is True
+
+
 @pytest.fixture()
 def client():
     """API 级 fixture：重置 composition，用全局 EventBus。"""

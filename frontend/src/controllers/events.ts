@@ -4,7 +4,10 @@
 
 import { sseManager, wsManager } from "@/services/realtime";
 import { taskApi } from "@/services/api/tasks";
-import { handleAgentActivityEvent } from "@/services/agentActivity";
+import {
+  handleAgentActivityEvent,
+  resetStaleActivity,
+} from "@/services/agentActivity";
 import { useAppStore, type HitlPayload } from "@/lib/store";
 import type { Agent, Event, Task } from "@/protocol/types";
 
@@ -19,6 +22,10 @@ export const eventController = {
   start(): void {
     sseManager.connect();
     wsManager.connect();
+
+    // 断线自愈：后端重连成功后，清掉后端崩溃期间遗留的"Agent 执行中"
+    // 僵尸状态（其结束事件永远不会再来）
+    sseManager.onReconnected(() => resetStaleActivity());
 
     sseManager.on((event: Event) => {
       const refreshTasks = () => {

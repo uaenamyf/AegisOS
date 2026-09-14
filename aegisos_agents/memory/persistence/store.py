@@ -131,9 +131,15 @@ class MemoryPersistence:
         except (OSError, ValueError):
             return False
 
-        # 情景记忆（长期经验）——直接重建
+        # 情景记忆（长期经验）——直接重建；携带 embedding 的同步重建向量索引，
+        # 否则向量通道在持久化恢复后是"空转"的（vector_total 恒为 0）
         for p in self._restore_packets(raw.get("episodic")):
             store.episodic.add(p)
+            if getattr(p, "embedding", None):
+                try:
+                    store.vector.add(p)
+                except Exception:  # noqa: BLE001 —— 单条索引失败不阻断整体恢复
+                    pass
 
         # 工作记忆栈——按会话回填
         for sid, entries in (raw.get("working") or {}).items():

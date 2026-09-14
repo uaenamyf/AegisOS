@@ -432,6 +432,21 @@ export interface DrillRecord {
   /** 运行中轮询用：running | done | aborted（后端 DrillRuntime.state） */
   status?: string;
   error?: string | null;
+  /** 切页返回恢复用：当前阶段 / 当前轮 / 已进时间（秒）/ CoT agent 轨迹 */
+  current_stage?: string | null;
+  current_round?: number;
+  elapsed?: number;
+  agent_trace?: DrillAgentTraceEntry[];
+}
+
+/** CoT 推理时间线条目（后端 drill_agent 事件载荷）。 */
+export interface DrillAgentTraceEntry {
+  drill_id?: string;
+  stage: string;
+  agent: string;
+  label: string;
+  round?: number;
+  ts: number;
 }
 
 // T7: 历史演练元信息（GET /drill/list）
