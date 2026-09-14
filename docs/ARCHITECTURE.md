@@ -19,7 +19,7 @@
 | [`data/`](#data) | 9+ `.py` | 18 | ✅ H2 完成（InMemory/Neo4j/Qdrant 双实现 + ATT&CK 数据集 + memory 对接） | [AGENT.md](../data/AGENT.md) |
 | [`tooling/`](#tooling) | 4 `.py` | 0 | ✅ 3 个脚本可用 | [AGENT.md](../tooling/AGENT.md) |
 | [`developer/`](#developer) | 0 `.py` | — | ✅ 规范+roadmap 就位 | [AGENT.md](../developer/AGENT.md) |
-| [`tests/`](#tests) | 60+ `.py` | Python 594 + 前端 24 | ✅ 演示版全量回归通过 | — |
+| [`tests/`](#tests) | 60+ `.py` | Python 703 + 前端 50 | ✅ 标准回归与比赛专项通过 | — |
 
 ---
 

@@ -20,9 +20,9 @@
 | 维度 | 状态 |
 |------|------|
 | **当前阶段** | P5 ✅ · P6 ✅ · SDK 集成 S1-S4 ✅ · R2-R5 ✅ · F ✅ · G ✅ · H5 ✅ · AP1 ✅ · AP3 ✅ · AP4 Ask ✅ · **H2 数据层 ✅** |
-| **测试** | **666 passed**（Python 全量）· 前端 52 passed · e2e drill-direct 通过 · Vite build 成功 |
+| **测试** | **703 passed**（Python 全量）· 前端 50 passed · 真实 ARK Chat 3/3 · 真实单轮 Drill 完成 · Vite build/lint 成功 |
 | **已完成** | P0-P6 全部 ✅ · F 端点 ✅ · G 视图 ✅ · R1.1-R1.7 Protocol→Pydantic ✅ · R2-R5 SDK ✅ · H5 可观测 ✅ · AP1 Plan ✅ · AP3 Goal ✅ · AP4 Ask ✅ · AP2 ReAct（含集成收尾，2026-08-25）✅ · B3+E13 ✅ · H2 数据层 ✅ · P3 收尾 ✅ · 低熵广播检测 ✅ · P3.2 Router 业务接入（RouterAPI + executor 守卫，2026-08-25）✅ · **P3.3 CI/CD 流水线（ci.yml 3 jobs + Makefile 增强，2026-08-25）✅** · **P3.4.1-7x ruff baseline 全清 0 错（13 类规则，14→5 squash 重写为 Conventional Commits，2026-08-25）✅** · **P3.4.8 CI ruff 严格模式（移除 continue-on-error: true，2026-08-25）✅** · **P3.5 配置中心补全（environments/agents/models/prompts/deployment 7 yaml + EnvironmentConfig，2026-08-26）✅** |
-| **待完成** | 真实 Neo4j/Qdrant 在线集成测试 · Docker 镜像/沙箱真实启动验证；生产上线任务按演示范围跳过 |
+| **待完成** | 真实多轮 ARK 性能样本 · Docker 工具靶场完整攻防闭环 · 真实端边云网络联调 · Neo4j/Qdrant 在线集成测试；生产上线任务按演示范围跳过 |
 | **赛事截止** | 2026-09-15（XH-202631 荣耀·超长程群体智能） |
 
 ### 3 场景覆盖

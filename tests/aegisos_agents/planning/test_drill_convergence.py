@@ -145,7 +145,7 @@ def test_run_drill_multiround_converges():
 # ---------- R19：非收敛停止码的结论话术（不暗示失败） ----------
 
 def test_run_drill_max_rounds_conclusion_wording():
-    """跑满轮次上限时，结论应为「充分探索 N 轮、遗留 M 个待验证缺陷」。
+    """跑满轮次上限时，结论应为「充分探索 N 轮、遗留 M 个待验证缺口」。
 
     真实 LLM 模式下打满 max_rounds 是常态而非失败——措辞不得暗示"未收敛/
     未通过"，避免演示时被误读为系统故障（用户 2026-09-13 需求）。
@@ -155,8 +155,8 @@ def test_run_drill_max_rounds_conclusion_wording():
     assert result["convergence_code"] == "max_rounds"
     conclusion = result["summary"]["conclusion"]
     assert "充分探索 1 轮" in conclusion
-    assert "待验证缺陷" in conclusion
-    assert "max_rounds" in conclusion
+    assert "待验证缺口" in conclusion
+    assert "convergence_code" not in conclusion
     # 不暗示失败
     assert "未通过" not in conclusion
     assert "未收敛" not in conclusion
