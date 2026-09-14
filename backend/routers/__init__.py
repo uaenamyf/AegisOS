@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from backend.routers import (
     agents,
     attack,
+    chat,
     defense,
     drill,
     graph,
@@ -24,6 +25,8 @@ from backend.routers import (
 router = APIRouter()
 router.include_router(sessions.router)
 router.include_router(tasks.router)
+# R23: 普通对话真实推理端点
+router.include_router(chat.router)
 router.include_router(agents.router)
 router.include_router(memory.router)
 router.include_router(graph.router)

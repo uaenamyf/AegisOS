@@ -2,6 +2,45 @@
 
 > 所有变更记录于此。格式：`[阶段] 变更描述`。
 
+## [R23-CHAT-REAL] 2026-09-14 Chat 普通对话改走真实 LLM（修复固定 JSON + 云端徽标误报）
+
+### 用户反馈
+1. Chat 里问"总结当前系统情况"，得到的仍是固定 JSON 回答
+2. 消息徽标显示"云端推理"，与实际执行情况不符
+
+### 根因
+- 普通消息被 `POST /tasks` → `TaskService._select_agent` 兜底路由到 `recon` 等
+  攻防 Agent，Mock Provider 按 prompt 前缀命中预置响应表 → 恒定输出同一份 JSON
+- `ChatView` 演练完成消息 `tier` 硬编码 `"cloud"`；普通任务 tier 缺省也回退
+  cloud → "云端推理"徽标是前端猜的，不是真实派发结果
+
+### 修改
+- **新增** `backend/services/chat_service.py`（ChatService）：
+  - 规则意图分类（零 token）：drill / system_status / chat
+  - 上下文组装：MemoryStore.recall 记忆召回 + 会话近期消息；系统状态类问题注入
+    端边云节点与运行时模式实时快照；派生文本先过 `mask_sensitive` 脱敏
+  - 真实推理：复用 `ExecutionDispatcher`（隐私分级 + 级联升级 + 降级重试），
+    tier/node/model/latency/provider 全部来自真实派发结果
+  - 无 Key / mock / 节点不可用 → 显式降级：`tier=device`、`provider=mock-local`、
+    诚实中文提示，不再以假乱真
+- **新增** `backend/routers/chat.py`：`POST /api/v1/chat`（drill 意图短路返回
+  `drill_required_frontend`，演练绝不会被当普通对话答掉）
+- `backend/core/composition.py`：ChatService 挂组合根（延迟 provider 取
+  InfraService/MemoryStore/runtime_mode，避免导入环）
+- `frontend/src/services/api/chat.ts` 新建；`views/chat/ChatView.tsx` 普通消息
+  改走 `/chat`：删除任务轮询链路（waitForTask/taskApi/upsertTask），
+  徽标显示真实 tier + `厂商/模型 · 延迟 · 隐私备注`；演练完成消息的 tier
+  改按最后一轮真实 phase placement（红/蓝/紫）推导，不再硬编码 cloud
+
+### 验证
+- `pytest tests/backend/test_chat_service.py`（新增 4 用例）+ test_task_execution
+  + test_infra_endpoints → 全过
+- `npx tsc -b` 0 错误；前端单测 50 passed；`vite build` 成功
+- Playwright `e2e/chat-intent.spec.ts` 3 passed（澄清/非法网段/普通消息真实回答）
+- HTTP 实测（real 模式）："总结当前系统情况" → 云侧 ARK 真实推理 ~7.5s，
+  自然语言总结含 3/3 节点在线 + mock/real 模式 + 记忆召回的最近演练信息，
+  徽标如实显示 `云侧推理 · 火山方舟/ark-code-latest · 7458ms`
+
 ## [R21-TASKMAP] 2026-09-14 Graph+Canvas 合并为「任务图」+ Replay 移除
 
 ### 用户诉求

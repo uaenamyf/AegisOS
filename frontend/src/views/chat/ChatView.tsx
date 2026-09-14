@@ -1,11 +1,13 @@
 // date: 2026-06-27
 // dev: Claude Code (glm-5.2)
 // changelog: R5.3 加流式模式开关——Stream 开启时用 fetch SSE 实时展示 Agent 执行过程
+// R23 (2026-09-14): 普通对话改走后端 /chat 真实推理（端边云调度），
+// 不再经任务链被兜底路由到攻防 Agent 输出固定 JSON；tier 徽标按后端真实派发结果展示
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore, type ChatMessage, type HitlPayload } from "@/lib/store";
 import { humanApi } from "@/services/api/human";
-import { taskApi } from "@/services/api/tasks";
+import { chatApi } from "@/services/api/chat";
 import { cyberApi } from "@/services/api/cyber";
 import { parseChatIntent } from "@/services/intent/chatIntent";
 import { memoryApi } from "@/services/api/memory";
@@ -92,16 +94,7 @@ function syncDrillTasks(drillId: string, targetRange: string, rounds: any[], don
   } catch { /* 页面存储不可用时仍保留当前会话内的实时任务 */ }
 }
 
-async function waitForTask(taskId: string): Promise<{ status?: string; result?: Record<string, unknown> }> {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    const task = await taskApi.get(taskId);
-    if (["succeeded", "failed", "cancelled", "rolled_back"].includes(String(task.status))) {
-      return task;
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 250));
-  }
-  throw new Error("任务执行超时，请到任务图查看当前状态");
-}
+
 
 // date: 2026-08-17
 // dev: 陈子毅
@@ -179,7 +172,6 @@ export function ChatView() {
   const currentSession = useAppStore((s) => s.currentSession);
   const addChatMessage = useAppStore((s) => s.addChatMessage);
   const updateChatMessage = useAppStore((s) => s.updateChatMessage);
-  const upsertTask = useAppStore((s) => s.upsertTask);
   const appendEvent = useAppStore((s) => s.appendEvent);
   const setSending = useAppStore((s) => s.setSending);
   const setSelectedAgentId = useAppStore((s) => s.setSelectedAgentId);
@@ -327,38 +319,60 @@ export function ChatView() {
           ...(conclusion ? [`\n${conclusion}`] : []),
           `\n详细轮次证据可在「Cyber Defense / 演练历史 / 任务图」中查看。`,
         ].join("\n");
-        updateChatMessage(assistantMsgId, { content: resultText, status: "done", taskId: started.drill_id, tier: "cloud" });
+        // R23: 演练消息的 tier 徽标按最后一轮真实 phase placement（红→蓝→紫）显示，
+        // 不再硬编码 "cloud"
+        const lastPhase = rounds[rounds.length - 1]?.phase ?? {};
+        const phaseTier = ["red", "blue", "purple"]
+          .map((p) => lastPhase[p]?.tier)
+          .filter(Boolean);
+        const drillTier = phaseTier.length
+          ? (phaseTier.includes("device") ? "device" : phaseTier.includes("edge") ? "edge" : "cloud")
+          : "";
+        const drillNote = phaseTier.length
+          ? `阶段执行位置 红:${lastPhase.red?.tier ?? "—"} 蓝:${lastPhase.blue?.tier ?? "—"} 紫:${lastPhase.purple?.tier ?? "—"}`
+          : "";
+        updateChatMessage(assistantMsgId, {
+          content: resultText,
+          status: "done",
+          taskId: started.drill_id,
+          tier: drillTier,
+          privacyNote: drillNote,
+        });
         return;
       }
       let resultText = "";
       let resultTier = "";
-      const resultPrivacyNote = "";
-      let trackedTaskId = "";
-      try {
-        const task = await taskApi.create({
-          goal,
-          session_id: sessionId,
-          payload: { ...(selectedAgentId ? { agent_id: selectedAgentId } : {}), source: "chat" },
-        });
-        trackedTaskId = task.task_id ?? "";
-        if (trackedTaskId) {
-          updateChatMessage(assistantMsgId, { taskId: trackedTaskId });
-          upsertTask({ ...task, status: "running" });
-        }
-      } catch { /* task tracking is additive; Chat remains usable if offline */ }
+      let resultPrivacyNote = "";
 
-      if (!trackedTaskId) {
-        throw new Error("任务创建失败，无法启动完整执行链");
+      // R23: 普通对话直接走后端 /chat 真实推理（记忆上下文 + 端边云调度），
+      // 不再创建攻防任务（旧链路会把任意问题兜底路由到 recon 等 Agent，
+      // 返回固定 JSON 冒充回答）。
+      const history = chatMessages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-6)
+        .map((m) => ({ role: m.role, content: m.content }));
+      const chatResult = await chatApi.send({ goal, session_id: sessionId, history });
+      if (!chatResult.ok) {
+        // 后端判定为演练意图等场景：交给用户确认，不冒充回答
+        throw new Error(chatResult.text || chatResult.error || "对话执行失败");
       }
-
-      const completedTask = await waitForTask(trackedTaskId);
-      const output = completedTask.result?.output ?? completedTask.result ?? "";
-      resultText = typeof output === "string" ? output : JSON.stringify(output, null, 2);
-      resultTier = String(completedTask.result?.tier ?? "cloud");
-
-      if (trackedTaskId) {
-        upsertTask({ task_id: trackedTaskId, goal, status: completedTask.status, result: completedTask.result ?? { output: resultText, tier: resultTier } });
+      resultText = chatResult.text;
+      // 真实执行位置：后端只有 mock 节点/降级才会给 device+mock-local，
+      // 不再前端硬编码 "cloud"（修复“云端推理”徽标与实际不符的问题）。
+      resultTier = chatResult.tier || "device";
+      const placementBits: string[] = [];
+      if (chatResult.provider === "mock-local") {
+        placementBits.push("本地模拟·未调用大模型");
+      } else if (chatResult.model_id) {
+        placementBits.push(`${chatResult.provider || chatResult.tier}/${chatResult.model_id}`);
       }
+      if (chatResult.latency_ms) placementBits.push(`${chatResult.latency_ms}ms`);
+      if (chatResult.routed && chatResult.attempts && chatResult.attempts.length > 1) {
+        placementBits.push(`级联 ${chatResult.attempts.length} 跳`);
+      }
+      resultPrivacyNote = [chatResult.privacy_note, placementBits.join(" · ")]
+        .filter(Boolean)
+        .join(" · ");
 
       // 伪流式：整段结果到达后按字符渐进渲染（打字机效果），
       // 后续接 SSE 流式后此段可直接替换为真实流式渲染

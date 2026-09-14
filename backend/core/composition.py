@@ -38,6 +38,10 @@ from backend.repositories.database import (
 )
 from backend.repositories.repositories import SessionRepository, TaskRepository
 from backend.services.agent_service import AgentService
+# date: 2026-09-14
+# dev: OpenSquilla
+# changelog: R23 Chat 真实对话服务接入组合根
+from backend.services.chat_service import ChatService
 from backend.services.cyber_defense_service import CyberDefenseService
 from backend.services.di_ports import (
     PersistencePortImpl,
@@ -129,6 +133,12 @@ class Composition:
             memory=self.memory_api,
         )
         self.agent_service = AgentService(self.agent_registry, self.runtime)
+        # R23: ChatService —— 普通对话走端边云真实推理（延迟 provider 取单例，避免导入环）
+        self.chat_service = ChatService(
+            infra_provider=lambda: _get_infra_service(),
+            memory_provider=lambda: self.memory_api,
+            runtime_mode_provider=lambda: runtime_mode,
+        )
         self.memory_service = MemoryService(self.memory_api)
         self.graph_service = GraphService(self.event_bus)
         # R4.7/R7: CyberDefenseService 动态跟随运行时模式（不传固定 orchestrator，
@@ -279,6 +289,20 @@ def get_cyber_defense_service() -> CyberDefenseService:
     return get_composition().cyber_defense_service
 
 
+def _get_infra_service():
+    """延迟获取 main.py 的 InfraService 单例（registry + dispatcher）。"""
+    from backend import main as backend_main
+
+    if backend_main._infra_service is None:
+        backend_main._init_infra_service()
+    return backend_main._infra_service
+
+
+def get_chat_service() -> ChatService:
+    """提供 ChatService 依赖。"""
+    return get_composition().chat_service
+
+
 def get_event_bus() -> MockEventBusAPI:
     """提供 EventBus 依赖。"""
     return get_composition().event_bus
@@ -302,3 +326,4 @@ ExecutionApiDep = Annotated[MockExecutionAPI, Depends(get_execution_api)]
 # dev: myf
 # changelog: CyberDefenseService 依赖别名（避免 router 层 B008）
 CyberDefenseServiceDep = Annotated[CyberDefenseService, Depends(get_cyber_defense_service)]
+ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]
