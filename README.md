@@ -1,536 +1,257 @@
 # AegisOS
 
-> **Agent Operating System (AOS) + AI Native IDE** — 面向「挑战杯揭榜挂帅 + 荣耀群体智能赛题」的可由 Agent 自主开发与运行的群体智能系统。
+AegisOS 是面向荣耀 XH-202631 赛题的动态异构群体智能协同推理系统，聚焦超长程复杂任务中的：
 
-## 核心特性
-- **动态异构群体智能**（Dynamic Heterogeneous Topology）
-- **长期记忆**（Long-term Memory，含知识库）
-- **低熵通信**（Low Entropy Communication，稀疏链式路由）
-- **端边云协同**（Edge-Cloud Collaboration）
-- **可运行系统**（Runnable System，开箱可部署）
-- **AI 可自主开发**（Developer Operating System + 全仓库 AGENT.md 规范体系）
+- 动态异构 Agent 协同
+- 长期记忆与跨轮上下文保持
+- Top-K 稀疏通信与动态路由
+- 端-边-云任务调度与故障降级
+- 红队攻击链、蓝队防御链、紫队一致性审查
+- Chat → Drill → TaskMap → Monitor → Replay 的可解释演示闭环
 
-## 架构总览
-```
-┌──────────────────────────────────────────────────┐
-│  frontend/  表现层（Controller-Service-Mapper + Views）│
-├──────────────────────────────────────────────────┤
-│  backend/   应用层（Controller-Service-Mapper + Gateway）│
-├──────────────────────────────────────────────────┤
-│  agents/    智能体域（感知-规划-行动-记忆-工具 五层）   │
-├──────────────────────────────────────────────────┤
-│  protocol/  契约层（唯一数据契约）                    │
-├──────────────────────────────────────────────────┤
-│  infrastructure/  基础设施层（传输-节点-交付）         │
-└──────────────────────────────────────────────────┘
-  observability/  可观测与评估（观测-度量-呈现）
-  data/  tooling/  docs/  tests/  developer/  支撑与规范
-```
+> 安全边界：所有攻防演练默认限定在本地安全演示靶场或 Mock 数据中，不对公网和真实生产系统执行攻击。
 
-## 顶层目录
-| 目录 | 角色 | 内部分类 | 公共 API |
-|------|------|----------|----------|
-| `developer/` | 规范层（项目大脑） | `*.md` + `roadmap/`(P0..P7) | — |
-| `protocol/` | 契约层 | 数据类（Message/Event/Task/...） | 本身即全局契约 |
-| `frontend/` | 表现层 | controllers · services · mappers · views | `frontend/api/` |
-| `backend/` | 应用层 | controllers · services · mappers · gateway | `backend/api/` |
-| `agents/` | 智能体域 | perception · planning · action · memory · tools | `agents/api/` |
-| `infrastructure/` | 基础设施层 | transport · nodes · delivery | `infrastructure/api/` |
-| `observability/` | 可观测与评估层 | inspect · measure · present | `observability/api/` |
-| `data/` | 数据层 | datasets · models | `data/api/` |
-| `tooling/` | 工程支撑层 | configs · scripts | `tooling/api/` |
-| `docs/` | 文档资产层 | api · architecture · guides · assets · examples | — |
-| `tests/` | 测试 | unit · integration · e2e · fixtures · benchmarks | — |
+## 1. 系统能力
 
-### agents/ — 认知架构五层（感知-规划-行动-记忆-工具）
-| 分类 | 内容 |
-|------|------|
-| `agents/perception/` 感知 | context(上下文) · reasoning(推理) · reflection(反思评估) |
-| `agents/planning/` 规划 | planner(角色) · orchestrator(角色) · engine/(planner·scheduler·router·workflow·eventbus·topology) |
-| `agents/action/` 行动 | coder·executor·tester·debugger·critic·reviewer·researcher·docwriter(角色) + execution/(executor沙箱·tools) |
-| `agents/memory/` 记忆 | 12 子模块（含 semantic 知识库） |
-| `agents/tools/` 工具 | llms(模型调用) · prompts(提示词) · runtime(运行时) |
-
-### backend/ — Controller-Service-Mapper + Gateway
-`gateway/`(入口) -> `controllers/`(参数校验/响应封装) -> `services/`(业务逻辑) -> `mappers/`(数据转换/持久化)
-
-### frontend/ — Controller-Service-Mapper + Views
-`controllers/`(交互/事件) -> `services/`(API/实时/状态) -> `mappers/`(数据转换/共享) -> `views/`(canvas·graph·monitor·replay)
-
-## 模块间 API 解耦
-每个域通过 `api/` 子包暴露公共接口，其他模块只通过 `from {domain}.api import ...` 调用，不直接访问内部实现。
-
-| 域 | api 包 | 公共接口数 | 接口 |
-|----|--------|-----------|------|
-| agents/ | `agents.api` | 0 |  |
-| backend/ | `backend.api` | 0 |  |
-| frontend/ | `` | 0 |  |
-| infrastructure/ | `infrastructure.api` | 4 | CommunicationAPI · NodeRegistryAPI · SyncAPI · DeploymentAPI |
-| observability/ | `observability.api` | 6 | MonitorAPI · TraceAPI · ReplayAPI · BenchmarkAPI · EvaluationAPI · VisualizationAPI |
-| data/ | `data.api` | 4 | DatasetAPI · ModelSchemaAPI · GraphStoreAPI · VectorStoreAPI |
-| tooling/ | `tooling.api` | 2 | ConfigAPI · ScriptAPI |
-
-> 共 **16** 个公共接口。接口参数/返回值一律使用 `protocol/` 契约类型。`api/` 签名变更属破坏性变更。
-
-## 数据流
-```
-User Goal
-  -> backend/gateway -> backend/controllers -> backend/services
-  -> agents/planning/engine/planner: 分解为 Plan(DAG)
-  -> agents/planning/engine/topology: 构建动态异构图
-  -> agents/planning/engine/router: 低熵路由选择 Agent 链
-  -> agents/planning/engine/scheduler: 调度执行
-  -> agents/tools/runtime: 托管 Agent 生命周期
-  -> agents/action/{role}: receive->think->tool->reflect->respond
-     ├─ agents/memory: 读写 MemoryPacket
-     ├─ agents/action/execution/(tools+executor): 执行工具
-     ├─ agents/tools/llms: 推理
-     └─ agents/perception/reflection: 自评并写入 agents/memory/reflection
-  -> agents/planning/engine/eventbus: 广播事件
-  -> observability/inspect/(monitor+replay): 观测与记录
-  -> observability/measure/evaluation: 评估
-  -> frontend: 实时可视化
+```text
+用户自然语言目标
+    ↓
+Chat 意图识别与安全槽位校验
+    ↓
+Goal / Plan / ReAct 任务分解
+    ↓
+动态异构 Top-K 路由
+    ↓
+红队 Recon → Vuln → Exploit → Lateral
+    ↓
+蓝队 Detect → Triage → Hunt → IR → Forensics
+    ↓
+紫队 Critic / Reviewer 一致性审查
+    ↓
+Memory 写入、压缩、召回、Checkpoint、Snapshot
+    ↓
+TaskMap / Monitor / Replay / Report
 ```
 
-## 通信协议
-自研分层协议（非裸 JSON）：`protocol/` 定义 Message 信封 + 强类型 Payload。
-- Message: message_id/parent_id/task_id/workflow_id/sender/receiver/priority/ttl/timestamp/payload
-- Event: AgentStart/AgentFinish/ToolCall/ToolFinish/Retry/Rollback/MemoryUpdate/GraphUpdate
-- 动态路由: Task -> Semantic Graph -> Agent Graph -> Dynamic Routing -> Sparse Communication -> Adaptive Graph -> Graph Update
+系统包含 11 个攻防 Agent：
 
-详见 `developer/specs/04_PROTOCOL_SPEC.md`。
+- 红队：`recon`、`vuln_correlator`、`exploit_planner`、`lateral_move`
+- 蓝队：`detector`、`triage`、`threat_hunt`、`ir_planner`、`forensics`
+- 紫队：`critic`、`reviewer`
 
-## 开发流程（AI 自主开发）
+## 2. 快速启动
+
+### Windows，无需 Docker
+
+推荐使用根目录的一键启动脚本：
+
+```powershell
+.\start.ps1
 ```
-Developer Agent
-  -> 读取 developer/specs/（00_PROJECT_SPEC 等）+ roadmap/ 定位阶段
-  -> 读取目标模块 AGENT.md（职责/边界/接口）
-  -> 读取 protocol/ 契约 + tooling/configs/ 配置
-  -> 生成代码 -> 运行 tests/ -> 更新文档与 CHANGELOG -> commit
-```
-Agent 永不扫描整个项目；按模块边界精准读写。
 
-## 快速开始
+默认地址：
+
+```text
+前端：http://localhost:5173
+后端：http://localhost:8000
+API 文档：http://localhost:8000/docs
+健康检查：http://localhost:8000/api/v1/health
+```
+
+常用命令：
+
+```powershell
+.\start.ps1 status
+.\start.ps1 restart
+.\start.ps1 stop
+```
+
+启动器会自动读取根目录 `.env`、探测 Python、启动 FastAPI 和 Vite、同步后端 API Key、等待健康检查并管理进程 PID。
+
+### Linux / macOS
+
 ```bash
-make setup        # 初始化环境
-make test         # 运行测试
-make build        # 构建产物/镜像
-make deploy ENV=dev
+./start.sh
 ```
 
-## CyberDrill 攻防演练演示（无人干预一键跑通）
+## 3. 配置运行模式
 
-> 场景 1「网络防御（红→蓝→紫完整链路）」一键闭环，赛事演示主场景。
-> 演示脚本**无人干预**全自动完成：启动后端 → 发起演练 → 多轮收敛 → 输出总结与落盘记录。
+### Mock 演示模式
 
-### 一键演示（推荐）
+适合比赛现场完整演示，结果稳定、可重复、无需外部模型服务：
+
+```env
+AEGIS_USE_MOCK=true
+```
+
+### 真实 ARK 模式
+
+项目支持 OpenAI 兼容协议。将配置写入本机根目录 `.env`，不要提交该文件：
+
+```env
+AEGIS_USE_MOCK=false
+OPENAI_API_KEY=your-ark-key
+OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/coding/v3
+OPENAI_DEFAULT_MODEL=ark-code-latest
+AEGIS_AUTH_DEFAULT_KEY=aegis-local-demo-key-2026
+```
+
+真实模式经过 `ChatService → ExecutionDispatcher → 动态路由 → ARK` 链路，返回真实的执行层级、节点、模型和延迟。
+
+## 4. 比赛演示流程
+
+启动服务后打开：
+
+```text
+http://localhost:5173
+```
+
+在 Chat 输入：
+
+```text
+请模拟一次完整红蓝紫攻防演练，只在安全演示靶场 10.0.0.0/24 内执行，完成 5 轮
+```
+
+推荐演示链路：
+
+```text
+Chat
+→ 意图识别与安全确认
+→ 红蓝紫多轮 Drill
+→ TaskMap 查看阶段任务
+→ Monitor 查看端边云落点
+→ Graph 查看协作拓扑
+→ Replay 查看事件与攻防证据
+→ Drill History 查看报告
+```
+
+攻防只能从 Chat 创建；其他 Cyber 页面用于查看当前演练、停止任务、查看轮次和报告。
+
+## 5. API 入口
+
+后端默认前缀为 `/api/v1`，除健康检查外使用 `X-API-Key` 鉴权。
+
+核心接口：
+
+```text
+GET  /api/v1/health
+POST /api/v1/chat
+POST /api/v1/drill/start
+GET  /api/v1/drill/{drill_id}
+GET  /api/v1/drill/{drill_id}/stream
+POST /api/v1/drill/{drill_id}/abort
+GET  /api/v1/graph
+GET  /api/v1/replay/{session_id}
+GET  /api/v1/memory/{session_id}
+GET  /api/v1/infra/nodes
+```
+
+## 6. 测试与评测
+
+### Python 全量测试
+
 ```powershell
-# Windows PowerShell（要求能 import fastapi 的 Python 在 PATH，或设置 $env:AEGIS_PYTHON）
-.\tooling\scripts\drill_demo.ps1
-
-# 自定义参数
-.\tooling\scripts\drill_demo.ps1 -TargetRange 192.168.1.0/24 -MaxRounds 3
-.\tooling\scripts\drill_demo.ps1 -UseRealModel   # 切换真实 LLM（需 OPENAI_API_KEY）
-.\tooling\scripts\drill_demo.ps1 -SkipBackendStart # 后端已在运行时跳过自动启动
-.\tooling\scripts\drill_demo.ps1 -KeepRunning      # 演示结束不停止自动启动的后端
+$env:AEGIS_USE_MOCK="true"
+$env:AEGIS_AUTH_DEFAULT_KEY="aegis-dev-key"
+python -m pytest -q
 ```
 
-脚本自动完成：探测 Python → 启动 uvicorn（默认 mock 模式）→ `POST /drill/start` →
-轮询至收敛 → 打印收敛码/轮数/总结/跨轮记忆轨迹/落盘路径。如终端中文乱码，先执行 `chcp 65001` 或使用 Windows Terminal。
+当前基线：
 
-### 手动演示
+```text
+703 passed
+```
+
+### 前端测试、构建和 lint
+
 ```powershell
-.\start.ps1 backend     # 启动后端（默认 mock；设 AEGIS_USE_MOCK=false + OPENAI_API_KEY 切真实）
-# 另开终端:
-.\start.ps1 frontend    # 启动前端 → http://localhost:5173 → 侧边栏 Cyber → Drill tab
+Push-Location frontend
+npm test -- --run
+npm run build
+npm run lint
+Pop-Location
 ```
 
-### 能力落点（R1-R11）
-| 轮次 | 能力 | 演示可见证据 |
-|---|---|---|
-| R1-R1.5 | 收敛内核 + mock 按轮演化 | 多轮演练自动收敛（3-5 轮内收敛码 converged） |
-| R2 | 演练持久化 | `data/drills/<drill_id>.json` 落盘可回放 |
-| R3 | drill 路由 REST+SSE | `/api/v1/drill/*` 5 端点；`/docs` 可调试 |
-| R5 | 前端演练视图 | Drill tab 开始/停止 + 轮次时间线 + 总结报告 |
-| R7 | 真实 LLM 接入 | 运行时 mock/real 模式切换 + 前端徽标 |
-| R8 | 跨轮记忆与上下文压缩 | 轮次卡 🧠 mem 徽标 + 总结「Cross-Round Memory」区 |
-| R9 | 事件总线化 | `GET /api/v1/events?stream=drill.round` 订阅增量战报 |
-| R10 | 端-边-云自适应调度 | 轮次卡 red/blue/purple 三阶段 tier 徽标 + 卸载理由 |
+当前基线：
 
-### 实测指引
-| 层 | 怎么测 | 看什么 |
-|---|---|---|
-| 后端 | 脚本或 `start.ps1 backend` | `/api/v1/health`；`/docs` 调 drill 端点（X-API-Key: aegis-dev-key） |
-| 前端 | `start.ps1 frontend` → Cyber | Drill tab 时间线 + 总结 + mem/placement 徽标 |
-| 事件流 | 演练进行中 | `GET /api/v1/events?stream=drill.round` |
-| 数据落盘 | 演练结束 | `data/drills/<drill_id>.json`（各轮战报 + 总结） |
-
-## 实际目录结构（自动生成）
-```
-aegisos.egg-info/
-aegisos_agents/
-  action/
-    coder/
-    critic/
-    debugger/
-    detector/
-    docwriter/
-    execution/
-    executor/
-    exploit_planner/
-    forensics/
-    ir_planner/
-    lateral_move/
-    recon/
-    researcher/
-    reviewer/
-    tester/
-    threat_hunt/
-    triage/
-    vuln_correlator/
-  api/
-  memory/
-    archive/
-    cache/
-    checkpoint/
-    compression/
-    episodic/
-    recall/
-    reflection/
-    retrieval/
-    semantic/
-    snapshot/
-    sync/
-    vector/
-    working/
-  perception/
-    context/
-    reasoning/
-    reflection/
-  planning/
-    engine/
-    orchestrator/
-    planner/
-  tools/
-    llms/
-    prompts/
-    runtime/
-backend/
-  core/
-  mocks/
-  models/
-  repositories/
-  routers/
-  schemas/
-  services/
-data/
-  api/
-  datasets/
-    attck/
-  models/
-developer/
-  specs/
-docs/
-  examples/
-  superpowers/
-    plans/
-    specs/
-frontend/
-  node_modules/
-    @asamuzakjp/
-    @babel/
-    @csstools/
-    @esbuild/
-    @eslint/
-    @eslint-community/
-    @humanwhocodes/
-    @jridgewell/
-    @nodelib/
-    @playwright/
-    @rolldown/
-    @rollup/
-    @testing-library/
-    @types/
-    @typescript-eslint/
-    @ungap/
-    @vitejs/
-    @vitest/
-    acorn/
-    acorn-jsx/
-    agent-base/
-    ajv/
-    ansi-regex/
-    ansi-styles/
-    argparse/
-    aria-query/
-    assertion-error/
-    asynckit/
-    balanced-match/
-    baseline-browser-mapping/
-    brace-expansion/
-    browserslist/
-    cac/
-    call-bind-apply-helpers/
-    callsites/
-    caniuse-lite/
-    chai/
-    chalk/
-    check-error/
-    color-convert/
-    color-name/
-    combined-stream/
-    concat-map/
-    convert-source-map/
-    cross-spawn/
-    cssstyle/
-    csstype/
-    data-urls/
-    debug/
-    decimal.js/
-    deep-eql/
-    deep-is/
-    delayed-stream/
-    dequal/
-    doctrine/
-    dom-accessibility-api/
-    dunder-proto/
-    electron-to-chromium/
-    entities/
-    es-define-property/
-    es-errors/
-    es-module-lexer/
-    es-object-atoms/
-    es-set-tostringtag/
-    esbuild/
-    escalade/
-    escape-string-regexp/
-    eslint/
-    eslint-plugin-react-hooks/
-    eslint-plugin-react-refresh/
-    eslint-scope/
-    eslint-visitor-keys/
-    espree/
-    esquery/
-    esrecurse/
-    estraverse/
-    estree-walker/
-    esutils/
-    expect-type/
-    fast-deep-equal/
-    fast-json-stable-stringify/
-    fast-levenshtein/
-    fastq/
-    fdir/
-    file-entry-cache/
-    find-up/
-    flat-cache/
-    flatted/
-    form-data/
-    fs.realpath/
-    function-bind/
-    gensync/
-    get-intrinsic/
-    get-proto/
-    glob/
-    glob-parent/
-    globals/
-    gopd/
-    graphemer/
-    has-flag/
-    has-symbols/
-    has-tostringtag/
-    hasown/
-    html-encoding-sniffer/
-    http-proxy-agent/
-    https-proxy-agent/
-    iconv-lite/
-    ignore/
-    import-fresh/
-    imurmurhash/
-    inflight/
-    inherits/
-    is-extglob/
-    is-glob/
-    is-path-inside/
-    is-potential-custom-element-name/
-    isexe/
-    js-tokens/
-    js-yaml/
-    jsdom/
-    jsesc/
-    json-buffer/
-    json-schema-traverse/
-    json-stable-stringify-without-jsonify/
-    json5/
-    keyv/
-    levn/
-    locate-path/
-    lodash.merge/
-    loose-envify/
-    loupe/
-    lru-cache/
-    lz-string/
-    magic-string/
-    math-intrinsics/
-    mime-db/
-    mime-types/
-    minimatch/
-    ms/
-    nanoid/
-    natural-compare/
-    node-releases/
-    nwsapi/
-    once/
-    optionator/
-    p-limit/
-    p-locate/
-    parent-module/
-    parse5/
-    path-exists/
-    path-is-absolute/
-    path-key/
-    pathe/
-    pathval/
-    picocolors/
-    picomatch/
-    playwright/
-    playwright-core/
-    postcss/
-    prelude-ls/
-    prettier/
-    pretty-format/
-    punycode/
-    queue-microtask/
-    react/
-    react-dom/
-    react-is/
-    react-refresh/
-    resolve-from/
-    reusify/
-    rimraf/
-    rollup/
-    rrweb-cssom/
-    run-parallel/
-    safer-buffer/
-    saxes/
-    scheduler/
-    semver/
-    shebang-command/
-    shebang-regex/
-    siginfo/
-    source-map-js/
-    stackback/
-    std-env/
-    strip-ansi/
-    strip-json-comments/
-    supports-color/
-    symbol-tree/
-    text-table/
-    tinybench/
-    tinyexec/
-    tinyglobby/
-    tinypool/
-    tinyrainbow/
-    tinyspy/
-    tldts/
-    tldts-core/
-    tough-cookie/
-    tr46/
-    ts-api-utils/
-    type-check/
-    type-fest/
-    typescript/
-    undici-types/
-    update-browserslist-db/
-    uri-js/
-    use-sync-external-store/
-    vite/
-    vite-node/
-    vitest/
-    w3c-xmlserializer/
-    webidl-conversions/
-    whatwg-encoding/
-    whatwg-mimetype/
-    whatwg-url/
-    which/
-    why-is-node-running/
-    word-wrap/
-    wrappy/
-    ws/
-    xml-name-validator/
-    xmlchars/
-    yallist/
-    yocto-queue/
-    zustand/
-  src/
-    config/
-    controllers/
-    lib/
-    protocol/
-    services/
-    views/
-infrastructure/
-  api/
-  delivery/
-    deployment/
-  nodes/
-    cloud/
-    device/
-    edge/
-  transport/
-    communication/
-observability/
-  api/
-  inspect/
-    monitor/
-    replay/
-  measure/
-    benchmark/
-    evaluation/
-  present/
-    visualization/
-protocol/
-tests/
-  aegisos_agents/
-    action/
-    memory/
-    perception/
-    planning/
-    tools/
-  backend/
-  data/
-  e2e/
-  observability/
-  protocol/
-tooling/
-  api/
-  configs/
-  scripts/
+```text
+50 passed
+Vite build passed
+ESLint passed
 ```
 
-## 仓库统计（自动生成，2026-08-06）
-| 指标 | 数量 |
-|------|------|
-| 顶层域 | 11 |
-| 总目录 | 139 |
-| 总文件 | 437 |
-| AGENT.md | 83 |
-| Python 文件 | 245 |
-| Markdown 文件 | 117 |
-| 公共 API 接口 | 16 |
-| protocol 契约类型 | 26 |
+### 比赛确定性证据
 
-## 关键文档
-- `AGENT.md` — 仓库总规范（最高优先级）
-- `developer/specs/README.md` — 规范体系索引（SSOT）
-- `developer/specs/00_PROJECT_SPEC.md` — 项目 SSOT（目标/边界/生命周期）
-- `developer/specs/01_ARCHITECTURE_SPEC.md` — 系统总体架构
-- `developer/specs/04_PROTOCOL_SPEC.md` — 通信协议规范
-- `developer/specs/02_DIRECTORY_SPEC.md` — 仓库目录导航
-- `developer/specs/05_API_SPEC.md` — API 接口规范
-- `developer/specs/11_AI_CODING_SPEC.md` — AI 编码规范
-- `developer/roadmap/README.md` — 系统级开发计划 P0..P7
-- 各目录 `AGENT.md` — 模块边界与开发规范
+```powershell
+python tooling/scripts/run_competition_eval.py --output docs/XH-202631-engineering-evidence.md
+```
 
-## 许可
-（待定）
+评测覆盖 5/10/20 轮长程任务、目标保持、红蓝事件同源、记忆隔离、Checkpoint 恢复、端边云调度和节点失效降级。
+
+### 低熵通信检查
+
+```powershell
+python tooling/scripts/check_no_broadcast.py --strict
+```
+
+## 7. 比赛报告
+
+综合报告：
+
+[docs/XH-202631-competition-evaluation-report.md](docs/XH-202631-competition-evaluation-report.md)
+
+确定性工程证据：
+
+[docs/XH-202631-engineering-evidence.md](docs/XH-202631-engineering-evidence.md)
+
+方案原文：
+
+`XH-202631荣耀终端股份有限公司-面向超长程复杂任务的动态异构群体智能架构与深度协同推理技术比赛方案.pdf`
+
+真实 ARK 已完成：
+
+- Chat 真实请求 3/3 成功
+- 真实单轮 Drill 完成
+- 真实两轮 Drill 完成
+- 结构化输出重试修复后真实三轮 Drill 完成
+
+## 8. Docker 说明
+
+Docker 不是运行 AegisOS 主应用的必要条件。主应用可以直接使用 `start.ps1` 或 `start.sh` 启动。
+
+Docker Compose 仍保留用于隔离工具靶场：
+
+```powershell
+.\tooling\scripts\deploy-docker.ps1 -Action config -Sandbox -UseDemoSecrets
+.\tooling\scripts\deploy-docker.ps1 -Action up -Sandbox -UseDemoSecrets
+```
+
+靶场包含 Nmap、Metasploit、Zeek、Splunk、Nginx 和 Redis。真实工具闭环需要 Docker Desktop Engine 和可访问镜像仓库，目前不作为主应用启动前置条件。
+
+## 9. 当前限制
+
+以下内容已实现算法、Mock 验收或接口基础，但仍需要现场环境实测：
+
+- 真实 5/10/20 轮 ARK 性能样本
+- Nmap/Metasploit/Zeek/Splunk 完整攻防闭环
+- 真实 device/edge/cloud 网络节点联调
+- Neo4j/Qdrant 在线服务集成
+- 生产级 HTTPS、Secret 管理和 ASGI 部署
+
+这些限制已经在比赛综合测评报告中明确列出，Mock 结果不会被表述为真实生产性能。
+
+## 10. 目录说明
+
+```text
+aegisos_agents/    感知、规划、行动、记忆、工具五层智能体域
+backend/            FastAPI、任务、Chat、Drill、Memory、Graph、Replay
+frontend/           Chat、TaskMap、Monitor、Graph、Replay、Cyber 视图
+protocol/           Message、Event、Task、Memory、Cyber 等唯一契约
+infrastructure/    节点注册、端边云派发、通信和 Docker 靶场
+observability/      Monitor、Replay、Benchmark、Evaluation、Visualization
+data/               ATT&CK 数据、图存储、向量存储
+tooling/             配置、启动、部署和比赛评测脚本
+tests/               单元、集成、E2E、benchmark 测试
+docs/                架构、评测报告和比赛材料
+developer/           项目规范、计划和路线图
+```

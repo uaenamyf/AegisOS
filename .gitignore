@@ -68,3 +68,7 @@ tests/aegisos_agents/memory/**/*.pyc
 
 # --- Agent local attachments ---
 .opensquilla/
+
+# --- Local development tooling, not part of competition delivery ---
+.claude/
+.fetch/

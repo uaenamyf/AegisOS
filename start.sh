@@ -13,10 +13,14 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-# 加载统一配置（tooling/configs/.env），未找到则使用默认值
-if [ -f "$PROJECT_ROOT/tooling/configs/.env" ]; then
+# 加载统一配置：优先根目录 .env，兼容旧 tooling/configs/.env
+ENV_FILE="$PROJECT_ROOT/.env"
+if [ ! -f "$ENV_FILE" ]; then
+    ENV_FILE="$PROJECT_ROOT/tooling/configs/.env"
+fi
+if [ -f "$ENV_FILE" ]; then
     set -a
-    . "$PROJECT_ROOT/tooling/configs/.env"
+    . "$ENV_FILE"
     set +a
 fi
 
