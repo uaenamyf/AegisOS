@@ -72,3 +72,5 @@ tests/aegisos_agents/memory/**/*.pyc
 # --- Local development tooling, not part of competition delivery ---
 .claude/
 .fetch/
+**/AGENT.md
+handoff.md
