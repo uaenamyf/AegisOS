@@ -238,35 +238,37 @@ class StructuredAgent(Generic[T]):
                 ) from err
 
     def _run_sync(self, prompt: str) -> T:
-        """同步执行结构化调用；DeepSeek 纯文本路径解析失败或空结果时带纠错提示重试。
+        """同步执行结构化调用；真实模型格式波动时带纠错提示重试。
 
         实测 DeepSeek 偶发返回空数组（如 ``{"assets": []}``），且输出随机性大
         （同一 prompt 时而完整时而空）。空输出 1s 即返回，重试成本极低，故最多
         尝试 3 次；每次重试都附引导提示（输出至少 1 个条目）。
         """
-        max_attempts = 3 if self._plain_json else 1
-        last_error: ValueError | None = None
+        # 纯文本兼容路径保留三次重试；ARK/OpenAI 结构化路径默认两次，
+        # 防止单轮 JSON/Pydantic 偶发解析失败直接中止长程任务。
+        max_attempts = 3 if self._plain_json else 2
+        last_error: Exception | None = None
         # 真实模式每次调用用独立 client，避免共享 AsyncOpenAI 跨线程/
         # 跨事件循环复用连接池时挂起（实测 API 层第三次调用永不发起）。
         agent = self._build_agent(self._fresh_model()) if self._plain_json else self._sdk_agent
         for attempt in range(max_attempts):
-            result = Runner.run_sync(agent, prompt)
             try:
+                result = Runner.run_sync(agent, prompt)
                 output = self._finalize(result)  # type: ignore[no-any-return]
                 # 空结果检测：DeepSeek 偶发返回全空数组，视为无效输出触发重试
                 if self._plain_json and self._is_empty_result(output):
                     raise ValueError("model returned empty result (all list fields empty)")
                 return output
-            except ValueError as exc:
+            except Exception as exc:  # noqa: BLE001 - retry transient model-format failures
                 last_error = exc
                 if attempt == max_attempts - 1:
                     break
                 prompt = (
-                    f"{prompt}\n\n上次输出无效：{exc}\n"
+                    f"{prompt}\n\n上次结构化输出失败：{exc}\n"
                     "请重新输出，必须是严格合法的单个 JSON 对象，不要附加任何解释文字或代码块标记。"
                     "请基于给定信息完整作答，输出至少 1 个条目，不要返回空数组。"
                 )
-        raise last_error or ValueError("structured output failed")  # type: ignore[misc]
+        raise last_error or ValueError("structured output failed")
 
     def _is_empty_result(self, output) -> bool:
         """判断结构化输出是否为空结果（DeepSeek 偶发偷懒返回空数组）。
