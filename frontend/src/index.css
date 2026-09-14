@@ -1760,6 +1760,27 @@ body {
   font-size: 11px;
 }
 
+.cyber-drill__cot-tier {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.cyber-drill__cot-tier--device {
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb950;
+}
+.cyber-drill__cot-tier--edge {
+  background: rgba(47, 129, 247, 0.15);
+  color: #2f81f7;
+}
+.cyber-drill__cot-tier--cloud {
+  background: rgba(210, 153, 34, 0.15);
+  color: #d29922;
+}
+
 .cyber-drill__cot-spin {
   color: var(--text-secondary);
   animation: cot-pulse 1.2s ease-in-out infinite;

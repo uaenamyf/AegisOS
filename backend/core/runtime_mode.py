@@ -42,7 +42,7 @@ def _default_mode() -> str:
 
 
 def _build(mode: str) -> Any:
-    """按模式构建编排器（mock=预置响应表；real=SDK 真实模型）。"""
+    """按模式构建编排器（mock=预置响应表；real=SDK 真实模型 + 端边云路由）。"""
     if mode == _MODE_MOCK:
         from aegisos_agents.planning.orchestrator import CyberOrchestrator
         from backend.mocks.cyber_provider import _CyberMockProvider
@@ -52,7 +52,9 @@ def _build(mode: str) -> Any:
     from aegisos_agents.planning.orchestrator import CyberOrchestrator
     from aegisos_agents.tools.llms.sdk_provider import SDKProvider
 
-    provider = SDKProvider()
+    # R20：real 模式开启端边云路由代理（AEGIS_DRILL_ROUTING=false 可关），
+    # 每次 LLM 调用前按 NodeRegistry 在线节点与任务特征实时选层。
+    provider = SDKProvider(enable_routing=True)
     model = provider.get_sdk_model()
     return CyberOrchestrator(model=model)
 

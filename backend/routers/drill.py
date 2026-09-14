@@ -150,6 +150,28 @@ class DrillRuntime:
             "round": self.current_round,
             "ts": time.time(),
         }
+        # R20：附带该 agent 最近一次真实路由决策（tier/node/耗时），
+        # 让 CoT 时间线直接可见"这步在哪层执行"；完整轨迹见轮次 phase。
+        with contextlib.suppress(Exception):
+            orch = None
+            resolver = getattr(self.service, "_resolve_orchestrator", None)
+            if callable(resolver):
+                orch = resolver()
+            if orch is None:
+                orch = getattr(self.service, "_orchestrator", None)
+            agent_obj = getattr(orch, "recon", None)
+            routed_model = getattr(agent_obj, "_model", None)
+            routed = routed_model if type(routed_model).__name__ == "RoutedSDKModel" else None
+            if routed is not None:
+                prev = next(
+                    (d for d in reversed(routed.snapshot()) if d.get("agent") == agent),
+                    None,
+                )
+                if prev is not None:
+                    data["tier"] = prev.get("tier")
+                    data["node_id"] = prev.get("node_id")
+                    data["latency_ms"] = prev.get("latency_ms")
+                    data["reason"] = prev.get("reason")
         self.emit("drill_agent", data)
         with contextlib.suppress(Exception):
             self.event_bus.publish(

@@ -69,14 +69,33 @@ def _fmt_agent_trace(trace: list[dict[str, Any]]) -> str:
 
 
 def _fmt_phase_table(phases: dict[str, dict[str, Any]]) -> str:
-    """渲染端-边-云卸载位置表格。"""
-    rows = ["| 阶段 | 执行层 | 理由 |", "|---|---|---|"]
+    """渲染端-边-云卸载位置表格。
+
+    R20：真实路由决策（routed=True）时增加节点与实测耗时列；
+    离线兑底标注保持原有三列表格。
+    """
+    routed = any(p.get("routed") for p in phases.values())
+    if routed:
+        rows = ["| 阶段 | 执行层 | 节点 | 实测耗时 | 理由 |", "|---|---|---|---|---|"]
+    else:
+        rows = ["| 阶段 | 执行层 | 理由 |", "|---|---|---|"]
     for phase in ("red", "blue", "purple"):
         p = phases.get(phase, {})
-        rows.append(
-            f"| {_PHASE_LABELS.get(phase, phase)} | `{p.get('tier', '?')}` "
-            f"({p.get('model_id', '?')}) | {p.get('reason', '?')} |"
-        )
+        label = _PHASE_LABELS.get(phase, phase)
+        tier = p.get("tier", "?")
+        model_id = p.get("model_id", "?")
+        reason = p.get("reason", "?")
+        if p.get("routed"):
+            nodes = ", ".join(p.get("node_ids") or []) or "—"
+            lat = p.get("latency_ms")
+            lat_s = f"{lat} ms" if lat else "—"
+            rows.append(
+                f"| {label} | `{tier}` ({model_id}) | {nodes} | {lat_s} | {reason} |"
+            )
+        else:
+            rows.append(
+                f"| {label} | `{tier}` ({model_id}) | {reason} |"
+            )
     return "\n".join(rows)
 
 
@@ -117,8 +136,20 @@ def build_drill_report(record: dict[str, Any]) -> str:
     # ---- 卸载位置总览 ----
     lines.append("## 2. 端-边-云卸载轨迹（自适应调度）")
     lines.append("")
-    lines.append("> 卸载位置随轮次与收敛负载自适应变化；真实 LLM 模式下端/边暂未接独立 "
-                 "API，统一降级云侧执行（理由中注明）。")
+    # R20：按真实路由决策区分说明文案
+    has_routed = any(
+        (r.get("phase") or {}).get("routed") for r in rounds if r.get("phase")
+    )
+    if has_routed:
+        lines.append(
+            "> 执行位置由调度器在每个 agent 调用时按在线节点与任务特征"
+            "（延迟预算/隐私分级/能力要求）实时决策，含真实执行耗时。"
+        )
+    else:
+        lines.append(
+            "> 卸载位置随轮次与收敛负载自适应变化；真实 LLM 模式下端/边暂未接独立 "
+            "API，统一降级云侧执行（理由中注明）。"
+        )
     lines.append("")
     for r in rounds:
         phase = r.get("phase")

@@ -447,6 +447,11 @@ export interface DrillAgentTraceEntry {
   label: string;
   round?: number;
   ts: number;
+  /** R20 端边云路由：该 agent 真实执行的层级/节点/耗时（下一次调用前为上一跳结果） */
+  tier?: string | null;
+  node_id?: string | null;
+  latency_ms?: number | null;
+  reason?: string | null;
 }
 
 // T7: 历史演练元信息（GET /drill/list）

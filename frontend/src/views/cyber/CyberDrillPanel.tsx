@@ -466,16 +466,7 @@ function GapClosureChart({ rounds }: { rounds: DrillRound[] }) {
  *  只有开启新一轮时才被清除/覆盖。 */
 const DRILL_SNAPSHOT_KEY = "aegis.cyber-drill.snapshot";
 
-// T8 战报导出：把运行记录 Markdown 排版成打印友好的 HTML，
-// 新窗口打开并触发浏览器打印（可另存为 PDF / 直接打印）。
-// 纯前端实现，零依赖；不引入后端生成 PDF 的成本。
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+
 
 // T7 历史演练对比：迷你趋势图（metric: red=新增攻击步骤 / cov=防御覆盖率）
 function CompareSpark({
@@ -750,6 +741,8 @@ function CompareView({ a, b }: { a: DrillMeta; b: DrillMeta }) {
 function exportReportPdf(reportMd: string, drillId: string | null): void {
   // R18d：改为下载真正的 PDF 文件（调用后端 /report.pdf，reportlab 渲染中文），
   // 替代原先的 window.open + win.print()（那会弹出打印对话框而非下载 PDF）。
+  // R19f：导出失败时不再退回弹窗打印预览（易被拦截器挡住，用户看不到任何
+  // 反馈），而是直接降级下载 Markdown 文件——内容同源、零依赖、必成功。
   void (async () => {
     if (!drillId) return;
     try {
@@ -762,61 +755,26 @@ function exportReportPdf(reportMd: string, drillId: string | null): void {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("导出 PDF 失败，回退到打印预览", err);
-      // 回退：若后端不可用，退回原 print 预览（不静默失败）
-      _printFallback(reportMd, drillId);
+    } catch {
+      exportReportMarkdown(reportMd, drillId);
     }
   })();
 }
 
-/** 后端 PDF 不可用时的打印预览回退（保留原行为，避免导出彻底失效）。 */
-function _printFallback(reportMd: string, drillId: string | null): void {
-  const lines = reportMd.split("\n");
-  const html = lines
-    .map((raw) => {
-      const line = raw.replace(/\r$/, "");
-      const esc = (t: string) => escapeHtml(t);
-      const h = line.match(/^(#{1,4})\s+(.*)$/);
-      if (h) return `<h${h[1].length}>${esc(h[2])}</h${h[1].length}>`;
-      if (/^\s*[-*]\s+/.test(line)) return `<li>${esc(line)}</li>`;
-      if (/^\s*\|.*\|\s*$/.test(line)) {
-        if (/^\s*\|[\s:|-]+\|\s*$/.test(line)) return "";
-        const cells = line
-          .split("|")
-          .slice(1, -1)
-          .map((c) => `<td>${esc(c.trim())}</td>`)
-          .join("");
-        return `<tr>${cells}</tr>`;
-      }
-      if (/^\s*```/.test(line)) return "";
-      return `<p>${esc(line) || "&nbsp;"}</p>`;
-    })
-    .join("\n");
-  const win = window.open("", "_blank", "width=900,height=700");
-  if (!win) return;
-  win.document.write(`<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8" />
-<title>AegisOS 演练战报 ${drillId ?? ""}</title>
-<style>
-  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; margin: 32px; color: #1a2233; }
-  h1 { font-size: 22px; border-bottom: 2px solid #2f7de1; padding-bottom: 8px; }
-  h2 { font-size: 17px; border-left: 4px solid #2f7de1; padding-left: 8px; }
-  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-  td { border: 1px solid #ccc; padding: 4px 8px; font-size: 12px; }
-</style>
-</head>
-<body>
-<h1>AegisOS 攻防演练运行记录${drillId ? ` · ${escapeHtml(drillId)}` : ""}</h1>
-${html}
-</body>
-</html>`);
-  win.document.close();
-  win.focus();
-  win.print();
+/** 导出 Markdown 战报（PDF 不可用时的可靠兑底：同源数据 + 本地 Blob 下载）。 */
+function exportReportMarkdown(reportMd: string, drillId: string | null): void {
+  const blob = new Blob([reportMd], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `aegis-drill-${drillId ?? "report"}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
+
+
 
 // R10 端-边-云执行位置展示（T4）
 // 层级语义与后端调度器一致：端侧超低延迟/本地隐私 / 边侧低延迟/区域隔离 / 云侧强算力/可脱敏
@@ -929,9 +887,31 @@ export function CyberDrillPanel() {
     initialSnapshot?.stage ?? null,
   );
   // CoT/ToT 可视化：agent 级推理时间线（第几轮 · 哪个队 · 哪个 agent 正在做什么）
+  // R20：每步附带真实路由决策（tier/node/耗时/理由），可直接看到端边云卸载
   const [agentTrace, setAgentTrace] = useState<
-    Array<{ round: number; stage: string; agent: string; label: string; ts: number }>
+    Array<{
+      round: number;
+      stage: string;
+      agent: string;
+      label: string;
+      ts: number;
+      tier?: string | null;
+      node_id?: string | null;
+      latency_ms?: number | null;
+      reason?: string | null;
+    }>
   >(initialSnapshot?.agentTrace ?? []);
+  // R19f：未收敛场景的遗留缺口明细——优先后端 summary.pending_issues，
+  // 兑底解析最后一轮紫队 critique.issues
+  const lastRoundIssues = (() => {
+    const pending = (summary as any)?.pending_issues;
+    if (Array.isArray(pending) && pending.length > 0) {
+      return pending.map((x: any) => String(x));
+    }
+    const last = rounds[rounds.length - 1] as any;
+    const issues = last?.purple?.critique?.issues;
+    return Array.isArray(issues) ? issues.map((x: any) => String(x)) : [];
+  })();
   // 演练已运行时长（秒）——running 期间每秒跳动，缓解“不知道在等什么”
   const [elapsed, setElapsed] = useState(initialSnapshot?.elapsed ?? 0);
   // 真实总轮数：以服务端为准（Chat 发起时轮数可与本地输入框不同）
@@ -1010,18 +990,33 @@ export function CyberDrillPanel() {
       if (s === "red" || s === "blue" || s === "purple") setStage(s);
     } else if (ev.name === "drill_agent") {
       // CoT 时间线：某个 agent 开始执行（用户能看到推理推进，不再傻等）
+      // R20：事件可能附带该 agent 最近一跳的真实路由决策（tier/node/耗时）
       const stg = String(ev.data?.stage ?? "");
       const ag = String(ev.data?.agent ?? "");
       if (stg && ag) {
         const round = Number(ev.data?.round ?? rounds.length + 1) || rounds.length + 1;
         const ts = Number(ev.data?.ts ?? Date.now() / 1000);
+        const tier = ev.data?.tier != null ? String(ev.data.tier) : null;
+        const nodeId = ev.data?.node_id != null ? String(ev.data.node_id) : null;
+        const latencyMs = Number(ev.data?.latency_ms);
+        const reason = ev.data?.reason != null ? String(ev.data.reason) : null;
         setAgentTrace((prev) => {
           // 去重：切页返回时 get_drill 预填与 SSE 历史重放会给出同一步，
           // 时间戳 + agent 唯一确定一步，重复到达不追加
           if (prev.some((e) => e.agent === ag && e.ts === ts)) return prev;
           return [
             ...prev.slice(-59),
-            { round, stage: stg, agent: ag, label: String(ev.data?.label ?? ag), ts },
+            {
+              round,
+              stage: stg,
+              agent: ag,
+              label: String(ev.data?.label ?? ag),
+              ts,
+              tier,
+              node_id: nodeId,
+              latency_ms: Number.isFinite(latencyMs) ? latencyMs : null,
+              reason,
+            },
           ];
         });
       }
@@ -1469,6 +1464,16 @@ export function CyberDrillPanel() {
                     </span>
                     <span className="cyber-drill__cot-agent">{t.label}</span>
                     <span className="cyber-drill__cot-agentid">{t.agent}</span>
+                    {t.tier ? (
+                      <span
+                        className={`cyber-drill__cot-tier cyber-drill__cot-tier--${t.tier}`}
+                        title={t.reason ?? `在${t.tier === "device" ? "端" : t.tier === "edge" ? "边" : "云"}侧节点执行`}
+                      >
+                        {t.tier === "device" ? "端" : t.tier === "edge" ? "边" : "云"}
+                        {t.node_id ? `·${t.node_id}` : ""}
+                        {t.latency_ms ? ` ${t.latency_ms}ms` : ""}
+                      </span>
+                    ) : null}
                     <span className="cyber-drill__cot-spin" aria-hidden>⋯</span>
                   </li>
                 ))}
@@ -1762,13 +1767,45 @@ export function CyberDrillPanel() {
         <div className="cyber-drill__summary">
           <h4 className="cyber-panel__subtitle">Drill Summary</h4>
           <div className="cyber-drill__summary-meta">
-            <span className={`badge badge--${summary.convergence_code === "converged" ? "succeeded" : "cancelled"}`}>
-              {summary.convergence_code}
+            {/* R19f：收敛码语义化——max_rounds/no_progress 是"充分探索"而非失败，
+                只有 aborted/error 才用 cancelled 样式；同时展示遗留缺口明细 */
+            }
+            <span
+              className={`badge badge--${
+                summary.convergence_code === "converged"
+                  ? "succeeded"
+                  : summary.convergence_code === "aborted" ||
+                      summary.convergence_code === "error"
+                    ? "cancelled"
+                    : "running"
+              }`}
+            >
+              {summary.convergence_code === "converged"
+                ? "已收敛"
+                : summary.convergence_code === "max_rounds"
+                  ? "充分探索（达轮次上限）"
+                  : summary.convergence_code === "no_progress"
+                    ? "充分探索（无新增攻击面）"
+                    : summary.convergence_code}
             </span>
             <span className="cyber-drill__summary-stat">
               {summary.rounds_executed} rounds
             </span>
           </div>
+          {(summary.convergence_code === "max_rounds" ||
+            summary.convergence_code === "no_progress") &&
+          lastRoundIssues.length > 0 ? (
+            <div className="cyber-drill__memory">
+              <h5 className="cyber-drill__memory-title">
+                ⚠ 遗留待验证缺口（{lastRoundIssues.length} 项）
+              </h5>
+              {lastRoundIssues.map((issue, i) => (
+                <div key={i} className="cyber-drill__memory-entry">
+                  <span className="cyber-drill__memory-summary">{issue}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <p className="cyber-panel__text">{summary.conclusion}</p>
           {summary.memory_trace && summary.memory_trace.length > 0 ? (
             <div className="cyber-drill__memory">

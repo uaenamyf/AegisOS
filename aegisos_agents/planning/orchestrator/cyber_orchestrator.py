@@ -225,15 +225,19 @@ def _asdict(obj):
 
 
 # ==================================================================
-# R10: 演练阶段 placement —— 端边云三层候选池 + 各阶段任务特征
+# R10/R20: 演练阶段 placement —— 端边云三层候选池 + 各阶段任务特征
+# R20 起本池仅作 schedule() 无真实注册表时的离线兑底；真实部署下
+# 路由决策由 RoutedSDKModel（sdk_provider）按 NodeRegistry 在线节点
+# 实时做出，结果覆盖在此生成的默认标注。
 # ==================================================================
 
-# 三层候选模型池（演示版：每层一个候选，不接真实异构节点）
+# 三层候选模型池（离线兑底版：model_id 对齐 tooling/configs/infrastructure.yaml
+# 默认节点名，不再使用虚构型号）
 # R10.2：edge 增加 review 能力——收敛后增量评审负载下降，可卸载到边侧中型模型
 _DRILL_MODEL_POOL: list[Model] = [
-    Model(model_id="device_firewall", tier="device", size="small", capabilities=["recon", "detect"]),
-    Model(model_id="edge_gateway", tier="edge", size="medium", capabilities=["recon", "detect", "plan", "review"]),
-    Model(model_id="cloud_gpu", tier="cloud", size="large", capabilities=["plan", "review", "critique"]),
+    Model(model_id="device_local", tier="device", size="small", capabilities=["recon", "detect"]),
+    Model(model_id="edge_server_01", tier="edge", size="medium", capabilities=["recon", "detect", "plan", "review"]),
+    Model(model_id="cloud_api", tier="cloud", size="large", capabilities=["plan", "review", "critique"]),
 ]
 
 # 各阶段任务特征（按阶段语义设置延迟预算与隐私级别，驱动 schedule() 选层）
@@ -270,6 +274,30 @@ _DRILL_TIER_SEMANTICS: dict[str, str] = {    "device": "端侧·超低延迟/本
     "cloud": "云侧·强算力/可脱敏",
 }
 
+# R20：agent 名 → 所属阶段（真实路由决策按阶段聚合用）
+_AGENT_STAGE: dict[str, str] = {
+    "recon": "red",
+    "vuln_correlator": "red",
+    "exploit_planner": "red",
+    "detector": "blue",
+    "triage": "blue",
+    "threat_hunt": "blue",
+    "ir_planner": "blue",
+    "critic": "purple",
+    "reviewer": "purple",
+}
+
+
+
+def _set_routed_agent(orchestrator: "CyberOrchestrator", agent: str) -> None:
+    """R20：把当前执行的 agent 名告知路由代理（无路由时静默跳过）。"""
+    try:
+        model = getattr(orchestrator, agent, None)
+        routed = getattr(model, "_model", None) if model else None
+        if type(routed).__name__ == "RoutedSDKModel":
+            routed.set_agent(agent)
+    except Exception:  # noqa: BLE001 —— 路由标注失败不影响执行
+        pass
 
 class DrillAborted(Exception):
     """演练被用户显式中止（abort）时抛出，用于在 agent 调用边界快速退出。
@@ -464,6 +492,8 @@ class CyberOrchestrator(GoalMode[dict]):
             self.critic.set_event_bus(eventbus)
         # P3.2: 构建低熵路由拓扑（11 个攻防 Agent × 能力映射），供 select_targets 使用
         self._topology: Graph = self._build_topology()
+        # R20：真实路由决策采集游标（_phase_placements 按轮切分决策流）
+        self._round_decision_cursor: int = 0
 
     # P3.2 ----------------------------------------------------------------
     # 低熵稀疏路由：把编排器持有的所有攻防 Agent 映射到 Graph 节点，
@@ -600,6 +630,7 @@ class CyberOrchestrator(GoalMode[dict]):
             raise DrillAborted()
         # 1) 侦察（数量上限截断：提速——限制 DeepSeek 输出规模，下同）
         if callable(on_agent):
+            _set_routed_agent(self, "recon")
             on_agent("red", "recon")
         recon_prompt = f"Scan target range: {target_range}{round_tag}"
         recon_result = self.recon._run(recon_prompt)
@@ -664,6 +695,7 @@ class CyberOrchestrator(GoalMode[dict]):
 
         # 2) 漏洞关联
         if callable(on_agent):
+            _set_routed_agent(self, "vuln_correlator")
             on_agent("red", "vuln_correlator")
         assets_desc = json.dumps(
             [
@@ -690,6 +722,7 @@ class CyberOrchestrator(GoalMode[dict]):
 
         # 3) 利用链规划
         if callable(on_agent):
+            _set_routed_agent(self, "exploit_planner")
             on_agent("red", "exploit_planner")
         findings_desc = json.dumps(
             [
@@ -1023,6 +1056,7 @@ class CyberOrchestrator(GoalMode[dict]):
             raise DrillAborted()
         # 1) 入侵检测
         if callable(on_agent):
+            _set_routed_agent(self, "detector")
             on_agent("blue", "detector")
         detector_prompt = f"Detect anomalies in: {json.dumps(event_stream)}"
         detector_result = self.detector._run(detector_prompt)
@@ -1043,6 +1077,7 @@ class CyberOrchestrator(GoalMode[dict]):
 
         # 2) 告警分诊
         if callable(on_agent):
+            _set_routed_agent(self, "triage")
             on_agent("blue", "triage")
         alerts_desc = json.dumps(
             [
@@ -1065,6 +1100,7 @@ class CyberOrchestrator(GoalMode[dict]):
 
         # 3) 威胁狩猎
         if callable(on_agent):
+            _set_routed_agent(self, "threat_hunt")
             on_agent("blue", "threat_hunt")
         hunt_prompt = f"Generate hunting hypotheses for: {alerts_desc}"
         hunt_result = self.threat_hunt._run(hunt_prompt)
@@ -1075,6 +1111,7 @@ class CyberOrchestrator(GoalMode[dict]):
 
         # 4) 响应规划
         if callable(on_agent):
+            _set_routed_agent(self, "ir_planner")
             on_agent("blue", "ir_planner")
         ir_prompt = f"Plan response for: {json.dumps(hypotheses)}"
         ir_result = self.ir_planner._run(ir_prompt)
@@ -1239,6 +1276,7 @@ class CyberOrchestrator(GoalMode[dict]):
         if abort is not None and abort():
             raise DrillAborted()
         if callable(on_agent):
+            _set_routed_agent(self, "critic")
             on_agent("purple", "critic")
         round_tag = f" [round={round}]" if round is not None else ""
         prior_tag = (
@@ -1261,6 +1299,7 @@ class CyberOrchestrator(GoalMode[dict]):
 
         # 紫队跨产出一致性审查
         if callable(on_agent):
+            _set_routed_agent(self, "reviewer")
             on_agent("purple", "reviewer")
         artifacts = {
             "attack_chain": chain.to_dict(),
@@ -2821,6 +2860,8 @@ class CyberOrchestrator(GoalMode[dict]):
         critique_feedback: str | None = None
 
         for r in range(1, max_rounds + 1):
+            # R20：每轮开始重置路由决策游标（_phase_placements 按轮切分决策流）
+            self._round_decision_cursor = len(self._routed_decisions())
             # 中止检查点 1：轮开始前——abort 后立即停止，不再启动新一轮
             if callable(abort) and abort():
                 code = "aborted"
@@ -3014,19 +3055,34 @@ class CyberOrchestrator(GoalMode[dict]):
             if stop:
                 break
 
-        # R19：结论话术——真实模式下 max_rounds/no_progress 不是"失败"，而是
+        # R19/R19f：结论话术——真实模式下 max_rounds/no_progress 不是"失败"，而是
         # "已充分探索该攻击面、遗留缺口转入待验证"；只有真收敛才宣称达成收敛。
+        # R19f 修复：遗留缺口改为「最后一轮紫队 issues 明细」（累计待验证项），
+        # 旧逻辑用 last_round.new_issue_count（只是最后一轮新增），导致
+        # "遗留 0 个待验证缺陷"的误导性文案（最后一轮新增为 0 ≠ 无遗留）。
         last_purple = rounds[-1]["purple"] if rounds else {}
-        pending_issues = last_purple.get("new_issue_count", 0)
+        pending_issue_list = (
+            (last_purple.get("critique") or {}).get("issues") or []
+        )
+        pending_issues = len(pending_issue_list)
         if code == "converged":
             _conclusion = (
                 "多轮红蓝紫对抗后达成收敛：攻击链覆盖全部暴露面并通过紫队一致性校验。"
             )
         elif code in ("max_rounds", "no_progress"):
-            _conclusion = (
-                f"充分探索 {len(rounds)} 轮、遗留 {pending_issues} 个待验证缺陷"
-                f"（{code}），建议对遗留缺口转人工复核。"
-            )
+            if pending_issues > 0:
+                top = "；".join(str(x)[:60] for x in pending_issue_list[:3])
+                more = "等" if pending_issues > 3 else ""
+                _conclusion = (
+                    f"充分探索 {len(rounds)} 轮，当前攻击面已全部验证（无假阳性收敛）；"
+                    f"遗留 {pending_issues} 项待验证缺口{more}：{top}。"
+                    "建议对遗留缺口转人工复核。"
+                )
+            else:
+                _conclusion = (
+                    f"充分探索 {len(rounds)} 轮，攻击面已全部验证，"
+                    "紫队未发现新的待验证缺口；如需更深对抗可提高轮次上限。"
+                )
         else:
             _conclusion = f"演练因 {code} 提前结束（共 {len(rounds)} 轮）。"
 
@@ -3035,6 +3091,9 @@ class CyberOrchestrator(GoalMode[dict]):
             "convergence_code": code,
             "rounds_executed": len(rounds),
         }
+        # R19f：遗留缺口明细入 summary，前端可直接展示而不必解析 rounds
+        if code in ("max_rounds", "no_progress") and pending_issue_list:
+            summary["pending_issues"] = [str(x) for x in pending_issue_list]
         if memory is not None:
             summary["memory_trace"] = memory_trace
 
@@ -3049,24 +3108,73 @@ class CyberOrchestrator(GoalMode[dict]):
     # ---- R10: 演练阶段 placement（端-边-云自适应调度标注）辅助 ----
 
     def _phase_placements(self, round_no: int | None = None) -> dict[str, dict[str, Any]]:
-        """为演练红/蓝/紫三阶段标注执行位置（R10 自适应调度）。
+        """为演练红/蓝/紫三阶段标注执行位置（R10/R20 自适应调度）。
 
-        两重自适应：
-            1. 轮次负载缩放——随对抗收敛、增量负载下降，延迟预算收紧，
-               部分阶段自动卸载到更近的层（如紫队评审云→边、蓝队防御边→端）；
-            2. 可执行层约束——mock 模式三层候选池齐全按调度规则选层；真实模式
-               当前仅云 API 可执行（端/边暂未接独立 API），偏好层不可执行时
-               降级云侧执行并在理由中说明。
+        R20 双层来源（真实路由优先）：
+            1. **真实路由决策**：RoutedSDKModel.last_decisions 里当前轮的
+               agent 级决策（调度器按在线节点实时选层 + 真实执行耗时）——
+               真实模式且路由开启时的唯一事实源；
+            2. **离线兑底**：原静态调度语义（无注册表/未开路由时保留），
+               候选池已对齐真实默认节点名。
 
         Args:
             round_no: 当前轮次（>=1）；None 视为第 1 轮（保持旧行为）。
 
         Returns:
             形如 ``{"red": {...}, "blue": {...}, "purple": {...}}``
-            的 placement 映射，每项含 ``tier`` / ``model_id`` / ``reason``。
+            的 placement 映射，每项含 ``tier`` / ``model_id`` / ``reason``
+            （真实路由时另含 ``routed`` / ``node_ids`` / ``latency_ms``）。
         """
         placements: dict[str, dict[str, Any]] = {}
         round_no = round_no or 1
+
+        # 1) 真实路由决策优先：取当前轮新增的 agent 级决策（每轮 9 个 agent）
+        routed = self._routed_decisions()
+        if routed:
+            fresh = routed[self._round_decision_cursor:]
+            self._round_decision_cursor = len(routed)
+            by_stage: dict[str, list[dict[str, Any]]] = {"red": [], "blue": [], "purple": []}
+            for d in fresh:
+                stage = _AGENT_STAGE.get(str(d.get("agent", "")), "")
+                if stage in by_stage:
+                    by_stage[stage].append(d)
+            if not any(by_stage.values()):
+                # 游标错位兑底：全部决策按 stage 聚合
+                for d in routed:
+                    stage = _AGENT_STAGE.get(str(d.get("agent", "")), "")
+                    if stage in by_stage:
+                        by_stage[stage].append(d)
+            for phase, ds in by_stage.items():
+                if not ds:
+                    continue
+                tier_rank = {"device": 0, "edge": 1, "cloud": 2}
+                tiers = {str(d.get("tier", "cloud")) for d in ds}
+                tier = sorted(tiers, key=lambda t: tier_rank.get(t, 2))[0]
+                lat = max(int(d.get("latency_ms") or 0) for d in ds)
+                downgrade = next(
+                    (str(d["downgraded_from"]) for d in ds if d.get("downgraded_from")), None
+                )
+                nodes = sorted({str(d.get("node_id") or "") for d in ds} - {""})
+                reason = (
+                    f"调度器按在线节点实时选层（{len(ds)} 个 agent 调用，"
+                    f"延迟预算 {ds[0].get('latency_budget', '?')}s）→ "
+                    f"{_DRILL_TIER_SEMANTICS.get(tier, tier)}"
+                )
+                if downgrade:
+                    reason += f"；{downgrade} 层不可执行已降级"
+                placements[phase] = {
+                    "tier": tier,
+                    "model_id": str(ds[0].get("model_id") or ""),
+                    "reason": reason,
+                    "routed": True,
+                    "node_ids": nodes,
+                    "latency_ms": lat,
+                    **({"downgraded_from": downgrade} if downgrade else {}),
+                }
+            if all(p in placements for p in _DRILL_PHASE_FEATURES):
+                return placements
+
+        # 2) 离线兑底：原静态调度语义（无注册表 / 未开路由时）
         # 收敛加速：对抗收敛后增量负载快速下降（第 2 轮约 45%、第 3 轮起 30%），
         # 延迟预算随之收紧 → 部分阶段自动卸载到更近的层（紫队云→边、蓝队边→端）
         scale = max(0.3, 1.0 - 0.55 * (round_no - 1))
@@ -3107,6 +3215,23 @@ class CyberOrchestrator(GoalMode[dict]):
         if use_mock in ("1", "true", "yes") or not os.getenv("OPENAI_API_KEY"):
             return ["device", "edge", "cloud"]
         return ["cloud"]
+
+    # ---- R20: 真实路由决策接入（RoutedSDKModel 采集） ----
+
+    def _routed_decisions(self) -> list[dict[str, Any]]:
+        """读取路由代理采集的真实决策（未开启/无代理时返回空列表）。
+
+        R20：agent 的 ``_model`` 即 RoutedSDKModel 本身（继承 SDK Model，
+        SDK Agent 直接持有），决策记录在 ``last_decisions``。
+        """
+        model = getattr(getattr(self, "recon", None), "_model", None)
+        routed = model if type(model).__name__ == "RoutedSDKModel" else None
+        if routed is None:
+            return []
+        try:
+            return routed.snapshot()
+        except Exception:  # noqa: BLE001 —— 决策采集失败不阻断演练
+            return []
 
     # ---- R8: 跨轮记忆与上下文压缩辅助 ----
 
