@@ -215,25 +215,22 @@ python tooling/scripts/check_no_broadcast.py --strict
 - 真实两轮 Drill 完成
 - 结构化输出重试修复后真实三轮 Drill 完成
 
-## 8. Docker 说明
+## 8. 真实 API 评估
 
-Docker 不是运行 AegisOS 主应用的必要条件。主应用可以直接使用 `start.ps1` 或 `start.sh` 启动。
-
-Docker Compose 仍保留用于隔离工具靶场：
+无需 Docker。后端启动并配置真实 ARK 后执行：
 
 ```powershell
-.\tooling\scripts\deploy-docker.ps1 -Action config -Sandbox -UseDemoSecrets
-.\tooling\scripts\deploy-docker.ps1 -Action up -Sandbox -UseDemoSecrets
+$env:AEGIS_AUTH_DEFAULT_KEY="aegis-local-demo-key-2026"
+python tooling/scripts/run_real_api_eval.py
 ```
 
-靶场包含 Nmap、Metasploit、Zeek、Splunk、Nginx 和 Redis。真实工具闭环需要 Docker Desktop Engine 和可访问镜像仓库，目前不作为主应用启动前置条件。
+评估覆盖健康检查、运行模式、端边云节点、普通 Chat、系统状态 Chat、攻防意图安全拦截、记忆、Graph 和 Drill 历史，共 9 个真实 API 用例。
 
 ## 9. 当前限制
 
 以下内容已实现算法、Mock 验收或接口基础，但仍需要现场环境实测：
 
 - 真实 5/10/20 轮 ARK 性能样本
-- Nmap/Metasploit/Zeek/Splunk 完整攻防闭环
 - 真实 device/edge/cloud 网络节点联调
 - Neo4j/Qdrant 在线服务集成
 - 生产级 HTTPS、Secret 管理和 ASGI 部署

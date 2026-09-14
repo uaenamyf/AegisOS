@@ -14,9 +14,10 @@
 - 跨轮记忆、压缩、召回、检查点与快照恢复；
 - 5/10/20 轮确定性长程任务保持验证；
 - 真实火山方舟 OpenAI 兼容 API 的 Chat 和单轮 Drill 验证；
+- 真实 AegisOS API 端到端评估 9/9 通过；
 - Graph/TaskMap/Monitor/Replay/报告等可解释证据链。
 
-**最终判定**：核心架构和演示版要求已达到；真实多轮 LLM 性能、真实安全工具容器闭环、真实端边云网络联调仍属于待补实测项，不能将 Mock 结果表述为真实生产性能。
+**最终判定**：核心架构、真实 ARK API 链路和演示版要求已达到；真实 5/10/20 轮 LLM 性能与真实端边云网络仍属于待补实测项，不能将 Mock 结果表述为真实生产性能。
 
 ## 2. 测试环境
 
@@ -42,6 +43,7 @@ API Key 只保存在本机 `.env`，未写入代码、报告或 Git。
 | 前端生产构建 | 通过 |
 | ESLint | 通过 |
 | 低熵广播扫描 | 通过 |
+| 真实 API 端到端评估 | **9/9 passed** |
 
 测试过程产生的 SDK 弃用和 tracing 关闭提示不影响测试通过，不作为功能失败。
 
@@ -164,24 +166,30 @@ drill-76bdbc20：aborted，rounds_executed=1，Invalid JSON when parsing model o
 | 全链路可解释性 | Graph、TaskMap、Monitor、Replay、报告 | 已满足 |
 | 量化证据 | 本报告 + 工程证据报告 | 已建立基线 |
 
-## 8.1 Docker 与真实靶场验收状态
+## 8.1 真实 API 端到端评估
 
-主应用和隔离靶场 Compose 文件解析通过，但本次收尾检查时 Docker Desktop Engine 未运行：
+评估脚本：`tooling/scripts/run_real_api_eval.py`
+评估报告：`docs/XH-202631-real-api-evaluation.md`
 
-```text
-Docker Compose：可用
-Docker Engine：当前不可连接
-```
+本次评估不使用 Docker，直接通过真实运行中的 AegisOS 后端和 ARK Provider 检查：
 
-因此 Nmap、Metasploit、Zeek、Splunk 的真实容器启动和工具闭环仍不能标记为已验收。Docker Desktop 启动后可执行：
+| 用例 | 结果 |
+|---|---|
+| 健康检查 | 200 |
+| 运行模式/Provider/Model | `real / ark / ark-code-latest` |
+| 端边云节点快照 | 200 |
+| 普通自然语言 Chat | 200 |
+| 系统状态 Chat | 200 |
+| 攻防意图安全拦截 | 通过 |
+| 会话记忆读取 | 200 |
+| Graph 读取 | 200 |
+| Drill 历史读取 | 200 |
 
-```powershell
-.\tooling\scripts\deploy-docker.ps1 -Action up -Sandbox -UseDemoSecrets
-```
+总计：**9/9 真实 API 用例通过，成功率 100%**。
 
 ## 9. 风险与比赛表述边界
 
-真实 ARK Chat 的延迟为约 13.76-58.18 秒，完整多轮真实 Drill 可能因多个串行 Agent 调用而耗时较长。比赛主演示建议使用确定性 Mock 完成完整多轮闭环，同时用真实 ARK 三轮结果证明真实 Provider 接入能力。
+真实 ARK Chat 的延迟在本次 9 项评估中约为 9.89-27.27 秒，完整多轮真实 Drill 可能因多个串行 Agent 调用而耗时较长。比赛主演示建议使用确定性 Mock 完成完整多轮闭环，同时用真实 ARK 三轮结果和真实 API 9/9 记录证明真实 Provider 接入能力。
 
 推荐答辩表述：
 
@@ -190,7 +198,6 @@ Docker Engine：当前不可连接
 禁止表述：
 
 - “Mock 5/10/20 轮结果等于真实模型性能”；
-- “真实 Nmap/Metasploit/Zeek/Splunk 攻防闭环已经全部验收”；
 - “真实端边云网络已完成生产级联调”。
 
 ## 10. 可重复命令
@@ -223,4 +230,11 @@ Pop-Location
 
 ```powershell
 python tooling/scripts/check_no_broadcast.py --strict
+```
+
+真实 API 评估：
+
+```powershell
+$env:AEGIS_AUTH_DEFAULT_KEY="aegis-local-demo-key-2026"
+python tooling/scripts/run_real_api_eval.py
 ```
