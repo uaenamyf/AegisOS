@@ -307,13 +307,26 @@ export function ChatView() {
             reportMd: null,
           }));
         } catch { /* 页面存储不可用时仍保留 Chat 结果 */ }
-        const resultText = JSON.stringify({
-          drill_id: started.drill_id,
-          target_range: targetRange,
-          rounds: rounds.length,
-          convergence: record.convergence_code ?? (summary ? "converged" : "aborted"),
-          summary,
-        }, null, 2);
+        const convergenceCode = record.convergence_code ?? (summary ? "converged" : "aborted");
+        const convLabel =
+          convergenceCode === "converged"
+            ? "已收敛"
+            : convergenceCode === "max_rounds"
+              ? "达到轮次上限（充分探索）"
+              : convergenceCode === "aborted"
+                ? "已中止"
+                : String(convergenceCode);
+        const conclusion =
+          typeof summary?.conclusion === "string" && summary.conclusion.trim()
+            ? summary.conclusion.trim()
+            : "";
+        // R21.1: 演练完成回复改为自然语言总结，不再直接输出固定 JSON
+        const resultText = [
+          `攻防演练已完成（${started.drill_id}）`,
+          `目标网段 ${targetRange} · 执行 ${rounds.length} 轮 · ${convLabel}`,
+          ...(conclusion ? [`\n${conclusion}`] : []),
+          `\n详细轮次证据可在「Cyber Defense / 演练历史 / 任务图」中查看。`,
+        ].join("\n");
         updateChatMessage(assistantMsgId, { content: resultText, status: "done", taskId: started.drill_id, tier: "cloud" });
         return;
       }
