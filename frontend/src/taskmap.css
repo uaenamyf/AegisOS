@@ -1,0 +1,400 @@
+/* ===========================================================================
+   R22 TaskMap 重做版样式（替换 R21 内联块）——轮次泳道 + 自适应 DAG + 缩放
+   date: 2026-09-14  dev: OpenSquilla
+   =========================================================================== */
+.taskmap-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  overflow: hidden;
+}
+.taskmap-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.taskmap-mode-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  gap: 2px;
+  flex-shrink: 0;
+}
+.taskmap-mode-switch__btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.taskmap-mode-switch__btn:hover {
+  color: var(--text-primary);
+}
+.taskmap-mode-switch__btn.is-active {
+  background: var(--accent);
+  color: #06251c;
+  font-weight: 600;
+}
+.taskmap-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+.taskmap-toolbar__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.taskmap-toolbar__select {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  max-width: 420px;
+}
+.taskmap-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+.taskmap-live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: monitor-live-pulse 1.4s ease-in-out infinite;
+}
+.taskmap-zoom {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.taskmap-zoom button {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  min-width: 24px;
+  height: 22px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 6px;
+}
+.taskmap-zoom button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.taskmap-zoom__reset {
+  font-size: 11px !important;
+}
+.taskmap-error {
+  padding: 8px 12px;
+  border: 1px solid rgba(239, 119, 112, 0.5);
+  border-radius: var(--radius);
+  background: rgba(239, 119, 112, 0.08);
+  color: var(--danger);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.taskmap-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+.taskmap-canvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(86, 199, 167, 0.05), transparent 45%),
+    var(--bg-secondary);
+  min-height: 0;
+  overflow: hidden;
+}
+.taskmap-scroll {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 6px;
+}
+.taskmap-svg {
+  display: block;
+}
+.taskmap-svg text {
+  font-family: var(--font-sans);
+  user-select: none;
+}
+.taskmap-lane-band {
+  fill: rgba(23, 35, 45, 0.65);
+  stroke: rgba(56, 82, 97, 0.45);
+  stroke-width: 1;
+}
+.taskmap-lane-tag {
+  fill: #657b83;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.taskmap-edge-label {
+  fill: #8fa8b5;
+  font-size: 9.5px;
+  paint-order: stroke;
+  stroke: rgba(10, 15, 20, 0.92);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+.taskmap-edge-label--memory {
+  fill: #b9a4f7;
+}
+.taskmap-node rect {
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
+}
+.taskmap-node:hover rect {
+  stroke-width: 2.2;
+}
+.taskmap-node__label {
+  fill: #edf4f2;
+  font-size: 12px;
+  font-weight: 600;
+}
+.taskmap-node__sublabel {
+  fill: #9db0b5;
+  font-size: 10.5px;
+}
+.taskmap-tier-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.taskmap-node--running rect {
+  animation: taskmap-running 1.6s ease-in-out infinite;
+}
+@keyframes taskmap-running {
+  0%, 100% { stroke-opacity: 1; }
+  50% { stroke-opacity: 0.45; }
+}
+.taskmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--border);
+  background: rgba(13, 20, 28, 0.7);
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.taskmap-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.taskmap-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.taskmap-legend em {
+  margin-left: auto;
+  font-style: normal;
+  color: var(--text-muted);
+}
+.taskmap-inspector {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  padding: 14px;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.taskmap-inspector__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.taskmap-inspector h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.taskmap-inspector code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+.taskmap-inspector__agent,
+.taskmap-inspector__tier {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.taskmap-inspector__agent b {
+  color: var(--text-primary);
+}
+.taskmap-inspector__io {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.taskmap-io-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  padding: 8px 10px;
+}
+.taskmap-io-card--input {
+  border-left: 3px solid var(--warning);
+}
+.taskmap-io-card--output {
+  border-left: 3px solid var(--accent);
+}
+.taskmap-io-card__tag {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.taskmap-io-card pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow-y: auto;
+  color: var(--text-primary);
+}
+.taskmap-inspector__facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+.taskmap-inspector__facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11.5px;
+}
+.taskmap-inspector__facts dt {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.taskmap-inspector__facts dd {
+  margin: 0;
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-all;
+}
+.taskmap-inspector__empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.taskmap-chat-strip {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+.taskmap-chat-strip__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.taskmap-chat-strip__heading span {
+  font-size: 12px;
+  font-weight: 600;
+}
+.taskmap-chat-strip__heading small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.taskmap-chat-strip__items {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.taskmap-chat-item {
+  flex: 0 0 auto;
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--border-strong);
+}
+.taskmap-chat-item--user {
+  border-left-color: var(--accent);
+}
+.taskmap-chat-item--assistant {
+  border-left-color: var(--warning);
+}
+.taskmap-chat-item--system {
+  border-left-color: var(--text-muted);
+}
+.taskmap-chat-item b {
+  display: block;
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+.taskmap-chat-item span {
+  font-size: 11px;
+  color: var(--text-primary);
+}
+.taskmap-chat-strip__empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.drill-history__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+@media (max-width: 1100px) {
+  .taskmap-layout {
+    grid-template-columns: 1fr;
+  }
+  .taskmap-inspector {
+    min-height: 0;
+  }
+}

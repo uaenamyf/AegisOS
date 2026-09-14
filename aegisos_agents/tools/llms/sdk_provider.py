@@ -121,13 +121,23 @@ class RoutedSDKModel(OpenAIChatCompletionsModel):
 
     # ---- 路由决策 ----
 
-    def _decide(self) -> dict[str, Any]:
-        """执行一次调度决策，返回含 tier/node/reason/执行体的决策 dict。"""
+    def _decide(self, prompt_text: str = "") -> dict[str, Any]:
+        """执行一次调度决策，返回含 tier/node/reason/执行体的决策 dict。
+
+        R22 双因子自适应（对齐赛题「依据子任务的实时性要求与数据敏感等级」）：
+            1. 实时性：agent 的 latency_budget 经调度器映射到层级（原有语义）；
+            2. 敏感等级：对**本次真实 prompt** 跑隐私分类器，命中强敏感规则时
+               禁止落云，按「端 → 边」就近降级（原因中标注检测到的敏感项）；
+            3. 节点健康：候选层节点存在连续失败时优先选健康层，并记录降级来源。
+        决策因此不再只由 agent 名决定，会随 prompt 内容与节点实时状态变化。
+        """
         from infrastructure.nodes.descriptor import detect_vendor
 
-        feat = self._AGENT_FEATURES.get(
-            self._current_agent,
-            {"latency_budget": 10.0, "privacy": "unrestricted", "capability": None, "reason": "未登记 agent，默认高算力路径"},
+        feat = dict(
+            self._AGENT_FEATURES.get(
+                self._current_agent,
+                {"latency_budget": 10.0, "privacy": "unrestricted", "capability": None, "reason": "未登记 agent，默认高算力路径"},
+            )
         )
         registry = self._registry
         if registry is None:
@@ -170,6 +180,49 @@ class RoutedSDKModel(OpenAIChatCompletionsModel):
             })
             return decision
 
+        # R22 因子 1：对本次真实 prompt 做数据敏感等级自动分级（赛题第二因子）。
+        # 命中强敏感规则（IP/CVE/凭据/私有网段等）→ 本请求禁止落云。
+        # 两级策略（与 dispatcher 语义一致）：
+        #   a) 命中敏感 → 先尝试脱敏；脱敏后不再命中 → 允许按延迟/算力正常选层
+        #      （敏感字段已替换为占位符，原文不出本地）；
+        #   b) 脱敏后仍命中（如整段内网拓扑）→ 强制 local，禁止落云。
+        # 这样攻防演练（prompt 必含 IP/CVE）不会被整体钉死端侧，
+        # 同时敏感数据仍受保护，且决策理由可审计。
+        privacy_level = str(feat["privacy"])
+        privacy_reason = ""
+        masked = False
+        try:
+            from aegisos_agents.planning.engine.scheduler.privacy_classifier import (
+                classify_privacy_with_reason,
+                mask_sensitive,
+            )
+
+            detected, why = classify_privacy_with_reason(prompt_text or "")
+            if detected == "local":
+                masked_text = mask_sensitive(prompt_text or "")
+                still_local, why2 = classify_privacy_with_reason(masked_text)
+                if still_local == "local":
+                    privacy_level = "local"
+                    privacy_reason = f"{why2}（脱敏后仍敏感）"
+                else:
+                    masked = True
+                    privacy_reason = f"{why}（已脱敏，可上云兜底）"
+        except Exception:  # noqa: BLE001 —— 分类器异常不影响主链路，按原特征走
+            pass
+        decision["privacy"] = privacy_level
+        if masked:
+            decision["masked"] = True
+        if privacy_reason:
+            decision["privacy_detected"] = privacy_reason
+
+        # R22 因子 2：节点健康度加权——同层多节点时选连续失败最少的；
+        # 失败数超警戒线（≥2）的层在候选中降权（仍可兜底执行，但优先避开）。
+        def _tier_health(snap: dict[str, Any]) -> int:
+            try:
+                return int(snap.get("consecutive_failures") or 0)
+            except (TypeError, ValueError):
+                return 0
+
         # 用真实调度器按任务特征选层（隐私分级 / 延迟预算 / 能力过滤）
         from aegisos_agents.planning.engine.scheduler.scheduler import Model, schedule
         from protocol.scheduler import Task
@@ -188,7 +241,7 @@ class RoutedSDKModel(OpenAIChatCompletionsModel):
         task = Task(
             goal=f"drill agent {self._current_agent}",
             latency_budget=feat["latency_budget"],
-            privacy=feat["privacy"],
+            privacy=privacy_level,
         )
         try:
             chosen = schedule(task, models, feat["capability"])
@@ -204,11 +257,37 @@ class RoutedSDKModel(OpenAIChatCompletionsModel):
             decision["downgraded_from"] = chosen_tier
             chosen_tier = best
 
-        snap = next(s for s in candidates if str(s.get("tier", "cloud")) == chosen_tier)
+        # R22：同层内按健康度挑节点（连续失败最少者优先），并把不健康层
+        # （全部节点 failures≥2）避让到次近健康层——体现"实时"调度
+        same_tier = [s for s in candidates if str(s.get("tier", "cloud")) == chosen_tier]
+        if same_tier and all(_tier_health(s) >= 2 for s in same_tier) and len(exec_tiers) > 1:
+            healthy_tiers = {
+                str(s.get("tier", "cloud"))
+                for s in candidates
+                if _tier_health(s) < 2
+            }
+            if healthy_tiers:
+                best = min(
+                    healthy_tiers,
+                    key=lambda t: abs(tier_rank.get(t, 2) - tier_rank.get(chosen_tier, 2)),
+                )
+                decision["unhealthy_avoided"] = chosen_tier
+                chosen_tier = best
+                same_tier = [s for s in candidates if str(s.get("tier", "cloud")) == chosen_tier]
+
+        snap = min(same_tier, key=_tier_health) if same_tier else next(
+            s for s in candidates if str(s.get("tier", "cloud")) == chosen_tier
+        )
         model_id = str(snap.get("model_id") or "")
-        reason = f"{feat['reason']} → {_TIER_CN.get(chosen_tier, chosen_tier)}（延迟预算 {feat['latency_budget']}s/隐私 {feat['privacy']}）"
+        reason = f"{feat['reason']} → {_TIER_CN.get(chosen_tier, chosen_tier)}（延迟预算 {feat['latency_budget']}s/隐私 {privacy_level}）"
+        if privacy_level == "local":
+            reason += f"；{privacy_reason}→敏感数据不出本地，落云禁用"
+        elif privacy_reason:
+            reason += f"；{privacy_reason}"
         if "downgraded_from" in decision:
             reason += f"，原选 {decision['downgraded_from']} 层离线降级"
+        if "unhealthy_avoided" in decision:
+            reason += f"，{decision['unhealthy_avoided']} 层节点连续失败已避让"
         decision.update({
             "tier": chosen_tier,
             "node_id": str(snap.get("node_id", "")),
@@ -244,9 +323,40 @@ class RoutedSDKModel(OpenAIChatCompletionsModel):
 
     # ---- SDK Model 协议 ----
 
+    @staticmethod
+    def _prompt_text(input_items: Any) -> str:
+        """从 SDK 输入里抽取纯文本（供隐私分类器判读本次请求的真实内容）。"""
+        parts: list[str] = []
+        try:
+            items = input_items if isinstance(input_items, (list, tuple)) else [input_items]
+            for item in items:
+                if isinstance(item, str):
+                    parts.append(item)
+                    continue
+                if isinstance(item, dict):
+                    content = item.get("content")
+                    if isinstance(content, str):
+                        parts.append(content)
+                    elif isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and isinstance(block.get("text"), str):
+                                parts.append(block["text"])
+                    continue
+                content = getattr(item, "content", None)
+                if isinstance(content, str):
+                    parts.append(content)
+                elif isinstance(content, list):
+                    for block in content:
+                        text = block.get("text") if isinstance(block, dict) else getattr(block, "text", None)
+                        if isinstance(text, str):
+                            parts.append(text)
+        except Exception:  # noqa: BLE001 —— 抽取失败时按空文本处理（分类器判 unrestricted）
+            return ""
+        return "\n".join(parts)[:8000]
+
     async def get_response(self, system_instructions, input, model_settings, tools, output_schema, handoffs, tracing, *, previous_response_id=None, conversation_id=None, prompt=None):
-        """实现 SDK ``Model`` 协议：先路由决策，再委托执行。"""
-        decision = self._decide()
+        """实现 SDK ``Model`` 协议：先路由决策（含隐私实时分级），再委托执行。"""
+        decision = self._decide(self._prompt_text(input))
         decision["latency_ms"] = 0  # 由下层执行后补充真实耗时（占位）
         self.last_decisions.append(decision)
         # 防泄漏：只保留最近 200 条
