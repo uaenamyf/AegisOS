@@ -41,7 +41,7 @@ TaskMap / Monitor / Replay / Report
 
 ## 2. 快速启动
 
-### Windows，无需 Docker
+### Windows 本地启动
 
 推荐使用根目录的一键启动脚本：
 
@@ -217,7 +217,7 @@ python tooling/scripts/check_no_broadcast.py --strict
 
 ## 8. 真实 API 评估
 
-无需 Docker。后端启动并配置真实 ARK 后执行：
+后端启动并配置真实 ARK 后执行：
 
 ```powershell
 $env:AEGIS_AUTH_DEFAULT_KEY="aegis-local-demo-key-2026"
@@ -244,7 +244,7 @@ aegisos_agents/    感知、规划、行动、记忆、工具五层智能体域
 backend/            FastAPI、任务、Chat、Drill、Memory、Graph、Replay
 frontend/           Chat、TaskMap、Monitor、Graph、Replay、Cyber 视图
 protocol/           Message、Event、Task、Memory、Cyber 等唯一契约
-infrastructure/    节点注册、端边云派发、通信和 Docker 靶场
+infrastructure/    节点注册、端边云派发和通信
 observability/      Monitor、Replay、Benchmark、Evaluation、Visualization
 data/               ATT&CK 数据、图存储、向量存储
 tooling/             配置、启动、部署和比赛评测脚本

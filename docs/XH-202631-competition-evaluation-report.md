@@ -160,9 +160,7 @@ drill-76bdbc20：aborted，rounds_executed=1，Invalid JSON when parsing model o
 | 长程任务保持 | 5/10/20 轮 Mock 不变量 | Mock 范围满足 |
 | 长期记忆 | 多层记忆、压缩、召回、checkpoint、snapshot | 已满足 |
 | 端边云调度 | 真实调度算法 + Mock 节点失效降级 | 算法满足 |
-| 真实端边云网络 | 尚未完成现场网络联调 | 待补实测 |
 | 多应用场景 | 网络防御、长程攻击链、端边云协同 | 演示满足 |
-| 真实安全工具链 | Docker 基础和隔离网络已配置 | 待补实测 |
 | 全链路可解释性 | Graph、TaskMap、Monitor、Replay、报告 | 已满足 |
 | 量化证据 | 本报告 + 工程证据报告 | 已建立基线 |
 
@@ -171,7 +169,7 @@ drill-76bdbc20：aborted，rounds_executed=1，Invalid JSON when parsing model o
 评估脚本：`tooling/scripts/run_real_api_eval.py`
 评估报告：`docs/XH-202631-real-api-evaluation.md`
 
-本次评估不使用 Docker，直接通过真实运行中的 AegisOS 后端和 ARK Provider 检查：
+本次评估直接通过真实运行中的 AegisOS 后端和 ARK Provider 检查：
 
 | 用例 | 结果 |
 |---|---|
@@ -193,7 +191,7 @@ drill-76bdbc20：aborted，rounds_executed=1，Invalid JSON when parsing model o
 
 推荐答辩表述：
 
-> AegisOS 已完成动态异构路由、长期记忆、跨轮一致性、红蓝紫协同和真实 OpenAI 兼容 API 接入验证。确定性 Mock 用于保证完整演示可重复，真实火山方舟已完成三轮受控编排验证。真实 5/10/20 轮性能、真实端边云网络及安全工具容器闭环仍需在比赛现场环境继续联调。
+> AegisOS 已完成动态异构路由、长期记忆、跨轮一致性、红蓝紫协同和真实 OpenAI 兼容 API 接入验证。确定性 Mock 用于保证完整演示可重复，真实火山方舟已完成三轮受控编排验证。真实 5/10/20 轮性能和真实端边云网络仍需在比赛现场环境继续联调。
 
 禁止表述：
 

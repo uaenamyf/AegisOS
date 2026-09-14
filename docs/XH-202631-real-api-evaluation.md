@@ -24,5 +24,5 @@ API 成功率：`100%`
 
 ## 限制
 
-- 本评估通过真实 AegisOS API 和 ARK Provider，不启动 Docker 或安全工具容器。
+- 本评估通过真实 AegisOS API 和 ARK Provider。
 - 真实多轮 Drill 结果使用综合报告中的受控记录，不在脚本中重复消耗模型调用。
